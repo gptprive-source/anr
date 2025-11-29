@@ -30,8 +30,12 @@ const VideoCall = ({
   // Attach remote stream to video element
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
-      console.log("[VideoCall] Attaching remote stream");
+      console.log("[VideoCall] Attaching remote stream, tracks:", remoteStream.getTracks().map(t => `${t.kind}:${t.enabled}`));
       remoteVideoRef.current.srcObject = remoteStream;
+      // Force play in case autoplay is blocked
+      remoteVideoRef.current.play().catch(err => {
+        console.log("[VideoCall] Autoplay blocked, user interaction needed:", err);
+      });
     }
   }, [remoteStream]);
 
@@ -44,7 +48,16 @@ const VideoCall = ({
             ref={remoteVideoRef}
             autoPlay
             playsInline
+            muted
             className="w-full h-full object-cover"
+            onClick={(e) => {
+              // Click to unmute if needed
+              const video = e.currentTarget;
+              if (video.muted) {
+                video.muted = false;
+                video.play();
+              }
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
