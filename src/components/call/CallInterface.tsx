@@ -29,7 +29,10 @@ const CallInterface = ({
     error,
     isMuted,
     isVideoEnabled,
+    hasAnswered,
     startCall,
+    listenForCall,
+    answerCall,
     endCall,
     toggleMute,
     toggleVideo,
@@ -37,8 +40,7 @@ const CallInterface = ({
     callId,
     isInitiator: !isResident, // Visitor initiates the call
     onCallConnected: () => {
-      console.log("[CallInterface] Call connected!");
-      setCallState("connected");
+      console.log("[CallInterface] WebRTC connected!");
     },
     onCallEnded: () => {
       console.log("[CallInterface] Call ended");
@@ -46,31 +48,45 @@ const CallInterface = ({
     },
   });
 
-  // Auto-start for visitor (they initiate)
+  // Auto-start: Visitor sends video, Resident listens
   useEffect(() => {
     if (!isResident) {
       console.log("[CallInterface] Visitor auto-starting call");
       startCall();
+    } else {
+      console.log("[CallInterface] Resident listening for incoming video");
+      listenForCall();
     }
-  }, [isResident, startCall]);
+  }, [isResident, startCall, listenForCall]);
 
-  // Monitor connection state
+  // Update call state based on connection and answer status
   useEffect(() => {
-    if (connectionState === "connecting") {
-      setCallState("connecting");
-    } else if (connectionState === "connected") {
-      setCallState("connected");
-    } else if (connectionState === "failed" || connectionState === "closed") {
-      if (callState !== "ended") {
-        // Don't override "ended" state
+    if (isResident) {
+      // Resident flow
+      if (hasAnswered) {
+        if (connectionState === "connected") {
+          setCallState("connected");
+        } else {
+          setCallState("connecting");
+        }
+      } else {
+        // Not answered yet - stay in ringing (but can see video)
+        setCallState("ringing");
+      }
+    } else {
+      // Visitor flow
+      if (connectionState === "connected") {
+        setCallState("connected");
+      } else if (connectionState === "connecting") {
+        setCallState("connecting");
       }
     }
-  }, [connectionState, callState]);
+  }, [connectionState, hasAnswered, isResident]);
 
   const handleAnswer = () => {
     console.log("[CallInterface] Resident answering call");
     setCallState("connecting");
-    startCall();
+    answerCall();
   };
 
   const handleHangup = () => {
@@ -82,19 +98,23 @@ const CallInterface = ({
   const handleToggleTwoWayVideo = () => {
     setShowTwoWayVideo(!showTwoWayVideo);
     if (!showTwoWayVideo) {
-      toggleVideo(); // Enable video when turning on two-way
+      toggleVideo();
     }
   };
 
+  // Resident can see visitor's video even before answering (during ringing)
+  const showRemoteVideo = remoteStream !== null;
+  const showLocalVideoPreview = showTwoWayVideo && hasAnswered && localStream !== null;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Video area */}
+      {/* Video area - Shows visitor's video even during ringing for resident */}
       <VideoCall
         localStream={localStream}
         remoteStream={remoteStream}
-        showLocalVideo={showTwoWayVideo && callState === "connected"}
+        showLocalVideo={showLocalVideoPreview}
         callerName={callerName}
-        isConnected={callState === "connected"}
+        isConnected={showRemoteVideo}
       />
 
       {/* Call info overlay */}
@@ -118,16 +138,30 @@ const CallInterface = ({
         </div>
       )}
 
-      {/* Status indicator for ringing/connecting */}
-      {(callState === "ringing" || callState === "connecting") && (
+      {/* Status indicator */}
+      {callState === "ringing" && !showRemoteVideo && (
         <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
           <div className="calling-animation px-6 py-3 rounded-full bg-primary/20 border border-primary/30">
             <span className="text-primary font-medium">
-              {callState === "ringing" 
-                ? (isResident ? "Appel entrant..." : "Appel en cours...")
-                : "Connexion..."
-              }
+              {isResident ? "Connexion vidéo..." : "Appel en cours..."}
             </span>
+          </div>
+        </div>
+      )}
+
+      {callState === "connecting" && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
+          <div className="calling-animation px-6 py-3 rounded-full bg-primary/20 border border-primary/30">
+            <span className="text-primary font-medium">Connexion...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Ringing indicator for resident when they can see visitor */}
+      {callState === "ringing" && isResident && showRemoteVideo && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-32 z-20">
+          <div className="calling-animation px-6 py-3 rounded-full bg-primary/20 border border-primary/30">
+            <span className="text-primary font-medium">Visiteur à votre porte</span>
           </div>
         </div>
       )}
