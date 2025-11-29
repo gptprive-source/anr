@@ -42,6 +42,7 @@ export const useWebRTC = ({
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
   const isCleanedUpRef = useRef<boolean>(false);
+  const hasInitializedRef = useRef<boolean>(false);
 
   // Send signaling data through Supabase
   const sendSignal = useCallback(async (signalType: string, signalData: any) => {
@@ -256,6 +257,13 @@ export const useWebRTC = ({
       return;
     }
 
+    // Prevent multiple calls
+    if (hasInitializedRef.current) {
+      console.log("[WebRTC] Already initialized, skipping startCall");
+      return;
+    }
+    hasInitializedRef.current = true;
+
     // Reset cleanup flag
     isCleanedUpRef.current = false;
     
@@ -357,6 +365,13 @@ export const useWebRTC = ({
       console.log("[WebRTC] Visitor should use startCall, not listenForCall");
       return;
     }
+
+    // Prevent multiple calls
+    if (hasInitializedRef.current) {
+      console.log("[WebRTC] Already initialized, skipping listenForCall");
+      return;
+    }
+    hasInitializedRef.current = true;
 
     console.log("[WebRTC] Resident listening for call");
     setError(null);
@@ -497,18 +512,26 @@ export const useWebRTC = ({
     }
   }, [localStream, isVideoEnabled]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount - use empty deps to only run once
   useEffect(() => {
     return () => {
       console.log("[WebRTC] Cleanup on unmount");
       isCleanedUpRef.current = true;
-      localStream?.getTracks().forEach((track) => track.stop());
+      hasInitializedRef.current = false; // Reset so next mount can initialize
+      
+      // Stop all tracks from peer connection senders
+      peerConnectionRef.current?.getSenders().forEach(sender => {
+        sender.track?.stop();
+      });
       peerConnectionRef.current?.close();
+      peerConnectionRef.current = null;
+      
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
     };
-  }, [localStream]);
+  }, []); // Empty deps - only run on unmount
 
   return {
     localStream,

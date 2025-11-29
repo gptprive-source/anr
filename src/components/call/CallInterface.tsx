@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Users, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWebRTC } from "@/hooks/useWebRTC";
@@ -80,8 +80,17 @@ const CallInterface = ({
     isVisitor: !isResident,
   });
 
+  // Track if we've already started the call (prevent double-mount issues)
+  const hasStartedRef = useRef(false);
+
   // Auto-start: Visitor sends video, Resident listens
   useEffect(() => {
+    if (hasStartedRef.current) {
+      console.log("[CallInterface] Already started, skipping");
+      return;
+    }
+    hasStartedRef.current = true;
+
     if (!isResident) {
       console.log("[CallInterface] Visitor auto-starting call");
       startCall();
@@ -91,7 +100,7 @@ const CallInterface = ({
       listenForCall();
       joinCall("resident");
     }
-  }, [isResident, startCall, listenForCall, joinCall]);
+  }, []); // Empty deps - only run once on mount
 
   // Update call state based on connection and answer status
   useEffect(() => {
