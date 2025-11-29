@@ -10,7 +10,7 @@ const TestCall = () => {
   const roleParam = searchParams.get("role");
   const callIdParam = searchParams.get("callId");
 
-  const [callId, setCallId] = useState(callIdParam || `test-${Date.now()}`);
+  const [callId, setCallId] = useState(callIdParam || crypto.randomUUID());
   const [role, setRole] = useState<"visitor" | "resident" | null>(
     roleParam === "visitor" ? "visitor" : roleParam === "resident" ? "resident" : null
   );
