@@ -1,16 +1,21 @@
 import { useState, useEffect } from "react";
-import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Users, ArrowLeftRight, AlertCircle } from "lucide-react";
+import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Users, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWebRTC } from "@/hooks/useWebRTC";
+import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
 import VideoCall from "./VideoCall";
+import TransferCallDialog from "./TransferCallDialog";
+import GroupCallPanel from "./GroupCallPanel";
 
-type CallState = "ringing" | "connecting" | "connected" | "ended";
+type CallState = "ringing" | "connecting" | "connected" | "ended" | "transferred";
 
 interface CallInterfaceProps {
   isResident?: boolean;
   callerName?: string;
   anrAddress?: string;
   callId?: string;
+  habitationId?: string;
+  userId?: string;
 }
 
 const CallInterface = ({ 
@@ -18,10 +23,13 @@ const CallInterface = ({
   callerName = "Visiteur", 
   anrAddress = "12 Rue des Lilas, Paris",
   callId = `call-${Date.now()}`,
+  habitationId = "",
+  userId,
 }: CallInterfaceProps) => {
   const [callState, setCallState] = useState<CallState>("ringing");
   const [showTwoWayVideo, setShowTwoWayVideo] = useState(false);
 
+  // WebRTC hook
   const {
     localStream,
     remoteStream,
@@ -32,13 +40,13 @@ const CallInterface = ({
     hasAnswered,
     startCall,
     listenForCall,
-    answerCall,
+    answerCall: answerWebRTC,
     endCall,
     toggleMute,
     toggleVideo,
   } = useWebRTC({
     callId,
-    isInitiator: !isResident, // Visitor initiates the call
+    isInitiator: !isResident,
     onCallConnected: () => {
       console.log("[CallInterface] WebRTC connected!");
     },
@@ -48,21 +56,54 @@ const CallInterface = ({
     },
   });
 
+  // Multi-resident hook
+  const {
+    participants,
+    activeParticipants,
+    currentParticipant,
+    answeredBy,
+    isGroupCall,
+    availableResidents,
+    joinCall,
+    answerCall: answerMultiResident,
+    declineCall,
+    transferCall,
+    startGroupCall,
+    joinGroupCall,
+    updateMuteStatus,
+    updateVideoStatus,
+    leaveCall,
+  } = useMultiResidentCall({
+    callId,
+    habitationId,
+    userId,
+    isVisitor: !isResident,
+  });
+
   // Auto-start: Visitor sends video, Resident listens
   useEffect(() => {
     if (!isResident) {
       console.log("[CallInterface] Visitor auto-starting call");
       startCall();
+      joinCall("visitor");
     } else {
       console.log("[CallInterface] Resident listening for incoming video");
       listenForCall();
+      joinCall("resident");
     }
-  }, [isResident, startCall, listenForCall]);
+  }, [isResident, startCall, listenForCall, joinCall]);
 
   // Update call state based on connection and answer status
   useEffect(() => {
     if (isResident) {
-      // Resident flow
+      // Check if someone else answered
+      if (answeredBy && answeredBy.user_id !== userId && !isGroupCall) {
+        // Another resident answered - show "answered by" state
+        if (currentParticipant?.status === "ringing") {
+          // We're still ringing but someone else answered
+        }
+      }
+      
       if (hasAnswered) {
         if (connectionState === "connected") {
           setCallState("connected");
@@ -70,7 +111,6 @@ const CallInterface = ({
           setCallState("connecting");
         }
       } else {
-        // Not answered yet - stay in ringing (but can see video)
         setCallState("ringing");
       }
     } else {
@@ -81,18 +121,48 @@ const CallInterface = ({
         setCallState("connecting");
       }
     }
-  }, [connectionState, hasAnswered, isResident]);
+  }, [connectionState, hasAnswered, isResident, answeredBy, userId, isGroupCall, currentParticipant]);
 
-  const handleAnswer = () => {
+  // Sync mute status
+  useEffect(() => {
+    updateMuteStatus(isMuted);
+  }, [isMuted, updateMuteStatus]);
+
+  // Sync video status
+  useEffect(() => {
+    updateVideoStatus(showTwoWayVideo && isVideoEnabled);
+  }, [showTwoWayVideo, isVideoEnabled, updateVideoStatus]);
+
+  const handleAnswer = async () => {
     console.log("[CallInterface] Resident answering call");
     setCallState("connecting");
-    answerCall();
+    await answerMultiResident();
+    answerWebRTC();
   };
 
-  const handleHangup = () => {
+  const handleDecline = async () => {
+    console.log("[CallInterface] Resident declining call");
+    await declineCall();
+    setCallState("ended");
+  };
+
+  const handleHangup = async () => {
     console.log("[CallInterface] Hanging up");
+    await leaveCall();
     endCall();
     setCallState("ended");
+  };
+
+  const handleTransfer = async (targetUserId: string) => {
+    console.log("[CallInterface] Transferring to", targetUserId);
+    await transferCall(targetUserId);
+    endCall();
+    setCallState("transferred");
+  };
+
+  const handleStartGroupCall = async () => {
+    console.log("[CallInterface] Starting group call");
+    await startGroupCall();
   };
 
   const handleToggleTwoWayVideo = () => {
@@ -102,13 +172,16 @@ const CallInterface = ({
     }
   };
 
-  // Resident can see visitor's video even before answering (during ringing)
+  // Resident can see visitor's video even before answering
   const showRemoteVideo = remoteStream !== null;
   const showLocalVideoPreview = showTwoWayVideo && hasAnswered && localStream !== null;
 
+  // Check if another resident answered (and we haven't)
+  const anotherResidentAnswered = isResident && answeredBy && answeredBy.user_id !== userId && !hasAnswered;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Video area - Shows visitor's video even during ringing for resident */}
+      {/* Video area */}
       <VideoCall
         localStream={localStream}
         remoteStream={remoteStream}
@@ -116,6 +189,14 @@ const CallInterface = ({
         callerName={callerName}
         isConnected={showRemoteVideo}
       />
+
+      {/* Group call panel */}
+      {isGroupCall && (
+        <GroupCallPanel 
+          participants={participants} 
+          currentUserId={userId} 
+        />
+      )}
 
       {/* Call info overlay */}
       <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-background/80 to-transparent z-10">
@@ -138,8 +219,8 @@ const CallInterface = ({
         </div>
       )}
 
-      {/* Status indicator */}
-      {callState === "ringing" && !showRemoteVideo && (
+      {/* Status indicators */}
+      {callState === "ringing" && !showRemoteVideo && !anotherResidentAnswered && (
         <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
           <div className="calling-animation px-6 py-3 rounded-full bg-primary/20 border border-primary/30">
             <span className="text-primary font-medium">
@@ -157,8 +238,7 @@ const CallInterface = ({
         </div>
       )}
 
-      {/* Ringing indicator for resident when they can see visitor */}
-      {callState === "ringing" && isResident && showRemoteVideo && (
+      {callState === "ringing" && isResident && showRemoteVideo && !anotherResidentAnswered && (
         <div className="absolute left-1/2 -translate-x-1/2 bottom-32 z-20">
           <div className="calling-animation px-6 py-3 rounded-full bg-primary/20 border border-primary/30">
             <span className="text-primary font-medium">Visiteur à votre porte</span>
@@ -166,13 +246,46 @@ const CallInterface = ({
         </div>
       )}
 
+      {/* Another resident answered indicator */}
+      {anotherResidentAnswered && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
+          <div className="px-6 py-4 rounded-lg bg-secondary border border-border text-center">
+            <p className="text-foreground font-medium mb-2">Appel pris en charge</p>
+            <p className="text-sm text-muted-foreground">
+              Un autre résident a répondu
+            </p>
+            {isGroupCall && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="mt-3"
+                onClick={async () => {
+                  await joinGroupCall();
+                  answerWebRTC();
+                }}
+              >
+                Rejoindre l'appel
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {callState === "transferred" && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
+          <div className="px-6 py-4 rounded-lg bg-secondary border border-border text-center">
+            <p className="text-foreground font-medium">Appel transféré</p>
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="glass-effect border-t border-border p-6 relative z-30">
-        {callState === "ringing" ? (
+        {callState === "ringing" && !anotherResidentAnswered ? (
           <RingingControls 
             isResident={isResident} 
             onAnswer={handleAnswer} 
-            onHangup={handleHangup} 
+            onHangup={isResident ? handleDecline : handleHangup} 
           />
         ) : callState === "connecting" ? (
           <ConnectingControls onHangup={handleHangup} />
@@ -181,13 +294,19 @@ const CallInterface = ({
             isResident={isResident}
             isMuted={isMuted}
             showTwoWayVideo={showTwoWayVideo}
+            isGroupCall={isGroupCall}
+            availableResidents={availableResidents}
             onToggleMute={toggleMute}
             onToggleTwoWayVideo={handleToggleTwoWayVideo}
+            onTransfer={handleTransfer}
+            onStartGroupCall={handleStartGroupCall}
             onHangup={handleHangup}
           />
-        ) : (
-          <EndedControls />
-        )}
+        ) : callState === "transferred" || callState === "ended" ? (
+          <EndedControls isTransferred={callState === "transferred"} />
+        ) : anotherResidentAnswered ? (
+          <AnotherAnsweredControls onClose={() => window.history.back()} />
+        ) : null}
       </div>
     </div>
   );
@@ -226,15 +345,23 @@ const ConnectedControls = ({
   isResident,
   isMuted,
   showTwoWayVideo,
+  isGroupCall,
+  availableResidents,
   onToggleMute,
   onToggleTwoWayVideo,
+  onTransfer,
+  onStartGroupCall,
   onHangup,
 }: {
   isResident: boolean;
   isMuted: boolean;
   showTwoWayVideo: boolean;
+  isGroupCall: boolean;
+  availableResidents: any[];
   onToggleMute: () => void;
   onToggleTwoWayVideo: () => void;
+  onTransfer: (userId: string) => Promise<void>;
+  onStartGroupCall: () => void;
   onHangup: () => void;
 }) => (
   <div className="space-y-4">
@@ -257,11 +384,18 @@ const ConnectedControls = ({
             {showTwoWayVideo ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
           </Button>
           
-          <Button variant="secondary" size="icon-lg">
-            <ArrowLeftRight className="w-6 h-6" />
-          </Button>
+          <TransferCallDialog 
+            residents={availableResidents}
+            onTransfer={onTransfer}
+            disabled={isGroupCall}
+          />
           
-          <Button variant="secondary" size="icon-lg">
+          <Button 
+            variant={isGroupCall ? "default" : "secondary"} 
+            size="icon-lg"
+            onClick={onStartGroupCall}
+            disabled={isGroupCall || availableResidents.length === 0}
+          >
             <Users className="w-6 h-6" />
           </Button>
         </>
@@ -274,18 +408,32 @@ const ConnectedControls = ({
     
     {isResident && (
       <div className="flex justify-center gap-2 text-xs text-muted-foreground">
-        <span className="px-3 py-1 rounded-full bg-secondary">Transférer</span>
-        <span className="px-3 py-1 rounded-full bg-secondary">Appel groupé</span>
+        <span className="px-3 py-1 rounded-full bg-secondary">
+          {isGroupCall ? "Appel groupé actif" : "Transférer"}
+        </span>
+        <span className="px-3 py-1 rounded-full bg-secondary">
+          {availableResidents.length} résident(s) disponible(s)
+        </span>
       </div>
     )}
   </div>
 );
 
-const EndedControls = () => (
+const EndedControls = ({ isTransferred }: { isTransferred: boolean }) => (
   <div className="text-center">
-    <p className="text-muted-foreground mb-4">Appel terminé</p>
+    <p className="text-muted-foreground mb-4">
+      {isTransferred ? "Appel transféré" : "Appel terminé"}
+    </p>
     <Button variant="glass" onClick={() => window.history.back()}>
       Retour
+    </Button>
+  </div>
+);
+
+const AnotherAnsweredControls = ({ onClose }: { onClose: () => void }) => (
+  <div className="flex justify-center">
+    <Button variant="secondary" onClick={onClose}>
+      Fermer
     </Button>
   </div>
 );
