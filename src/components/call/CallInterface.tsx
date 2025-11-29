@@ -197,6 +197,7 @@ const CallInterface = ({
         showLocalVideo={showLocalVideoPreview}
         callerName={callerName}
         isConnected={showRemoteVideo}
+        isAudioEnabled={!isResident || hasAnswered}
       />
 
       {/* Group call panel */}
