@@ -21,20 +21,45 @@ const VideoCall = ({
 
   // Attach local stream to video element
   useEffect(() => {
+    console.log("[VideoCall] 📹 Local stream effect:", {
+      hasRef: !!localVideoRef.current,
+      hasStream: !!localStream,
+      streamActive: localStream?.active,
+      videoTracks: localStream?.getVideoTracks().length,
+    });
     if (localVideoRef.current && localStream) {
-      console.log("[VideoCall] Attaching local stream");
+      console.log("[VideoCall] ✅ Attaching local stream to video element");
       localVideoRef.current.srcObject = localStream;
     }
   }, [localStream]);
 
   // Attach remote stream to video element
   useEffect(() => {
+    console.log("[VideoCall] 📺 Remote stream effect:", {
+      hasRef: !!remoteVideoRef.current,
+      hasStream: !!remoteStream,
+      streamActive: remoteStream?.active,
+      videoTracks: remoteStream?.getVideoTracks().map(t => ({
+        id: t.id,
+        enabled: t.enabled,
+        muted: t.muted,
+        readyState: t.readyState,
+      })),
+      audioTracks: remoteStream?.getAudioTracks().map(t => ({
+        id: t.id,
+        enabled: t.enabled,
+        muted: t.muted,
+        readyState: t.readyState,
+      })),
+    });
     if (remoteVideoRef.current && remoteStream) {
-      console.log("[VideoCall] Attaching remote stream, tracks:", remoteStream.getTracks().map(t => `${t.kind}:${t.enabled}`));
+      console.log("[VideoCall] ✅ Attaching remote stream to video element");
       remoteVideoRef.current.srcObject = remoteStream;
       // Force play in case autoplay is blocked
-      remoteVideoRef.current.play().catch(err => {
-        console.log("[VideoCall] Autoplay blocked, user interaction needed:", err);
+      remoteVideoRef.current.play().then(() => {
+        console.log("[VideoCall] ▶️ Remote video playing");
+      }).catch(err => {
+        console.log("[VideoCall] ⚠️ Autoplay blocked, user interaction needed:", err);
       });
     }
   }, [remoteStream]);
