@@ -136,4 +136,8 @@
       transform: translateY(100%);
     }
   }
+
+  .mirror {
+    transform: scaleX(-1);
+  }
 }
