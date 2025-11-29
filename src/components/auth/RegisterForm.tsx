@@ -6,9 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import SMSVerificationStep from "./SMSVerificationStep";
 
-type Step = "phone" | "sms-verify" | "profile" | "address";
+type Step = "phone" | "profile" | "address";
 
 const phoneSchema = z.string().regex(/^\+?[0-9]{10,15}$/, "Numéro de téléphone invalide");
 
@@ -26,7 +25,7 @@ const RegisterForm = () => {
     return value.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
   };
 
-  const handlePhoneSubmit = () => {
+  const handlePhoneSubmit = async () => {
     const formattedPhone = formatPhone(phone);
     const validation = phoneSchema.safeParse(formattedPhone);
     
@@ -40,33 +39,28 @@ const RegisterForm = () => {
     }
 
     setPhone(formattedPhone);
-    setStep("sms-verify");
-  };
-
-  const handleSMSVerified = async () => {
-    // Après vérification SMS réussie, créer un compte anonyme
-    // puis associer le numéro vérifié au profil
     setLoading(true);
+    
     try {
-      // Connexion anonyme - crée un utilisateur sans email/password
+      // Créer un compte anonyme
       const { data, error } = await supabase.auth.signInAnonymously();
 
       if (error) throw error;
 
       if (data.user) {
-        // Mettre à jour le profil avec le numéro vérifié
+        // Mettre à jour le profil avec le numéro
         await supabase
           .from("profiles")
           .update({ 
-            phone_number: phone,
-            phone_verified: true 
+            phone_number: formattedPhone,
+            phone_verified: false // Sera vérifié plus tard via appel OVH
           })
           .eq("id", data.user.id);
       }
 
       setStep("profile");
       toast({
-        title: "Numéro vérifié",
+        title: "Compte créé",
         description: "Complétez maintenant votre profil",
       });
     } catch (error: any) {
@@ -103,7 +97,6 @@ const RegisterForm = () => {
         .update({
           first_name: firstName.trim(),
           last_name: lastName.trim(),
-          phone_verified: true,
         })
         .eq("id", user.id);
 
@@ -226,11 +219,11 @@ const RegisterForm = () => {
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex justify-center gap-2 mb-8">
-          {["phone", "sms-verify", "profile", "address"].map((s, i) => (
+          {["phone", "profile", "address"].map((s, i) => (
             <div
               key={s}
               className={`h-1 w-12 rounded-full transition-colors ${
-                ["phone", "sms-verify", "profile", "address"].indexOf(step) >= i
+                ["phone", "profile", "address"].indexOf(step) >= i
                   ? "bg-primary"
                   : "bg-secondary"
               }`}
@@ -245,13 +238,6 @@ const RegisterForm = () => {
               setPhone={setPhone}
               onSubmit={handlePhoneSubmit}
               loading={loading}
-            />
-          )}
-          {step === "sms-verify" && (
-            <SMSVerificationStep
-              phone={phone}
-              onVerified={handleSMSVerified}
-              onBack={() => setStep("phone")}
             />
           )}
           {step === "profile" && (
@@ -330,7 +316,7 @@ const PhoneStep = ({
     </div>
 
     <p className="text-xs text-center text-muted-foreground">
-      Un SMS sera envoyé depuis votre téléphone pour vérification
+      La vérification du numéro sera effectuée ultérieurement
     </p>
   </div>
 );

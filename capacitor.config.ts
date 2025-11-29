@@ -7,12 +7,6 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://1863c081-bfa5-4b1f-8736-a4d11035460e.lovableproject.com?forceHideBadge=true',
     cleartext: true
-  },
-  plugins: {
-    // Configuration pour les permissions SMS Android
-    Permissions: {
-      permissions: ['android.permission.SEND_SMS', 'android.permission.RECEIVE_SMS', 'android.permission.READ_SMS']
-    }
   }
 };
 
