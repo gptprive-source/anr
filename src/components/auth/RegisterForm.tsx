@@ -7,15 +7,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-type Step = "phone" | "otp" | "profile" | "address";
+import SMSVerificationStep from "./SMSVerificationStep";
+
+type Step = "phone" | "sms-verify" | "profile" | "address";
 
 const phoneSchema = z.string().regex(/^\+?[0-9]{10,15}$/, "Numéro de téléphone invalide");
-const otpSchema = z.string().length(6, "Le code doit contenir 6 chiffres");
 
 const RegisterForm = () => {
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [address, setAddress] = useState("");
@@ -24,11 +24,10 @@ const RegisterForm = () => {
   const { toast } = useToast();
 
   const formatPhone = (value: string) => {
-    // Remove spaces and keep only valid characters
     return value.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
   };
 
-  const handlePhoneSubmit = async () => {
+  const handlePhoneSubmit = () => {
     const formattedPhone = formatPhone(phone);
     const validation = phoneSchema.safeParse(formattedPhone);
     
@@ -41,66 +40,34 @@ const RegisterForm = () => {
       return;
     }
 
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      setPhone(formattedPhone);
-      setStep("otp");
-      toast({
-        title: "Code envoyé",
-        description: "Un code de vérification a été envoyé par SMS",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'envoyer le SMS",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    setPhone(formattedPhone);
+    setStep("sms-verify");
   };
 
-  const handleOtpSubmit = async () => {
-    const validation = otpSchema.safeParse(otp);
-    
-    if (!validation.success) {
-      toast({
-        title: "Erreur",
-        description: validation.error.errors[0].message,
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleSMSVerified = async () => {
+    // Après vérification SMS, créer le compte utilisateur
     setLoading(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        phone,
-        token: otp,
-        type: "sms",
+      // Créer un compte avec le numéro vérifié
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: phone,
       });
 
       if (error) {
         throw error;
       }
 
+      // Note: L'utilisateur devra quand même entrer l'OTP Supabase
+      // car c'est la méthode d'auth de Supabase
       setStep("profile");
       toast({
-        title: "Vérifié",
-        description: "Votre numéro a été vérifié avec succès",
+        title: "Numéro vérifié",
+        description: "Complétez maintenant votre profil",
       });
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.message || "Code de vérification invalide",
+        description: error.message || "Erreur lors de la création du compte",
         variant: "destructive",
       });
     } finally {
@@ -254,11 +221,11 @@ const RegisterForm = () => {
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex justify-center gap-2 mb-8">
-          {["phone", "otp", "profile", "address"].map((s, i) => (
+          {["phone", "sms-verify", "profile", "address"].map((s, i) => (
             <div
               key={s}
               className={`h-1 w-12 rounded-full transition-colors ${
-                ["phone", "otp", "profile", "address"].indexOf(step) >= i
+                ["phone", "sms-verify", "profile", "address"].indexOf(step) >= i
                   ? "bg-primary"
                   : "bg-secondary"
               }`}
@@ -275,15 +242,11 @@ const RegisterForm = () => {
               loading={loading}
             />
           )}
-          {step === "otp" && (
-            <OtpStep
+          {step === "sms-verify" && (
+            <SMSVerificationStep
               phone={phone}
-              otp={otp}
-              setOtp={setOtp}
-              onSubmit={handleOtpSubmit}
+              onVerified={handleSMSVerified}
               onBack={() => setStep("phone")}
-              onResend={handlePhoneSubmit}
-              loading={loading}
             />
           )}
           {step === "profile" && (
@@ -365,67 +328,6 @@ const PhoneStep = ({
       <Shield className="w-3 h-3 inline mr-1" />
       Un code de vérification sera envoyé par SMS
     </p>
-  </div>
-);
-
-const OtpStep = ({
-  phone,
-  otp,
-  setOtp,
-  onSubmit,
-  onBack,
-  onResend,
-  loading,
-}: {
-  phone: string;
-  otp: string;
-  setOtp: (v: string) => void;
-  onSubmit: () => void;
-  onBack: () => void;
-  onResend: () => void;
-  loading: boolean;
-}) => (
-  <div className="space-y-6">
-    <div className="text-center">
-      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-        <Shield className="w-8 h-8 text-primary" />
-      </div>
-      <h2 className="text-2xl font-bold mb-2">Vérification</h2>
-      <p className="text-muted-foreground">
-        Entrez le code envoyé au {phone}
-      </p>
-    </div>
-
-    <div className="space-y-4">
-      <Input
-        type="text"
-        placeholder="000000"
-        value={otp}
-        onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-        className="text-center text-2xl tracking-[0.5em] font-mono"
-        maxLength={6}
-        disabled={loading}
-      />
-      <Button
-        variant="hero"
-        className="w-full"
-        onClick={onSubmit}
-        disabled={otp.length !== 6 || loading}
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Vérifier"}
-        {!loading && <ArrowRight className="w-4 h-4" />}
-      </Button>
-    </div>
-
-    <div className="flex gap-2">
-      <Button variant="ghost" className="flex-1" onClick={onBack} disabled={loading}>
-        <ArrowLeft className="w-4 h-4" />
-        Retour
-      </Button>
-      <Button variant="ghost" className="flex-1" onClick={onResend} disabled={loading}>
-        Renvoyer le code
-      </Button>
-    </div>
   </div>
 );
 

@@ -126,6 +126,42 @@ export type Database = {
           },
         ]
       }
+      phone_verifications: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          phone_number: string
+          signature: string
+          status: string | null
+          user_id: string | null
+          verification_code: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          phone_number: string
+          signature: string
+          status?: string | null
+          user_id?: string | null
+          verification_code: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          phone_number?: string
+          signature?: string
+          status?: string | null
+          user_id?: string | null
+          verification_code?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -220,6 +256,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_verifications: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
