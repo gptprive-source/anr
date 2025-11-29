@@ -1,21 +1,27 @@
-import { useState } from "react";
-import { QrCode, Nfc, Hash, ArrowRight, Loader2, MapPin } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { QrCode, Nfc, Hash, ArrowRight, Loader2, MapPin, Camera, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { supabase } from "@/integrations/supabase/client";
 import { isWithinProximity, calculateDistance } from "@/lib/geocoding";
+import { Html5Qrcode } from "html5-qrcode";
 
 type ScanMode = "qr" | "nfc" | "manual";
 
 const MAX_DISTANCE_METERS = 30;
 
+// Mode test pour le développement
+const DEV_MODE = true;
+
 const ANRScanner = () => {
   const [mode, setMode] = useState<ScanMode>("qr");
   const [anrCode, setAnrCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [testMode, setTestMode] = useState(DEV_MODE);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { getCurrentPosition } = useGeolocation();
@@ -26,10 +32,14 @@ const ANRScanner = () => {
 
     setLoading(true);
     try {
-      // 1. Get visitor's current position
-      const visitorPosition = await getCurrentPosition();
+      let visitorPosition = { latitude: 0, longitude: 0 };
 
-      // 2. Look up ANR in database
+      // En mode test, on skip la vérification GPS
+      if (!testMode) {
+        visitorPosition = await getCurrentPosition();
+      }
+
+      // Look up ANR in database
       const { data: anr, error } = await supabase
         .from("anrs")
         .select("id, latitude, longitude, address")
@@ -47,33 +57,34 @@ const ANRScanner = () => {
         return;
       }
 
-      // 3. Check proximity
-      const anrLat = Number(anr.latitude);
-      const anrLon = Number(anr.longitude);
-      const distance = calculateDistance(
-        visitorPosition.latitude,
-        visitorPosition.longitude,
-        anrLat,
-        anrLon
-      );
+      // Check proximity (skip in test mode)
+      if (!testMode) {
+        const anrLat = Number(anr.latitude);
+        const anrLon = Number(anr.longitude);
+        const distance = calculateDistance(
+          visitorPosition.latitude,
+          visitorPosition.longitude,
+          anrLat,
+          anrLon
+        );
 
-      if (!isWithinProximity(visitorPosition.latitude, visitorPosition.longitude, anrLat, anrLon, MAX_DISTANCE_METERS)) {
-        toast({
-          title: "Trop éloigné",
-          description: `Vous êtes à ${Math.round(distance)}m de l'adresse. Approchez-vous à moins de ${MAX_DISTANCE_METERS}m pour utiliser l'interphone.`,
-          variant: "destructive",
-        });
-        return;
+        if (!isWithinProximity(visitorPosition.latitude, visitorPosition.longitude, anrLat, anrLon, MAX_DISTANCE_METERS)) {
+          toast({
+            title: "Trop éloigné",
+            description: `Vous êtes à ${Math.round(distance)}m de l'adresse. Approchez-vous à moins de ${MAX_DISTANCE_METERS}m pour utiliser l'interphone.`,
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
-      // 4. Check if multi-habitat
+      // Check if multi-habitat
       const { data: habitations } = await supabase
         .from("habitations")
         .select("id, name")
         .eq("anr_id", anr.id);
 
       if (habitations && habitations.length > 1) {
-        // Multi-habitat: redirect to selector
         navigate(`/multi-habitat/${targetCode}`, { 
           state: { 
             visitorLat: visitorPosition.latitude, 
@@ -81,7 +92,6 @@ const ANRScanner = () => {
           } 
         });
       } else {
-        // Single habitat: go directly to call
         navigate(`/call/${targetCode}`, { 
           state: { 
             visitorLat: visitorPosition.latitude, 
@@ -110,13 +120,26 @@ const ANRScanner = () => {
           </p>
         </div>
 
+        {/* Test mode toggle */}
+        {DEV_MODE && (
+          <div className="flex items-center justify-between p-3 rounded-xl bg-warning/10 border border-warning/20 mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-warning" />
+              <span className="text-sm">Mode test (sans GPS)</span>
+            </div>
+            <Switch checked={testMode} onCheckedChange={setTestMode} />
+          </div>
+        )}
+
         {/* Proximity notice */}
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/10 border border-primary/20 mb-6">
-          <MapPin className="w-5 h-5 text-primary flex-shrink-0" />
-          <p className="text-sm text-foreground">
-            Vous devez être à moins de {MAX_DISTANCE_METERS}m de l'adresse pour appeler
-          </p>
-        </div>
+        {!testMode && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/10 border border-primary/20 mb-6">
+            <MapPin className="w-5 h-5 text-primary flex-shrink-0" />
+            <p className="text-sm text-foreground">
+              Vous devez être à moins de {MAX_DISTANCE_METERS}m de l'adresse pour appeler
+            </p>
+          </div>
+        )}
 
         {/* Mode selector */}
         <div className="glass-effect rounded-2xl p-2 mb-6 flex gap-2">
@@ -143,7 +166,7 @@ const ANRScanner = () => {
         {/* Content based on mode */}
         <div className="glass-effect rounded-2xl p-6 card-shadow">
           {mode === "qr" && <QRScannerContent onScan={handleSubmit} loading={loading} />}
-          {mode === "nfc" && <NFCScannerContent loading={loading} />}
+          {mode === "nfc" && <NFCScannerContent onScan={handleSubmit} loading={loading} />}
           {mode === "manual" && (
             <ManualEntryContent
               value={anrCode}
@@ -182,52 +205,267 @@ const ModeButton = ({
   </button>
 );
 
-const QRScannerContent = ({ onScan, loading }: { onScan: (code: string) => void; loading: boolean }) => (
-  <div className="text-center">
-    <div className="relative w-64 h-64 mx-auto mb-6 rounded-2xl border-2 border-dashed border-primary/50 overflow-hidden bg-secondary/30">
-      {/* Simulated scanner frame */}
-      <div className="absolute inset-4 border-2 border-primary rounded-lg" />
-      <div className="absolute inset-0 flex items-center justify-center">
+const QRScannerContent = ({ onScan, loading }: { onScan: (code: string) => void; loading: boolean }) => {
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const startScanning = async () => {
+    setError(null);
+    setScanning(true);
+
+    try {
+      const html5QrCode = new Html5Qrcode("qr-reader");
+      scannerRef.current = html5QrCode;
+
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        },
+        (decodedText) => {
+          console.log("[QR Scanner] Decoded:", decodedText);
+          stopScanning();
+          onScan(decodedText);
+        },
+        (errorMessage) => {
+          // Ignore continuous scan errors
+        }
+      );
+    } catch (err: any) {
+      console.error("[QR Scanner] Error:", err);
+      setScanning(false);
+      if (err.name === "NotAllowedError") {
+        setError("Accès à la caméra refusé. Veuillez autoriser l'accès.");
+      } else {
+        setError("Impossible d'accéder à la caméra.");
+      }
+    }
+  };
+
+  const stopScanning = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch (e) {
+        console.log("[QR Scanner] Stop error:", e);
+      }
+      scannerRef.current = null;
+    }
+    setScanning(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+      }
+    };
+  }, []);
+
+  return (
+    <div className="text-center">
+      <div 
+        ref={containerRef}
+        className="relative w-full aspect-square max-w-[300px] mx-auto mb-6 rounded-2xl overflow-hidden bg-secondary/30"
+      >
+        {scanning ? (
+          <div id="qr-reader" className="w-full h-full" />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center border-2 border-dashed border-primary/50 rounded-2xl">
+            {loading ? (
+              <Loader2 className="w-16 h-16 text-primary animate-spin" />
+            ) : (
+              <>
+                <Camera className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                <p className="text-sm text-muted-foreground">
+                  Appuyez pour scanner
+                </p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {!scanning ? (
+          <Button onClick={startScanning} disabled={loading} variant="hero">
+            <Camera className="w-4 h-4 mr-2" />
+            Activer la caméra
+          </Button>
+        ) : (
+          <Button onClick={stopScanning} variant="outline">
+            <XCircle className="w-4 h-4 mr-2" />
+            Arrêter le scan
+          </Button>
+        )}
+
+        {/* Demo button for testing */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onScan("ANR-TEST001")}
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          Tester avec code démo
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const NFCScannerContent = ({ onScan, loading }: { onScan: (code: string) => void; loading: boolean }) => {
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [supported, setSupported] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check if NFC is supported
+    const isSupported = "NDEFReader" in window;
+    setSupported(isSupported);
+    console.log("[NFC] Supported:", isSupported);
+  }, []);
+
+  const startNFCScan = async () => {
+    if (!("NDEFReader" in window)) {
+      setError("NFC non supporté sur cet appareil");
+      return;
+    }
+
+    setError(null);
+    setScanning(true);
+
+    try {
+      // @ts-ignore - NDEFReader is not in TypeScript types yet
+      const ndef = new NDEFReader();
+      await ndef.scan();
+      console.log("[NFC] Scan started");
+
+      ndef.addEventListener("reading", ({ message, serialNumber }: any) => {
+        console.log("[NFC] Tag read:", serialNumber);
+        
+        // Try to find ANR code in records
+        for (const record of message.records) {
+          if (record.recordType === "text") {
+            const decoder = new TextDecoder(record.encoding);
+            const text = decoder.decode(record.data);
+            console.log("[NFC] Text record:", text);
+            
+            // Check if it looks like an ANR code
+            if (text.includes("ANR") || text.startsWith("ANR-")) {
+              setScanning(false);
+              onScan(text);
+              return;
+            }
+          }
+          if (record.recordType === "url") {
+            const decoder = new TextDecoder();
+            const url = decoder.decode(record.data);
+            console.log("[NFC] URL record:", url);
+            
+            // Extract ANR code from URL
+            const match = url.match(/ANR-[A-Z0-9]+/i);
+            if (match) {
+              setScanning(false);
+              onScan(match[0]);
+              return;
+            }
+          }
+        }
+        
+        // If no ANR found, use serial number
+        setScanning(false);
+        onScan(`NFC-${serialNumber}`);
+      });
+
+      ndef.addEventListener("readingerror", () => {
+        console.log("[NFC] Read error");
+        setError("Erreur de lecture NFC");
+      });
+    } catch (err: any) {
+      console.error("[NFC] Error:", err);
+      setScanning(false);
+      if (err.name === "NotAllowedError") {
+        setError("Accès NFC refusé. Veuillez autoriser l'accès.");
+      } else {
+        setError(err.message || "Erreur NFC");
+      }
+    }
+  };
+
+  if (supported === false) {
+    return (
+      <div className="text-center py-8">
+        <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+          <Nfc className="w-16 h-16 text-muted-foreground" />
+        </div>
+        <p className="text-muted-foreground text-sm mb-4">
+          NFC non disponible sur cet appareil
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Utilisez le scanner QR ou entrez le numéro manuellement
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-center py-8">
+      <div className={`w-32 h-32 mx-auto mb-6 rounded-full flex items-center justify-center ${
+        scanning ? "bg-primary/20 pulse-ring" : "bg-primary/10"
+      }`}>
         {loading ? (
           <Loader2 className="w-16 h-16 text-primary animate-spin" />
         ) : (
-          <QrCode className="w-16 h-16 text-muted-foreground/30" />
+          <Nfc className={`w-16 h-16 ${scanning ? "text-primary" : "text-primary/70"}`} />
         )}
       </div>
-      {/* Scan line animation */}
-      {!loading && <div className="absolute left-4 right-4 h-0.5 bg-primary scan-line" />}
-    </div>
-    <p className="text-muted-foreground text-sm">
-      Pointez la caméra vers le QR code sur le doming
-    </p>
-    {/* Demo button for testing */}
-    <Button
-      variant="outline"
-      size="sm"
-      className="mt-4"
-      onClick={() => onScan("ANR-DEMO123")}
-      disabled={loading}
-    >
-      {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-      Tester avec un code démo
-    </Button>
-  </div>
-);
 
-const NFCScannerContent = ({ loading }: { loading: boolean }) => (
-  <div className="text-center py-8">
-    <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center pulse-ring">
-      {loading ? (
-        <Loader2 className="w-16 h-16 text-primary animate-spin" />
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {scanning ? (
+        <p className="text-primary font-medium animate-pulse">
+          Approchez votre téléphone de la puce NFC...
+        </p>
       ) : (
-        <Nfc className="w-16 h-16 text-primary" />
+        <div className="space-y-4">
+          <p className="text-muted-foreground text-sm">
+            Appuyez pour activer le lecteur NFC
+          </p>
+          <Button onClick={startNFCScan} disabled={loading} variant="hero">
+            <Nfc className="w-4 h-4 mr-2" />
+            Activer NFC
+          </Button>
+
+          {/* Demo button for testing */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onScan("ANR-TEST001")}
+            disabled={loading}
+            className="block mx-auto"
+          >
+            Tester avec code démo
+          </Button>
+        </div>
       )}
     </div>
-    <p className="text-muted-foreground text-sm">
-      Approchez votre téléphone de la puce NFC sur le doming
-    </p>
-  </div>
-);
+  );
+};
 
 const ManualEntryContent = ({
   value,
@@ -248,7 +486,7 @@ const ManualEntryContent = ({
       <Input
         placeholder="Ex: ANR-123456"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value.toUpperCase())}
         className="text-center text-lg tracking-wider"
         disabled={loading}
       />
