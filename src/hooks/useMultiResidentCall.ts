@@ -40,8 +40,16 @@ export const useMultiResidentCall = ({
   const channelRef = useRef<RealtimeChannel | null>(null);
   const participantIdRef = useRef<string | null>(null);
 
+  // Test mode: skip DB operations when habitationId is empty
+  const isTestMode = !habitationId;
+
   // Fetch participants
   const fetchParticipants = useCallback(async () => {
+    if (isTestMode) {
+      console.log("[MultiResident] Test mode - skipping fetchParticipants");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("call_participants")
       .select("*")
@@ -68,10 +76,15 @@ export const useMultiResidentCall = ({
       const current = data?.find(p => p.id === participantIdRef.current);
       setCurrentParticipant(current || null);
     }
-  }, [callId]);
+  }, [callId, isTestMode]);
 
   // Fetch available residents for transfer
   const fetchAvailableResidents = useCallback(async () => {
+    if (isTestMode) {
+      console.log("[MultiResident] Test mode - skipping fetchAvailableResidents");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("residents")
       .select(`
@@ -95,10 +108,15 @@ export const useMultiResidentCall = ({
     // Filter out current user
     const others = data?.filter(r => r.user_id !== userId) || [];
     setAvailableResidents(others);
-  }, [habitationId, userId]);
+  }, [habitationId, userId, isTestMode]);
 
   // Join as participant
   const joinCall = useCallback(async (role: "visitor" | "resident" = "resident") => {
+    if (isTestMode) {
+      console.log("[MultiResident] Test mode - skipping joinCall");
+      return null;
+    }
+
     console.log("[MultiResident] Joining call as", role);
     
     const { data, error } = await supabase
@@ -122,7 +140,7 @@ export const useMultiResidentCall = ({
     participantIdRef.current = data.id;
     setCurrentParticipant(data);
     return data;
-  }, [callId, habitationId, userId, isVisitor]);
+  }, [callId, habitationId, userId, isVisitor, isTestMode]);
 
   // Answer the call
   const answerCall = useCallback(async () => {
@@ -297,6 +315,11 @@ export const useMultiResidentCall = ({
 
   // Subscribe to realtime updates
   useEffect(() => {
+    if (isTestMode) {
+      console.log("[MultiResident] Test mode - skipping realtime subscription");
+      return;
+    }
+
     fetchParticipants();
     fetchAvailableResidents();
 
@@ -324,7 +347,7 @@ export const useMultiResidentCall = ({
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [callId, fetchParticipants, fetchAvailableResidents]);
+  }, [callId, fetchParticipants, fetchAvailableResidents, isTestMode]);
 
   // Get active participants (in call)
   const activeParticipants = participants.filter(
