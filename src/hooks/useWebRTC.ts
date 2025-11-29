@@ -91,9 +91,22 @@ export const useWebRTC = ({
 
     // Handle remote tracks (visitor's video)
     pc.ontrack = (event) => {
-      console.log("[WebRTC] Received remote track:", event.track.kind);
+      console.log("[WebRTC] 🎥 Received remote track:", event.track.kind, {
+        trackId: event.track.id,
+        enabled: event.track.enabled,
+        muted: event.track.muted,
+        readyState: event.track.readyState,
+        streams: event.streams.length,
+      });
       if (event.streams[0]) {
-        setRemoteStream(event.streams[0]);
+        const stream = event.streams[0];
+        console.log("[WebRTC] 🎥 Setting remote stream:", {
+          streamId: stream.id,
+          active: stream.active,
+          videoTracks: stream.getVideoTracks().length,
+          audioTracks: stream.getAudioTracks().length,
+        });
+        setRemoteStream(stream);
       }
     };
 
@@ -141,9 +154,22 @@ export const useWebRTC = ({
 
     // Handle remote tracks (resident's video when they enable it)
     pc.ontrack = (event) => {
-      console.log("[WebRTC] Received remote track:", event.track.kind);
+      console.log("[WebRTC] 🎥 Received remote track:", event.track.kind, {
+        trackId: event.track.id,
+        enabled: event.track.enabled,
+        muted: event.track.muted,
+        readyState: event.track.readyState,
+        streams: event.streams.length,
+      });
       if (event.streams[0]) {
-        setRemoteStream(event.streams[0]);
+        const stream = event.streams[0];
+        console.log("[WebRTC] 🎥 Setting remote stream:", {
+          streamId: stream.id,
+          active: stream.active,
+          videoTracks: stream.getVideoTracks().length,
+          audioTracks: stream.getAudioTracks().length,
+        });
+        setRemoteStream(stream);
       }
     };
 
@@ -244,7 +270,12 @@ export const useWebRTC = ({
         audio: true,
       });
       
-      console.log("[WebRTC] Got local stream");
+      console.log("[WebRTC] ✅ Got local stream:", {
+        streamId: stream.id,
+        active: stream.active,
+        videoTracks: stream.getVideoTracks().map(t => ({ id: t.id, enabled: t.enabled, readyState: t.readyState })),
+        audioTracks: stream.getAudioTracks().map(t => ({ id: t.id, enabled: t.enabled, readyState: t.readyState })),
+      });
       setLocalStream(stream);
 
       // Initialize peer connection with media
