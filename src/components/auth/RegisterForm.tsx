@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { Phone, User, MapPin, ArrowRight, Shield, Loader2, ArrowLeft } from "lucide-react";
+import { Phone, User, MapPin, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-
 import SMSVerificationStep from "./SMSVerificationStep";
 
 type Step = "phone" | "sms-verify" | "profile" | "address";
@@ -45,20 +44,26 @@ const RegisterForm = () => {
   };
 
   const handleSMSVerified = async () => {
-    // Après vérification SMS, créer le compte utilisateur
+    // Après vérification SMS réussie, créer un compte anonyme
+    // puis associer le numéro vérifié au profil
     setLoading(true);
     try {
-      // Créer un compte avec le numéro vérifié
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: phone,
-      });
+      // Connexion anonyme - crée un utilisateur sans email/password
+      const { data, error } = await supabase.auth.signInAnonymously();
 
-      if (error) {
-        throw error;
+      if (error) throw error;
+
+      if (data.user) {
+        // Mettre à jour le profil avec le numéro vérifié
+        await supabase
+          .from("profiles")
+          .update({ 
+            phone_number: phone,
+            phone_verified: true 
+          })
+          .eq("id", data.user.id);
       }
 
-      // Note: L'utilisateur devra quand même entrer l'OTP Supabase
-      // car c'est la méthode d'auth de Supabase
       setStep("profile");
       toast({
         title: "Numéro vérifié",
@@ -325,8 +330,7 @@ const PhoneStep = ({
     </div>
 
     <p className="text-xs text-center text-muted-foreground">
-      <Shield className="w-3 h-3 inline mr-1" />
-      Un code de vérification sera envoyé par SMS
+      Un SMS sera envoyé depuis votre téléphone pour vérification
     </p>
   </div>
 );
