@@ -41,6 +41,7 @@ export const useWebRTC = ({
   const localIdRef = useRef<string>(`peer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
+  const isCleanedUpRef = useRef<boolean>(false);
 
   // Send signaling data through Supabase
   const sendSignal = useCallback(async (signalType: string, signalData: any) => {
@@ -255,6 +256,9 @@ export const useWebRTC = ({
       return;
     }
 
+    // Reset cleanup flag
+    isCleanedUpRef.current = false;
+    
     console.log("[WebRTC] Visitor starting call");
     setError(null);
 
@@ -269,6 +273,13 @@ export const useWebRTC = ({
         },
         audio: true,
       });
+      
+      // Check if cleaned up during async operation
+      if (isCleanedUpRef.current) {
+        console.log("[WebRTC] ⚠️ Cleaned up during media access, stopping");
+        stream.getTracks().forEach(t => t.stop());
+        return;
+      }
       
       console.log("[WebRTC] ✅ Got local stream:", {
         streamId: stream.id,
@@ -317,7 +328,13 @@ export const useWebRTC = ({
       // Small delay to ensure channel is ready, then create offer
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      console.log("[WebRTC] Creating offer");
+      // Check if cleaned up during delay
+      if (isCleanedUpRef.current || pc.signalingState === 'closed') {
+        console.log("[WebRTC] ⚠️ Cleaned up during channel setup, stopping");
+        return;
+      }
+      
+      console.log("[WebRTC] Creating offer, signalingState:", pc.signalingState);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       await sendSignal("offer", offer);
@@ -484,6 +501,7 @@ export const useWebRTC = ({
   useEffect(() => {
     return () => {
       console.log("[WebRTC] Cleanup on unmount");
+      isCleanedUpRef.current = true;
       localStream?.getTracks().forEach((track) => track.stop());
       peerConnectionRef.current?.close();
       if (channelRef.current) {
