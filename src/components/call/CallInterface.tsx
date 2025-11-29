@@ -1,92 +1,154 @@
-import { useState } from "react";
-import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Users, ArrowLeftRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Users, ArrowLeftRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useWebRTC } from "@/hooks/useWebRTC";
+import VideoCall from "./VideoCall";
 
-type CallState = "ringing" | "connected" | "ended";
+type CallState = "ringing" | "connecting" | "connected" | "ended";
 
 interface CallInterfaceProps {
   isResident?: boolean;
   callerName?: string;
   anrAddress?: string;
+  callId?: string;
 }
 
 const CallInterface = ({ 
   isResident = false, 
   callerName = "Visiteur", 
-  anrAddress = "12 Rue des Lilas, Paris" 
+  anrAddress = "12 Rue des Lilas, Paris",
+  callId = `call-${Date.now()}`,
 }: CallInterfaceProps) => {
   const [callState, setCallState] = useState<CallState>("ringing");
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOn, setIsVideoOn] = useState(true);
-  const [isTwoWayVideo, setIsTwoWayVideo] = useState(false);
+  const [showTwoWayVideo, setShowTwoWayVideo] = useState(false);
 
-  const handleAnswer = () => setCallState("connected");
-  const handleHangup = () => setCallState("ended");
+  const {
+    localStream,
+    remoteStream,
+    connectionState,
+    error,
+    isMuted,
+    isVideoEnabled,
+    startCall,
+    endCall,
+    toggleMute,
+    toggleVideo,
+  } = useWebRTC({
+    callId,
+    isInitiator: !isResident, // Visitor initiates the call
+    onCallConnected: () => {
+      console.log("[CallInterface] Call connected!");
+      setCallState("connected");
+    },
+    onCallEnded: () => {
+      console.log("[CallInterface] Call ended");
+      setCallState("ended");
+    },
+  });
+
+  // Auto-start for visitor (they initiate)
+  useEffect(() => {
+    if (!isResident) {
+      console.log("[CallInterface] Visitor auto-starting call");
+      startCall();
+    }
+  }, [isResident, startCall]);
+
+  // Monitor connection state
+  useEffect(() => {
+    if (connectionState === "connecting") {
+      setCallState("connecting");
+    } else if (connectionState === "connected") {
+      setCallState("connected");
+    } else if (connectionState === "failed" || connectionState === "closed") {
+      if (callState !== "ended") {
+        // Don't override "ended" state
+      }
+    }
+  }, [connectionState, callState]);
+
+  const handleAnswer = () => {
+    console.log("[CallInterface] Resident answering call");
+    setCallState("connecting");
+    startCall();
+  };
+
+  const handleHangup = () => {
+    console.log("[CallInterface] Hanging up");
+    endCall();
+    setCallState("ended");
+  };
+
+  const handleToggleTwoWayVideo = () => {
+    setShowTwoWayVideo(!showTwoWayVideo);
+    if (!showTwoWayVideo) {
+      toggleVideo(); // Enable video when turning on two-way
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Video area */}
-      <div className="flex-1 relative">
-        {/* Remote video (visitor) */}
-        <div className="absolute inset-0 bg-gradient-to-b from-secondary to-background">
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-4xl font-bold text-primary">
-                {callerName.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          </div>
-        </div>
+      <VideoCall
+        localStream={localStream}
+        remoteStream={remoteStream}
+        showLocalVideo={showTwoWayVideo && callState === "connected"}
+        callerName={callerName}
+        isConnected={callState === "connected"}
+      />
 
-        {/* Self video (small overlay when 2-way video is on) */}
-        {isTwoWayVideo && callState === "connected" && (
-          <div className="absolute top-4 right-4 w-32 h-44 rounded-2xl bg-card border border-border overflow-hidden card-shadow">
-            <div className="w-full h-full flex items-center justify-center bg-secondary">
-              <Video className="w-8 h-8 text-muted-foreground" />
-            </div>
-          </div>
-        )}
-
-        {/* Call info overlay */}
-        <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-background/80 to-transparent">
-          <div className="text-center">
-            <p className="text-muted-foreground text-sm mb-1">
-              {isResident ? "Appel entrant" : "Appel vers"}
-            </p>
-            <h2 className="text-2xl font-bold mb-1">{callerName}</h2>
-            <p className="text-muted-foreground text-sm">{anrAddress}</p>
-          </div>
-        </div>
-
-        {/* Status indicator */}
-        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
-          {callState === "ringing" && (
-            <div className="calling-animation px-6 py-3 rounded-full bg-primary/20 border border-primary/30">
-              <span className="text-primary font-medium">
-                {isResident ? "Appel entrant..." : "Connexion..."}
-              </span>
-            </div>
-          )}
+      {/* Call info overlay */}
+      <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-background/80 to-transparent z-10">
+        <div className="text-center">
+          <p className="text-muted-foreground text-sm mb-1">
+            {isResident ? "Appel entrant" : "Appel vers"}
+          </p>
+          <h2 className="text-2xl font-bold mb-1">{callerName}</h2>
+          <p className="text-muted-foreground text-sm">{anrAddress}</p>
         </div>
       </div>
 
+      {/* Error display */}
+      {error && (
+        <div className="absolute top-24 left-4 right-4 z-20">
+          <div className="bg-destructive/20 border border-destructive/50 rounded-lg p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            <span className="text-sm text-destructive">{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Status indicator for ringing/connecting */}
+      {(callState === "ringing" || callState === "connecting") && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
+          <div className="calling-animation px-6 py-3 rounded-full bg-primary/20 border border-primary/30">
+            <span className="text-primary font-medium">
+              {callState === "ringing" 
+                ? (isResident ? "Appel entrant..." : "Appel en cours...")
+                : "Connexion..."
+              }
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
-      <div className="glass-effect border-t border-border p-6">
+      <div className="glass-effect border-t border-border p-6 relative z-30">
         {callState === "ringing" ? (
           <RingingControls 
             isResident={isResident} 
             onAnswer={handleAnswer} 
             onHangup={handleHangup} 
           />
+        ) : callState === "connecting" ? (
+          <ConnectingControls onHangup={handleHangup} />
         ) : callState === "connected" ? (
           <ConnectedControls
             isResident={isResident}
             isMuted={isMuted}
-            isVideoOn={isVideoOn}
-            isTwoWayVideo={isTwoWayVideo}
-            onToggleMute={() => setIsMuted(!isMuted)}
-            onToggleVideo={() => setIsVideoOn(!isVideoOn)}
-            onToggleTwoWayVideo={() => setIsTwoWayVideo(!isTwoWayVideo)}
+            showTwoWayVideo={showTwoWayVideo}
+            onToggleMute={toggleMute}
+            onToggleTwoWayVideo={handleToggleTwoWayVideo}
             onHangup={handleHangup}
           />
         ) : (
@@ -118,22 +180,26 @@ const RingingControls = ({
   </div>
 );
 
+const ConnectingControls = ({ onHangup }: { onHangup: () => void }) => (
+  <div className="flex justify-center">
+    <Button variant="hangup" size="icon-xl" onClick={onHangup}>
+      <PhoneOff className="w-7 h-7" />
+    </Button>
+  </div>
+);
+
 const ConnectedControls = ({
   isResident,
   isMuted,
-  isVideoOn,
-  isTwoWayVideo,
+  showTwoWayVideo,
   onToggleMute,
-  onToggleVideo,
   onToggleTwoWayVideo,
   onHangup,
 }: {
   isResident: boolean;
   isMuted: boolean;
-  isVideoOn: boolean;
-  isTwoWayVideo: boolean;
+  showTwoWayVideo: boolean;
   onToggleMute: () => void;
-  onToggleVideo: () => void;
   onToggleTwoWayVideo: () => void;
   onHangup: () => void;
 }) => (
@@ -150,11 +216,11 @@ const ConnectedControls = ({
       {isResident && (
         <>
           <Button
-            variant={isTwoWayVideo ? "default" : "secondary"}
+            variant={showTwoWayVideo ? "default" : "secondary"}
             size="icon-lg"
             onClick={onToggleTwoWayVideo}
           >
-            {isTwoWayVideo ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+            {showTwoWayVideo ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
           </Button>
           
           <Button variant="secondary" size="icon-lg">
