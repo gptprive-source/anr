@@ -1,35 +1,252 @@
 import { useState } from "react";
-import { Phone, User, MapPin, ArrowRight, Shield } from "lucide-react";
+import { Phone, User, MapPin, ArrowRight, Shield, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
 
-type Step = "phone" | "verification" | "profile" | "address";
+type Step = "phone" | "otp" | "profile" | "address";
+
+const phoneSchema = z.string().regex(/^\+?[0-9]{10,15}$/, "Numéro de téléphone invalide");
+const otpSchema = z.string().length(6, "Le code doit contenir 6 chiffres");
 
 const RegisterForm = () => {
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
+  const [otp, setOtp] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [address, setAddress] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handlePhoneSubmit = () => {
-    // In real app, this would trigger SMS validation
-    setStep("verification");
+  const formatPhone = (value: string) => {
+    // Remove spaces and keep only valid characters
+    return value.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
   };
 
-  const handleVerificationSubmit = () => {
-    setStep("profile");
+  const handlePhoneSubmit = async () => {
+    const formattedPhone = formatPhone(phone);
+    const validation = phoneSchema.safeParse(formattedPhone);
+    
+    if (!validation.success) {
+      toast({
+        title: "Erreur",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setPhone(formattedPhone);
+      setStep("otp");
+      toast({
+        title: "Code envoyé",
+        description: "Un code de vérification a été envoyé par SMS",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'envoyer le SMS",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleProfileSubmit = () => {
-    setStep("address");
+  const handleOtpSubmit = async () => {
+    const validation = otpSchema.safeParse(otp);
+    
+    if (!validation.success) {
+      toast({
+        title: "Erreur",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        phone,
+        token: otp,
+        type: "sms",
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setStep("profile");
+      toast({
+        title: "Vérifié",
+        description: "Votre numéro a été vérifié avec succès",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Code de vérification invalide",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddressSubmit = () => {
-    navigate("/dashboard");
+  const handleProfileSubmit = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("Utilisateur non connecté");
+      }
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone_verified: true,
+        })
+        .eq("id", user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setStep("address");
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de sauvegarder le profil",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddressSubmit = async () => {
+    if (!address.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez entrer une adresse",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("Utilisateur non connecté");
+      }
+
+      // Generate a unique ANR code
+      const anrCode = `ANR-${Date.now().toString(36).toUpperCase()}`;
+      
+      // For demo, use Paris coordinates - in real app, geocode the address
+      const latitude = 48.8566 + (Math.random() - 0.5) * 0.1;
+      const longitude = 2.3522 + (Math.random() - 0.5) * 0.1;
+
+      // Check if ANR already exists for this address
+      const { data: existingAnr } = await supabase
+        .from("anrs")
+        .select("id")
+        .eq("address", address.trim())
+        .maybeSingle();
+
+      let anrId: string;
+
+      if (existingAnr) {
+        // ANR exists - add as new habitation
+        anrId = existingAnr.id;
+      } else {
+        // Create new ANR
+        const { data: newAnr, error: anrError } = await supabase
+          .from("anrs")
+          .insert({
+            code: anrCode,
+            address: address.trim(),
+            latitude,
+            longitude,
+          })
+          .select("id")
+          .single();
+
+        if (anrError) throw anrError;
+        anrId = newAnr.id;
+      }
+
+      // Create habitation
+      const habitationName = `${firstName} ${lastName}`;
+      const { data: habitation, error: habError } = await supabase
+        .from("habitations")
+        .insert({
+          anr_id: anrId,
+          name: habitationName,
+        })
+        .select("id")
+        .single();
+
+      if (habError) throw habError;
+
+      // Create resident as owner
+      const { error: resError } = await supabase
+        .from("residents")
+        .insert({
+          habitation_id: habitation.id,
+          user_id: user.id,
+          is_owner: true,
+          status: "verified",
+        });
+
+      if (resError) throw resError;
+
+      toast({
+        title: "ANR créé",
+        description: existingAnr 
+          ? "Vous avez été ajouté comme habitant à cette adresse"
+          : "Votre ANR a été créé avec succès",
+      });
+
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de créer l'ANR",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,11 +254,11 @@ const RegisterForm = () => {
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex justify-center gap-2 mb-8">
-          {["phone", "verification", "profile", "address"].map((s, i) => (
+          {["phone", "otp", "profile", "address"].map((s, i) => (
             <div
               key={s}
               className={`h-1 w-12 rounded-full transition-colors ${
-                ["phone", "verification", "profile", "address"].indexOf(step) >= i
+                ["phone", "otp", "profile", "address"].indexOf(step) >= i
                   ? "bg-primary"
                   : "bg-secondary"
               }`}
@@ -55,15 +272,18 @@ const RegisterForm = () => {
               phone={phone}
               setPhone={setPhone}
               onSubmit={handlePhoneSubmit}
+              loading={loading}
             />
           )}
-          {step === "verification" && (
-            <VerificationStep
+          {step === "otp" && (
+            <OtpStep
               phone={phone}
-              code={verificationCode}
-              setCode={setVerificationCode}
-              onSubmit={handleVerificationSubmit}
+              otp={otp}
+              setOtp={setOtp}
+              onSubmit={handleOtpSubmit}
               onBack={() => setStep("phone")}
+              onResend={handlePhoneSubmit}
+              loading={loading}
             />
           )}
           {step === "profile" && (
@@ -73,6 +293,7 @@ const RegisterForm = () => {
               setFirstName={setFirstName}
               setLastName={setLastName}
               onSubmit={handleProfileSubmit}
+              loading={loading}
             />
           )}
           {step === "address" && (
@@ -80,9 +301,19 @@ const RegisterForm = () => {
               address={address}
               setAddress={setAddress}
               onSubmit={handleAddressSubmit}
+              loading={loading}
             />
           )}
         </div>
+
+        {step === "phone" && (
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            Déjà inscrit ?{" "}
+            <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/login")}>
+              Se connecter
+            </Button>
+          </p>
+        )}
       </div>
     </div>
   );
@@ -92,10 +323,12 @@ const PhoneStep = ({
   phone,
   setPhone,
   onSubmit,
+  loading,
 }: {
   phone: string;
   setPhone: (v: string) => void;
   onSubmit: () => void;
+  loading: boolean;
 }) => (
   <div className="space-y-6">
     <div className="text-center">
@@ -115,65 +348,82 @@ const PhoneStep = ({
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
         className="text-center text-lg"
+        disabled={loading}
       />
       <Button
         variant="hero"
         className="w-full"
         onClick={onSubmit}
-        disabled={!phone.trim()}
+        disabled={!phone.trim() || loading}
       >
-        Continuer
-        <ArrowRight className="w-4 h-4" />
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
+        {!loading && <ArrowRight className="w-4 h-4" />}
       </Button>
     </div>
 
     <p className="text-xs text-center text-muted-foreground">
       <Shield className="w-3 h-3 inline mr-1" />
-      Validation sécurisée par SMS crypté
+      Un code de vérification sera envoyé par SMS
     </p>
   </div>
 );
 
-const VerificationStep = ({
+const OtpStep = ({
   phone,
-  code,
-  setCode,
+  otp,
+  setOtp,
   onSubmit,
   onBack,
+  onResend,
+  loading,
 }: {
   phone: string;
-  code: string;
-  setCode: (v: string) => void;
+  otp: string;
+  setOtp: (v: string) => void;
   onSubmit: () => void;
   onBack: () => void;
+  onResend: () => void;
+  loading: boolean;
 }) => (
   <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
         <Shield className="w-8 h-8 text-primary" />
       </div>
-      <h2 className="text-2xl font-bold mb-2">Validation SMS</h2>
+      <h2 className="text-2xl font-bold mb-2">Vérification</h2>
       <p className="text-muted-foreground">
-        Un SMS va être envoyé depuis votre téléphone vers notre serveur
+        Entrez le code envoyé au {phone}
       </p>
     </div>
 
-    <div className="p-4 rounded-xl bg-secondary/50 text-sm">
-      <p className="font-medium mb-2">Comment ça marche ?</p>
-      <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-        <li>Cliquez sur "Envoyer le SMS"</li>
-        <li>Votre app SMS s'ouvrira automatiquement</li>
-        <li>Appuyez sur "Envoyer" (ne modifiez pas le message)</li>
-        <li>Votre numéro sera validé automatiquement</li>
-      </ol>
+    <div className="space-y-4">
+      <Input
+        type="text"
+        placeholder="000000"
+        value={otp}
+        onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+        className="text-center text-2xl tracking-[0.5em] font-mono"
+        maxLength={6}
+        disabled={loading}
+      />
+      <Button
+        variant="hero"
+        className="w-full"
+        onClick={onSubmit}
+        disabled={otp.length !== 6 || loading}
+      >
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Vérifier"}
+        {!loading && <ArrowRight className="w-4 h-4" />}
+      </Button>
     </div>
 
-    <div className="space-y-4">
-      <Button variant="hero" className="w-full" onClick={onSubmit}>
-        Envoyer le SMS de validation
+    <div className="flex gap-2">
+      <Button variant="ghost" className="flex-1" onClick={onBack} disabled={loading}>
+        <ArrowLeft className="w-4 h-4" />
+        Retour
       </Button>
-      <Button variant="ghost" className="w-full" onClick={onBack}>
-        Modifier le numéro
+      <Button variant="ghost" className="flex-1" onClick={onResend} disabled={loading}>
+        Renvoyer le code
       </Button>
     </div>
   </div>
@@ -185,12 +435,14 @@ const ProfileStep = ({
   setFirstName,
   setLastName,
   onSubmit,
+  loading,
 }: {
   firstName: string;
   lastName: string;
   setFirstName: (v: string) => void;
   setLastName: (v: string) => void;
   onSubmit: () => void;
+  loading: boolean;
 }) => (
   <div className="space-y-6">
     <div className="text-center">
@@ -208,20 +460,22 @@ const ProfileStep = ({
         placeholder="Prénom"
         value={firstName}
         onChange={(e) => setFirstName(e.target.value)}
+        disabled={loading}
       />
       <Input
         placeholder="Nom"
         value={lastName}
         onChange={(e) => setLastName(e.target.value)}
+        disabled={loading}
       />
       <Button
         variant="hero"
         className="w-full"
         onClick={onSubmit}
-        disabled={!firstName.trim() || !lastName.trim()}
+        disabled={!firstName.trim() || !lastName.trim() || loading}
       >
-        Continuer
-        <ArrowRight className="w-4 h-4" />
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
+        {!loading && <ArrowRight className="w-4 h-4" />}
       </Button>
     </div>
   </div>
@@ -231,10 +485,12 @@ const AddressStep = ({
   address,
   setAddress,
   onSubmit,
+  loading,
 }: {
   address: string;
   setAddress: (v: string) => void;
   onSubmit: () => void;
+  loading: boolean;
 }) => (
   <div className="space-y-6">
     <div className="text-center">
@@ -252,6 +508,7 @@ const AddressStep = ({
         placeholder="12 Rue des Lilas, 75011 Paris"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
+        disabled={loading}
       />
       <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 text-sm">
         <p className="text-warning font-medium">
@@ -262,10 +519,10 @@ const AddressStep = ({
         variant="hero"
         className="w-full"
         onClick={onSubmit}
-        disabled={!address.trim()}
+        disabled={!address.trim() || loading}
       >
-        Créer mon ANR
-        <ArrowRight className="w-4 h-4" />
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Créer mon ANR"}
+        {!loading && <ArrowRight className="w-4 h-4" />}
       </Button>
     </div>
   </div>
