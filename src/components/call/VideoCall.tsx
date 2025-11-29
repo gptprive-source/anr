@@ -63,15 +63,8 @@ const VideoCall = ({
             ref={remoteVideoRef}
             autoPlay
             playsInline
+            muted={!isAudioEnabled}
             className="w-full h-full object-cover"
-            onClick={(e) => {
-              // Click to unmute if needed (fallback for autoplay restrictions)
-              const video = e.currentTarget;
-              if (video.muted) {
-                video.muted = false;
-                video.play().catch(err => console.log("[VideoCall] Click play error:", err));
-              }
-            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
