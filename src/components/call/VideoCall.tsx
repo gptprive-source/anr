@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { Video, VideoOff, User } from "lucide-react";
 
 interface VideoCallProps {
@@ -16,50 +16,35 @@ const VideoCall = ({
   callerName,
   isConnected,
 }: VideoCallProps) => {
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-
-  // Attach local stream to video element
-  useEffect(() => {
-    console.log("[VideoCall] 📹 Local stream effect:", {
-      hasRef: !!localVideoRef.current,
+  // Use callback refs to attach streams immediately when elements are available
+  const localVideoRef = useCallback((video: HTMLVideoElement | null) => {
+    console.log("[VideoCall] 📹 Local video ref callback:", {
+      hasElement: !!video,
       hasStream: !!localStream,
       streamActive: localStream?.active,
-      videoTracks: localStream?.getVideoTracks().length,
     });
-    if (localVideoRef.current && localStream) {
+    if (video && localStream) {
       console.log("[VideoCall] ✅ Attaching local stream to video element");
-      localVideoRef.current.srcObject = localStream;
+      video.srcObject = localStream;
+      video.play().catch(err => console.log("[VideoCall] Local autoplay issue:", err));
     }
   }, [localStream]);
 
-  // Attach remote stream to video element
-  useEffect(() => {
-    console.log("[VideoCall] 📺 Remote stream effect:", {
-      hasRef: !!remoteVideoRef.current,
+  const remoteVideoRef = useCallback((video: HTMLVideoElement | null) => {
+    console.log("[VideoCall] 📺 Remote video ref callback:", {
+      hasElement: !!video,
       hasStream: !!remoteStream,
       streamActive: remoteStream?.active,
-      videoTracks: remoteStream?.getVideoTracks().map(t => ({
-        id: t.id,
-        enabled: t.enabled,
-        muted: t.muted,
-        readyState: t.readyState,
-      })),
-      audioTracks: remoteStream?.getAudioTracks().map(t => ({
-        id: t.id,
-        enabled: t.enabled,
-        muted: t.muted,
-        readyState: t.readyState,
-      })),
+      videoTracks: remoteStream?.getVideoTracks().length,
+      audioTracks: remoteStream?.getAudioTracks().length,
     });
-    if (remoteVideoRef.current && remoteStream) {
+    if (video && remoteStream) {
       console.log("[VideoCall] ✅ Attaching remote stream to video element");
-      remoteVideoRef.current.srcObject = remoteStream;
-      // Force play in case autoplay is blocked
-      remoteVideoRef.current.play().then(() => {
+      video.srcObject = remoteStream;
+      video.play().then(() => {
         console.log("[VideoCall] ▶️ Remote video playing");
       }).catch(err => {
-        console.log("[VideoCall] ⚠️ Autoplay blocked, user interaction needed:", err);
+        console.log("[VideoCall] ⚠️ Remote autoplay blocked:", err);
       });
     }
   }, [remoteStream]);
