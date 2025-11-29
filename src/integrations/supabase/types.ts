@@ -14,16 +14,227 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      anrs: {
+        Row: {
+          address: string
+          code: string
+          created_at: string | null
+          id: string
+          latitude: number
+          longitude: number
+          updated_at: string | null
+        }
+        Insert: {
+          address: string
+          code: string
+          created_at?: string | null
+          id?: string
+          latitude: number
+          longitude: number
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string
+          code?: string
+          created_at?: string | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      call_logs: {
+        Row: {
+          answered_at: string | null
+          answered_by: string | null
+          ended_at: string | null
+          habitation_id: string
+          id: string
+          started_at: string | null
+          status: string | null
+          visitor_latitude: number | null
+          visitor_longitude: number | null
+          visitor_phone: string | null
+        }
+        Insert: {
+          answered_at?: string | null
+          answered_by?: string | null
+          ended_at?: string | null
+          habitation_id: string
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          visitor_latitude?: number | null
+          visitor_longitude?: number | null
+          visitor_phone?: string | null
+        }
+        Update: {
+          answered_at?: string | null
+          answered_by?: string | null
+          ended_at?: string | null
+          habitation_id?: string
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          visitor_latitude?: number | null
+          visitor_longitude?: number | null
+          visitor_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_habitation_id_fkey"
+            columns: ["habitation_id"]
+            isOneToOne: false
+            referencedRelation: "habitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habitations: {
+        Row: {
+          anr_id: string
+          created_at: string | null
+          floor: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          anr_id: string
+          created_at?: string | null
+          floor?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          anr_id?: string
+          created_at?: string | null
+          floor?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habitations_anr_id_fkey"
+            columns: ["anr_id"]
+            isOneToOne: false
+            referencedRelation: "anrs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone_number: string
+          phone_verified: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          phone_number: string
+          phone_verified?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone_number?: string
+          phone_verified?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      residents: {
+        Row: {
+          created_at: string | null
+          habitation_id: string
+          id: string
+          is_muted: boolean | null
+          is_owner: boolean | null
+          status: Database["public"]["Enums"]["resident_status"] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          habitation_id: string
+          id?: string
+          is_muted?: boolean | null
+          is_owner?: boolean | null
+          status?: Database["public"]["Enums"]["resident_status"] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          habitation_id?: string
+          id?: string
+          is_muted?: boolean | null
+          is_owner?: boolean | null
+          status?: Database["public"]["Enums"]["resident_status"] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "residents_habitation_id_fkey"
+            columns: ["habitation_id"]
+            isOneToOne: false
+            referencedRelation: "habitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_resident_of: {
+        Args: { _habitation_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
+      resident_status: "pending" | "verified" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +361,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+      resident_status: ["pending", "verified", "inactive"],
+    },
   },
 } as const
