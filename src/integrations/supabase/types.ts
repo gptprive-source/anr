@@ -91,6 +91,56 @@ export type Database = {
           },
         ]
       }
+      call_participants: {
+        Row: {
+          call_id: string
+          created_at: string
+          habitation_id: string
+          id: string
+          is_muted: boolean | null
+          is_video_enabled: boolean | null
+          joined_at: string | null
+          left_at: string | null
+          role: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          call_id: string
+          created_at?: string
+          habitation_id: string
+          id?: string
+          is_muted?: boolean | null
+          is_video_enabled?: boolean | null
+          joined_at?: string | null
+          left_at?: string | null
+          role?: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          call_id?: string
+          created_at?: string
+          habitation_id?: string
+          id?: string
+          is_muted?: boolean | null
+          is_video_enabled?: boolean | null
+          joined_at?: string | null
+          left_at?: string | null
+          role?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_participants_habitation_id_fkey"
+            columns: ["habitation_id"]
+            isOneToOne: false
+            referencedRelation: "habitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_signals: {
         Row: {
           call_id: string
