@@ -230,6 +230,21 @@ export const useWebRTC = ({
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
           await processPendingCandidates();
         }
+      } else if (signalType === "renegotiate-offer") {
+        // Handle renegotiation from the other peer (e.g., when resident enables their camera)
+        if (pc) {
+          console.log("[WebRTC] Handling renegotiate-offer");
+          await pc.setRemoteDescription(new RTCSessionDescription(signalData));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          await sendSignal("renegotiate-answer", answer);
+        }
+      } else if (signalType === "renegotiate-answer") {
+        // Handle renegotiation answer
+        if (pc) {
+          console.log("[WebRTC] Handling renegotiate-answer");
+          await pc.setRemoteDescription(new RTCSessionDescription(signalData));
+        }
       } else if (signalType === "ice-candidate") {
         if (pc) {
           if (pc.remoteDescription) {
