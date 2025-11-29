@@ -39,17 +39,20 @@ const VideoCall = ({
       streamActive: remoteStream?.active,
       videoTracks: remoteStream?.getVideoTracks().length,
       audioTracks: remoteStream?.getAudioTracks().length,
+      isAudioEnabled,
     });
     if (video && remoteStream) {
       console.log("[VideoCall] ✅ Attaching remote stream to video element");
       video.srcObject = remoteStream;
+      // Start muted for autoplay, then unmute if audio is enabled
+      video.muted = !isAudioEnabled;
       video.play().then(() => {
-        console.log("[VideoCall] ▶️ Remote video playing");
+        console.log("[VideoCall] ▶️ Remote video playing, muted:", video.muted);
       }).catch(err => {
         console.log("[VideoCall] ⚠️ Remote autoplay blocked:", err);
       });
     }
-  }, [remoteStream]);
+  }, [remoteStream, isAudioEnabled]);
 
   return (
     <div className="flex-1 relative">
@@ -60,8 +63,15 @@ const VideoCall = ({
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            muted={!isAudioEnabled}
             className="w-full h-full object-cover"
+            onClick={(e) => {
+              // Click to unmute if needed (fallback for autoplay restrictions)
+              const video = e.currentTarget;
+              if (video.muted) {
+                video.muted = false;
+                video.play().catch(err => console.log("[VideoCall] Click play error:", err));
+              }
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
