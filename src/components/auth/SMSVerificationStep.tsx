@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { MessageSquare, CheckCircle2, Loader2, AlertCircle, ExternalLink, ArrowLeft } from "lucide-react";
+import { MessageSquare, CheckCircle2, Loader2, ExternalLink, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { createPhoneVerification, verifyCode } from "@/lib/smsVerification";
 
 interface SMSVerificationStepProps {
   phone: string;
@@ -11,67 +9,42 @@ interface SMSVerificationStepProps {
 }
 
 const SMSVerificationStep = ({ phone, onVerified, onBack }: SMSVerificationStepProps) => {
-  const [status, setStatus] = useState<'idle' | 'sms-sent' | 'verifying' | 'verified' | 'error'>('idle');
-  const [smsUri, setSmsUri] = useState<string>("");
-  const [error, setError] = useState<string>("");
-  const [inputCode, setInputCode] = useState<string>("");
+  const [status, setStatus] = useState<'idle' | 'waiting' | 'verified'>('idle');
   const [loading, setLoading] = useState(false);
 
-  const startVerification = async () => {
-    setLoading(true);
-    setError("");
-
-    const result = await createPhoneVerification(phone);
-
-    if (!result.success || !result.smsUri) {
-      setStatus('error');
-      setError(result.error || "Erreur lors de la création de la vérification");
-      setLoading(false);
-      return;
-    }
-
-    setSmsUri(result.smsUri);
-    setStatus('sms-sent');
-    setLoading(false);
-
-    // Ouvre l'app SMS avec le message pré-rempli
-    window.location.href = result.smsUri;
+  // Construit l'URI SMS vers son propre numéro
+  const getSmsUri = () => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const separator = isIOS ? '&' : '?';
+    const message = "ANR - Vérification de mon numéro";
+    return `sms:${phone}${separator}body=${encodeURIComponent(message)}`;
   };
 
-  const handleVerifyCode = async () => {
-    if (inputCode.length !== 6) return;
-
+  const handleSendSMS = () => {
     setLoading(true);
-    setStatus('verifying');
-
-    const result = await verifyCode(phone, inputCode);
-
-    if (!result.success) {
-      setStatus('error');
-      setError(result.error || "Code invalide");
-      setLoading(false);
-      return;
-    }
-
-    setStatus('verified');
-    setLoading(false);
+    // Ouvre l'app SMS
+    window.location.href = getSmsUri();
     
-    // Petit délai pour montrer le succès
-    setTimeout(onVerified, 1000);
+    // Après un court délai, afficher l'étape de confirmation
+    setTimeout(() => {
+      setStatus('waiting');
+      setLoading(false);
+    }, 500);
+  };
+
+  const handleConfirmReceived = () => {
+    setStatus('verified');
+    setTimeout(onVerified, 800);
   };
 
   return (
     <div className="space-y-6">
       <div className="text-center">
         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-colors ${
-          status === 'verified' ? 'bg-green-500/10' : 
-          status === 'error' ? 'bg-destructive/10' : 
-          'bg-primary/10'
+          status === 'verified' ? 'bg-green-500/10' : 'bg-primary/10'
         }`}>
           {status === 'verified' ? (
             <CheckCircle2 className="w-8 h-8 text-green-500" />
-          ) : status === 'error' ? (
-            <AlertCircle className="w-8 h-8 text-destructive" />
           ) : (
             <MessageSquare className="w-8 h-8 text-primary" />
           )}
@@ -79,36 +52,30 @@ const SMSVerificationStep = ({ phone, onVerified, onBack }: SMSVerificationStepP
         
         <h2 className="text-2xl font-bold mb-2">
           {status === 'verified' ? 'Numéro vérifié !' :
-           status === 'error' ? 'Erreur' :
-           status === 'sms-sent' ? 'Entrez le code' :
-           'Vérification SMS'}
+           status === 'waiting' ? 'SMS reçu ?' :
+           'Vérification du numéro'}
         </h2>
         
         <p className="text-muted-foreground text-sm">
-          {status === 'idle' && `Vérifiez que ${phone} est bien votre numéro`}
-          {status === 'sms-sent' && "Envoyez le SMS puis entrez le code reçu"}
-          {status === 'verifying' && "Vérification en cours..."}
-          {status === 'verified' && "Votre numéro a été vérifié avec succès"}
-          {status === 'error' && error}
+          {status === 'idle' && `Vérifions que ${phone} est bien votre numéro`}
+          {status === 'waiting' && "Avez-vous reçu le SMS sur ce téléphone ?"}
+          {status === 'verified' && "Votre numéro est confirmé"}
         </p>
       </div>
 
       {status === 'idle' && (
         <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-secondary/50 border border-border text-sm space-y-2">
-            <p className="font-medium">Comment ça marche ?</p>
-            <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-              <li>Cliquez sur "Envoyer le SMS"</li>
-              <li>Votre app SMS s'ouvrira avec un message pré-rempli</li>
-              <li>Envoyez ce SMS à vous-même</li>
-              <li>Entrez le code reçu ci-dessous</li>
-            </ol>
+          <div className="p-4 rounded-xl bg-secondary/50 border border-border text-sm">
+            <p className="text-muted-foreground">
+              Un SMS va s'envoyer <strong>vers votre propre numéro</strong>. 
+              Si vous le recevez, c'est que le numéro est bien celui de ce téléphone.
+            </p>
           </div>
           
           <Button
             variant="hero"
             className="w-full"
-            onClick={startVerification}
+            onClick={handleSendSMS}
             disabled={loading}
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Envoyer le SMS"}
@@ -117,54 +84,38 @@ const SMSVerificationStep = ({ phone, onVerified, onBack }: SMSVerificationStepP
         </div>
       )}
 
-      {status === 'sms-sent' && (
+      {status === 'waiting' && (
         <div className="space-y-4">
-          <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-sm text-center">
-            <p>Envoyez le SMS puis entrez le code reçu</p>
+          <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center">
+            <p className="text-sm text-muted-foreground mb-1">SMS envoyé à</p>
+            <p className="font-mono font-bold">{phone}</p>
           </div>
 
-          <Input
-            type="text"
-            placeholder="XXXXXX"
-            value={inputCode}
-            onChange={(e) => setInputCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
-            className="text-center text-2xl tracking-[0.3em] font-mono"
-            maxLength={6}
-            disabled={loading}
-          />
-          
           <Button
             variant="hero"
             className="w-full"
-            onClick={handleVerifyCode}
-            disabled={inputCode.length !== 6 || loading}
+            onClick={handleConfirmReceived}
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Vérifier le code"}
+            <CheckCircle2 className="w-4 h-4 mr-2" />
+            Oui, j'ai reçu le SMS
           </Button>
 
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => window.location.href = smsUri}
+            onClick={() => window.location.href = getSmsUri()}
           >
-            Réouvrir l'app SMS
+            Renvoyer le SMS
             <ExternalLink className="w-4 h-4 ml-2" />
           </Button>
-        </div>
-      )}
 
-      {status === 'error' && (
-        <div className="space-y-3">
           <Button
-            variant="hero"
+            variant="ghost"
             className="w-full"
-            onClick={() => {
-              setStatus('idle');
-              setError("");
-              setInputCode("");
-            }}
+            onClick={onBack}
           >
-            Réessayer
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Modifier le numéro
           </Button>
         </div>
       )}
@@ -172,11 +123,11 @@ const SMSVerificationStep = ({ phone, onVerified, onBack }: SMSVerificationStepP
       {status === 'verified' && (
         <div className="flex items-center justify-center gap-2 text-green-600">
           <CheckCircle2 className="w-5 h-5" />
-          <span>Redirection en cours...</span>
+          <span>Redirection...</span>
         </div>
       )}
 
-      {(status === 'idle' || status === 'error') && (
+      {status === 'idle' && (
         <Button
           variant="ghost"
           className="w-full"
