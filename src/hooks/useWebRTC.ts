@@ -4,7 +4,7 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 
 interface UseWebRTCProps {
   callId: string;
-  isInitiator: boolean;
+  isInitiator: boolean; // true = visitor (sends video), false = resident (receives first)
   onCallConnected?: () => void;
   onCallEnded?: () => void;
 }
@@ -34,11 +34,13 @@ export const useWebRTC = ({
   const [error, setError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [hasAnswered, setHasAnswered] = useState(false);
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const localIdRef = useRef<string>(`peer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
 
   // Send signaling data through Supabase
   const sendSignal = useCallback(async (signalType: string, signalData: any) => {
@@ -76,61 +78,18 @@ export const useWebRTC = ({
     pendingCandidatesRef.current = [];
   }, []);
 
-  // Handle incoming signals
-  const handleSignal = useCallback(async (signalType: string, signalData: any) => {
-    const pc = peerConnectionRef.current;
-    if (!pc) {
-      console.log("[WebRTC] No peer connection, ignoring signal");
-      return;
-    }
-
-    console.log(`[WebRTC] Handling signal: ${signalType}`);
-
-    try {
-      if (signalType === "offer") {
-        console.log("[WebRTC] Received offer, setting remote description");
-        await pc.setRemoteDescription(new RTCSessionDescription(signalData));
-        await processPendingCandidates();
-        
-        console.log("[WebRTC] Creating answer");
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        await sendSignal("answer", answer);
-        
-      } else if (signalType === "answer") {
-        console.log("[WebRTC] Received answer, setting remote description");
-        await pc.setRemoteDescription(new RTCSessionDescription(signalData));
-        await processPendingCandidates();
-        
-      } else if (signalType === "ice-candidate") {
-        if (pc.remoteDescription) {
-          console.log("[WebRTC] Adding ICE candidate");
-          await pc.addIceCandidate(new RTCIceCandidate(signalData));
-        } else {
-          console.log("[WebRTC] Queuing ICE candidate (no remote description yet)");
-          pendingCandidatesRef.current.push(signalData);
-        }
-      }
-    } catch (err) {
-      console.error(`[WebRTC] Error handling ${signalType}:`, err);
-      setError(`Erreur de signalisation: ${err}`);
-    }
-  }, [sendSignal, processPendingCandidates]);
-
-  // Initialize peer connection
-  const initializePeerConnection = useCallback((stream: MediaStream) => {
-    console.log("[WebRTC] Initializing peer connection");
+  // Initialize peer connection for RECEIVING (resident - no local media yet)
+  const initializeReceiveOnlyConnection = useCallback(() => {
+    console.log("[WebRTC] Initializing receive-only peer connection");
     
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnectionRef.current = pc;
 
-    // Add local tracks
-    stream.getTracks().forEach((track) => {
-      console.log(`[WebRTC] Adding local track: ${track.kind}`);
-      pc.addTrack(track, stream);
-    });
+    // Add transceivers for receiving (recvonly)
+    pc.addTransceiver('video', { direction: 'recvonly' });
+    pc.addTransceiver('audio', { direction: 'recvonly' });
 
-    // Handle remote tracks
+    // Handle remote tracks (visitor's video)
     pc.ontrack = (event) => {
       console.log("[WebRTC] Received remote track:", event.track.kind);
       if (event.streams[0]) {
@@ -167,13 +126,114 @@ export const useWebRTC = ({
     return pc;
   }, [sendSignal, onCallConnected, onCallEnded]);
 
-  // Start the call
+  // Initialize peer connection for SENDING (visitor - with local media)
+  const initializeSendConnection = useCallback((stream: MediaStream) => {
+    console.log("[WebRTC] Initializing send peer connection with local media");
+    
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    peerConnectionRef.current = pc;
+
+    // Add local tracks (visitor's video/audio)
+    stream.getTracks().forEach((track) => {
+      console.log(`[WebRTC] Adding local track: ${track.kind}`);
+      pc.addTrack(track, stream);
+    });
+
+    // Handle remote tracks (resident's video when they enable it)
+    pc.ontrack = (event) => {
+      console.log("[WebRTC] Received remote track:", event.track.kind);
+      if (event.streams[0]) {
+        setRemoteStream(event.streams[0]);
+      }
+    };
+
+    // Handle ICE candidates
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log("[WebRTC] New ICE candidate");
+        sendSignal("ice-candidate", event.candidate.toJSON());
+      }
+    };
+
+    // Monitor connection state
+    pc.onconnectionstatechange = () => {
+      console.log("[WebRTC] Connection state:", pc.connectionState);
+      setConnectionState(pc.connectionState);
+      
+      if (pc.connectionState === "connected") {
+        onCallConnected?.();
+      } else if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        setError("Connexion perdue");
+      } else if (pc.connectionState === "closed") {
+        onCallEnded?.();
+      }
+    };
+
+    return pc;
+  }, [sendSignal, onCallConnected, onCallEnded]);
+
+  // Handle incoming signals
+  const handleSignal = useCallback(async (signalType: string, signalData: any) => {
+    const pc = peerConnectionRef.current;
+    
+    console.log(`[WebRTC] Handling signal: ${signalType}, hasPC: ${!!pc}`);
+
+    try {
+      if (signalType === "offer") {
+        if (!isInitiator) {
+          // Resident receives offer - store it and set up receive-only connection
+          console.log("[WebRTC] Resident received offer, setting up receive-only connection");
+          
+          const receivePC = peerConnectionRef.current || initializeReceiveOnlyConnection();
+          
+          await receivePC.setRemoteDescription(new RTCSessionDescription(signalData));
+          pendingOfferRef.current = signalData;
+          await processPendingCandidates();
+          
+          // Create answer for receive-only
+          console.log("[WebRTC] Creating receive-only answer");
+          const answer = await receivePC.createAnswer();
+          await receivePC.setLocalDescription(answer);
+          await sendSignal("answer", answer);
+        }
+      } else if (signalType === "answer") {
+        if (pc) {
+          console.log("[WebRTC] Received answer, setting remote description");
+          await pc.setRemoteDescription(new RTCSessionDescription(signalData));
+          await processPendingCandidates();
+        }
+      } else if (signalType === "ice-candidate") {
+        if (pc) {
+          if (pc.remoteDescription) {
+            console.log("[WebRTC] Adding ICE candidate");
+            await pc.addIceCandidate(new RTCIceCandidate(signalData));
+          } else {
+            console.log("[WebRTC] Queuing ICE candidate (no remote description yet)");
+            pendingCandidatesRef.current.push(signalData);
+          }
+        } else {
+          console.log("[WebRTC] Queuing ICE candidate (no peer connection yet)");
+          pendingCandidatesRef.current.push(signalData);
+        }
+      }
+    } catch (err) {
+      console.error(`[WebRTC] Error handling ${signalType}:`, err);
+      setError(`Erreur de signalisation: ${err}`);
+    }
+  }, [isInitiator, initializeReceiveOnlyConnection, sendSignal, processPendingCandidates]);
+
+  // Start the call (visitor calls this)
   const startCall = useCallback(async () => {
-    console.log("[WebRTC] Starting call, isInitiator:", isInitiator);
+    if (!isInitiator) {
+      console.log("[WebRTC] Resident should use listenForCall, not startCall");
+      return;
+    }
+
+    console.log("[WebRTC] Visitor starting call");
     setError(null);
 
     try {
-      // Get local media
+      // Get local media (visitor's camera)
       console.log("[WebRTC] Requesting media access");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -187,8 +247,8 @@ export const useWebRTC = ({
       console.log("[WebRTC] Got local stream");
       setLocalStream(stream);
 
-      // Initialize peer connection
-      const pc = initializePeerConnection(stream);
+      // Initialize peer connection with media
+      const pc = initializeSendConnection(stream);
 
       // Subscribe to signaling channel
       console.log("[WebRTC] Subscribing to signaling channel");
@@ -209,7 +269,6 @@ export const useWebRTC = ({
               signal_data: any;
             };
             
-            // Ignore our own signals
             if (signal.sender_id === localIdRef.current) {
               return;
             }
@@ -224,16 +283,14 @@ export const useWebRTC = ({
 
       channelRef.current = channel;
 
-      // If initiator, create and send offer
-      if (isInitiator) {
-        // Small delay to ensure channel is ready
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        console.log("[WebRTC] Creating offer");
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await sendSignal("offer", offer);
-      }
+      // Small delay to ensure channel is ready, then create offer
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log("[WebRTC] Creating offer");
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await sendSignal("offer", offer);
+      
     } catch (err: any) {
       console.error("[WebRTC] Error starting call:", err);
       if (err.name === "NotAllowedError") {
@@ -244,22 +301,121 @@ export const useWebRTC = ({
         setError(`Erreur: ${err.message}`);
       }
     }
-  }, [callId, isInitiator, initializePeerConnection, handleSignal, sendSignal]);
+  }, [callId, isInitiator, initializeSendConnection, handleSignal, sendSignal]);
+
+  // Listen for incoming call (resident calls this - receive video without answering)
+  const listenForCall = useCallback(async () => {
+    if (isInitiator) {
+      console.log("[WebRTC] Visitor should use startCall, not listenForCall");
+      return;
+    }
+
+    console.log("[WebRTC] Resident listening for call");
+    setError(null);
+
+    // Initialize receive-only connection
+    initializeReceiveOnlyConnection();
+
+    // Subscribe to signaling channel
+    console.log("[WebRTC] Subscribing to signaling channel");
+    const channel = supabase
+      .channel(`call-signals-${callId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "call_signals",
+          filter: `call_id=eq.${callId}`,
+        },
+        (payload) => {
+          const signal = payload.new as {
+            sender_id: string;
+            signal_type: string;
+            signal_data: any;
+          };
+          
+          if (signal.sender_id === localIdRef.current) {
+            return;
+          }
+          
+          console.log("[WebRTC] Received signal from channel:", signal.signal_type);
+          handleSignal(signal.signal_type, signal.signal_data);
+        }
+      )
+      .subscribe((status) => {
+        console.log("[WebRTC] Channel status:", status);
+      });
+
+    channelRef.current = channel;
+
+    // Check for existing signals (in case visitor already sent offer)
+    const { data: existingSignals } = await supabase
+      .from("call_signals")
+      .select("*")
+      .eq("call_id", callId)
+      .order("created_at", { ascending: true });
+
+    if (existingSignals && existingSignals.length > 0) {
+      console.log("[WebRTC] Processing existing signals:", existingSignals.length);
+      for (const signal of existingSignals) {
+        if (signal.sender_id !== localIdRef.current) {
+          await handleSignal(signal.signal_type, signal.signal_data);
+        }
+      }
+    }
+  }, [callId, isInitiator, initializeReceiveOnlyConnection, handleSignal]);
+
+  // Answer the call (resident enables their camera/mic)
+  const answerCall = useCallback(async () => {
+    console.log("[WebRTC] Resident answering call - enabling local media");
+    setHasAnswered(true);
+
+    try {
+      // Get local media (resident's camera - optional)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: true,
+      });
+      
+      setLocalStream(stream);
+
+      // Add tracks to existing connection
+      const pc = peerConnectionRef.current;
+      if (pc) {
+        stream.getTracks().forEach((track) => {
+          console.log(`[WebRTC] Adding local track after answer: ${track.kind}`);
+          pc.addTrack(track, stream);
+        });
+
+        // Renegotiate to send our video
+        console.log("[WebRTC] Renegotiating to enable two-way");
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await sendSignal("renegotiate-offer", offer);
+      }
+    } catch (err: any) {
+      console.error("[WebRTC] Error enabling local media:", err);
+      // Even if camera fails, the call is still "answered" (audio might work)
+      setError("Impossible d'activer la caméra");
+    }
+  }, [sendSignal]);
 
   // End the call
   const endCall = useCallback(() => {
     console.log("[WebRTC] Ending call");
     
-    // Stop local tracks
     localStream?.getTracks().forEach((track) => {
       track.stop();
     });
     
-    // Close peer connection
     peerConnectionRef.current?.close();
     peerConnectionRef.current = null;
     
-    // Unsubscribe from channel
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
@@ -268,6 +424,7 @@ export const useWebRTC = ({
     setLocalStream(null);
     setRemoteStream(null);
     setConnectionState("closed");
+    setHasAnswered(false);
     
     onCallEnded?.();
   }, [localStream, onCallEnded]);
@@ -311,7 +468,10 @@ export const useWebRTC = ({
     error,
     isMuted,
     isVideoEnabled,
-    startCall,
+    hasAnswered,
+    startCall,      // Visitor uses this
+    listenForCall,  // Resident uses this to receive video before answering
+    answerCall,     // Resident uses this to enable their camera
     endCall,
     toggleMute,
     toggleVideo,
