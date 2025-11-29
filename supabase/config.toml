@@ -1,4 +1,1 @@
 project_id = "mkzpdmyymabgsntwmmir"
-
-[functions.verify-sms]
-verify_jwt = false

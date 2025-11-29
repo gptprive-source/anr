@@ -1,10 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-// Numéro ANR pour recevoir les SMS de vérification
-// Ce numéro doit être configuré avec un service d'inbound SMS qui forward vers l'edge function
-const ANR_VERIFICATION_NUMBER = "+33700000000"; // À remplacer par votre numéro
-
-// Génère un code de vérification aléatoire
+// Génère un code de vérification aléatoire (6 caractères)
 function generateVerificationCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclut les caractères ambigus
   let code = '';
@@ -12,21 +8,6 @@ function generateVerificationCode(): string {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
-}
-
-// Génère une signature simple basée sur le code et le timestamp
-// Note: En production, utilisez une vraie signature cryptographique Ed25519
-async function generateSignature(code: string, timestamp: number, phone: string): Promise<string> {
-  const data = `${code}:${timestamp}:${phone}`;
-  const encoder = new TextEncoder();
-  const dataBuffer = encoder.encode(data);
-  
-  // Utilise SubtleCrypto pour générer un hash SHA-256
-  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashBase64 = btoa(String.fromCharCode(...hashArray));
-  
-  return hashBase64.slice(0, 32); // Tronque pour le SMS
 }
 
 // Crée une demande de vérification et retourne le SMS pré-rempli
@@ -40,7 +21,6 @@ export async function createPhoneVerification(phone: string): Promise<{
     const normalizedPhone = phone.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
     const verificationCode = generateVerificationCode();
     const timestamp = Date.now();
-    const signature = await generateSignature(verificationCode, timestamp, normalizedPhone);
     
     // Expiration dans 5 minutes
     const expiresAt = new Date(timestamp + 5 * 60 * 1000).toISOString();
@@ -51,7 +31,7 @@ export async function createPhoneVerification(phone: string): Promise<{
       .insert({
         phone_number: normalizedPhone,
         verification_code: verificationCode,
-        signature: signature,
+        signature: `${timestamp}`, // Simple timestamp comme signature
         expires_at: expiresAt,
         status: 'pending'
       });
@@ -61,14 +41,14 @@ export async function createPhoneVerification(phone: string): Promise<{
       return { success: false, error: "Impossible de créer la demande de vérification" };
     }
     
-    // Construit le message SMS
-    const smsBody = `ANR-VFY:${verificationCode}:${timestamp}:${signature}`;
+    // Construit le message SMS - envoyé à soi-même
+    const smsBody = `ANR Verification: ${verificationCode}`;
     
     // Construit l'URI SMS pour ouvrir l'app SMS native
-    // Format: sms:number?body=message (Android) ou sms:number&body=message (iOS)
+    // Le destinataire est le même numéro que l'expéditeur (soi-même)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const separator = isIOS ? '&' : '?';
-    const smsUri = `sms:${ANR_VERIFICATION_NUMBER}${separator}body=${encodeURIComponent(smsBody)}`;
+    const smsUri = `sms:${normalizedPhone}${separator}body=${encodeURIComponent(smsBody)}`;
     
     return {
       success: true,
@@ -78,6 +58,58 @@ export async function createPhoneVerification(phone: string): Promise<{
     
   } catch (error: any) {
     console.error("Verification creation error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Vérifie le code entré par l'utilisateur
+export async function verifyCode(phone: string, code: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const normalizedPhone = phone.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
+    const normalizedCode = code.toUpperCase().replace(/\s/g, "");
+    
+    // Cherche une vérification pendante avec ce code et ce numéro
+    const { data, error } = await supabase
+      .from('phone_verifications')
+      .select('*')
+      .eq('phone_number', normalizedPhone)
+      .eq('verification_code', normalizedCode)
+      .eq('status', 'pending')
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (error) {
+      console.error("Verification check error:", error);
+      return { success: false, error: "Erreur lors de la vérification" };
+    }
+    
+    if (!data) {
+      return { success: false, error: "Code invalide ou expiré" };
+    }
+    
+    // Marquer comme vérifié
+    const { error: updateError } = await supabase
+      .from('phone_verifications')
+      .update({ 
+        status: 'verified',
+        verified_at: new Date().toISOString()
+      })
+      .eq('id', data.id);
+    
+    if (updateError) {
+      console.error("Failed to update verification:", updateError);
+      return { success: false, error: "Erreur lors de la mise à jour" };
+    }
+    
+    return { success: true };
+    
+  } catch (error: any) {
+    console.error("Code verification error:", error);
     return { success: false, error: error.message };
   }
 }
@@ -95,7 +127,7 @@ export async function checkVerificationStatus(phone: string): Promise<{
     .eq('phone_number', normalizedPhone)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
   
   if (error || !data) {
     return { verified: false, status: 'not_found' };
@@ -105,32 +137,4 @@ export async function checkVerificationStatus(phone: string): Promise<{
     verified: data.status === 'verified',
     status: data.status
   };
-}
-
-// Poll pour vérifier si le SMS a été reçu et validé
-export function pollVerificationStatus(
-  phone: string,
-  onVerified: () => void,
-  onExpired: () => void,
-  intervalMs: number = 3000,
-  maxAttempts: number = 100 // 5 minutes max
-): () => void {
-  let attempts = 0;
-  
-  const interval = setInterval(async () => {
-    attempts++;
-    
-    const { verified, status } = await checkVerificationStatus(phone);
-    
-    if (verified) {
-      clearInterval(interval);
-      onVerified();
-    } else if (status === 'expired' || attempts >= maxAttempts) {
-      clearInterval(interval);
-      onExpired();
-    }
-  }, intervalMs);
-  
-  // Retourne une fonction pour arrêter le polling
-  return () => clearInterval(interval);
 }
