@@ -7,6 +7,7 @@ interface VideoCallProps {
   showLocalVideo: boolean;
   callerName: string;
   isConnected: boolean;
+  isAudioEnabled?: boolean;
 }
 
 const VideoCall = ({
@@ -15,6 +16,7 @@ const VideoCall = ({
   showLocalVideo,
   callerName,
   isConnected,
+  isAudioEnabled = false,
 }: VideoCallProps) => {
   // Use callback refs to attach streams immediately when elements are available
   const localVideoRef = useCallback((video: HTMLVideoElement | null) => {
@@ -58,16 +60,8 @@ const VideoCall = ({
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            muted
+            muted={!isAudioEnabled}
             className="w-full h-full object-cover"
-            onClick={(e) => {
-              // Click to unmute if needed
-              const video = e.currentTarget;
-              if (video.muted) {
-                video.muted = false;
-                video.play();
-              }
-            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
