@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { QrCode, Users, Settings, History, Bell, Shield, MapPin, Copy, Check, LogOut, Loader2 } from "lucide-react";
+import { QrCode, Users, Settings, History, Bell, Shield, MapPin, Copy, Check, LogOut, Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import AddResidentDialog from "./AddResidentDialog";
 
 interface Resident {
   id: string;
@@ -35,6 +36,7 @@ const ResidentDashboard = () => {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [habitationData, setHabitationData] = useState<HabitationData | null>(null);
+  const [addResidentOpen, setAddResidentOpen] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -249,7 +251,13 @@ const ResidentDashboard = () => {
         <div className="glass-effect rounded-2xl p-6 card-shadow">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Résidents ({habitationData.residents.length}/5)</h2>
-            <Button variant="outline" size="sm" disabled={habitationData.residents.length >= 5}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={habitationData.residents.length >= 5}
+              onClick={() => setAddResidentOpen(true)}
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
               Ajouter
             </Button>
           </div>
@@ -298,6 +306,14 @@ const ResidentDashboard = () => {
           Simuler un appel entrant
         </Button>
       </div>
+
+      {/* Add Resident Dialog */}
+      <AddResidentDialog
+        open={addResidentOpen}
+        onOpenChange={setAddResidentOpen}
+        habitationId={habitationData.id}
+        onResidentAdded={fetchHabitationData}
+      />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { geocodeAddress } from "@/lib/geocoding";
 
 type Step = "phone" | "profile" | "address";
 
@@ -134,12 +135,22 @@ const RegisterForm = () => {
         throw new Error("Utilisateur non connecté");
       }
 
+      // Geocode the address to get real GPS coordinates
+      const geoResult = await geocodeAddress(address.trim());
+      
+      if (!geoResult) {
+        toast({
+          title: "Adresse non trouvée",
+          description: "Impossible de localiser cette adresse. Vérifiez et réessayez.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       // Generate a unique ANR code
       const anrCode = `ANR-${Date.now().toString(36).toUpperCase()}`;
-      
-      // For demo, use Paris coordinates - in real app, geocode the address
-      const latitude = 48.8566 + (Math.random() - 0.5) * 0.1;
-      const longitude = 2.3522 + (Math.random() - 0.5) * 0.1;
+      const { latitude, longitude } = geoResult;
 
       // Check if ANR already exists for this address
       const { data: existingAnr } = await supabase
