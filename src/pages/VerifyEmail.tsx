@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,21 +8,17 @@ const VerifyEmail = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
+  const processedRef = useRef(false);
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
+    // Prevent double processing
+    if (processedRef.current) return;
+
+    const handleAuthCallback = async (session: any) => {
+      if (processedRef.current) return;
+      processedRef.current = true;
+
       try {
-        // Supabase automatically handles the hash fragment tokens
-        // We just need to check if we have a session
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error("Auth error:", error);
-          setStatus("error");
-          setMessage("Erreur d'authentification. Veuillez réessayer.");
-          return;
-        }
-
         if (session) {
           // User is authenticated - verify device token for additional security
           const storedDeviceToken = localStorage.getItem("anr_device_token");
@@ -41,24 +37,24 @@ const VerifyEmail = () => {
               setMessage("Votre compte a été vérifié avec succès !");
               
               setTimeout(() => {
-                navigate("/dashboard");
-              }, 2000);
+                navigate("/dashboard", { replace: true });
+              }, 1500);
             } else {
               // Different device - security warning
               setStatus("error");
               setMessage("Ce lien doit être ouvert depuis le téléphone où vous avez créé votre compte.");
             }
           } else {
-            // No device token check needed (login flow or device already verified)
+            // No device token check needed (login flow)
             setStatus("success");
             setMessage("Connexion réussie !");
             
             setTimeout(() => {
-              navigate("/dashboard");
-            }, 1500);
+              navigate("/dashboard", { replace: true });
+            }, 1000);
           }
         } else {
-          // No session - might be expired or invalid link
+          // No session
           setStatus("error");
           setMessage("Lien invalide ou expiré. Veuillez réessayer.");
         }
@@ -72,17 +68,40 @@ const VerifyEmail = () => {
     // Listen for auth state changes (this handles the hash fragment tokens)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("VerifyEmail auth event:", event);
+        
         if (event === "SIGNED_IN" && session) {
-          handleAuthCallback();
-        } else if (event === "TOKEN_REFRESHED") {
-          // Token refreshed, continue to dashboard
-          navigate("/dashboard");
+          handleAuthCallback(session);
+        } else if (event === "TOKEN_REFRESHED" && session) {
+          navigate("/dashboard", { replace: true });
         }
       }
     );
 
-    // Also check immediately in case session is already set
-    handleAuthCallback();
+    // Check if already authenticated (in case the event already fired)
+    const checkExistingSession = async () => {
+      // Small delay to let Supabase process the hash fragment
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session && !processedRef.current) {
+        handleAuthCallback(session);
+      } else if (!session && !processedRef.current) {
+        // Wait a bit more for potential auth state change
+        setTimeout(async () => {
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          if (retrySession && !processedRef.current) {
+            handleAuthCallback(retrySession);
+          } else if (!processedRef.current) {
+            setStatus("error");
+            setMessage("Lien invalide ou expiré. Veuillez réessayer.");
+          }
+        }, 2000);
+      }
+    };
+
+    checkExistingSession();
 
     return () => subscription.unsubscribe();
   }, [navigate]);
