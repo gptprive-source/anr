@@ -33,6 +33,17 @@ export const useWebRTC = ({
   const peerConnectionRef = useRef<PeerConnectionManager | null>(null);
   const isInitializedRef = useRef(false);
   const isCleanedUpRef = useRef(false);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+
+  // Sync streams to refs for cleanup
+  useEffect(() => {
+    localStreamRef.current = localStream;
+  }, [localStream]);
+
+  useEffect(() => {
+    remoteStreamRef.current = remoteStream;
+  }, [remoteStream]);
 
   // Gérer les erreurs
   const handleError = useCallback((err: string) => {
@@ -289,17 +300,26 @@ export const useWebRTC = ({
     console.log("[useWebRTC] Vidéo:", newEnabled ? "activée" : "désactivée");
   }, [localStream]);
 
-  // Nettoyage au démontage
+  // Nettoyage au démontage - utilise les refs pour éviter les closures stales
   useEffect(() => {
     return () => {
       console.log("[useWebRTC] Nettoyage au démontage");
       isCleanedUpRef.current = true;
       isInitializedRef.current = false;
       
-      stopMediaStream(localStream);
-      stopMediaStream(remoteStream);
+      // Utiliser les refs pour accéder aux valeurs actuelles
+      if (localStreamRef.current) {
+        stopMediaStream(localStreamRef.current);
+      }
+      if (remoteStreamRef.current) {
+        stopMediaStream(remoteStreamRef.current);
+      }
+      
       peerConnectionRef.current?.close();
+      peerConnectionRef.current = null;
+      
       signalingRef.current?.disconnect();
+      signalingRef.current = null;
     };
   }, []);
 
