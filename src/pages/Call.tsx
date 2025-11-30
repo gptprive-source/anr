@@ -3,30 +3,37 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CallInterface from "@/components/call/CallInterface";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { logger } from "@/lib/logger";
 
-interface ANRData {
-  id: string;
-  code: string;
+interface CallData {
+  anrId: string;
+  anrCode: string;
   address: string;
-  habitation_name?: string;
+  habitationId: string;
+  habitationName: string;
+  callLogId: string;
 }
+
+// Check if string is a UUID
+const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 const Call = () => {
   const { anrId } = useParams<{ anrId: string }>();
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const { user } = useAuth();
   const isResident = searchParams.get("resident") === "true";
   
-  const [anrData, setAnrData] = useState<ANRData | null>(null);
+  const [callData, setCallData] = useState<CallData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Get visitor position from navigation state
   const visitorLat = location.state?.visitorLat;
   const visitorLon = location.state?.visitorLon;
 
   useEffect(() => {
-    const fetchANRData = async () => {
+    const initializeCall = async () => {
       if (!anrId) {
         setError("Code ANR manquant");
         setLoading(false);
@@ -34,53 +41,157 @@ const Call = () => {
       }
 
       try {
-        // Get ANR first
+        // Check if anrId is actually a call log ID (UUID) - for residents joining
+        if (isUUID(anrId) && isResident) {
+          logger.log("[Call] Resident joining existing call:", anrId);
+          
+          const { data: callLog, error: clError } = await supabase
+            .from("call_logs")
+            .select("id, habitation_id")
+            .eq("id", anrId)
+            .single();
+
+          if (clError || !callLog) {
+            setError("Appel non trouvé");
+            setLoading(false);
+            return;
+          }
+
+          const { data: habitation } = await supabase
+            .from("habitations")
+            .select("id, name, anrs(id, code, address)")
+            .eq("id", callLog.habitation_id)
+            .single();
+
+          if (!habitation) {
+            setError("Habitation non trouvée");
+            setLoading(false);
+            return;
+          }
+
+          const anr = habitation.anrs as any;
+          
+          setCallData({
+            anrId: anr.id,
+            anrCode: anr.code,
+            address: anr.address,
+            habitationId: habitation.id,
+            habitationName: habitation.name,
+            callLogId: callLog.id,
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Visitor flow - lookup by ANR code
         const { data: anr, error: anrError } = await supabase
           .from("anrs")
           .select("id, code, address")
-          .eq("code", anrId)
+          .ilike("code", anrId)
           .maybeSingle();
 
-        if (anrError) {
-          console.error("[Call] ANR error:", anrError);
-          throw anrError;
-        }
-
+        if (anrError) throw anrError;
         if (!anr) {
-          console.log("[Call] ANR not found for code:", anrId);
           setError("ANR non trouvé");
           setLoading(false);
           return;
         }
 
-        console.log("[Call] Found ANR:", anr);
+        logger.log("[Call] Found ANR:", anr);
 
-        // Get habitation name
-        const { data: habitations } = await supabase
+        // Get habitation
+        const { data: habitation, error: habError } = await supabase
           .from("habitations")
-          .select("name")
+          .select("id, name")
           .eq("anr_id", anr.id)
-          .limit(1);
+          .limit(1)
+          .maybeSingle();
 
-        const habitationName = habitations?.[0]?.name;
-        console.log("[Call] Habitation:", habitationName);
+        if (habError) throw habError;
+        if (!habitation) {
+          setError("Aucune habitation pour cet ANR");
+          setLoading(false);
+          return;
+        }
 
-        setAnrData({
-          id: anr.id,
-          code: anr.code,
+        logger.log("[Call] Found habitation:", habitation);
+
+        // Create call log for visitor
+        const { data: callLog, error: callLogError } = await supabase
+          .from("call_logs")
+          .insert({
+            habitation_id: habitation.id,
+            visitor_latitude: visitorLat || null,
+            visitor_longitude: visitorLon || null,
+            status: "ringing",
+          })
+          .select()
+          .single();
+
+        if (callLogError) throw callLogError;
+        logger.log("[Call] Created call log:", callLog);
+
+        // Get all verified residents
+        const { data: residents, error: resError } = await supabase
+          .from("residents")
+          .select("user_id")
+          .eq("habitation_id", habitation.id)
+          .eq("status", "verified");
+
+        if (resError) throw resError;
+        logger.log("[Call] Found residents:", residents?.length);
+
+        // Create call participants for all residents
+        if (residents && residents.length > 0) {
+          const participantsToInsert = residents.map(r => ({
+            call_id: callLog.id,
+            user_id: r.user_id,
+            habitation_id: habitation.id,
+            role: "resident",
+            status: "ringing",
+          }));
+
+          const { error: partError } = await supabase
+            .from("call_participants")
+            .insert(participantsToInsert);
+
+          if (partError) {
+            logger.error("[Call] Error creating participants:", partError);
+          } else {
+            logger.log("[Call] Created participants for", residents.length, "residents");
+          }
+        }
+
+        // Also create visitor participant
+        await supabase
+          .from("call_participants")
+          .insert({
+            call_id: callLog.id,
+            user_id: null,
+            habitation_id: habitation.id,
+            role: "visitor",
+            status: "answered",
+            joined_at: new Date().toISOString(),
+          });
+
+        setCallData({
+          anrId: anr.id,
+          anrCode: anr.code,
           address: anr.address,
-          habitation_name: habitationName,
+          habitationId: habitation.id,
+          habitationName: habitation.name,
+          callLogId: callLog.id,
         });
       } catch (err: any) {
-        console.error("[Call] Error fetching ANR:", err);
+        logger.error("[Call] Error:", err);
         setError(err.message || "Erreur de chargement");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchANRData();
-  }, [anrId]);
+    initializeCall();
+  }, [anrId, isResident, visitorLat, visitorLon]);
 
   if (loading) {
     return (
@@ -90,7 +201,7 @@ const Call = () => {
     );
   }
 
-  if (error || !anrData) {
+  if (error || !callData) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
         <p className="text-destructive mb-4">{error || "Erreur"}</p>
@@ -104,15 +215,14 @@ const Call = () => {
     );
   }
 
-  // Generate a unique call ID based on ANR and timestamp
-  const callId = `call-${anrData.id}-${Date.now()}`;
-
   return (
     <CallInterface 
       isResident={isResident} 
-      callerName={isResident ? "Visiteur" : (anrData.habitation_name || "Résident")}
-      anrAddress={anrData.address}
-      callId={callId}
+      callerName={isResident ? "Visiteur" : callData.habitationName}
+      anrAddress={callData.address}
+      callId={callData.callLogId}
+      habitationId={callData.habitationId}
+      userId={user?.id}
     />
   );
 };
