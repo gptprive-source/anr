@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Phone, PhoneOff, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
+import { useRingtone, requestNotificationPermission, showCallNotification } from "@/hooks/useRingtone";
 
 interface IncomingCall {
   participantId: string;
@@ -19,6 +20,46 @@ const IncomingCallListener = () => {
   const navigate = useNavigate();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const channelRef = useRef<any>(null);
+  const notificationRef = useRef<Notification | null>(null);
+  const { startRinging, stopRinging } = useRingtone();
+
+  // Request notification permission on mount
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
+  // Handle ringtone and notification when call state changes
+  useEffect(() => {
+    if (incomingCall) {
+      // Start ringing
+      startRinging();
+      
+      // Show notification
+      notificationRef.current = showCallNotification(
+        incomingCall.habitationName,
+        incomingCall.address
+      );
+      
+      // Try to vibrate if supported
+      if ("vibrate" in navigator) {
+        navigator.vibrate([200, 100, 200, 100, 200, 100, 200]);
+      }
+    } else {
+      // Stop ringing
+      stopRinging();
+      
+      // Close notification
+      if (notificationRef.current) {
+        notificationRef.current.close();
+        notificationRef.current = null;
+      }
+      
+      // Stop vibration
+      if ("vibrate" in navigator) {
+        navigator.vibrate(0);
+      }
+    }
+  }, [incomingCall, startRinging, stopRinging]);
 
   useEffect(() => {
     if (!user) return;
@@ -151,6 +192,9 @@ const IncomingCallListener = () => {
   const handleAnswer = async () => {
     if (!incomingCall) return;
     
+    // Stop ringing immediately
+    stopRinging();
+    
     // Update participant status
     await supabase
       .from("call_participants")
@@ -164,6 +208,9 @@ const IncomingCallListener = () => {
 
   const handleDecline = async () => {
     if (!incomingCall || !user) return;
+
+    // Stop ringing immediately
+    stopRinging();
 
     await supabase
       .from("call_participants")
