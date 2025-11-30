@@ -296,30 +296,17 @@ const QRScannerContent = ({ onScan, loading }: { onScan: (code: string) => void;
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        {!scanning ? (
-          <Button onClick={startScanning} disabled={loading} variant="hero">
-            <Camera className="w-4 h-4 mr-2" />
-            Activer la caméra
-          </Button>
-        ) : (
-          <Button onClick={stopScanning} variant="outline">
-            <XCircle className="w-4 h-4 mr-2" />
-            Arrêter le scan
-          </Button>
-        )}
-
-        {/* Demo button for testing */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onScan("ANR-TEST001")}
-          disabled={loading}
-        >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-          Tester avec code démo
+      {!scanning ? (
+        <Button onClick={startScanning} disabled={loading} variant="hero">
+          <Camera className="w-4 h-4 mr-2" />
+          Activer la caméra
         </Button>
-      </div>
+      ) : (
+        <Button onClick={stopScanning} variant="outline">
+          <XCircle className="w-4 h-4 mr-2" />
+          Arrêter le scan
+        </Button>
+      )}
     </div>
   );
 };
@@ -449,17 +436,6 @@ const NFCScannerContent = ({ onScan, loading }: { onScan: (code: string) => void
           <Button onClick={startNFCScan} disabled={loading} variant="hero">
             <Nfc className="w-4 h-4 mr-2" />
             Activer NFC
-          </Button>
-
-          {/* Demo button for testing */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onScan("ANR-TEST001")}
-            disabled={loading}
-            className="block mx-auto"
-          >
-            Tester avec code démo
           </Button>
         </div>
       )}
