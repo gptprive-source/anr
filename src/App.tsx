@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Call from "./pages/Call";
 import MultiHabitat from "./pages/MultiHabitat";
 import TestCall from "./pages/TestCall";
+import VerifyEmail from "./pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/call/:anrId" element={<Call />} />
             <Route path="/multi-habitat/:anrId" element={<MultiHabitat />} />
             <Route path="/test-call" element={<TestCall />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

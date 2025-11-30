@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Users, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useWebRTC } from "@/hooks/useWebRTC";
+import { useDaily } from "@/hooks/useDaily";
 import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
 import VideoCall from "./VideoCall";
 import TransferCallDialog from "./TransferCallDialog";
@@ -27,28 +27,30 @@ const CallInterface = ({
   userId,
 }: CallInterfaceProps) => {
   const [callState, setCallState] = useState<CallState>("ringing");
-  const [showTwoWayVideo, setShowTwoWayVideo] = useState(false);
+  const [hasAnswered, setHasAnswered] = useState(false);
 
-  // WebRTC hook
+  // Daily.co hook for audio/video calls
   const {
-    localStream,
-    remoteStream,
-    connectionState,
+    isJoined,
+    isLoading,
     error,
     isMuted,
     isVideoEnabled,
-    hasAnswered,
-    startCall,
-    listenForCall,
-    answerCall: answerWebRTC,
-    endCall,
+    localVideoTrack,
+    remoteVideoTrack,
+    localAudioTrack,
+    remoteAudioTrack,
+    joinCall,
+    leaveCall,
     toggleMute,
     toggleVideo,
-  } = useWebRTC({
+    enableVideo,
+  } = useDaily({
     callId,
-    isInitiator: !isResident,
+    isResident,
     onCallConnected: () => {
-      console.log("[CallInterface] WebRTC connected!");
+      console.log("[CallInterface] Daily connected!");
+      setCallState("connected");
     },
     onCallEnded: () => {
       console.log("[CallInterface] Call ended");
@@ -64,7 +66,7 @@ const CallInterface = ({
     answeredBy,
     isGroupCall,
     availableResidents,
-    joinCall,
+    joinCall: joinMultiResident,
     answerCall: answerMultiResident,
     declineCall,
     transferCall,
@@ -72,7 +74,7 @@ const CallInterface = ({
     joinGroupCall,
     updateMuteStatus,
     updateVideoStatus,
-    leaveCall,
+    leaveCall: leaveMultiResident,
   } = useMultiResidentCall({
     callId,
     habitationId,
@@ -80,73 +82,59 @@ const CallInterface = ({
     isVisitor: !isResident,
   });
 
-  // Track if we've already started the call (prevent double-mount issues)
+  // Track if we've already started
   const hasStartedRef = useRef(false);
 
-  // Auto-start: Visitor sends video, Resident listens
+  // Auto-join: Visitor joins immediately, Resident waits
   useEffect(() => {
-    if (hasStartedRef.current) {
-      console.log("[CallInterface] Already started, skipping");
-      return;
-    }
+    if (hasStartedRef.current) return;
     hasStartedRef.current = true;
 
-    if (!isResident) {
-      console.log("[CallInterface] Visitor auto-starting call");
-      startCall();
-      joinCall("visitor");
-    } else {
-      console.log("[CallInterface] Resident listening for incoming video");
-      listenForCall();
-      joinCall("resident");
-    }
-  }, []); // Empty deps - only run once on mount
+    joinMultiResident(isResident ? "resident" : "visitor");
 
-  // Update call state based on connection and answer status
+    if (!isResident) {
+      // Visitor joins call immediately with video
+      console.log("[CallInterface] Visitor auto-joining call");
+      joinCall();
+    }
+  }, []);
+
+  // Update call state based on connection status
   useEffect(() => {
     if (isResident) {
-      // Check if someone else answered
-      if (answeredBy && answeredBy.user_id !== userId && !isGroupCall) {
-        // Another resident answered - show "answered by" state
-        if (currentParticipant?.status === "ringing") {
-          // We're still ringing but someone else answered
-        }
-      }
-      
-      if (hasAnswered) {
-        if (connectionState === "connected") {
-          setCallState("connected");
-        } else {
-          setCallState("connecting");
-        }
-      } else {
+      if (hasAnswered && isJoined) {
+        setCallState("connected");
+      } else if (hasAnswered && isLoading) {
+        setCallState("connecting");
+      } else if (!hasAnswered) {
         setCallState("ringing");
       }
     } else {
       // Visitor flow
-      if (connectionState === "connected") {
+      if (isJoined) {
         setCallState("connected");
-      } else if (connectionState === "connecting") {
+      } else if (isLoading) {
         setCallState("connecting");
       }
     }
-  }, [connectionState, hasAnswered, isResident, answeredBy, userId, isGroupCall, currentParticipant]);
+  }, [isJoined, isLoading, hasAnswered, isResident]);
 
-  // Sync mute status
+  // Sync mute/video status
   useEffect(() => {
     updateMuteStatus(isMuted);
   }, [isMuted, updateMuteStatus]);
 
-  // Sync video status
   useEffect(() => {
-    updateVideoStatus(showTwoWayVideo && isVideoEnabled);
-  }, [showTwoWayVideo, isVideoEnabled, updateVideoStatus]);
+    updateVideoStatus(isVideoEnabled);
+  }, [isVideoEnabled, updateVideoStatus]);
 
   const handleAnswer = async () => {
     console.log("[CallInterface] Resident answering call");
+    setHasAnswered(true);
     setCallState("connecting");
     await answerMultiResident();
-    answerWebRTC();
+    // Join call - audio only initially
+    await joinCall();
   };
 
   const handleDecline = async () => {
@@ -157,15 +145,15 @@ const CallInterface = ({
 
   const handleHangup = async () => {
     console.log("[CallInterface] Hanging up");
+    await leaveMultiResident();
     await leaveCall();
-    endCall();
     setCallState("ended");
   };
 
   const handleTransfer = async (targetUserId: string) => {
     console.log("[CallInterface] Transferring to", targetUserId);
     await transferCall(targetUserId);
-    endCall();
+    await leaveCall();
     setCallState("transferred");
   };
 
@@ -174,18 +162,25 @@ const CallInterface = ({
     await startGroupCall();
   };
 
-  const handleToggleTwoWayVideo = () => {
-    setShowTwoWayVideo(!showTwoWayVideo);
-    if (!showTwoWayVideo) {
+  const handleToggleVideo = async () => {
+    if (!isVideoEnabled && isResident) {
+      // First time enabling video for resident
+      await enableVideo();
+    } else {
       toggleVideo();
     }
   };
 
-  // Resident can see visitor's video even before answering
-  const showRemoteVideo = remoteStream !== null;
-  const showLocalVideoPreview = showTwoWayVideo && hasAnswered && localStream !== null;
+  // Convert tracks to MediaStream for VideoCall component
+  const localStream = localVideoTrack || localAudioTrack 
+    ? new MediaStream([localVideoTrack, localAudioTrack].filter(Boolean) as MediaStreamTrack[])
+    : null;
+  
+  const remoteStream = remoteVideoTrack || remoteAudioTrack
+    ? new MediaStream([remoteVideoTrack, remoteAudioTrack].filter(Boolean) as MediaStreamTrack[])
+    : null;
 
-  // Check if another resident answered (and we haven't)
+  // Check if another resident answered
   const anotherResidentAnswered = isResident && answeredBy && answeredBy.user_id !== userId && !hasAnswered;
 
   return (
@@ -194,9 +189,9 @@ const CallInterface = ({
       <VideoCall
         localStream={localStream}
         remoteStream={remoteStream}
-        showLocalVideo={showLocalVideoPreview}
+        showLocalVideo={isVideoEnabled && hasAnswered}
         callerName={callerName}
-        isConnected={showRemoteVideo}
+        isConnected={isJoined && !!remoteStream}
         isAudioEnabled={!isResident || hasAnswered}
       />
 
@@ -230,11 +225,11 @@ const CallInterface = ({
       )}
 
       {/* Status indicators */}
-      {callState === "ringing" && !showRemoteVideo && !anotherResidentAnswered && (
+      {callState === "ringing" && !anotherResidentAnswered && (
         <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
           <div className="calling-animation px-6 py-3 rounded-full bg-primary/20 border border-primary/30">
             <span className="text-primary font-medium">
-              {isResident ? "Connexion vidéo..." : "Appel en cours..."}
+              {isResident ? "Appel entrant..." : "Appel en cours..."}
             </span>
           </div>
         </div>
@@ -244,14 +239,6 @@ const CallInterface = ({
         <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
           <div className="calling-animation px-6 py-3 rounded-full bg-primary/20 border border-primary/30">
             <span className="text-primary font-medium">Connexion...</span>
-          </div>
-        </div>
-      )}
-
-      {callState === "ringing" && isResident && showRemoteVideo && !anotherResidentAnswered && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-32 z-20">
-          <div className="calling-animation px-6 py-3 rounded-full bg-primary/20 border border-primary/30">
-            <span className="text-primary font-medium">Visiteur à votre porte</span>
           </div>
         </div>
       )}
@@ -271,7 +258,8 @@ const CallInterface = ({
                 className="mt-3"
                 onClick={async () => {
                   await joinGroupCall();
-                  answerWebRTC();
+                  setHasAnswered(true);
+                  await joinCall();
                 }}
               >
                 Rejoindre l'appel
@@ -303,11 +291,11 @@ const CallInterface = ({
           <ConnectedControls
             isResident={isResident}
             isMuted={isMuted}
-            showTwoWayVideo={showTwoWayVideo}
+            isVideoEnabled={isVideoEnabled}
             isGroupCall={isGroupCall}
             availableResidents={availableResidents}
             onToggleMute={toggleMute}
-            onToggleTwoWayVideo={handleToggleTwoWayVideo}
+            onToggleVideo={handleToggleVideo}
             onTransfer={handleTransfer}
             onStartGroupCall={handleStartGroupCall}
             onHangup={handleHangup}
@@ -354,22 +342,22 @@ const ConnectingControls = ({ onHangup }: { onHangup: () => void }) => (
 const ConnectedControls = ({
   isResident,
   isMuted,
-  showTwoWayVideo,
+  isVideoEnabled,
   isGroupCall,
   availableResidents,
   onToggleMute,
-  onToggleTwoWayVideo,
+  onToggleVideo,
   onTransfer,
   onStartGroupCall,
   onHangup,
 }: {
   isResident: boolean;
   isMuted: boolean;
-  showTwoWayVideo: boolean;
+  isVideoEnabled: boolean;
   isGroupCall: boolean;
   availableResidents: any[];
   onToggleMute: () => void;
-  onToggleTwoWayVideo: () => void;
+  onToggleVideo: () => void;
   onTransfer: (userId: string) => Promise<void>;
   onStartGroupCall: () => void;
   onHangup: () => void;
@@ -387,11 +375,11 @@ const ConnectedControls = ({
       {isResident && (
         <>
           <Button
-            variant={showTwoWayVideo ? "default" : "secondary"}
+            variant={isVideoEnabled ? "default" : "secondary"}
             size="icon-lg"
-            onClick={onToggleTwoWayVideo}
+            onClick={onToggleVideo}
           >
-            {showTwoWayVideo ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+            {isVideoEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
           </Button>
           
           <TransferCallDialog 
