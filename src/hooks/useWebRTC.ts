@@ -510,6 +510,13 @@ export const useWebRTC = ({
       const videoTrack = stream.getVideoTracks()[0];
       const audioTrack = stream.getAudioTracks()[0];
 
+      // Disable video track initially (resident must enable two-way video explicitly)
+      if (videoTrack) {
+        videoTrack.enabled = false;
+        setIsVideoEnabled(false);
+        console.log("[WebRTC] Video track disabled initially (audio only)");
+      }
+
       // Find existing transceivers and replace their tracks + set direction
       const transceivers = pc.getTransceivers();
       console.log("[WebRTC] Existing transceivers:", transceivers.length);
