@@ -5,50 +5,68 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Simple in-memory rate limiting (resets on cold start)
+const rateLimits = new Map<string, { count: number; reset: number }>();
+const RATE_LIMIT = 100; // requests per minute per IP
+const RATE_WINDOW = 60000; // 1 minute
+
+const checkRateLimit = (ip: string): boolean => {
+  const now = Date.now();
+  const limit = rateLimits.get(ip);
+  
+  if (!limit || now > limit.reset) {
+    rateLimits.set(ip, { count: 1, reset: now + RATE_WINDOW });
+    return true;
+  }
+  
+  if (limit.count >= RATE_LIMIT) return false;
+  
+  limit.count++;
+  return true;
+};
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+  
+  if (!checkRateLimit(clientIP)) {
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded" }),
+      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {
     const DAILY_API_KEY = Deno.env.get("DAILY_API_KEY");
     if (!DAILY_API_KEY) {
-      console.error("DAILY_API_KEY not configured");
-      throw new Error("Daily.co API key not configured");
+      throw new Error("DAILY_API_KEY not configured");
     }
 
     const { callId } = await req.json();
-    if (!callId) {
-      throw new Error("callId is required");
+    if (!callId || typeof callId !== "string") {
+      throw new Error("Invalid callId");
     }
 
-    console.log(`[daily-room] Creating/getting room for callId: ${callId}`);
+    // Sanitize room name (alphanumeric + hyphen only, max 64 chars)
+    const roomName = `anr-${callId.replace(/[^a-zA-Z0-9-]/g, "").substring(0, 50)}`;
 
-    // Create a room name from the callId (sanitize for Daily.co requirements)
-    const roomName = `anr-${callId.replace(/[^a-zA-Z0-9-]/g, "").substring(0, 40)}`;
-
-    // First, try to get existing room
+    // Try to get existing room first
     const getResponse = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${DAILY_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${DAILY_API_KEY}` },
     });
 
     if (getResponse.ok) {
       const room = await getResponse.json();
-      console.log(`[daily-room] Found existing room: ${room.url}`);
       return new Response(
         JSON.stringify({ url: room.url, name: room.name }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Room doesn't exist, create it
-    console.log(`[daily-room] Creating new room: ${roomName}`);
-    
+    // Create new room with optimized settings
     const createResponse = await fetch("https://api.daily.co/v1/rooms", {
       method: "POST",
       headers: {
@@ -59,44 +77,39 @@ serve(async (req) => {
         name: roomName,
         privacy: "public",
         properties: {
-          // Room expires after 1 hour
-          exp: Math.floor(Date.now() / 1000) + 3600,
-          // Enable knocking for security
-          enable_knocking: false,
-          // Max 10 participants
+          exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
           max_participants: 10,
-          // Enable recording (optional)
-          enable_recording: "local",
-          // Start with video off by default
+          enable_knocking: false,
           start_video_off: true,
-          // Start with audio on
           start_audio_off: false,
+          // Optimize for low latency
+          sfu_switchover: 0.5,
+          // Enable adaptive bitrate
+          enable_network_ui: false,
+          // Disable unnecessary features
+          enable_chat: false,
+          enable_screenshare: false,
+          enable_recording: false,
         },
       }),
     });
 
     if (!createResponse.ok) {
       const error = await createResponse.text();
-      console.error(`[daily-room] Failed to create room: ${error}`);
-      throw new Error(`Failed to create Daily room: ${error}`);
+      throw new Error(`Daily API error: ${error}`);
     }
 
-    const newRoom = await createResponse.json();
-    console.log(`[daily-room] Created room: ${newRoom.url}`);
-
+    const room = await createResponse.json();
     return new Response(
-      JSON.stringify({ url: newRoom.url, name: newRoom.name }),
+      JSON.stringify({ url: room.url, name: room.name }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error: any) {
-    console.error("[daily-room] Error:", error);
+    console.error("[daily-room] Error:", error.message);
     return new Response(
-      JSON.stringify({ error: error.message || "Unknown error" }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
+      JSON.stringify({ error: error.message || "Internal error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

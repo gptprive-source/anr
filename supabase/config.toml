@@ -40,6 +40,3 @@ enable_confirmations = true
 
 [functions.daily-room]
 verify_jwt = false
-
-[functions.send-verification-email]
-verify_jwt = false
