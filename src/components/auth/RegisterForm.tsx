@@ -98,12 +98,15 @@ const RegisterForm = () => {
       });
     } catch (error: any) {
       // Handle "user already registered" error
-      if (error.message?.includes("already registered")) {
+      if (error.message?.includes("already registered") || error.message?.includes("User already registered")) {
         toast({
-          title: "Email déjà utilisé",
-          description: "Cet email est déjà associé à un compte. Connectez-vous.",
-          variant: "destructive",
+          title: "Compte existant",
+          description: "Cet email est déjà associé à un compte. Redirection vers la connexion...",
         });
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
       } else {
         toast({
           title: "Erreur",
