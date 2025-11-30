@@ -26,7 +26,7 @@ const HeroSection = () => {
           <img 
             src={logoAnr} 
             alt="ANR - Adresse Numérique Résidentielle" 
-            className="w-64 h-64 md:w-80 md:h-80 mx-auto object-contain drop-shadow-2xl"
+            className="w-32 h-32 md:w-40 md:h-40 mx-auto object-contain drop-shadow-2xl"
           />
         </div>
 
