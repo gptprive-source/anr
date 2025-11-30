@@ -39,11 +39,11 @@ const ANRScanner = () => {
         visitorPosition = await getCurrentPosition();
       }
 
-      // Look up ANR in database
+      // Look up ANR in database (case-insensitive)
       const { data: anr, error } = await supabase
         .from("anrs")
         .select("id, latitude, longitude, address")
-        .eq("code", targetCode)
+        .ilike("code", targetCode)
         .maybeSingle();
 
       if (error) throw error;
