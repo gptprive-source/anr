@@ -256,16 +256,21 @@ export const useWebRTC = ({
         if (pc && !isInitiator && (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer')) {
           console.log("[WebRTC] Resident handling renegotiate-offer, state:", pc.signalingState);
           
-          // Ensure ALL transceivers are set to sendrecv (regardless of current direction)
+          // IMPORTANT: Set remote description FIRST
+          await pc.setRemoteDescription(new RTCSessionDescription(signalData));
+          
+          // THEN set transceiver directions to sendrecv (AFTER setRemoteDescription)
+          // This is critical because setRemoteDescription updates directions based on the offer
           pc.getTransceivers().forEach((transceiver) => {
             if (transceiver.sender.track) {
-              console.log(`[WebRTC] Setting transceiver ${transceiver.mid} to sendrecv (was: ${transceiver.direction})`);
+              console.log(`[WebRTC] Setting transceiver ${transceiver.mid} (${transceiver.receiver.track?.kind}) to sendrecv (was: ${transceiver.direction})`);
               transceiver.direction = 'sendrecv';
             }
           });
           
-          await pc.setRemoteDescription(new RTCSessionDescription(signalData));
           const answer = await pc.createAnswer();
+          console.log("[WebRTC] Created renegotiation answer with directions:", 
+            pc.getTransceivers().map(t => `${t.receiver.track?.kind}:${t.direction}`).join(', '));
           await pc.setLocalDescription(answer);
           await sendSignal("renegotiate-answer", answer);
         } else {
