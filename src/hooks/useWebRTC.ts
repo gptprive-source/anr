@@ -225,65 +225,25 @@ export const useWebRTC = ({
           await sendSignal("answer", answer);
         }
       } else if (signalType === "answer") {
-        if (pc && pc.signalingState === 'have-local-offer') {
+        if (pc) {
           console.log("[WebRTC] Received answer, setting remote description");
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
           await processPendingCandidates();
-        } else {
-          console.log("[WebRTC] Ignoring answer - wrong state:", pc?.signalingState);
-        }
-      } else if (signalType === "request-renegotiate") {
-        // Visitor receives request to renegotiate (resident added their tracks)
-        if (pc && isInitiator) {
-          console.log("[WebRTC] Visitor preparing for two-way video");
-          
-          // Set all transceivers to sendrecv to receive resident's tracks
-          pc.getTransceivers().forEach((transceiver) => {
-            if (transceiver.direction === 'sendonly') {
-              console.log(`[WebRTC] Setting transceiver ${transceiver.mid} to sendrecv`);
-              transceiver.direction = 'sendrecv';
-            }
-          });
-          
-          console.log("[WebRTC] Visitor creating renegotiation offer with ICE restart");
-          // Use ICE restart to ensure fresh connectivity
-          const offer = await pc.createOffer({ iceRestart: true });
-          await pc.setLocalDescription(offer);
-          await sendSignal("renegotiate-offer", offer);
         }
       } else if (signalType === "renegotiate-offer") {
-        // Resident receives renegotiation offer from visitor
-        if (pc && !isInitiator && (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer')) {
-          console.log("[WebRTC] Resident handling renegotiate-offer, state:", pc.signalingState);
-          
-          // IMPORTANT: Set remote description FIRST
+        // Handle renegotiation from the other peer (e.g., when resident enables their camera)
+        if (pc) {
+          console.log("[WebRTC] Handling renegotiate-offer");
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
-          
-          // THEN set transceiver directions to sendrecv (AFTER setRemoteDescription)
-          // This is critical because setRemoteDescription updates directions based on the offer
-          pc.getTransceivers().forEach((transceiver) => {
-            if (transceiver.sender.track) {
-              console.log(`[WebRTC] Setting transceiver ${transceiver.mid} (${transceiver.receiver.track?.kind}) to sendrecv (was: ${transceiver.direction})`);
-              transceiver.direction = 'sendrecv';
-            }
-          });
-          
           const answer = await pc.createAnswer();
-          console.log("[WebRTC] Created renegotiation answer with directions:", 
-            pc.getTransceivers().map(t => `${t.receiver.track?.kind}:${t.direction}`).join(', '));
           await pc.setLocalDescription(answer);
           await sendSignal("renegotiate-answer", answer);
-        } else {
-          console.log("[WebRTC] Ignoring renegotiate-offer - wrong state:", pc?.signalingState);
         }
       } else if (signalType === "renegotiate-answer") {
-        // Visitor receives renegotiation answer
-        if (pc && isInitiator && pc.signalingState === 'have-local-offer') {
-          console.log("[WebRTC] Visitor handling renegotiate-answer");
+        // Handle renegotiation answer
+        if (pc) {
+          console.log("[WebRTC] Handling renegotiate-answer");
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
-          await processPendingCandidates();
-        } else {
-          console.log("[WebRTC] Ignoring renegotiate-answer - wrong state:", pc?.signalingState);
         }
       } else if (signalType === "ice-candidate") {
         if (pc) {
@@ -333,13 +293,8 @@ export const useWebRTC = ({
           facingMode: "user",
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          frameRate: { ideal: 30 },
         },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+        audio: true,
       });
       
       // Check if cleaned up during async operation
@@ -494,84 +449,36 @@ export const useWebRTC = ({
     console.log("[WebRTC] Resident answering call - enabling local media");
     setHasAnswered(true);
 
-    const pc = peerConnectionRef.current;
-    if (!pc) {
-      console.error("[WebRTC] No peer connection for answering");
-      return;
-    }
-
     try {
-      // Get local media (resident's camera)
+      // Get local media (resident's camera - optional)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
+        audio: true,
       });
       
       setLocalStream(stream);
-      console.log("[WebRTC] Got resident's local stream");
 
-      // Get the tracks from the stream
-      const videoTrack = stream.getVideoTracks()[0];
-      const audioTrack = stream.getAudioTracks()[0];
+      // Add tracks to existing connection
+      const pc = peerConnectionRef.current;
+      if (pc) {
+        stream.getTracks().forEach((track) => {
+          console.log(`[WebRTC] Adding local track after answer: ${track.kind}`);
+          pc.addTrack(track, stream);
+        });
 
-      // Video is disabled initially (resident must enable two-way video explicitly)
-      // Audio is enabled immediately for communication
-      if (videoTrack) {
-        videoTrack.enabled = false;
-        console.log("[WebRTC] Video track disabled initially (audio only answer)");
+        // Renegotiate to send our video
+        console.log("[WebRTC] Renegotiating to enable two-way");
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await sendSignal("renegotiate-offer", offer);
       }
-      if (audioTrack) {
-        audioTrack.enabled = true;
-        console.log("[WebRTC] Audio track enabled");
-      }
-      setIsVideoEnabled(false);
-      setIsMuted(false);
-
-      // Find existing transceivers and replace their tracks + set direction
-      const transceivers = pc.getTransceivers();
-      console.log("[WebRTC] Existing transceivers:", transceivers.length);
-
-      let videoTransceiver = transceivers.find(t => t.receiver.track?.kind === 'video');
-      let audioTransceiver = transceivers.find(t => t.receiver.track?.kind === 'audio');
-
-      // Set up video transceiver
-      if (videoTransceiver && videoTrack) {
-        console.log("[WebRTC] Replacing video track on existing transceiver");
-        videoTransceiver.direction = 'sendrecv';
-        await videoTransceiver.sender.replaceTrack(videoTrack);
-      } else if (videoTrack) {
-        console.log("[WebRTC] Adding new video track");
-        pc.addTrack(videoTrack, stream);
-      }
-
-      // Set up audio transceiver  
-      if (audioTransceiver && audioTrack) {
-        console.log("[WebRTC] Replacing audio track on existing transceiver");
-        audioTransceiver.direction = 'sendrecv';
-        await audioTransceiver.sender.replaceTrack(audioTrack);
-      } else if (audioTrack) {
-        console.log("[WebRTC] Adding new audio track");
-        pc.addTrack(audioTrack, stream);
-      }
-
-      // Log final transceiver state
-      pc.getTransceivers().forEach((t, i) => {
-        console.log(`[WebRTC] Transceiver ${i}: kind=${t.receiver.track?.kind}, direction=${t.direction}, sender.track=${!!t.sender.track}`);
-      });
-
-      // Request visitor to create renegotiation offer (visitor must stay offerer)
-      console.log("[WebRTC] Requesting renegotiation from visitor");
-      await sendSignal("request-renegotiate", {});
-      
     } catch (err: any) {
       console.error("[WebRTC] Error enabling local media:", err);
+      // Even if camera fails, the call is still "answered" (audio might work)
       setError("Impossible d'activer la caméra");
     }
   }, [sendSignal]);

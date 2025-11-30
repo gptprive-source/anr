@@ -175,10 +175,8 @@ const CallInterface = ({
   };
 
   const handleToggleTwoWayVideo = () => {
-    const newState = !showTwoWayVideo;
-    setShowTwoWayVideo(newState);
-    // Only toggle if the video state doesn't match what we want
-    if (newState !== isVideoEnabled) {
+    setShowTwoWayVideo(!showTwoWayVideo);
+    if (!showTwoWayVideo) {
       toggleVideo();
     }
   };

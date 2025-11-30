@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { VideoOff } from "lucide-react";
+import { useCallback } from "react";
+import { Video, VideoOff, User } from "lucide-react";
 
 interface VideoCallProps {
   localStream: MediaStream | null;
@@ -15,27 +15,36 @@ const VideoCall = ({
   remoteStream,
   showLocalVideo,
   callerName,
+  isConnected,
   isAudioEnabled = false,
 }: VideoCallProps) => {
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-
-  // Attach local stream when it changes
-  useEffect(() => {
-    const video = localVideoRef.current;
+  // Use callback refs to attach streams immediately when elements are available
+  const localVideoRef = useCallback((video: HTMLVideoElement | null) => {
+    console.log("[VideoCall] 📹 Local video ref callback:", {
+      hasElement: !!video,
+      hasStream: !!localStream,
+      streamActive: localStream?.active,
+    });
     if (video && localStream) {
-      console.log("[VideoCall] 📹 Attaching local stream");
+      console.log("[VideoCall] ✅ Attaching local stream to video element");
       video.srcObject = localStream;
       video.play().catch(err => console.log("[VideoCall] Local autoplay issue:", err));
     }
   }, [localStream]);
 
-  // Attach remote stream when it changes
-  useEffect(() => {
-    const video = remoteVideoRef.current;
+  const remoteVideoRef = useCallback((video: HTMLVideoElement | null) => {
+    console.log("[VideoCall] 📺 Remote video ref callback:", {
+      hasElement: !!video,
+      hasStream: !!remoteStream,
+      streamActive: remoteStream?.active,
+      videoTracks: remoteStream?.getVideoTracks().length,
+      audioTracks: remoteStream?.getAudioTracks().length,
+      isAudioEnabled,
+    });
     if (video && remoteStream) {
-      console.log("[VideoCall] 📺 Attaching remote stream, isAudioEnabled:", isAudioEnabled);
+      console.log("[VideoCall] ✅ Attaching remote stream to video element");
       video.srcObject = remoteStream;
+      // Start muted for autoplay, then unmute if audio is enabled
       video.muted = !isAudioEnabled;
       video.play().then(() => {
         console.log("[VideoCall] ▶️ Remote video playing, muted:", video.muted);
@@ -44,15 +53,6 @@ const VideoCall = ({
       });
     }
   }, [remoteStream, isAudioEnabled]);
-
-  // Update muted state when isAudioEnabled changes
-  useEffect(() => {
-    const video = remoteVideoRef.current;
-    if (video) {
-      video.muted = !isAudioEnabled;
-      console.log("[VideoCall] 🔊 Audio enabled changed:", isAudioEnabled, "muted:", video.muted);
-    }
-  }, [isAudioEnabled]);
 
   return (
     <div className="flex-1 relative">
@@ -98,6 +98,7 @@ const VideoCall = ({
           </div>
         </div>
       )}
+
     </div>
   );
 };
