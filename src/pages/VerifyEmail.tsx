@@ -1,71 +1,91 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
 const VerifyEmail = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const verifyDevice = async () => {
-      // Get the device token from localStorage
-      const storedToken = localStorage.getItem("anr_device_token");
-      const urlToken = searchParams.get("token");
+    const handleAuthCallback = async () => {
+      try {
+        // Supabase automatically handles the hash fragment tokens
+        // We just need to check if we have a session
+        const { data: { session }, error } = await supabase.auth.getSession();
 
-      // Check if this is the same device
-      if (storedToken && urlToken && storedToken === urlToken) {
-        // Same device - verification successful
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          
-          if (user) {
-            // Mark phone as verified
-            await supabase
-              .from("profiles")
-              .update({ phone_verified: true })
-              .eq("id", user.id);
+        if (error) {
+          console.error("Auth error:", error);
+          setStatus("error");
+          setMessage("Erreur d'authentification. Veuillez réessayer.");
+          return;
+        }
 
+        if (session) {
+          // User is authenticated - verify device token for additional security
+          const storedDeviceToken = localStorage.getItem("anr_device_token");
+          const userDeviceToken = session.user.user_metadata?.device_token;
+
+          // If this is a signup verification (device token exists in metadata)
+          if (userDeviceToken && storedDeviceToken) {
+            if (storedDeviceToken === userDeviceToken) {
+              // Same device - mark phone as verified
+              await supabase
+                .from("profiles")
+                .update({ phone_verified: true })
+                .eq("id", session.user.id);
+
+              setStatus("success");
+              setMessage("Votre compte a été vérifié avec succès !");
+              
+              setTimeout(() => {
+                navigate("/dashboard");
+              }, 2000);
+            } else {
+              // Different device - security warning
+              setStatus("error");
+              setMessage("Ce lien doit être ouvert depuis le téléphone où vous avez créé votre compte.");
+            }
+          } else {
+            // No device token check needed (login flow or device already verified)
             setStatus("success");
-            setMessage("Votre numéro de téléphone a été vérifié avec succès !");
+            setMessage("Connexion réussie !");
             
-            // Redirect to dashboard after 2 seconds
             setTimeout(() => {
               navigate("/dashboard");
-            }, 2000);
-          } else {
-            setStatus("error");
-            setMessage("Session expirée. Veuillez vous reconnecter.");
+            }, 1500);
           }
-        } catch (error) {
-          console.error("Verification error:", error);
-          setStatus("error");
-          setMessage("Une erreur est survenue lors de la vérification.");
-        }
-      } else if (urlToken && storedToken !== urlToken) {
-        // Different device
-        setStatus("error");
-        setMessage("Ce lien doit être ouvert depuis le téléphone où vous avez créé votre compte. Veuillez réessayer depuis le bon appareil.");
-      } else {
-        // No token - just handle the auth callback
-        setStatus("success");
-        setMessage("Vérification en cours...");
-        
-        // Check if user is authenticated
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          navigate("/dashboard");
         } else {
-          navigate("/login");
+          // No session - might be expired or invalid link
+          setStatus("error");
+          setMessage("Lien invalide ou expiré. Veuillez réessayer.");
         }
+      } catch (error) {
+        console.error("Verification error:", error);
+        setStatus("error");
+        setMessage("Une erreur est survenue lors de la vérification.");
       }
     };
 
-    verifyDevice();
-  }, [searchParams, navigate]);
+    // Listen for auth state changes (this handles the hash fragment tokens)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          handleAuthCallback();
+        } else if (event === "TOKEN_REFRESHED") {
+          // Token refreshed, continue to dashboard
+          navigate("/dashboard");
+        }
+      }
+    );
+
+    // Also check immediately in case session is already set
+    handleAuthCallback();
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -75,6 +95,7 @@ const VerifyEmail = () => {
             <div className="space-y-4">
               <Loader2 className="w-16 h-16 text-primary mx-auto animate-spin" />
               <h2 className="text-xl font-bold">Vérification en cours...</h2>
+              <p className="text-muted-foreground">Veuillez patienter</p>
             </div>
           )}
 
@@ -85,6 +106,7 @@ const VerifyEmail = () => {
               </div>
               <h2 className="text-xl font-bold text-green-500">Vérifié !</h2>
               <p className="text-muted-foreground">{message}</p>
+              <p className="text-sm text-muted-foreground">Redirection en cours...</p>
             </div>
           )}
 
@@ -95,9 +117,14 @@ const VerifyEmail = () => {
               </div>
               <h2 className="text-xl font-bold text-destructive">Erreur</h2>
               <p className="text-muted-foreground">{message}</p>
-              <Button variant="secondary" onClick={() => navigate("/login")}>
-                Retour à la connexion
-              </Button>
+              <div className="space-y-2 pt-4">
+                <Button variant="secondary" onClick={() => navigate("/login")} className="w-full">
+                  Retour à la connexion
+                </Button>
+                <Button variant="ghost" onClick={() => navigate("/register")} className="w-full">
+                  Créer un nouveau compte
+                </Button>
+              </div>
             </div>
           )}
         </div>
