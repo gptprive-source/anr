@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Smartphone, QrCode, Shield, LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import logoAnr from "@/assets/logo-anr.png";
 
 const HeroSection = () => {
   const navigate = useNavigate();
@@ -20,21 +21,30 @@ const HeroSection = () => {
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
       
       <div className="relative z-10 max-w-5xl mx-auto text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 border border-border mb-8 animate-fade-in">
+        {/* Large Logo */}
+        <div className="mb-8 animate-fade-in">
+          <img 
+            src={logoAnr} 
+            alt="ANR - Adresse Numérique Résidentielle" 
+            className="w-64 h-64 md:w-80 md:h-80 mx-auto object-contain drop-shadow-2xl"
+          />
+        </div>
+
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 border border-border mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <Shield className="w-4 h-4 text-primary" />
           <span className="text-sm text-muted-foreground">Système breveté d'adresse numérique</span>
         </div>
         
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 animate-fade-in" style={{ animationDelay: "0.2s" }}>
           Votre interphone
           <span className="gradient-text block mt-2">100% numérique</span>
         </h1>
         
-        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: "0.2s" }}>
+        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: "0.3s" }}>
           ANR transforme votre smartphone en interphone intelligent. Recevez vos visiteurs en vidéo, où que vous soyez, sans installation matérielle.
         </p>
         
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-in" style={{ animationDelay: "0.3s" }}>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-in" style={{ animationDelay: "0.4s" }}>
           <Button variant="hero" size="xl" onClick={() => navigate("/register")}>
             <Smartphone className="w-5 h-5" />
             Créer mon ANR
@@ -46,7 +56,7 @@ const HeroSection = () => {
         </div>
         
         {/* Feature cards */}
-        <div className="grid md:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: "0.4s" }}>
+        <div className="grid md:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: "0.5s" }}>
           <FeatureCard
             icon={<QrCode className="w-6 h-6" />}
             title="QR Code & NFC"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { QrCode, Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus } from "lucide-react";
+import { Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import AddResidentDialog from "./AddResidentDialog";
 import BottomNav from "@/components/layout/BottomNav";
 import IncomingCallListener from "./IncomingCallListener";
+import logoAnr from "@/assets/logo-anr.png";
 
 interface Resident {
   id: string;
@@ -177,11 +178,13 @@ const ResidentDashboard = () => {
         {/* ANR Card */}
         <div className="glass-effect rounded-3xl p-6 card-shadow">
           <div className="flex flex-col md:flex-row gap-6 items-center">
-            {/* QR Code display */}
-            <div className="w-40 h-40 rounded-2xl bg-foreground p-3 flex-shrink-0">
-              <div className="w-full h-full rounded-lg bg-background flex items-center justify-center">
-                <QrCode className="w-24 h-24 text-foreground" />
-              </div>
+            {/* ANR Logo */}
+            <div className="w-40 h-40 rounded-2xl overflow-hidden flex-shrink-0">
+              <img 
+                src={logoAnr} 
+                alt="ANR" 
+                className="w-full h-full object-cover"
+              />
             </div>
             
             <div className="flex-1 text-center md:text-left">
