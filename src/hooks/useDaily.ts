@@ -130,13 +130,23 @@ export const useDaily = ({
     });
 
     call.on("participant-joined", () => updateTracks());
-    call.on("participant-left", (event) => {
+    call.on("participant-left", async (event) => {
+      logger.log("[useDaily] Participant left:", event?.participant?.user_id);
       updateTracks();
-      // Check remaining participants
+      
+      // When remote participant leaves, end the call immediately
       const participants = call.participants();
       const remoteCount = Object.values(participants).filter(p => !p.local).length;
       if (remoteCount === 0) {
-        logger.log("[useDaily] No more participants");
+        logger.log("[useDaily] No more remote participants - ending call");
+        try {
+          await call.leave();
+          await call.destroy();
+          callRef.current = null;
+          safeSetState(() => INITIAL_STATE);
+        } catch (err) {
+          logger.error("[useDaily] Error leaving after participant left:", err);
+        }
         onCallEnded?.();
       }
     });

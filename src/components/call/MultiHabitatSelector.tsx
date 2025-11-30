@@ -1,35 +1,71 @@
-import { Search, Home } from "lucide-react";
-import { useState } from "react";
+import { Search, Home, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Habitat {
   id: string;
   name: string;
-  floor?: string;
+  floor?: string | null;
 }
 
-const mockHabitats: Habitat[] = [
-  { id: "1", name: "Appartement Dupont", floor: "1er étage" },
-  { id: "2", name: "Appartement Garcia", floor: "2ème étage" },
-  { id: "3", name: "Appartement Martin", floor: "3ème étage" },
-  { id: "4", name: "Appartement Petit", floor: "RDC" },
-  { id: "5", name: "Appartement Robert", floor: "4ème étage" },
-];
-
 const MultiHabitatSelector = () => {
+  const { anrId } = useParams<{ anrId: string }>();
   const [search, setSearch] = useState("");
+  const [habitats, setHabitats] = useState<Habitat[]>([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const filteredHabitats = mockHabitats
+  useEffect(() => {
+    const fetchHabitats = async () => {
+      if (!anrId) return;
+
+      // First find the ANR by code
+      const { data: anr } = await supabase
+        .from("anrs")
+        .select("id")
+        .ilike("code", anrId)
+        .maybeSingle();
+
+      if (!anr) {
+        setLoading(false);
+        return;
+      }
+
+      // Then fetch all habitations for this ANR
+      const { data: habitationsData } = await supabase
+        .from("habitations")
+        .select("id, name, floor")
+        .eq("anr_id", anr.id)
+        .order("name");
+
+      if (habitationsData) {
+        setHabitats(habitationsData);
+      }
+      setLoading(false);
+    };
+
+    fetchHabitats();
+  }, [anrId]);
+
+  const filteredHabitats = habitats
     .filter((h) =>
       h.name.toLowerCase().includes(search.toLowerCase())
     )
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const handleSelect = (habitat: Habitat) => {
-    navigate(`/call/${habitat.id}`);
+    navigate(`/call/${anrId}`, { state: { habitationId: habitat.id } });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4">
