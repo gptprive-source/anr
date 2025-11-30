@@ -230,19 +230,27 @@ export const useWebRTC = ({
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
           await processPendingCandidates();
         }
+      } else if (signalType === "request-renegotiate") {
+        // Visitor receives request to renegotiate (resident added their tracks)
+        if (pc && isInitiator) {
+          console.log("[WebRTC] Visitor creating renegotiation offer");
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          await sendSignal("renegotiate-offer", offer);
+        }
       } else if (signalType === "renegotiate-offer") {
-        // Handle renegotiation from the other peer (e.g., when resident enables their camera)
-        if (pc) {
-          console.log("[WebRTC] Handling renegotiate-offer");
+        // Resident receives renegotiation offer from visitor
+        if (pc && !isInitiator) {
+          console.log("[WebRTC] Resident handling renegotiate-offer");
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           await sendSignal("renegotiate-answer", answer);
         }
       } else if (signalType === "renegotiate-answer") {
-        // Handle renegotiation answer
-        if (pc) {
-          console.log("[WebRTC] Handling renegotiate-answer");
+        // Visitor receives renegotiation answer
+        if (pc && isInitiator) {
+          console.log("[WebRTC] Visitor handling renegotiate-answer");
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
         }
       } else if (signalType === "ice-candidate") {
@@ -484,11 +492,9 @@ export const useWebRTC = ({
           pc.addTrack(track, stream);
         });
 
-        // Renegotiate to send our video
-        console.log("[WebRTC] Renegotiating to enable two-way");
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await sendSignal("renegotiate-offer", offer);
+        // Request visitor to create renegotiation offer (visitor must stay offerer)
+        console.log("[WebRTC] Requesting renegotiation from visitor");
+        await sendSignal("request-renegotiate", {});
       }
     } catch (err: any) {
       console.error("[WebRTC] Error enabling local media:", err);
