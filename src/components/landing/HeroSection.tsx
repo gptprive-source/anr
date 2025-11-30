@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Smartphone, QrCode, Shield } from "lucide-react";
+import { Smartphone, QrCode, Shield, LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const HeroSection = () => {
@@ -7,6 +7,13 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 py-20">
+      {/* Login button - top right */}
+      <div className="absolute top-6 right-6 z-20">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/login")} className="gap-2">
+          <LogIn className="w-4 h-4" />
+          Se connecter
+        </Button>
+      </div>
       {/* Background effects */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsl(199,89%,48%,0.1)_0%,_transparent_50%)]" />
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
