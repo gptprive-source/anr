@@ -179,11 +179,11 @@ const ResidentDashboard = () => {
         <div className="glass-effect rounded-3xl p-6 card-shadow">
           <div className="flex flex-col md:flex-row gap-6 items-center">
             {/* ANR Logo */}
-            <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0">
+            <div className="w-20 h-20 flex-shrink-0">
               <img 
                 src={logoAnr} 
                 alt="ANR" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
             
