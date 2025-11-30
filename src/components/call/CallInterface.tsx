@@ -176,9 +176,8 @@ const CallInterface = ({
 
   const handleToggleTwoWayVideo = () => {
     setShowTwoWayVideo(!showTwoWayVideo);
-    if (!showTwoWayVideo) {
-      toggleVideo();
-    }
+    // Always toggle video track when switching two-way video
+    toggleVideo();
   };
 
   // Resident can see visitor's video even before answering
