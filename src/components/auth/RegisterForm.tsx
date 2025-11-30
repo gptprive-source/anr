@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Phone, User, MapPin, ArrowRight, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Mail, Phone, User, MapPin, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
@@ -8,12 +8,24 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { geocodeAddress } from "@/lib/geocoding";
 
-type Step = "phone" | "profile" | "address";
+type Step = "credentials" | "profile" | "address" | "verification";
 
 const phoneSchema = z.string().regex(/^\+?[0-9]{10,15}$/, "Numéro de téléphone invalide");
+const emailSchema = z.string().email("Email invalide");
+
+// Generate or retrieve device token
+const getDeviceToken = (): string => {
+  let token = localStorage.getItem("anr_device_token");
+  if (!token) {
+    token = `device-${crypto.randomUUID()}`;
+    localStorage.setItem("anr_device_token", token);
+  }
+  return token;
+};
 
 const RegisterForm = () => {
-  const [step, setStep] = useState<Step>("phone");
+  const [step, setStep] = useState<Step>("credentials");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -26,14 +38,24 @@ const RegisterForm = () => {
     return value.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
   };
 
-  const handlePhoneSubmit = async () => {
+  const handleCredentialsSubmit = async () => {
     const formattedPhone = formatPhone(phone);
-    const validation = phoneSchema.safeParse(formattedPhone);
+    const phoneValidation = phoneSchema.safeParse(formattedPhone);
+    const emailValidation = emailSchema.safeParse(email);
     
-    if (!validation.success) {
+    if (!phoneValidation.success) {
       toast({
         title: "Erreur",
-        description: validation.error.errors[0].message,
+        description: phoneValidation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!emailValidation.success) {
+      toast({
+        title: "Erreur",
+        description: emailValidation.error.errors[0].message,
         variant: "destructive",
       });
       return;
@@ -43,18 +65,28 @@ const RegisterForm = () => {
     setLoading(true);
     
     try {
-      // Créer un compte anonyme
-      const { data, error } = await supabase.auth.signInAnonymously();
+      // Sign up with email
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: crypto.randomUUID(), // Auto-generated password (user will use magic link)
+        options: {
+          emailRedirectTo: `${window.location.origin}/verify-email`,
+          data: {
+            phone_number: formattedPhone,
+            device_token: getDeviceToken(),
+          },
+        },
+      });
 
       if (error) throw error;
 
       if (data.user) {
-        // Mettre à jour le profil avec le numéro
+        // Update profile with phone number
         await supabase
           .from("profiles")
           .update({ 
             phone_number: formattedPhone,
-            phone_verified: false // Sera vérifié plus tard via appel OVH
+            phone_verified: false,
           })
           .eq("id", data.user.id);
       }
@@ -65,11 +97,20 @@ const RegisterForm = () => {
         description: "Complétez maintenant votre profil",
       });
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Erreur lors de la création du compte",
-        variant: "destructive",
-      });
+      // Handle "user already registered" error
+      if (error.message?.includes("already registered")) {
+        toast({
+          title: "Email déjà utilisé",
+          description: "Cet email est déjà associé à un compte. Connectez-vous.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erreur",
+          description: error.message || "Erreur lors de la création du compte",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -101,9 +142,7 @@ const RegisterForm = () => {
         })
         .eq("id", user.id);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setStep("address");
     } catch (error: any) {
@@ -135,7 +174,7 @@ const RegisterForm = () => {
         throw new Error("Utilisateur non connecté");
       }
 
-      // Geocode the address to get real GPS coordinates
+      // Geocode the address
       const geoResult = await geocodeAddress(address.trim());
       
       if (!geoResult) {
@@ -148,11 +187,11 @@ const RegisterForm = () => {
         return;
       }
 
-      // Generate a unique ANR code
+      // Generate ANR code
       const anrCode = `ANR-${Date.now().toString(36).toUpperCase()}`;
       const { latitude, longitude } = geoResult;
 
-      // Check if ANR already exists for this address
+      // Check if ANR already exists
       const { data: existingAnr } = await supabase
         .from("anrs")
         .select("id")
@@ -162,10 +201,8 @@ const RegisterForm = () => {
       let anrId: string;
 
       if (existingAnr) {
-        // ANR exists - add as new habitation
         anrId = existingAnr.id;
       } else {
-        // Create new ANR
         const { data: newAnr, error: anrError } = await supabase
           .from("anrs")
           .insert({
@@ -206,6 +243,9 @@ const RegisterForm = () => {
 
       if (resError) throw resError;
 
+      // Move to verification step
+      setStep("verification");
+      
       toast({
         title: "ANR créé",
         description: existingAnr 
@@ -213,11 +253,38 @@ const RegisterForm = () => {
           : "Votre ANR a été créé avec succès",
       });
 
-      navigate("/dashboard");
     } catch (error: any) {
       toast({
         title: "Erreur",
         description: error.message || "Impossible de créer l'ANR",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/verify-email`,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Email envoyé",
+        description: "Vérifiez votre boîte de réception",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'envoyer l'email",
         variant: "destructive",
       });
     } finally {
@@ -230,11 +297,11 @@ const RegisterForm = () => {
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex justify-center gap-2 mb-8">
-          {["phone", "profile", "address"].map((s, i) => (
+          {["credentials", "profile", "address", "verification"].map((s, i) => (
             <div
               key={s}
               className={`h-1 w-12 rounded-full transition-colors ${
-                ["phone", "profile", "address"].indexOf(step) >= i
+                ["credentials", "profile", "address", "verification"].indexOf(step) >= i
                   ? "bg-primary"
                   : "bg-secondary"
               }`}
@@ -243,11 +310,13 @@ const RegisterForm = () => {
         </div>
 
         <div className="glass-effect rounded-3xl p-8 card-shadow">
-          {step === "phone" && (
-            <PhoneStep
+          {step === "credentials" && (
+            <CredentialsStep
+              email={email}
               phone={phone}
+              setEmail={setEmail}
               setPhone={setPhone}
-              onSubmit={handlePhoneSubmit}
+              onSubmit={handleCredentialsSubmit}
               loading={loading}
             />
           )}
@@ -269,9 +338,16 @@ const RegisterForm = () => {
               loading={loading}
             />
           )}
+          {step === "verification" && (
+            <VerificationStep
+              email={email}
+              onResend={handleResendEmail}
+              loading={loading}
+            />
+          )}
         </div>
 
-        {step === "phone" && (
+        {step === "credentials" && (
           <p className="text-center text-sm text-muted-foreground mt-6">
             Déjà inscrit ?{" "}
             <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/login")}>
@@ -284,13 +360,17 @@ const RegisterForm = () => {
   );
 };
 
-const PhoneStep = ({
+const CredentialsStep = ({
+  email,
   phone,
+  setEmail,
   setPhone,
   onSubmit,
   loading,
 }: {
+  email: string;
   phone: string;
+  setEmail: (v: string) => void;
   setPhone: (v: string) => void;
   onSubmit: () => void;
   loading: boolean;
@@ -298,15 +378,23 @@ const PhoneStep = ({
   <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-        <Phone className="w-8 h-8 text-primary" />
+        <Mail className="w-8 h-8 text-primary" />
       </div>
       <h2 className="text-2xl font-bold mb-2">Créez votre ANR</h2>
       <p className="text-muted-foreground">
-        Entrez votre numéro de téléphone pour commencer
+        Entrez votre email et numéro de téléphone
       </p>
     </div>
 
     <div className="space-y-4">
+      <Input
+        type="email"
+        placeholder="votre@email.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="text-center text-lg"
+        disabled={loading}
+      />
       <Input
         type="tel"
         placeholder="+33 6 12 34 56 78"
@@ -319,7 +407,7 @@ const PhoneStep = ({
         variant="hero"
         className="w-full"
         onClick={onSubmit}
-        disabled={!phone.trim() || loading}
+        disabled={!email.trim() || !phone.trim() || loading}
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
         {!loading && <ArrowRight className="w-4 h-4" />}
@@ -327,7 +415,7 @@ const PhoneStep = ({
     </div>
 
     <p className="text-xs text-center text-muted-foreground">
-      La vérification du numéro sera effectuée ultérieurement
+      Un email de vérification vous sera envoyé
     </p>
   </div>
 );
@@ -426,6 +514,49 @@ const AddressStep = ({
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Créer mon ANR"}
         {!loading && <ArrowRight className="w-4 h-4" />}
+      </Button>
+    </div>
+  </div>
+);
+
+const VerificationStep = ({
+  email,
+  onResend,
+  loading,
+}: {
+  email: string;
+  onResend: () => void;
+  loading: boolean;
+}) => (
+  <div className="space-y-6">
+    <div className="text-center">
+      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+        <Mail className="w-8 h-8 text-primary" />
+      </div>
+      <h2 className="text-2xl font-bold mb-2">Vérifiez votre email</h2>
+      <p className="text-muted-foreground">
+        Un email a été envoyé à <strong>{email}</strong>
+      </p>
+    </div>
+
+    <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-sm space-y-2">
+      <p className="font-semibold text-primary">⚠️ Important</p>
+      <p className="text-muted-foreground">
+        Ouvrez l'email <strong>depuis votre téléphone</strong> (celui où vous utilisez l'application) pour valider votre numéro.
+      </p>
+      <p className="text-muted-foreground">
+        Ne cliquez pas sur le lien depuis un ordinateur.
+      </p>
+    </div>
+
+    <div className="space-y-4">
+      <Button
+        variant="secondary"
+        className="w-full"
+        onClick={onResend}
+        disabled={loading}
+      >
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Renvoyer l'email"}
       </Button>
     </div>
   </div>

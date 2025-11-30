@@ -32,7 +32,7 @@ const TestCall = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="gradient-text">Test Vidéo WebRTC</CardTitle>
+          <CardTitle className="gradient-text">Test Appel Daily.co</CardTitle>
           <CardDescription>
             Testez l'appel vidéo entre deux onglets/appareils
           </CardDescription>
