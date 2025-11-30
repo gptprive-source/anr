@@ -341,6 +341,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_owner_of: {
+        Args: { _habitation_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_resident_of: {
         Args: { _habitation_id: string; _user_id: string }
         Returns: boolean
