@@ -39,18 +39,11 @@ const Login = () => {
 
     setLoading(true);
     try {
-      // Check if user exists with this email
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", (await supabase.auth.getUser()).data.user?.id || "")
-        .maybeSingle();
-
       // Send magic link
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/verify-email`,
         },
       });
 
@@ -78,7 +71,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/verify-email`,
         },
       });
 
