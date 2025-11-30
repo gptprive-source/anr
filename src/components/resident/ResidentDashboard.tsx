@@ -284,15 +284,6 @@ const ResidentDashboard = () => {
           </div>
         </div>
 
-        {/* Test call button */}
-        <Button 
-          variant="hero" 
-          className="w-full" 
-          size="lg"
-          onClick={() => navigate(`/call/${habitationData.anr.id}?resident=true`)}
-        >
-          Simuler un appel entrant
-        </Button>
       </div>
 
       {/* Add Resident Dialog */}
