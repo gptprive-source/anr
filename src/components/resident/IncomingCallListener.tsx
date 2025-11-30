@@ -1,27 +1,73 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Phone, PhoneOff, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { logger } from "@/lib/logger";
 
 interface IncomingCall {
+  participantId: string;
   callId: string;
   habitationId: string;
   habitationName: string;
   address: string;
-  startedAt: string;
 }
 
 const IncomingCallListener = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
     if (!user) return;
 
-    // Subscribe to call_participants for this user
+    logger.log("[IncomingCall] Setting up listener for user:", user.id);
+
+    // Check for existing ringing calls on mount
+    const checkExistingCalls = async () => {
+      const { data: ringingParticipants } = await supabase
+        .from("call_participants")
+        .select("id, call_id, habitation_id")
+        .eq("user_id", user.id)
+        .eq("status", "ringing")
+        .eq("role", "resident")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (ringingParticipants && ringingParticipants.length > 0) {
+        const participant = ringingParticipants[0];
+        await loadCallDetails(participant.id, participant.call_id, participant.habitation_id);
+      }
+    };
+
+    const loadCallDetails = async (participantId: string, callId: string, habitationId: string) => {
+      try {
+        const { data: habitation } = await supabase
+          .from("habitations")
+          .select("name, anrs(address)")
+          .eq("id", habitationId)
+          .single();
+
+        if (habitation) {
+          logger.log("[IncomingCall] Incoming call detected:", callId);
+          setIncomingCall({
+            participantId,
+            callId,
+            habitationId,
+            habitationName: habitation.name,
+            address: (habitation.anrs as any)?.address || "",
+          });
+        }
+      } catch (err) {
+        logger.error("[IncomingCall] Error loading details:", err);
+      }
+    };
+
+    checkExistingCalls();
+
+    // Subscribe to new call_participants
     const channel = supabase
       .channel(`incoming-calls-${user.id}`)
       .on(
@@ -33,98 +79,86 @@ const IncomingCallListener = () => {
           filter: `user_id=eq.${user.id}`,
         },
         async (payload) => {
-          console.log("[IncomingCall] New participant:", payload);
-          
+          logger.log("[IncomingCall] New participant:", payload);
           const participant = payload.new as any;
-          if (participant.status !== "ringing" || participant.role !== "resident") return;
-
-          // Fetch call details
-          try {
-            const { data: callLog } = await supabase
-              .from("call_logs")
-              .select("id, habitation_id, started_at")
-              .eq("id", participant.call_id)
-              .single();
-
-            if (!callLog) return;
-
-            const { data: habitation } = await supabase
-              .from("habitations")
-              .select("name, anrs(address)")
-              .eq("id", callLog.habitation_id)
-              .single();
-
-            if (habitation) {
-              setIncomingCall({
-                callId: callLog.id,
-                habitationId: callLog.habitation_id,
-                habitationName: habitation.name,
-                address: (habitation.anrs as any)?.address || "",
-                startedAt: callLog.started_at,
-              });
-            }
-          } catch (err) {
-            console.error("[IncomingCall] Error fetching details:", err);
+          if (participant.status === "ringing" && participant.role === "resident") {
+            await loadCallDetails(participant.id, participant.call_id, participant.habitation_id);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "call_participants",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const participant = payload.new as any;
+          // If our participant was updated to something other than ringing, dismiss
+          if (incomingCall?.participantId === participant.id && participant.status !== "ringing") {
+            logger.log("[IncomingCall] Call no longer ringing");
+            setIncomingCall(null);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "call_participants",
+        },
+        (payload) => {
+          const deleted = payload.old as any;
+          if (incomingCall?.participantId === deleted.id) {
+            logger.log("[IncomingCall] Participant deleted");
+            setIncomingCall(null);
           }
         }
       )
       .subscribe();
 
-    // Also check for existing ringing calls on mount
-    const checkExistingCalls = async () => {
-      const { data: ringingParticipants } = await supabase
-        .from("call_participants")
-        .select("call_id, habitation_id")
-        .eq("user_id", user.id)
-        .eq("status", "ringing")
-        .eq("role", "resident")
-        .order("created_at", { ascending: false })
-        .limit(1);
+    channelRef.current = channel;
 
-      if (ringingParticipants && ringingParticipants.length > 0) {
-        const participant = ringingParticipants[0];
-        
-        const { data: callLog } = await supabase
-          .from("call_logs")
-          .select("id, habitation_id, started_at")
-          .eq("id", participant.call_id)
-          .single();
-
-        if (callLog) {
-          const { data: habitation } = await supabase
-            .from("habitations")
-            .select("name, anrs(address)")
-            .eq("id", callLog.habitation_id)
-            .single();
-
-          if (habitation) {
-            setIncomingCall({
-              callId: callLog.id,
-              habitationId: callLog.habitation_id,
-              habitationName: habitation.name,
-              address: (habitation.anrs as any)?.address || "",
-              startedAt: callLog.started_at,
-            });
+    // Also subscribe to call_logs status changes
+    const callChannel = supabase
+      .channel(`call-status-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "call_logs",
+        },
+        (payload) => {
+          const callLog = payload.new as any;
+          if (incomingCall?.callId === callLog.id && callLog.status === "ended") {
+            logger.log("[IncomingCall] Call ended by caller");
+            setIncomingCall(null);
           }
         }
-      }
-    };
-
-    checkExistingCalls();
+      )
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(callChannel);
     };
-  }, [user]);
+  }, [user, incomingCall?.participantId, incomingCall?.callId]);
 
-  const handleAnswer = () => {
+  const handleAnswer = async () => {
     if (!incomingCall) return;
-    navigate(`/call/${incomingCall.callId}?resident=true`, {
-      state: { 
-        callId: incomingCall.callId,
-        habitationId: incomingCall.habitationId,
-      }
-    });
+    
+    // Update participant status
+    await supabase
+      .from("call_participants")
+      .update({ status: "answered", joined_at: new Date().toISOString() })
+      .eq("id", incomingCall.participantId);
+
+    // Navigate to call
+    navigate(`/call/${incomingCall.callId}?resident=true`);
     setIncomingCall(null);
   };
 
@@ -134,8 +168,7 @@ const IncomingCallListener = () => {
     await supabase
       .from("call_participants")
       .update({ status: "declined", left_at: new Date().toISOString() })
-      .eq("call_id", incomingCall.callId)
-      .eq("user_id", user.id);
+      .eq("id", incomingCall.participantId);
 
     setIncomingCall(null);
   };

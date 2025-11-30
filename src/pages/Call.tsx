@@ -7,8 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { logger } from "@/lib/logger";
 
 interface CallData {
-  anrId: string;
-  anrCode: string;
   address: string;
   habitationId: string;
   habitationName: string;
@@ -35,19 +33,19 @@ const Call = () => {
   useEffect(() => {
     const initializeCall = async () => {
       if (!anrId) {
-        setError("Code ANR manquant");
+        setError("Code manquant");
         setLoading(false);
         return;
       }
 
       try {
-        // Check if anrId is actually a call log ID (UUID) - for residents joining
+        // RESIDENT: anrId is a call_log UUID
         if (isUUID(anrId) && isResident) {
-          logger.log("[Call] Resident joining existing call:", anrId);
+          logger.log("[Call] Resident joining call:", anrId);
           
           const { data: callLog, error: clError } = await supabase
             .from("call_logs")
-            .select("id, habitation_id")
+            .select("id, habitation_id, status")
             .eq("id", anrId)
             .single();
 
@@ -57,9 +55,15 @@ const Call = () => {
             return;
           }
 
+          if (callLog.status === "ended") {
+            setError("Cet appel est terminé");
+            setLoading(false);
+            return;
+          }
+
           const { data: habitation } = await supabase
             .from("habitations")
-            .select("id, name, anrs(id, code, address)")
+            .select("id, name, anrs(address)")
             .eq("id", callLog.habitation_id)
             .single();
 
@@ -69,12 +73,14 @@ const Call = () => {
             return;
           }
 
-          const anr = habitation.anrs as any;
-          
+          // Update call_log to answered
+          await supabase
+            .from("call_logs")
+            .update({ status: "answered", answered_at: new Date().toISOString(), answered_by: user?.id })
+            .eq("id", anrId);
+
           setCallData({
-            anrId: anr.id,
-            anrCode: anr.code,
-            address: anr.address,
+            address: (habitation.anrs as any)?.address || "",
             habitationId: habitation.id,
             habitationName: habitation.name,
             callLogId: callLog.id,
@@ -83,7 +89,9 @@ const Call = () => {
           return;
         }
 
-        // Visitor flow - lookup by ANR code
+        // VISITOR: anrId is an ANR code
+        logger.log("[Call] Visitor initiating call to ANR:", anrId);
+
         const { data: anr, error: anrError } = await supabase
           .from("anrs")
           .select("id, code, address")
@@ -97,26 +105,20 @@ const Call = () => {
           return;
         }
 
-        logger.log("[Call] Found ANR:", anr);
-
-        // Get habitation
-        const { data: habitation, error: habError } = await supabase
+        const { data: habitation } = await supabase
           .from("habitations")
           .select("id, name")
           .eq("anr_id", anr.id)
           .limit(1)
           .maybeSingle();
 
-        if (habError) throw habError;
         if (!habitation) {
           setError("Aucune habitation pour cet ANR");
           setLoading(false);
           return;
         }
 
-        logger.log("[Call] Found habitation:", habitation);
-
-        // Create call log for visitor
+        // Create call log
         const { data: callLog, error: callLogError } = await supabase
           .from("call_logs")
           .insert({
@@ -129,19 +131,15 @@ const Call = () => {
           .single();
 
         if (callLogError) throw callLogError;
-        logger.log("[Call] Created call log:", callLog);
+        logger.log("[Call] Created call log:", callLog.id);
 
-        // Get all verified residents
-        const { data: residents, error: resError } = await supabase
+        // Get all verified residents and create participants
+        const { data: residents } = await supabase
           .from("residents")
           .select("user_id")
           .eq("habitation_id", habitation.id)
           .eq("status", "verified");
 
-        if (resError) throw resError;
-        logger.log("[Call] Found residents:", residents?.length);
-
-        // Create call participants for all residents
         if (residents && residents.length > 0) {
           const participantsToInsert = residents.map(r => ({
             call_id: callLog.id,
@@ -151,47 +149,37 @@ const Call = () => {
             status: "ringing",
           }));
 
-          const { error: partError } = await supabase
-            .from("call_participants")
-            .insert(participantsToInsert);
-
-          if (partError) {
-            logger.error("[Call] Error creating participants:", partError);
-          } else {
-            logger.log("[Call] Created participants for", residents.length, "residents");
-          }
+          await supabase.from("call_participants").insert(participantsToInsert);
+          logger.log("[Call] Created", residents.length, "resident participants");
         }
 
-        // Also create visitor participant
-        await supabase
-          .from("call_participants")
-          .insert({
-            call_id: callLog.id,
-            user_id: null,
-            habitation_id: habitation.id,
-            role: "visitor",
-            status: "answered",
-            joined_at: new Date().toISOString(),
-          });
+        // Create visitor participant
+        await supabase.from("call_participants").insert({
+          call_id: callLog.id,
+          user_id: null,
+          habitation_id: habitation.id,
+          role: "visitor",
+          status: "answered",
+          joined_at: new Date().toISOString(),
+        });
 
         setCallData({
-          anrId: anr.id,
-          anrCode: anr.code,
           address: anr.address,
           habitationId: habitation.id,
           habitationName: habitation.name,
           callLogId: callLog.id,
         });
+
       } catch (err: any) {
         logger.error("[Call] Error:", err);
-        setError(err.message || "Erreur de chargement");
+        setError(err.message || "Erreur");
       } finally {
         setLoading(false);
       }
     };
 
     initializeCall();
-  }, [anrId, isResident, visitorLat, visitorLon]);
+  }, [anrId, isResident, visitorLat, visitorLon, user?.id]);
 
   if (loading) {
     return (
