@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AddResidentDialog from "./AddResidentDialog";
 import BottomNav from "@/components/layout/BottomNav";
+import IncomingCallListener from "./IncomingCallListener";
 
 interface Resident {
   id: string;
@@ -165,6 +166,7 @@ const ResidentDashboard = () => {
 
   return (
     <div className="min-h-screen pb-20">
+      <IncomingCallListener />
       <div className="max-w-lg mx-auto p-4 space-y-6">
         {/* Header */}
         <div className="pt-4">
