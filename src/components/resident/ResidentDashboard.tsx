@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { QrCode, Users, Settings, History, Bell, Shield, MapPin, Copy, Check, LogOut, Loader2, UserPlus } from "lucide-react";
+import { QrCode, Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AddResidentDialog from "./AddResidentDialog";
+import BottomNav from "@/components/layout/BottomNav";
 
 interface Resident {
   id: string;
@@ -38,7 +39,7 @@ const ResidentDashboard = () => {
   const [habitationData, setHabitationData] = useState<HabitationData | null>(null);
   const [addResidentOpen, setAddResidentOpen] = useState(false);
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -143,11 +144,6 @@ const ResidentDashboard = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -168,22 +164,12 @@ const ResidentDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen pb-20">
+      <div className="max-w-lg mx-auto p-4 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Mon ANR</h1>
-            <p className="text-muted-foreground">{habitationData.anr.address}</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="icon">
-              <Settings className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleSignOut}>
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
+        <div className="pt-4">
+          <h1 className="text-2xl font-bold">Mon ANR</h1>
+          <p className="text-muted-foreground">{habitationData.anr.address}</p>
         </div>
 
         {/* ANR Card */}
@@ -314,6 +300,8 @@ const ResidentDashboard = () => {
         habitationId={habitationData.id}
         onResidentAdded={fetchHabitationData}
       />
+
+      <BottomNav />
     </div>
   );
 };

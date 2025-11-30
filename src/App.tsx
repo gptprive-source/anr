@@ -10,6 +10,7 @@ import Visitor from "./pages/Visitor";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Account from "./pages/Account";
 import Call from "./pages/Call";
 import MultiHabitat from "./pages/MultiHabitat";
 import TestCall from "./pages/TestCall";
@@ -35,6 +36,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/account"
+              element={
+                <ProtectedRoute>
+                  <Account />
                 </ProtectedRoute>
               }
             />
