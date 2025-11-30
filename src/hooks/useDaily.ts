@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import DailyIframe, { DailyCall, DailyParticipant } from "@daily-co/daily-js";
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
 
 interface UseDailyProps {
   callId: string;
@@ -23,6 +24,22 @@ interface DailyState {
   remoteAudioTrack: MediaStreamTrack | null;
 }
 
+const INITIAL_STATE: DailyState = {
+  isJoined: false,
+  isLoading: false,
+  error: null,
+  isMuted: false,
+  isVideoEnabled: false,
+  participants: [],
+  localVideoTrack: null,
+  remoteVideoTrack: null,
+  localAudioTrack: null,
+  remoteAudioTrack: null,
+};
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
+
 export const useDaily = ({
   callId,
   isResident,
@@ -30,172 +47,176 @@ export const useDaily = ({
   onCallEnded,
   onError,
 }: UseDailyProps) => {
-  const [state, setState] = useState<DailyState>({
-    isJoined: false,
-    isLoading: false,
-    error: null,
-    isMuted: false,
-    isVideoEnabled: false, // Start with video disabled (audio-first)
-    participants: [],
-    localVideoTrack: null,
-    remoteVideoTrack: null,
-    localAudioTrack: null,
-    remoteAudioTrack: null,
-  });
-
+  const [state, setState] = useState<DailyState>(INITIAL_STATE);
   const callRef = useRef<DailyCall | null>(null);
   const roomUrlRef = useRef<string | null>(null);
+  const retryCountRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  // Safe state update (prevents updates after unmount)
+  const safeSetState = useCallback((updater: (prev: DailyState) => DailyState) => {
+    if (mountedRef.current) {
+      setState(updater);
+    }
+  }, []);
 
   // Update tracks from participants
   const updateTracks = useCallback(() => {
     const call = callRef.current;
-    if (!call) return;
+    if (!call || !mountedRef.current) return;
 
-    const participants = call.participants();
-    const local = participants.local;
-    const remoteParticipants = Object.values(participants).filter(p => !p.local);
-    const remote = remoteParticipants[0]; // First remote participant
+    try {
+      const participants = call.participants();
+      const local = participants.local;
+      const remoteParticipants = Object.values(participants).filter(p => !p.local);
+      const remote = remoteParticipants[0];
 
-    setState(prev => ({
-      ...prev,
-      participants: Object.values(participants),
-      localVideoTrack: local?.tracks?.video?.persistentTrack || null,
-      localAudioTrack: local?.tracks?.audio?.persistentTrack || null,
-      remoteVideoTrack: remote?.tracks?.video?.persistentTrack || null,
-      remoteAudioTrack: remote?.tracks?.audio?.persistentTrack || null,
-    }));
-  }, []);
+      safeSetState(prev => ({
+        ...prev,
+        participants: Object.values(participants),
+        localVideoTrack: local?.tracks?.video?.persistentTrack || null,
+        localAudioTrack: local?.tracks?.audio?.persistentTrack || null,
+        remoteVideoTrack: remote?.tracks?.video?.persistentTrack || null,
+        remoteAudioTrack: remote?.tracks?.audio?.persistentTrack || null,
+      }));
+    } catch (err) {
+      logger.error("[useDaily] Error updating tracks:", err);
+    }
+  }, [safeSetState]);
 
-  // Create or get Daily room
+  // Create or get Daily room with retry
   const createRoom = useCallback(async (): Promise<string> => {
-    console.log("[useDaily] Creating/getting room for callId:", callId);
+    logger.log("[useDaily] Creating room for:", callId);
     
-    const { data, error } = await supabase.functions.invoke("daily-room", {
-      body: { callId },
-    });
+    let lastError: Error | null = null;
+    
+    for (let i = 0; i < MAX_RETRIES; i++) {
+      try {
+        const { data, error } = await supabase.functions.invoke("daily-room", {
+          body: { callId },
+        });
 
-    if (error) {
-      console.error("[useDaily] Error creating room:", error);
-      throw new Error("Impossible de créer la salle d'appel");
+        if (error) throw new Error(error.message || "Room creation failed");
+        if (!data?.url) throw new Error("No room URL returned");
+
+        logger.log("[useDaily] Room created:", data.url);
+        return data.url;
+      } catch (err: any) {
+        lastError = err;
+        logger.warn(`[useDaily] Room creation attempt ${i + 1} failed:`, err.message);
+        if (i < MAX_RETRIES - 1) {
+          await new Promise(r => setTimeout(r, RETRY_DELAY));
+        }
+      }
     }
 
-    console.log("[useDaily] Room URL:", data.url);
-    return data.url;
+    throw lastError || new Error("Failed to create room");
   }, [callId]);
+
+  // Setup event listeners
+  const setupEventListeners = useCallback((call: DailyCall) => {
+    call.on("joined-meeting", () => {
+      logger.log("[useDaily] Joined meeting");
+      retryCountRef.current = 0;
+      safeSetState(prev => ({ ...prev, isJoined: true, isLoading: false, error: null }));
+      updateTracks();
+      onCallConnected?.();
+    });
+
+    call.on("left-meeting", () => {
+      logger.log("[useDaily] Left meeting");
+      safeSetState(prev => ({ ...prev, isJoined: false }));
+      onCallEnded?.();
+    });
+
+    call.on("participant-joined", () => updateTracks());
+    call.on("participant-left", (event) => {
+      updateTracks();
+      // Check remaining participants
+      const participants = call.participants();
+      const remoteCount = Object.values(participants).filter(p => !p.local).length;
+      if (remoteCount === 0) {
+        logger.log("[useDaily] No more participants");
+        onCallEnded?.();
+      }
+    });
+
+    call.on("participant-updated", updateTracks);
+    call.on("track-started", updateTracks);
+    call.on("track-stopped", updateTracks);
+
+    call.on("error", (event) => {
+      logger.error("[useDaily] Call error:", event);
+      const errorMsg = "Erreur de connexion";
+      safeSetState(prev => ({ ...prev, error: errorMsg, isLoading: false }));
+      onError?.(errorMsg);
+    });
+
+    // Network quality handling
+    call.on("network-quality-change", (event) => {
+      if (event?.threshold === "very-low") {
+        logger.warn("[useDaily] Poor network quality");
+      }
+    });
+  }, [safeSetState, updateTracks, onCallConnected, onCallEnded, onError]);
 
   // Join the call
   const joinCall = useCallback(async () => {
-    if (callRef.current || state.isLoading) {
-      console.log("[useDaily] Already joining or joined");
-      return;
-    }
+    if (callRef.current || state.isLoading) return;
 
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
-    console.log("[useDaily] Joining call as", isResident ? "resident" : "visitor");
+    safeSetState(prev => ({ ...prev, isLoading: true, error: null }));
+    logger.log("[useDaily] Joining as", isResident ? "resident" : "visitor");
 
     try {
-      // Get or create room
       const roomUrl = await createRoom();
+      if (!mountedRef.current) return;
+      
       roomUrlRef.current = roomUrl;
 
-      // Create Daily call object
       const call = DailyIframe.createCallObject({
         audioSource: true,
-        videoSource: !isResident, // Visitor starts with video, resident without
+        videoSource: !isResident,
       });
       callRef.current = call;
 
-      // Set up event listeners
-      call.on("joined-meeting", () => {
-        console.log("[useDaily] Joined meeting");
-        setState(prev => ({ ...prev, isJoined: true, isLoading: false }));
-        updateTracks();
-        onCallConnected?.();
-      });
+      setupEventListeners(call);
 
-      call.on("left-meeting", () => {
-        console.log("[useDaily] Left meeting");
-        setState(prev => ({ ...prev, isJoined: false }));
-        onCallEnded?.();
-      });
-
-      call.on("participant-joined", (event) => {
-        console.log("[useDaily] Participant joined:", event?.participant?.user_id);
-        updateTracks();
-      });
-
-      call.on("participant-left", (event) => {
-        console.log("[useDaily] Participant left:", event?.participant?.user_id);
-        updateTracks();
-        
-        // If no more remote participants, end call
-        const participants = call.participants();
-        const remoteCount = Object.values(participants).filter(p => !p.local).length;
-        if (remoteCount === 0 && state.isJoined) {
-          console.log("[useDaily] No more participants, ending call");
-          onCallEnded?.();
-        }
-      });
-
-      call.on("participant-updated", () => {
-        updateTracks();
-      });
-
-      call.on("track-started", () => {
-        updateTracks();
-      });
-
-      call.on("track-stopped", () => {
-        updateTracks();
-      });
-
-      call.on("error", (event) => {
-        console.error("[useDaily] Error:", event);
-        const errorMsg = "Erreur de connexion à l'appel";
-        setState(prev => ({ ...prev, error: errorMsg, isLoading: false }));
-        onError?.(errorMsg);
-      });
-
-      // Join the room - visitor with video, resident audio-only initially
       await call.join({
         url: roomUrl,
-        startVideoOff: isResident, // Resident joins without video
+        startVideoOff: isResident,
         startAudioOff: false,
       });
 
-      setState(prev => ({
+      safeSetState(prev => ({
         ...prev,
         isVideoEnabled: !isResident,
         isMuted: false,
       }));
 
     } catch (err: any) {
-      console.error("[useDaily] Error joining call:", err);
+      logger.error("[useDaily] Join error:", err);
       const errorMsg = err.message || "Erreur de connexion";
-      setState(prev => ({ ...prev, error: errorMsg, isLoading: false }));
+      safeSetState(prev => ({ ...prev, error: errorMsg, isLoading: false }));
       onError?.(errorMsg);
     }
-  }, [callId, isResident, createRoom, onCallConnected, onCallEnded, onError, state.isLoading, updateTracks, state.isJoined]);
+  }, [isResident, createRoom, setupEventListeners, safeSetState, onError, state.isLoading]);
 
   // Leave the call
   const leaveCall = useCallback(async () => {
-    console.log("[useDaily] Leaving call");
     const call = callRef.current;
-    if (call) {
+    if (!call) return;
+
+    logger.log("[useDaily] Leaving call");
+    try {
       await call.leave();
       await call.destroy();
+    } catch (err) {
+      logger.error("[useDaily] Leave error:", err);
+    } finally {
       callRef.current = null;
+      safeSetState(() => INITIAL_STATE);
     }
-    setState(prev => ({
-      ...prev,
-      isJoined: false,
-      participants: [],
-      localVideoTrack: null,
-      remoteVideoTrack: null,
-      localAudioTrack: null,
-      remoteAudioTrack: null,
-    }));
-  }, []);
+  }, [safeSetState]);
 
   // Toggle mute
   const toggleMute = useCallback(() => {
@@ -204,9 +225,8 @@ export const useDaily = ({
 
     const newMuted = !state.isMuted;
     call.setLocalAudio(!newMuted);
-    setState(prev => ({ ...prev, isMuted: newMuted }));
-    console.log("[useDaily] Audio:", newMuted ? "muted" : "unmuted");
-  }, [state.isMuted]);
+    safeSetState(prev => ({ ...prev, isMuted: newMuted }));
+  }, [state.isMuted, safeSetState]);
 
   // Toggle video
   const toggleVideo = useCallback(() => {
@@ -215,26 +235,26 @@ export const useDaily = ({
 
     const newEnabled = !state.isVideoEnabled;
     call.setLocalVideo(newEnabled);
-    setState(prev => ({ ...prev, isVideoEnabled: newEnabled }));
-    console.log("[useDaily] Video:", newEnabled ? "enabled" : "disabled");
-  }, [state.isVideoEnabled]);
+    safeSetState(prev => ({ ...prev, isVideoEnabled: newEnabled }));
+  }, [state.isVideoEnabled, safeSetState]);
 
-  // Enable video (for resident to switch to two-way video)
+  // Enable video
   const enableVideo = useCallback(async () => {
     const call = callRef.current;
     if (!call) return;
 
     await call.setLocalVideo(true);
-    setState(prev => ({ ...prev, isVideoEnabled: true }));
-    console.log("[useDaily] Video enabled");
-  }, []);
+    safeSetState(prev => ({ ...prev, isVideoEnabled: true }));
+  }, [safeSetState]);
 
   // Cleanup on unmount
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       const call = callRef.current;
       if (call) {
-        call.leave();
+        call.leave().catch(() => {});
         call.destroy();
         callRef.current = null;
       }
@@ -242,7 +262,6 @@ export const useDaily = ({
   }, []);
 
   return {
-    // State
     isJoined: state.isJoined,
     isLoading: state.isLoading,
     error: state.error,
@@ -253,8 +272,6 @@ export const useDaily = ({
     remoteVideoTrack: state.remoteVideoTrack,
     localAudioTrack: state.localAudioTrack,
     remoteAudioTrack: state.remoteAudioTrack,
-
-    // Actions
     joinCall,
     leaveCall,
     toggleMute,
