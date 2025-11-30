@@ -225,10 +225,12 @@ export const useWebRTC = ({
           await sendSignal("answer", answer);
         }
       } else if (signalType === "answer") {
-        if (pc) {
+        if (pc && pc.signalingState === 'have-local-offer') {
           console.log("[WebRTC] Received answer, setting remote description");
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
           await processPendingCandidates();
+        } else {
+          console.log("[WebRTC] Ignoring answer - wrong state:", pc?.signalingState);
         }
       } else if (signalType === "request-renegotiate") {
         // Visitor receives request to renegotiate (resident added their tracks)
@@ -243,20 +245,21 @@ export const useWebRTC = ({
             }
           });
           
-          console.log("[WebRTC] Visitor creating renegotiation offer");
-          const offer = await pc.createOffer();
+          console.log("[WebRTC] Visitor creating renegotiation offer with ICE restart");
+          // Use ICE restart to ensure fresh connectivity
+          const offer = await pc.createOffer({ iceRestart: true });
           await pc.setLocalDescription(offer);
           await sendSignal("renegotiate-offer", offer);
         }
       } else if (signalType === "renegotiate-offer") {
         // Resident receives renegotiation offer from visitor
-        if (pc && !isInitiator) {
-          console.log("[WebRTC] Resident handling renegotiate-offer");
+        if (pc && !isInitiator && (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer')) {
+          console.log("[WebRTC] Resident handling renegotiate-offer, state:", pc.signalingState);
           
-          // Ensure transceivers are set to sendrecv before setting remote description
+          // Ensure ALL transceivers are set to sendrecv (regardless of current direction)
           pc.getTransceivers().forEach((transceiver) => {
-            if (transceiver.direction === 'recvonly' && transceiver.sender.track) {
-              console.log(`[WebRTC] Setting resident transceiver ${transceiver.mid} to sendrecv`);
+            if (transceiver.sender.track) {
+              console.log(`[WebRTC] Setting transceiver ${transceiver.mid} to sendrecv (was: ${transceiver.direction})`);
               transceiver.direction = 'sendrecv';
             }
           });
@@ -265,12 +268,17 @@ export const useWebRTC = ({
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           await sendSignal("renegotiate-answer", answer);
+        } else {
+          console.log("[WebRTC] Ignoring renegotiate-offer - wrong state:", pc?.signalingState);
         }
       } else if (signalType === "renegotiate-answer") {
         // Visitor receives renegotiation answer
-        if (pc && isInitiator) {
+        if (pc && isInitiator && pc.signalingState === 'have-local-offer') {
           console.log("[WebRTC] Visitor handling renegotiate-answer");
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
+          await processPendingCandidates();
+        } else {
+          console.log("[WebRTC] Ignoring renegotiate-answer - wrong state:", pc?.signalingState);
         }
       } else if (signalType === "ice-candidate") {
         if (pc) {
@@ -494,12 +502,10 @@ export const useWebRTC = ({
           facingMode: "user",
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          frameRate: { ideal: 30 },
         },
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true,
         },
       });
       
@@ -510,12 +516,18 @@ export const useWebRTC = ({
       const videoTrack = stream.getVideoTracks()[0];
       const audioTrack = stream.getAudioTracks()[0];
 
-      // Disable video track initially (resident must enable two-way video explicitly)
+      // Video is disabled initially (resident must enable two-way video explicitly)
+      // Audio is enabled immediately for communication
       if (videoTrack) {
         videoTrack.enabled = false;
-        setIsVideoEnabled(false);
-        console.log("[WebRTC] Video track disabled initially (audio only)");
+        console.log("[WebRTC] Video track disabled initially (audio only answer)");
       }
+      if (audioTrack) {
+        audioTrack.enabled = true;
+        console.log("[WebRTC] Audio track enabled");
+      }
+      setIsVideoEnabled(false);
+      setIsMuted(false);
 
       // Find existing transceivers and replace their tracks + set direction
       const transceivers = pc.getTransceivers();
@@ -543,6 +555,11 @@ export const useWebRTC = ({
         console.log("[WebRTC] Adding new audio track");
         pc.addTrack(audioTrack, stream);
       }
+
+      // Log final transceiver state
+      pc.getTransceivers().forEach((t, i) => {
+        console.log(`[WebRTC] Transceiver ${i}: kind=${t.receiver.track?.kind}, direction=${t.direction}, sender.track=${!!t.sender.track}`);
+      });
 
       // Request visitor to create renegotiation offer (visitor must stay offerer)
       console.log("[WebRTC] Requesting renegotiation from visitor");
