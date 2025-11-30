@@ -1,15 +1,27 @@
 import { Button } from "@/components/ui/button";
-import { Smartphone, QrCode, Shield, LogIn } from "lucide-react";
+import { Smartphone, QrCode, Shield, LogIn, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logoAnr from "@/assets/logo-anr.png";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 const HeroSection = () => {
   const navigate = useNavigate();
+  const { isInstallable, isInstalled, promptInstall } = usePWAInstall();
+
+  const handleInstall = async () => {
+    await promptInstall();
+  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 py-20">
       {/* Login button - top right */}
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
+        {isInstallable && !isInstalled && (
+          <Button variant="outline" size="sm" onClick={handleInstall} className="gap-2">
+            <Download className="w-4 h-4" />
+            Installer
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={() => navigate("/login")} className="gap-2">
           <LogIn className="w-4 h-4" />
           Se connecter
