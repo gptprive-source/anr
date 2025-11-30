@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import InstallPrompt from "@/components/pwa/InstallPrompt";
 import Index from "./pages/Index";
 import Visitor from "./pages/Visitor";
 import Register from "./pages/Register";
@@ -24,6 +25,7 @@ const App = () => (
       <AuthProvider>
         <Toaster />
         <Sonner />
+        <InstallPrompt />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
