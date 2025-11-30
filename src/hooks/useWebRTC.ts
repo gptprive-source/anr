@@ -233,6 +233,16 @@ export const useWebRTC = ({
       } else if (signalType === "request-renegotiate") {
         // Visitor receives request to renegotiate (resident added their tracks)
         if (pc && isInitiator) {
+          console.log("[WebRTC] Visitor preparing for two-way video");
+          
+          // Set all transceivers to sendrecv to receive resident's tracks
+          pc.getTransceivers().forEach((transceiver) => {
+            if (transceiver.direction === 'sendonly') {
+              console.log(`[WebRTC] Setting transceiver ${transceiver.mid} to sendrecv`);
+              transceiver.direction = 'sendrecv';
+            }
+          });
+          
           console.log("[WebRTC] Visitor creating renegotiation offer");
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
