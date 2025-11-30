@@ -252,6 +252,15 @@ export const useWebRTC = ({
         // Resident receives renegotiation offer from visitor
         if (pc && !isInitiator) {
           console.log("[WebRTC] Resident handling renegotiate-offer");
+          
+          // Ensure transceivers are set to sendrecv before setting remote description
+          pc.getTransceivers().forEach((transceiver) => {
+            if (transceiver.direction === 'recvonly' && transceiver.sender.track) {
+              console.log(`[WebRTC] Setting resident transceiver ${transceiver.mid} to sendrecv`);
+              transceiver.direction = 'sendrecv';
+            }
+          });
+          
           await pc.setRemoteDescription(new RTCSessionDescription(signalData));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
@@ -309,16 +318,14 @@ export const useWebRTC = ({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
-          frameRate: { ideal: 30, min: 24 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
         },
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 48000,
-          channelCount: 1,
         },
       });
       
@@ -474,41 +481,68 @@ export const useWebRTC = ({
     console.log("[WebRTC] Resident answering call - enabling local media");
     setHasAnswered(true);
 
+    const pc = peerConnectionRef.current;
+    if (!pc) {
+      console.error("[WebRTC] No peer connection for answering");
+      return;
+    }
+
     try {
-      // Get local media (resident's camera - optional)
+      // Get local media (resident's camera)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
-          frameRate: { ideal: 30, min: 24 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
         },
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 48000,
-          channelCount: 1,
         },
       });
       
       setLocalStream(stream);
+      console.log("[WebRTC] Got resident's local stream");
 
-      // Add tracks to existing connection
-      const pc = peerConnectionRef.current;
-      if (pc) {
-        stream.getTracks().forEach((track) => {
-          console.log(`[WebRTC] Adding local track after answer: ${track.kind}`);
-          pc.addTrack(track, stream);
-        });
+      // Get the tracks from the stream
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
 
-        // Request visitor to create renegotiation offer (visitor must stay offerer)
-        console.log("[WebRTC] Requesting renegotiation from visitor");
-        await sendSignal("request-renegotiate", {});
+      // Find existing transceivers and replace their tracks + set direction
+      const transceivers = pc.getTransceivers();
+      console.log("[WebRTC] Existing transceivers:", transceivers.length);
+
+      let videoTransceiver = transceivers.find(t => t.receiver.track?.kind === 'video');
+      let audioTransceiver = transceivers.find(t => t.receiver.track?.kind === 'audio');
+
+      // Set up video transceiver
+      if (videoTransceiver && videoTrack) {
+        console.log("[WebRTC] Replacing video track on existing transceiver");
+        videoTransceiver.direction = 'sendrecv';
+        await videoTransceiver.sender.replaceTrack(videoTrack);
+      } else if (videoTrack) {
+        console.log("[WebRTC] Adding new video track");
+        pc.addTrack(videoTrack, stream);
       }
+
+      // Set up audio transceiver  
+      if (audioTransceiver && audioTrack) {
+        console.log("[WebRTC] Replacing audio track on existing transceiver");
+        audioTransceiver.direction = 'sendrecv';
+        await audioTransceiver.sender.replaceTrack(audioTrack);
+      } else if (audioTrack) {
+        console.log("[WebRTC] Adding new audio track");
+        pc.addTrack(audioTrack, stream);
+      }
+
+      // Request visitor to create renegotiation offer (visitor must stay offerer)
+      console.log("[WebRTC] Requesting renegotiation from visitor");
+      await sendSignal("request-renegotiate", {});
+      
     } catch (err: any) {
       console.error("[WebRTC] Error enabling local media:", err);
-      // Even if camera fails, the call is still "answered" (audio might work)
       setError("Impossible d'activer la caméra");
     }
   }, [sendSignal]);
