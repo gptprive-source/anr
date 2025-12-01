@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Phone, Mail, Shield, ChevronRight, Loader2 } from "lucide-react";
+import { LogOut, User, Mail, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,8 +9,6 @@ import BottomNav from "@/components/layout/BottomNav";
 interface ProfileData {
   first_name: string | null;
   last_name: string | null;
-  phone_number: string;
-  phone_verified: boolean | null;
 }
 
 const Account = () => {
@@ -29,7 +27,7 @@ const Account = () => {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("first_name, last_name, phone_number, phone_verified")
+        .select("first_name, last_name")
         .eq("id", user?.id)
         .single();
 
@@ -82,21 +80,6 @@ const Account = () => {
 
         {/* Info sections */}
         <div className="space-y-3">
-          <div className="glass-effect rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Phone className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Téléphone</p>
-                <p className="font-medium">{profile?.phone_number || "Non renseigné"}</p>
-              </div>
-            </div>
-            {profile?.phone_verified && (
-              <Shield className="w-5 h-5 text-success" />
-            )}
-          </div>
-
           <div className="glass-effect rounded-xl p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">

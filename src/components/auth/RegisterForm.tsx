@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Phone, User, MapPin, ArrowRight, Loader2, Lock } from "lucide-react";
+import { Mail, User, MapPin, ArrowRight, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,14 +11,12 @@ import { geocodeAddress } from "@/lib/geocoding";
 
 type Step = "credentials" | "profile" | "address" | "success";
 
-const phoneSchema = z.string().regex(/^\+?[0-9]{10,15}$/, "Numéro de téléphone invalide");
 const emailSchema = z.string().email("Email invalide");
 const passwordSchema = z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères");
 
 const RegisterForm = () => {
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -28,24 +26,9 @@ const RegisterForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const formatPhone = (value: string) => {
-    return value.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
-  };
-
   const handleCredentialsSubmit = async () => {
-    const formattedPhone = formatPhone(phone);
-    const phoneValidation = phoneSchema.safeParse(formattedPhone);
     const emailValidation = emailSchema.safeParse(email);
     const passwordValidation = passwordSchema.safeParse(password);
-    
-    if (!phoneValidation.success) {
-      toast({
-        title: "Erreur",
-        description: phoneValidation.error.errors[0].message,
-        variant: "destructive",
-      });
-      return;
-    }
 
     if (!emailValidation.success) {
       toast({
@@ -65,7 +48,6 @@ const RegisterForm = () => {
       return;
     }
 
-    setPhone(formattedPhone);
     setLoading(true);
     
     try {
@@ -73,26 +55,12 @@ const RegisterForm = () => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            phone_number: formattedPhone,
-          },
-        },
       });
 
       if (error) throw error;
 
       if (data.user) {
         setUserId(data.user.id);
-        
-        // Update profile with phone number
-        await supabase
-          .from("profiles")
-          .update({ 
-            phone_number: formattedPhone,
-            phone_verified: false,
-          })
-          .eq("id", data.user.id);
       }
 
       setStep("profile");
@@ -288,13 +256,11 @@ const RegisterForm = () => {
         </div>
 
         <div className="glass-effect rounded-3xl p-8 card-shadow">
-          {step === "credentials" && (
+        {step === "credentials" && (
             <CredentialsStep
               email={email}
-              phone={phone}
               password={password}
               setEmail={setEmail}
-              setPhone={setPhone}
               setPassword={setPassword}
               onSubmit={handleCredentialsSubmit}
               loading={loading}
@@ -338,19 +304,15 @@ const RegisterForm = () => {
 
 const CredentialsStep = ({
   email,
-  phone,
   password,
   setEmail,
-  setPhone,
   setPassword,
   onSubmit,
   loading,
 }: {
   email: string;
-  phone: string;
   password: string;
   setEmail: (v: string) => void;
-  setPhone: (v: string) => void;
   setPassword: (v: string) => void;
   onSubmit: () => void;
   loading: boolean;
@@ -378,22 +340,6 @@ const CredentialsStep = ({
           disabled={loading}
         />
       </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="phone">Téléphone</Label>
-        <div className="relative">
-          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            id="phone"
-            type="tel"
-            placeholder="+33 6 12 34 56 78"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="pl-10"
-            disabled={loading}
-          />
-        </div>
-      </div>
 
       <div className="space-y-2">
         <Label htmlFor="password">Mot de passe</Label>
@@ -415,7 +361,7 @@ const CredentialsStep = ({
         variant="hero"
         className="w-full"
         onClick={onSubmit}
-        disabled={!email.trim() || !phone.trim() || !password.trim() || loading}
+        disabled={!email.trim() || !password.trim() || loading}
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
         {!loading && <ArrowRight className="w-4 h-4" />}
