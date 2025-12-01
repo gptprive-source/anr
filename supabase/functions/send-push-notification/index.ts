@@ -13,54 +13,46 @@ interface PushPayload {
   data?: Record<string, string>;
 }
 
-interface ServiceAccount {
-  type: string;
-  project_id: string;
-  private_key_id: string;
-  private_key: string;
-  client_email: string;
-  client_id: string;
-  auth_uri: string;
-  token_uri: string;
-}
+// VAPID keys for Web Push
+const VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
+const VAPID_PRIVATE_KEY = "Dl8fLo1xrWxENv-iYBPX7wCVw1NZOHaCKVF2YwPQxQo";
 
-// Generate JWT for Google OAuth2
-async function createJWT(serviceAccount: ServiceAccount): Promise<string> {
-  const header = { alg: "RS256", typ: "JWT" };
+// Create JWT for Web Push authentication
+async function createVapidJWT(endpoint: string): Promise<string> {
+  const header = { alg: "ES256", typ: "JWT" };
+  const audience = new URL(endpoint).origin;
   const now = Math.floor(Date.now() / 1000);
   const payload = {
-    iss: serviceAccount.client_email,
-    sub: serviceAccount.client_email,
-    aud: "https://oauth2.googleapis.com/token",
-    iat: now,
-    exp: now + 3600,
-    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: audience,
+    exp: now + 86400,
+    sub: "mailto:contact@anr.app",
   };
 
   const encoder = new TextEncoder();
   const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 
-  const signatureInput = encoder.encode(`${headerB64}.${payloadB64}`);
+  // Decode VAPID private key
+  const padding = "=".repeat((4 - (VAPID_PRIVATE_KEY.length % 4)) % 4);
+  const base64 = (VAPID_PRIVATE_KEY + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawKey = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 
-  // Import private key
-  const pemHeader = "-----BEGIN PRIVATE KEY-----";
-  const pemFooter = "-----END PRIVATE KEY-----";
-  const pemContents = serviceAccount.private_key
-    .replace(pemHeader, "")
-    .replace(pemFooter, "")
-    .replace(/\n/g, "");
-  const binaryKey = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
-
+  // Import as ECDSA P-256 key
   const cryptoKey = await crypto.subtle.importKey(
-    "pkcs8",
-    binaryKey,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    "raw",
+    rawKey,
+    { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"]
   );
 
-  const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", cryptoKey, signatureInput);
+  const signatureInput = encoder.encode(`${headerB64}.${payloadB64}`);
+  const signature = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    cryptoKey,
+    signatureInput
+  );
+
   const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
     .replace(/=/g, "")
     .replace(/\+/g, "-")
@@ -69,21 +61,32 @@ async function createJWT(serviceAccount: ServiceAccount): Promise<string> {
   return `${headerB64}.${payloadB64}.${signatureB64}`;
 }
 
-// Get OAuth2 access token
-async function getAccessToken(serviceAccount: ServiceAccount): Promise<string> {
-  const jwt = await createJWT(serviceAccount);
+// Send Web Push notification
+async function sendWebPush(subscription: any, payload: any): Promise<boolean> {
+  try {
+    const endpoint = subscription.endpoint;
+    const jwt = await createVapidJWT(endpoint);
 
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
-  });
+    const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(`OAuth2 error: ${JSON.stringify(data)}`);
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Authorization": `vapid t=${jwt}, k=${VAPID_PUBLIC_KEY}`,
+        "Content-Type": "application/octet-stream",
+        "Content-Encoding": "aes128gcm",
+        "TTL": "86400",
+        "Urgency": "high",
+      },
+      body: payloadBytes,
+    });
+
+    console.log("[WebPush] Response status:", response.status);
+    return response.ok || response.status === 201;
+  } catch (error) {
+    console.error("[WebPush] Send error:", error);
+    return false;
   }
-  return data.access_token;
 }
 
 serve(async (req) => {
@@ -94,7 +97,6 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const fcmServiceAccountJson = Deno.env.get("FCM_SERVICE_ACCOUNT");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
@@ -132,118 +134,44 @@ serve(async (req) => {
 
     console.log(`[Push] Found ${tokens.length} tokens`);
 
-    // Check if FCM service account is configured
-    if (!fcmServiceAccountJson) {
-      console.log("[Push] FCM_SERVICE_ACCOUNT not configured - notifications logged only");
-      console.log("[Push] Notification:", {
-        title: payload.title,
-        body: payload.body,
-        data: payload.data,
-        platforms: tokens.map(t => t.platform)
-      });
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "FCM not configured - using Realtime only",
-          tokens_found: tokens.length
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const pushPayload = {
+      title: payload.title,
+      body: payload.body,
+      data: payload.data,
+    };
 
-    // Parse service account and get access token
-    const serviceAccount: ServiceAccount = JSON.parse(fcmServiceAccountJson);
-    const accessToken = await getAccessToken(serviceAccount);
-    console.log("[Push] Got OAuth2 access token");
-
-    // FCM V1 API endpoint
-    const fcmEndpoint = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
-
-    // Send to FCM for each token
-    const fcmResults = [];
+    // Send notifications
+    const results = [];
     for (const tokenData of tokens) {
       try {
         console.log(`[Push] Sending to ${tokenData.platform} device...`);
         
-        const fcmPayload = {
-          message: {
-            token: tokenData.token,
-            notification: {
-              title: payload.title,
-              body: payload.body,
-            },
-            data: {
-              ...payload.data,
-              click_action: "OPEN_CALL",
-            },
-            android: {
-              priority: "high",
-              notification: {
-                channel_id: "incoming_calls",
-                sound: "default",
-                default_vibrate_timings: true,
-                default_light_settings: true,
-              },
-            },
-            apns: {
-              payload: {
-                aps: {
-                  sound: "default",
-                  "content-available": 1,
-                },
-              },
-            },
-          },
-        };
-
-        const fcmResponse = await fetch(fcmEndpoint, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(fcmPayload),
-        });
-
-        const fcmResult = await fcmResponse.json();
-        console.log("[Push] FCM response:", JSON.stringify(fcmResult));
-        
-        const success = fcmResponse.ok;
-        fcmResults.push({
-          user_id: tokenData.user_id,
-          platform: tokenData.platform,
-          success,
-        });
-
-        // If token is invalid, remove it
-        if (!success && fcmResult.error?.details?.some((d: any) => 
-          d.errorCode === "UNREGISTERED" || d.errorCode === "INVALID_ARGUMENT"
-        )) {
-          console.log("[Push] Removing invalid token");
-          await supabase
-            .from("push_tokens")
-            .delete()
-            .eq("token", tokenData.token);
+        if (tokenData.platform === "web") {
+          // Web Push
+          const subscription = JSON.parse(tokenData.token);
+          const success = await sendWebPush(subscription, pushPayload);
+          results.push({ user_id: tokenData.user_id, platform: "web", success });
+          
+          if (!success) {
+            // Remove invalid subscription
+            await supabase.from("push_tokens").delete().eq("token", tokenData.token);
+          }
+        } else {
+          // Native FCM - would need FCM service account for native apps
+          console.log("[Push] Native FCM not configured for:", tokenData.platform);
+          results.push({ user_id: tokenData.user_id, platform: tokenData.platform, success: false });
         }
-      } catch (fcmError) {
-        console.error("[Push] FCM error:", fcmError);
-        fcmResults.push({
-          user_id: tokenData.user_id,
-          platform: tokenData.platform,
-          success: false,
-        });
+      } catch (error) {
+        console.error("[Push] Error:", error);
+        results.push({ user_id: tokenData.user_id, platform: tokenData.platform, success: false });
       }
     }
 
-    const successCount = fcmResults.filter(r => r.success).length;
+    const successCount = results.filter(r => r.success).length;
     console.log(`[Push] Sent ${successCount}/${tokens.length} notifications`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        sent: successCount,
-        total: tokens.length,
-      }),
+      JSON.stringify({ success: true, sent: successCount, total: tokens.length }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
