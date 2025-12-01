@@ -21,6 +21,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const fcmServerKey = Deno.env.get("FCM_SERVER_KEY");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
@@ -42,37 +43,116 @@ serve(async (req) => {
 
     if (tokensError) {
       console.error("[Push] Error fetching tokens:", tokensError);
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch tokens" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    console.log(`[Push] Found ${tokens?.length || 0} registered tokens`);
+    if (!tokens || tokens.length === 0) {
+      console.log("[Push] No tokens found for users");
+      return new Response(
+        JSON.stringify({ message: "No tokens found", sent: 0 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // With Supabase-only solution:
-    // 1. The call_participants INSERT triggers Supabase Realtime
-    // 2. IncomingCallListener subscribes to this and shows the call UI
-    // 3. The ringtone + vibration are handled by the app
-    // 4. This edge function logs the notification for debugging
+    console.log(`[Push] Found ${tokens.length} tokens`);
 
-    console.log("[Push] Notification:", {
-      title: payload.title,
-      body: payload.body,
-      data: payload.data,
-      platforms: tokens?.map(t => t.platform) || []
-    });
+    // Check if FCM is configured
+    if (!fcmServerKey) {
+      console.log("[Push] FCM_SERVER_KEY not configured - notifications logged only");
+      console.log("[Push] Notification:", {
+        title: payload.title,
+        body: payload.body,
+        data: payload.data,
+        platforms: tokens.map(t => t.platform)
+      });
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "FCM not configured - using Realtime only",
+          tokens_found: tokens.length
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Send to FCM for each token
+    const fcmResults = [];
+    for (const tokenData of tokens) {
+      try {
+        console.log(`[Push] Sending to ${tokenData.platform} device...`);
+        
+        const fcmPayload = {
+          to: tokenData.token,
+          notification: {
+            title: payload.title,
+            body: payload.body,
+            sound: "default",
+            android_channel_id: "incoming_calls",
+            content_available: true,
+          },
+          data: {
+            ...payload.data,
+            click_action: "OPEN_CALL",
+          },
+          priority: "high",
+          content_available: true,
+        };
+
+        const fcmResponse = await fetch("https://fcm.googleapis.com/fcm/send", {
+          method: "POST",
+          headers: {
+            "Authorization": `key=${fcmServerKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(fcmPayload),
+        });
+
+        const fcmResult = await fcmResponse.json();
+        console.log("[Push] FCM response:", JSON.stringify(fcmResult));
+        
+        fcmResults.push({
+          user_id: tokenData.user_id,
+          platform: tokenData.platform,
+          success: fcmResult.success === 1,
+        });
+
+        // If token is invalid, remove it
+        if (fcmResult.failure === 1 && fcmResult.results?.[0]?.error === "InvalidRegistration") {
+          console.log("[Push] Removing invalid token");
+          await supabase
+            .from("push_tokens")
+            .delete()
+            .eq("token", tokenData.token);
+        }
+      } catch (fcmError) {
+        console.error("[Push] FCM error:", fcmError);
+        fcmResults.push({
+          user_id: tokenData.user_id,
+          platform: tokenData.platform,
+          success: false,
+        });
+      }
+    }
+
+    const successCount = fcmResults.filter(r => r.success).length;
+    console.log(`[Push] Sent ${successCount}/${tokens.length} notifications`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Notification sent via Supabase Realtime",
-        tokens_found: tokens?.length || 0
+        sent: successCount,
+        total: tokens.length,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
     console.error("[Push] Error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
