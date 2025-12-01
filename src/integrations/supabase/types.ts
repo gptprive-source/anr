@@ -296,6 +296,50 @@ export type Database = {
         }
         Relationships: []
       }
+      resident_invitations: {
+        Row: {
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          habitation_id: string
+          id: string
+          invited_by: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          email: string
+          expires_at: string
+          habitation_id: string
+          id?: string
+          invited_by: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          habitation_id?: string
+          id?: string
+          invited_by?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resident_invitations_habitation_id_fkey"
+            columns: ["habitation_id"]
+            isOneToOne: false
+            referencedRelation: "habitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       residents: {
         Row: {
           created_at: string | null
