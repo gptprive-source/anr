@@ -61,6 +61,25 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
       isPollingRef.current = true;
 
       try {
+        // First check if user is muted
+        const { data: residentData, error: residentError } = await supabase
+          .from("residents")
+          .select("is_muted, habitation_id")
+          .eq("user_id", user.id)
+          .eq("status", "verified")
+          .maybeSingle();
+
+        if (residentError) {
+          console.error("[IncomingCallContext] ❌ Resident query error:", residentError);
+          return;
+        }
+
+        // Skip if user is muted
+        if (residentData?.is_muted) {
+          console.log("[IncomingCallContext] 🔇 User is muted, skipping call notifications");
+          return;
+        }
+
         const { data, error } = await supabase
           .from("call_participants")
           .select("id, call_id, habitation_id")
