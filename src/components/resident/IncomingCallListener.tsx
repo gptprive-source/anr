@@ -265,46 +265,42 @@ const IncomingCallListener = () => {
   if (!incomingCall) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center p-6">
+    <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col items-center justify-center p-6">
       {/* Pulsing rings effect */}
       <div className="relative mb-8">
-        <div className="absolute inset-0 w-40 h-40 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: '1.5s' }} />
-        <div className="absolute inset-0 w-40 h-40 rounded-full bg-primary/10 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
-        <div className="relative w-40 h-40 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-          <User className="w-20 h-20 text-primary-foreground" />
+        <div className="absolute inset-0 w-40 h-40 rounded-full bg-green-500/30 animate-ping" style={{ animationDuration: '1.5s' }} />
+        <div className="absolute inset-0 w-40 h-40 rounded-full bg-green-500/20 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
+        <div className="relative w-40 h-40 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-2xl shadow-green-500/50">
+          <Phone className="w-16 h-16 text-white animate-bounce" />
         </div>
       </div>
 
-      <h2 className="text-3xl font-bold mb-2 text-foreground">Appel entrant</h2>
-      <p className="text-xl text-foreground mb-1">{incomingCall.habitationName}</p>
-      <p className="text-muted-foreground mb-12">{incomingCall.address}</p>
+      <h2 className="text-3xl font-bold mb-2 text-white">📞 Appel entrant</h2>
+      <p className="text-xl text-white mb-1">{incomingCall.habitationName}</p>
+      <p className="text-slate-300 mb-12">{incomingCall.address}</p>
 
       {error && (
-        <p className="text-destructive text-sm mb-4">{error}</p>
+        <p className="text-red-400 text-sm mb-4">{error}</p>
       )}
 
-      <div className="flex gap-12">
-        <div className="flex flex-col items-center gap-2">
+      <div className="flex gap-16">
+        <div className="flex flex-col items-center gap-3">
           <Button 
-            variant="hangup" 
-            size="icon-xl" 
             onClick={handleDecline}
-            className="w-20 h-20"
+            className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-xl shadow-red-500/50"
           >
-            <PhoneOff className="w-8 h-8" />
+            <PhoneOff className="w-10 h-10" />
           </Button>
-          <span className="text-sm text-muted-foreground">Refuser</span>
+          <span className="text-sm text-slate-300">Refuser</span>
         </div>
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-3">
           <Button 
-            variant="call" 
-            size="icon-xl" 
             onClick={handleAnswer}
-            className="w-20 h-20 animate-pulse"
+            className="w-20 h-20 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-xl shadow-green-500/50 animate-pulse"
           >
-            <Phone className="w-8 h-8" />
+            <Phone className="w-10 h-10" />
           </Button>
-          <span className="text-sm text-muted-foreground">Répondre</span>
+          <span className="text-sm text-slate-300">Répondre</span>
         </div>
       </div>
     </div>

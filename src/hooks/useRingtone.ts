@@ -59,25 +59,35 @@ export const useRingtone = () => {
     playBurst(currentTime + 0.5);
   }, [createRingtone]);
 
-  const startRinging = useCallback(() => {
+  const startRinging = useCallback(async () => {
     if (isPlayingRef.current) return;
     
     console.log("[Ringtone] Starting ringtone");
     isPlayingRef.current = true;
     
+    // Create fresh audio context if needed
+    if (!audioContextRef.current || audioContextRef.current.state === "closed") {
+      audioContextRef.current = new AudioContext();
+    }
+    
     // Resume audio context if suspended (browser autoplay policy)
-    if (audioContextRef.current?.state === "suspended") {
-      audioContextRef.current.resume();
+    if (audioContextRef.current.state === "suspended") {
+      try {
+        await audioContextRef.current.resume();
+        console.log("[Ringtone] AudioContext resumed");
+      } catch (e) {
+        console.error("[Ringtone] Failed to resume AudioContext:", e);
+      }
     }
     
     // Play immediately
     playRing();
     
-    // Start vibration pattern (1s vibrate, 1.5s pause)
+    // Start vibration pattern (1s vibrate, 1.5s pause) - continuous
     const vibrateLoop = () => {
       if (isPlayingRef.current && navigator.vibrate) {
-        navigator.vibrate([1000, 1500]);
-        setTimeout(vibrateLoop, 2500);
+        navigator.vibrate([500, 200, 500, 200, 500]);
+        setTimeout(vibrateLoop, 2000);
       }
     };
     vibrateLoop();
