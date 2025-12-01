@@ -1,40 +1,24 @@
-import { createContext, useContext, useState, useRef, useEffect, ReactNode, useCallback } from "react";
+import { createContext, useContext, useRef, useEffect, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-
-interface IncomingCall {
-  participantId: string;
-  callId: string;
-  habitationId: string;
-  habitationName: string;
-  address: string;
-}
+import { showIncomingCall, hideIncomingCall, isCallScreenVisible } from "@/lib/incomingCallRenderer";
 
 interface IncomingCallContextType {
-  incomingCall: IncomingCall | null;
   clearIncomingCall: () => void;
 }
 
 const IncomingCallContext = createContext<IncomingCallContextType>({
-  incomingCall: null,
   clearIncomingCall: () => {},
 });
 
 export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
-  const incomingCallRef = useRef<IncomingCall | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
   const isPollingRef = useRef(false);
+  const currentCallIdRef = useRef<string | null>(null);
 
-  console.log("[IncomingCallContext] 🔄 Provider render, userId:", user?.id || "NO_USER", "hasCall:", !!incomingCall);
-
-  // Sync ref with state
-  useEffect(() => {
-    incomingCallRef.current = incomingCall;
-    console.log("[IncomingCallContext] 📞 Call state updated:", incomingCall?.callId || "null");
-  }, [incomingCall]);
+  console.log("[IncomingCallContext] 🔄 Provider render, userId:", user?.id || "NO_USER");
 
   // Cleanup on unmount
   useEffect(() => {
@@ -44,6 +28,7 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      hideIncomingCall();
     };
   }, []);
 
@@ -57,9 +42,9 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     console.log("[IncomingCallContext] 🚀 Starting polling for userId:", user.id);
 
     const checkForIncomingCalls = async () => {
-      // Skip if already have a call or already polling
-      if (incomingCallRef.current) {
-        console.log("[IncomingCallContext] ⏭️ Already have call, skipping poll");
+      // Skip if already have a call displayed or already polling
+      if (isCallScreenVisible()) {
+        console.log("[IncomingCallContext] ⏭️ Call screen visible, skipping poll");
         return;
       }
 
@@ -89,11 +74,17 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
-        if (!mountedRef.current || incomingCallRef.current) return;
+        if (!mountedRef.current || isCallScreenVisible()) return;
 
         if (data && data.length > 0) {
           const p = data[0];
           console.log("[IncomingCallContext] 🔔 Ringing call found:", p.call_id);
+
+          // Avoid showing same call twice
+          if (currentCallIdRef.current === p.call_id) {
+            console.log("[IncomingCallContext] ⏭️ Same call, skipping");
+            return;
+          }
 
           const { data: hab, error: habError } = await supabase
             .from("habitations")
@@ -106,16 +97,16 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
             return;
           }
 
-          if (hab && mountedRef.current && !incomingCallRef.current) {
-            const newCall = {
+          if (hab && mountedRef.current && !isCallScreenVisible()) {
+            currentCallIdRef.current = p.call_id;
+            
+            // Use vanilla JS renderer instead of React state
+            showIncomingCall({
               participantId: p.id,
               callId: p.call_id,
-              habitationId: p.habitation_id,
               habitationName: hab.name,
               address: (hab.anrs as any)?.address || "",
-            };
-            console.log("[IncomingCallContext] ✅ Setting incoming call:", newCall.callId);
-            setIncomingCall(newCall);
+            });
           }
         }
       } catch (err) {
@@ -142,12 +133,12 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
 
   const clearIncomingCall = useCallback(() => {
     console.log("[IncomingCallContext] 🧹 Clearing incoming call");
-    setIncomingCall(null);
-    incomingCallRef.current = null;
+    hideIncomingCall();
+    currentCallIdRef.current = null;
   }, []);
 
   return (
-    <IncomingCallContext.Provider value={{ incomingCall, clearIncomingCall }}>
+    <IncomingCallContext.Provider value={{ clearIncomingCall }}>
       {children}
     </IncomingCallContext.Provider>
   );
