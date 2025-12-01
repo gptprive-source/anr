@@ -21,7 +21,10 @@ export const useWebPush = () => {
   const registeredRef = useRef(false);
 
   const saveSubscription = useCallback(async (subscription: PushSubscription) => {
-    if (!user) return;
+    if (!user) {
+      console.log("[WebPush] No user, cannot save subscription");
+      return;
+    }
 
     console.log("[WebPush] Saving subscription for user:", user.id);
     
@@ -29,11 +32,15 @@ export const useWebPush = () => {
     const tokenString = JSON.stringify(subscriptionJSON);
     
     // Delete existing web tokens for this user first
-    await supabase
+    const { error: deleteError } = await supabase
       .from("push_tokens")
       .delete()
       .eq("user_id", user.id)
       .eq("platform", "web");
+    
+    if (deleteError) {
+      console.error("[WebPush] Error deleting old tokens:", deleteError);
+    }
     
     // Insert the new token
     const { error } = await supabase
@@ -47,58 +54,99 @@ export const useWebPush = () => {
     if (error) {
       console.error("[WebPush] Error saving subscription:", error);
     } else {
-      console.log("[WebPush] Subscription saved successfully");
+      console.log("[WebPush] ✅ Subscription saved successfully");
     }
   }, [user]);
 
   const registerWebPush = useCallback(async () => {
-    if (registeredRef.current) return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      console.log("[WebPush] Push not supported");
+    console.log("[WebPush] registerWebPush called, already registered:", registeredRef.current);
+    
+    if (registeredRef.current) {
+      console.log("[WebPush] Already registered, skipping");
+      return;
+    }
+    
+    if (!("serviceWorker" in navigator)) {
+      console.log("[WebPush] ❌ Service Worker not supported");
+      return;
+    }
+    
+    if (!("PushManager" in window)) {
+      console.log("[WebPush] ❌ PushManager not supported");
       return;
     }
 
-    console.log("[WebPush] Registering for web push...");
+    console.log("[WebPush] 🚀 Registering for web push...");
 
     try {
+      // First register the service worker if not already
+      const existingRegistration = await navigator.serviceWorker.getRegistration("/sw-push.js");
+      let registration = existingRegistration;
+      
+      if (!registration) {
+        console.log("[WebPush] Registering service worker...");
+        registration = await navigator.serviceWorker.register("/sw-push.js");
+        console.log("[WebPush] Service worker registered");
+      } else {
+        console.log("[WebPush] Service worker already registered");
+      }
+      
       // Wait for service worker to be ready
-      const registration = await navigator.serviceWorker.ready;
+      await navigator.serviceWorker.ready;
       console.log("[WebPush] Service worker ready");
 
       // Check existing subscription
       let subscription = await registration.pushManager.getSubscription();
+      console.log("[WebPush] Existing subscription:", subscription ? "found" : "none");
       
       if (!subscription) {
+        console.log("[WebPush] Creating new subscription...");
         // Subscribe to push
+        const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: VAPID_PUBLIC_KEY,
+          applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
         });
-        console.log("[WebPush] New subscription created");
-      } else {
-        console.log("[WebPush] Existing subscription found");
+        console.log("[WebPush] ✅ New subscription created:", subscription.endpoint);
       }
 
       await saveSubscription(subscription);
       registeredRef.current = true;
+      console.log("[WebPush] ✅ Registration complete");
 
     } catch (error) {
-      console.error("[WebPush] Registration error:", error);
+      console.error("[WebPush] ❌ Registration error:", error);
     }
   }, [saveSubscription]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.log("[WebPush] No user, skipping registration");
+      return;
+    }
 
+    console.log("[WebPush] User logged in, checking notification permission...");
+    
     // Request notification permission first
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission().then((permission) => {
-        if (permission === "granted") {
-          registerWebPush();
-        }
-      });
-    } else if (Notification.permission === "granted") {
-      registerWebPush();
+    if ("Notification" in window) {
+      const currentPermission = Notification.permission;
+      console.log("[WebPush] Current notification permission:", currentPermission);
+      
+      if (currentPermission === "default") {
+        console.log("[WebPush] Requesting permission...");
+        Notification.requestPermission().then((permission) => {
+          console.log("[WebPush] Permission result:", permission);
+          if (permission === "granted") {
+            registerWebPush();
+          }
+        });
+      } else if (currentPermission === "granted") {
+        registerWebPush();
+      } else {
+        console.log("[WebPush] ❌ Notification permission denied");
+      }
+    } else {
+      console.log("[WebPush] ❌ Notifications not supported");
     }
   }, [user, registerWebPush]);
 
