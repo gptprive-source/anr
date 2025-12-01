@@ -10,9 +10,12 @@ import { useWebPush } from "@/hooks/useWebPush";
  * Also handles push notification registration for native apps and PWAs.
  */
 const GlobalIncomingCallListener = () => {
+  console.log("[GlobalIncomingCallListener] 🎬 Component function called");
+  
   const { user } = useAuth();
   
   console.log("[GlobalIncomingCallListener] 🔄 Rendering, user:", user?.id || "NOT_AUTHENTICATED");
+  console.log("[GlobalIncomingCallListener] 🔄 User object:", JSON.stringify(user));
   
   // Register for push notifications (native platforms)
   usePushNotifications();

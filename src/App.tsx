@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallListener";
+import DebugIndicator from "@/components/debug/DebugIndicator";
 import { useAudioUnlock } from "@/hooks/useAudioUnlock";
 import Index from "./pages/Index";
 import Visitor from "./pages/Visitor";
@@ -24,8 +25,11 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   useAudioUnlock();
   
+  console.log("[APP] 🚀 AppContent rendering");
+  
   return (
     <>
+      <DebugIndicator />
       <Toaster />
       <Sonner />
       <InstallPrompt />

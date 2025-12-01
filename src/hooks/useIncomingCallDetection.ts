@@ -10,6 +10,8 @@ interface IncomingCall {
 }
 
 export const useIncomingCallDetection = (userId: string | undefined) => {
+  console.log("[IncomingCallDetection] 🎬 Hook function called, userId:", userId);
+  
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const mountedRef = useRef(true);
   const incomingCallRef = useRef<IncomingCall | null>(null);
@@ -18,6 +20,7 @@ export const useIncomingCallDetection = (userId: string | undefined) => {
   useEffect(() => {
     mountedRef.current = true;
     console.log("[IncomingCallDetection] 🟢 Hook mounted, userId:", userId);
+    console.log("[IncomingCallDetection] 🔍 Starting initial check...");
     return () => {
       mountedRef.current = false;
       console.log("[IncomingCallDetection] 🔴 Hook unmounted");
