@@ -348,9 +348,8 @@ const Invitation = () => {
                   <Input
                     id="firstName"
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="pl-10"
-                    disabled={submitting}
+                    disabled
+                    className="pl-10 bg-muted"
                   />
                 </div>
               </div>
@@ -359,8 +358,8 @@ const Invitation = () => {
                 <Input
                   id="lastName"
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  disabled={submitting}
+                  disabled
+                  className="bg-muted"
                 />
               </div>
             </div>
