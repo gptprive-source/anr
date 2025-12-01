@@ -89,7 +89,7 @@ const FeatureCard = ({
   title: string;
   description: string;
 }) => <div className="glass-effect rounded-2xl p-6 card-shadow hover:border-primary/30 transition-colors">
-    <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary mb-4 flex-col flex items-center justify-center pl-0 mx-[100px]">
+    <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary mb-4 flex-col flex items-center justify-center pl-0 mx-[123px]">
       {icon}
     </div>
     <h3 className="text-lg font-semibold mb-2">{title}</h3>
