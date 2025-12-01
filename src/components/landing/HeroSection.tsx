@@ -91,8 +91,8 @@ const HeroSection = () => {
 };
 
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
-  <div className="glass-effect rounded-2xl p-6 card-shadow hover:border-primary/30 transition-colors">
-    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+  <div className="glass-effect rounded-2xl p-6 card-shadow hover:border-primary/30 transition-colors text-center">
+    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4 mx-auto">
       {icon}
     </div>
     <h3 className="text-lg font-semibold mb-2">{title}</h3>
