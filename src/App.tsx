@@ -4,10 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { IncomingCallProvider } from "@/contexts/IncomingCallContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallListener";
-import DebugIndicator from "@/components/debug/DebugIndicator";
 import { useAudioUnlock } from "@/hooks/useAudioUnlock";
 import Index from "./pages/Index";
 import Visitor from "./pages/Visitor";
@@ -29,7 +29,6 @@ const AppContent = () => {
   
   return (
     <>
-      <DebugIndicator />
       <Toaster />
       <Sonner />
       <InstallPrompt />
@@ -70,7 +69,9 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <AppContent />
+        <IncomingCallProvider>
+          <AppContent />
+        </IncomingCallProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
