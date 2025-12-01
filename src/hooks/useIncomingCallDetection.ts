@@ -47,6 +47,7 @@ export const useIncomingCallDetection = (userId: string | undefined) => {
     }
 
     console.log("[IncomingCallDetection] 🔄 Starting polling for userId:", userId);
+    let intervalId: NodeJS.Timeout | null = null;
 
     const checkForIncomingCalls = async () => {
       pollCountRef.current++;
@@ -60,7 +61,11 @@ export const useIncomingCallDetection = (userId: string | undefined) => {
       }
       
       if (incomingCallRef.current) {
-        console.log(`[IncomingCallDetection] ⛔ Poll #${pollNum} - Already has call, skipping`);
+        console.log(`[IncomingCallDetection] ⛔ Poll #${pollNum} - Already has call, STOPPING POLLING`);
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
         return;
       }
 
@@ -146,12 +151,14 @@ export const useIncomingCallDetection = (userId: string | undefined) => {
     };
 
     checkForIncomingCalls();
-    const interval = setInterval(checkForIncomingCalls, 2000);
+    intervalId = setInterval(checkForIncomingCalls, 2000);
     console.log("[IncomingCallDetection] ⏰ Polling interval started (2s)");
 
     return () => {
       console.log("[IncomingCallDetection] 🛑 Stopping polling interval");
-      clearInterval(interval);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
   }, [userId]);
 
