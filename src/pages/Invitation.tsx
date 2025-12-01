@@ -106,14 +106,22 @@ const Invitation = () => {
         return;
       }
 
+      console.log("[Invitation] Data received:", JSON.stringify(data, null, 2));
+      console.log("[Invitation] first_name:", data.first_name);
+      console.log("[Invitation] last_name:", data.last_name);
+      
       setInvitation({
         ...data,
         habitation: data.habitations as any,
       });
       // Pre-fill form fields from invitation
-      setEmail(data.email);
+      setEmail(data.email || "");
       setFirstName(data.first_name || "");
       setLastName(data.last_name || "");
+      
+      console.log("[Invitation] Setting firstName to:", data.first_name || "");
+      console.log("[Invitation] Setting lastName to:", data.last_name || "");
+      
       setStep("register");
     } catch (err: any) {
       console.error("[Invitation] Error:", err);
