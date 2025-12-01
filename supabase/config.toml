@@ -49,3 +49,6 @@ verify_jwt = false
 
 [functions.accept-invitation]
 verify_jwt = false
+
+[functions.cleanup-stale-calls]
+verify_jwt = false
