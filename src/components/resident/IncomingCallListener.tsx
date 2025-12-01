@@ -1,23 +1,17 @@
-import { useAuth } from "@/hooks/useAuth";
-import { useIncomingCallDetection } from "@/hooks/useIncomingCallDetection";
+import { useIncomingCall } from "@/contexts/IncomingCallContext";
 import IncomingCallScreen from "@/components/call/IncomingCallScreen";
 import IncomingCallPortal from "@/components/call/IncomingCallPortal";
 
 const IncomingCallListener = () => {
-  const { user } = useAuth();
-  
-  console.log("[IncomingCallListener] 🔄 Component rendering, userId:", user?.id || "NO_USER");
-  
-  const { incomingCall, clearIncomingCall } = useIncomingCallDetection(user?.id);
+  const { incomingCall, clearIncomingCall } = useIncomingCall();
 
-  console.log("[IncomingCallListener] 📞 IncomingCall state:", incomingCall ? `CALL_PRESENT (${incomingCall.callId})` : "NO_CALL");
+  console.log("[IncomingCallListener] 📞 Render, hasCall:", !!incomingCall);
 
   if (!incomingCall) {
-    console.log("[IncomingCallListener] ⛔ No incoming call, rendering nothing");
     return null;
   }
 
-  console.log("[IncomingCallListener] ✅ Rendering IncomingCallScreen via Portal for call:", incomingCall.callId);
+  console.log("[IncomingCallListener] ✅ Rendering IncomingCallScreen for:", incomingCall.callId);
   return (
     <IncomingCallPortal>
       <IncomingCallScreen
