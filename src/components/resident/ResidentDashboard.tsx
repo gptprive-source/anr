@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus, Phone } from "lucide-react";
+import { Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus, Phone, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import AddResidentDialog from "./AddResidentDialog";
+import InviteResidentDialog from "./InviteResidentDialog";
 import BottomNav from "@/components/layout/BottomNav";
 import logoAnr from "@/assets/logo-anr.png";
 
@@ -38,7 +38,8 @@ const ResidentDashboard = () => {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [habitationData, setHabitationData] = useState<HabitationData | null>(null);
-  const [addResidentOpen, setAddResidentOpen] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -70,6 +71,8 @@ const ResidentDashboard = () => {
         navigate("/register");
         return;
       }
+
+      setIsOwner(residentData.is_owner || false);
 
       // Get habitation with ANR and all residents
       const { data: habitation, error: habError } = await supabase
@@ -142,6 +145,34 @@ const ResidentDashboard = () => {
       navigator.clipboard.writeText(habitationData.anr.code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleDeleteResident = async (residentId: string, residentName: string) => {
+    if (!confirm(`Voulez-vous vraiment retirer ${residentName} de l'habitation ?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("residents")
+        .delete()
+        .eq("id", residentId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Résident retiré",
+        description: `${residentName} a été retiré de l'habitation`,
+      });
+      fetchHabitationData();
+    } catch (error: any) {
+      console.error("[Dashboard] Delete resident error:", error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de retirer le résident",
+        variant: "destructive",
+      });
     }
   };
 
@@ -300,16 +331,18 @@ const ResidentDashboard = () => {
         {/* Residents list */}
         <div className="glass-effect rounded-2xl p-6 card-shadow">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Résidents ({habitationData.residents.length}/5)</h2>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              disabled={habitationData.residents.length >= 5}
-              onClick={() => setAddResidentOpen(true)}
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Ajouter
-            </Button>
+            <h2 className="text-lg font-semibold">Résidents ({habitationData.residents.length}/7)</h2>
+            {isOwner && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={habitationData.residents.length >= 7}
+                onClick={() => setInviteDialogOpen(true)}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Inviter
+              </Button>
+            )}
           </div>
           
           <div className="space-y-3">
@@ -318,6 +351,7 @@ const ResidentDashboard = () => {
                 ? `${resident.profile.first_name || ""} ${resident.profile.last_name || ""}`.trim() || "Sans nom"
                 : "Sans nom";
               const phone = resident.profile?.phone_number || "N/A";
+              const canDelete = isOwner && !resident.is_owner && resident.user_id !== user?.id;
               
               return (
                 <div
@@ -335,11 +369,23 @@ const ResidentDashboard = () => {
                       <p className="text-sm text-muted-foreground">{phone}</p>
                     </div>
                   </div>
-                  {resident.is_owner && (
-                    <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs">
-                      Propriétaire
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {resident.is_owner && (
+                      <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs">
+                        Propriétaire
+                      </span>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteResident(resident.id, name)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -348,12 +394,14 @@ const ResidentDashboard = () => {
 
       </div>
 
-      {/* Add Resident Dialog */}
-      <AddResidentDialog
-        open={addResidentOpen}
-        onOpenChange={setAddResidentOpen}
+      {/* Invite Resident Dialog */}
+      <InviteResidentDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
         habitationId={habitationData.id}
-        onResidentAdded={fetchHabitationData}
+        habitationName={habitationData.name}
+        anrAddress={habitationData.anr.address}
+        onInvitationSent={fetchHabitationData}
       />
 
       <BottomNav />
