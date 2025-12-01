@@ -12,6 +12,8 @@ import logoAnr from "@/assets/logo-anr.png";
 interface InvitationData {
   id: string;
   email: string;
+  first_name: string | null;
+  last_name: string | null;
   habitation_id: string;
   expires_at: string;
   used_at: string | null;
@@ -67,6 +69,8 @@ const Invitation = () => {
         .select(`
           id,
           email,
+          first_name,
+          last_name,
           habitation_id,
           expires_at,
           used_at,
@@ -106,7 +110,10 @@ const Invitation = () => {
         ...data,
         habitation: data.habitations as any,
       });
+      // Pre-fill form fields from invitation
       setEmail(data.email);
+      setFirstName(data.first_name || "");
+      setLastName(data.last_name || "");
       setStep("register");
     } catch (err: any) {
       console.error("[Invitation] Error:", err);

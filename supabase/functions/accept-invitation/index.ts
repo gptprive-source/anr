@@ -24,10 +24,10 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Validate invitation
+    // Validate invitation and get stored names
     const { data: invitation, error: invError } = await supabaseAdmin
       .from("resident_invitations")
-      .select("id, email, habitation_id, expires_at, used_at")
+      .select("id, email, first_name, last_name, habitation_id, expires_at, used_at")
       .eq("code", code)
       .maybeSingle();
 
@@ -71,13 +71,17 @@ serve(async (req) => {
     if (!userId && password) {
       console.log("[accept-invitation] Creating new user...");
       
+      // Use names from form (which are pre-filled from invitation)
+      const userFirstName = firstName || invitation.first_name || "";
+      const userLastName = lastName || invitation.last_name || "";
+      
       const { data: signUpData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
         email: email,
         password: password,
         email_confirm: true, // Auto-confirm email for invited users
         user_metadata: {
-          first_name: firstName,
-          last_name: lastName,
+          first_name: userFirstName,
+          last_name: userLastName,
         },
       });
 

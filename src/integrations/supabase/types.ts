@@ -302,9 +302,11 @@ export type Database = {
           created_at: string
           email: string
           expires_at: string
+          first_name: string | null
           habitation_id: string
           id: string
           invited_by: string
+          last_name: string | null
           used_at: string | null
           used_by: string | null
         }
@@ -313,9 +315,11 @@ export type Database = {
           created_at?: string
           email: string
           expires_at: string
+          first_name?: string | null
           habitation_id: string
           id?: string
           invited_by: string
+          last_name?: string | null
           used_at?: string | null
           used_by?: string | null
         }
@@ -324,9 +328,11 @@ export type Database = {
           created_at?: string
           email?: string
           expires_at?: string
+          first_name?: string | null
           habitation_id?: string
           id?: string
           invited_by?: string
+          last_name?: string | null
           used_at?: string | null
           used_by?: string | null
         }
