@@ -160,66 +160,32 @@ const IncomingCallListener = () => {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "call_participants",
         },
         async (payload) => {
-          console.log("[IncomingCall] Participant change:", payload.eventType, payload.new);
-          
-          if (payload.eventType === "INSERT") {
-            const participant = payload.new as any;
-            if (participant.user_id === user.id && participant.status === "ringing" && participant.role === "resident") {
-              console.log("[IncomingCall] New ringing call for us!");
-              await loadCallDetails(participant.id, participant.call_id, participant.habitation_id);
-            }
-          } else if (payload.eventType === "UPDATE") {
-            const participant = payload.new as any;
-            const currentCall = incomingCallRef.current;
-            if (currentCall && participant.id === currentCall.participantId && participant.status !== "ringing") {
-              dismissCall(`Status changed to ${participant.status}`);
-            }
-          } else if (payload.eventType === "DELETE") {
-            const deleted = payload.old as any;
-            const currentCall = incomingCallRef.current;
-            if (currentCall && deleted.id === currentCall.participantId) {
-              dismissCall("Participant deleted");
-            }
+          console.log("[IncomingCall] INSERT detected:", payload.new);
+          const participant = payload.new as any;
+          if (participant.user_id === user.id && participant.status === "ringing" && participant.role === "resident") {
+            console.log("[IncomingCall] New ringing call for us!");
+            await loadCallDetails(participant.id, participant.call_id, participant.habitation_id);
           }
         }
       )
       .subscribe((status) => {
         console.log("[IncomingCall] Participants channel:", status);
       });
+    
+    // NOTE: Disabled UPDATE/DELETE handlers for debugging - call stays until user action
 
-    const callChannelId = `call-status-${user.id}-${Date.now()}`;
-    const callChannel = supabase
-      .channel(callChannelId)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "call_logs",
-        },
-        (payload) => {
-          const callLog = payload.new as any;
-          const currentCall = incomingCallRef.current;
-          if (currentCall && callLog.id === currentCall.callId && callLog.status === "ended") {
-            dismissCall("Call ended by caller");
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log("[IncomingCall] Call logs channel:", status);
-      });
+    // NOTE: Disabled call_logs subscription for debugging
 
     return () => {
       console.log("[IncomingCall] Cleaning up subscriptions");
       supabase.removeChannel(channel);
-      supabase.removeChannel(callChannel);
     };
-  }, [user, loadCallDetails, dismissCall]);
+  }, [user, loadCallDetails]);
 
   const handleAnswer = async () => {
     if (!incomingCall) return;
