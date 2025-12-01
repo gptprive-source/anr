@@ -26,6 +26,7 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
   const incomingCallRef = useRef<IncomingCall | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
+  const isPollingRef = useRef(false);
 
   console.log("[IncomingCallContext] 🔄 Provider render, userId:", user?.id || "NO_USER", "hasCall:", !!incomingCall);
 
@@ -56,7 +57,7 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     console.log("[IncomingCallContext] 🚀 Starting polling for userId:", user.id);
 
     const checkForIncomingCalls = async () => {
-      // Skip if already have a call
+      // Skip if already have a call or already polling
       if (incomingCallRef.current) {
         console.log("[IncomingCallContext] ⏭️ Already have call, skipping poll");
         return;
@@ -66,6 +67,13 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
         console.log("[IncomingCallContext] ⏭️ Unmounted, skipping poll");
         return;
       }
+
+      if (isPollingRef.current) {
+        console.log("[IncomingCallContext] ⏭️ Already polling, skipping");
+        return;
+      }
+
+      isPollingRef.current = true;
 
       try {
         const { data, error } = await supabase
@@ -112,6 +120,8 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (err) {
         console.error("[IncomingCallContext] ❌ Unexpected error:", err);
+      } finally {
+        isPollingRef.current = false;
       }
     };
 
