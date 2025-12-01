@@ -1,98 +1,104 @@
 import { useRef, useCallback, useEffect } from "react";
 
+// Base64 encoded simple ring tone (short beep pattern)
+// This is a fallback that works better on mobile
+const RING_TONE_URL = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleyx8telesx8telesx8teleQhTYoeupWm6dNBFOa3+1gY8BDy65+lAn8YUhvFvAcGMd58telesx8telesx8teleQhTYhOqlk26dNDBOa3+1aI8BDy65+lAoMYTivFuAcGLd58telesx8telesx8teleQhTYeOqll26dNBFOa3+1eI8BDy65+lAp8YSivFtAcGKd58telesx8telesx8teleQhTYdOqlm26dNDBOa3+1hI8BDy65+lAq8YRivFsAcGJd58telesx8telesx8teleQ==";
+
 export const useRingtone = () => {
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<number | null>(null);
   const isPlayingRef = useRef(false);
+  const vibrationIntervalRef = useRef<number | null>(null);
 
-  const createRingtone = useCallback(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
-    }
-    return audioContextRef.current;
+  // Create audio element
+  useEffect(() => {
+    const audio = new Audio();
+    audio.src = RING_TONE_URL;
+    audio.loop = false;
+    audio.volume = 1.0;
+    audio.preload = "auto";
+    audioRef.current = audio;
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
   }, []);
 
-  // Play a realistic phone ring tone
-  const playRing = useCallback(() => {
-    const ctx = createRingtone();
-    const currentTime = ctx.currentTime;
+  const playRing = useCallback(async () => {
+    if (!audioRef.current) return;
+    
+    try {
+      audioRef.current.currentTime = 0;
+      await audioRef.current.play();
+      console.log("[Ringtone] Ring played");
+    } catch (e) {
+      console.error("[Ringtone] Play failed:", e);
+      // Try Web Audio API as fallback
+      tryWebAudioFallback();
+    }
+  }, []);
 
-    // Create master gain for overall volume
-    const masterGain = ctx.createGain();
-    masterGain.connect(ctx.destination);
-    masterGain.gain.setValueAtTime(0.5, currentTime);
-
-    // Classic dual-tone ring (similar to phone)
-    // First ring burst
-    const playBurst = (startTime: number) => {
-      // Tone 1: 440 Hz (A4)
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = "sine";
-      osc1.frequency.setValueAtTime(440, startTime);
-      gain1.gain.setValueAtTime(0, startTime);
-      gain1.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
-      gain1.gain.setValueAtTime(0.3, startTime + 0.4);
-      gain1.gain.linearRampToValueAtTime(0, startTime + 0.42);
-      osc1.connect(gain1);
-      gain1.connect(masterGain);
-      osc1.start(startTime);
-      osc1.stop(startTime + 0.45);
-
-      // Tone 2: 480 Hz (B4) - creates the classic ring modulation
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = "sine";
-      osc2.frequency.setValueAtTime(480, startTime);
-      gain2.gain.setValueAtTime(0, startTime);
-      gain2.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
-      gain2.gain.setValueAtTime(0.3, startTime + 0.4);
-      gain2.gain.linearRampToValueAtTime(0, startTime + 0.42);
-      osc2.connect(gain2);
-      gain2.connect(masterGain);
-      osc2.start(startTime);
-      osc2.stop(startTime + 0.45);
-    };
-
-    // Play two short bursts with a small gap (classic ring pattern)
-    playBurst(currentTime);
-    playBurst(currentTime + 0.5);
-  }, [createRingtone]);
+  const tryWebAudioFallback = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      const currentTime = ctx.currentTime;
+      
+      // Simple beep
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(440, currentTime);
+      gain.gain.setValueAtTime(0.5, currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(currentTime);
+      osc.stop(currentTime + 0.5);
+      
+      // Second beep
+      setTimeout(() => {
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(480, ctx.currentTime);
+        gain2.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(ctx.currentTime);
+        osc2.stop(ctx.currentTime + 0.5);
+      }, 600);
+    } catch (e) {
+      console.error("[Ringtone] Web Audio fallback failed:", e);
+    }
+  }, []);
 
   const startRinging = useCallback(async () => {
-    if (isPlayingRef.current) return;
+    if (isPlayingRef.current) {
+      console.log("[Ringtone] Already ringing");
+      return;
+    }
     
     console.log("[Ringtone] Starting ringtone");
     isPlayingRef.current = true;
     
-    // Create fresh audio context if needed
-    if (!audioContextRef.current || audioContextRef.current.state === "closed") {
-      audioContextRef.current = new AudioContext();
-    }
-    
-    // Resume audio context if suspended (browser autoplay policy)
-    if (audioContextRef.current.state === "suspended") {
-      try {
-        await audioContextRef.current.resume();
-        console.log("[Ringtone] AudioContext resumed");
-      } catch (e) {
-        console.error("[Ringtone] Failed to resume AudioContext:", e);
-      }
-    }
-    
     // Play immediately
-    playRing();
+    await playRing();
     
-    // Start vibration pattern (1s vibrate, 1.5s pause) - continuous
-    const vibrateLoop = () => {
-      if (isPlayingRef.current && navigator.vibrate) {
-        navigator.vibrate([500, 200, 500, 200, 500]);
-        setTimeout(vibrateLoop, 2000);
-      }
-    };
-    vibrateLoop();
+    // Start vibration pattern
+    if (navigator.vibrate) {
+      navigator.vibrate([500, 200, 500, 200, 500]);
+      vibrationIntervalRef.current = window.setInterval(() => {
+        if (isPlayingRef.current && navigator.vibrate) {
+          navigator.vibrate([500, 200, 500, 200, 500]);
+        }
+      }, 2000);
+    }
     
-    // Then repeat every 2.5 seconds (ring pattern)
+    // Repeat ring every 2.5 seconds
     intervalRef.current = window.setInterval(() => {
       if (isPlayingRef.current) {
         playRing();
@@ -109,6 +115,16 @@ export const useRingtone = () => {
       intervalRef.current = null;
     }
     
+    if (vibrationIntervalRef.current) {
+      clearInterval(vibrationIntervalRef.current);
+      vibrationIntervalRef.current = null;
+    }
+    
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    
     // Stop vibration
     if (navigator.vibrate) {
       navigator.vibrate(0);
@@ -119,10 +135,6 @@ export const useRingtone = () => {
   useEffect(() => {
     return () => {
       stopRinging();
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
     };
   }, [stopRinging]);
 

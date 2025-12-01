@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus } from "lucide-react";
+import { Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -145,6 +145,58 @@ const ResidentDashboard = () => {
     }
   };
 
+  // Test function to simulate an incoming call
+  const testIncomingCall = async () => {
+    if (!habitationData || !user) return;
+    
+    try {
+      toast({ title: "Création appel test...", description: "Attendez quelques secondes" });
+      
+      // Create a test call log
+      const { data: callLog, error: clError } = await supabase
+        .from("call_logs")
+        .insert({
+          habitation_id: habitationData.id,
+          status: "ringing",
+        })
+        .select()
+        .single();
+      
+      if (clError) throw clError;
+      
+      console.log("[TEST] Created call log:", callLog.id);
+      
+      // Create participant for this user with "ringing" status
+      const { error: pError } = await supabase
+        .from("call_participants")
+        .insert({
+          call_id: callLog.id,
+          user_id: user.id,
+          habitation_id: habitationData.id,
+          role: "resident",
+          status: "ringing",
+        });
+      
+      if (pError) throw pError;
+      
+      console.log("[TEST] Created participant for user:", user.id);
+      toast({ title: "Appel test créé!", description: "L'appel devrait s'afficher maintenant" });
+      
+      // Auto-end after 15 seconds
+      setTimeout(async () => {
+        await supabase
+          .from("call_logs")
+          .update({ status: "ended", ended_at: new Date().toISOString() })
+          .eq("id", callLog.id);
+        console.log("[TEST] Auto-ended test call");
+      }, 15000);
+      
+    } catch (error: any) {
+      console.error("[TEST] Error:", error);
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -235,6 +287,15 @@ const ResidentDashboard = () => {
             onClick={() => {}}
           />
         </div>
+
+        {/* Test Call Button (DEV) */}
+        <Button 
+          onClick={testIncomingCall}
+          className="w-full bg-orange-500 hover:bg-orange-600"
+        >
+          <Phone className="w-4 h-4 mr-2" />
+          🧪 Tester appel entrant
+        </Button>
 
         {/* Residents list */}
         <div className="glass-effect rounded-2xl p-6 card-shadow">
