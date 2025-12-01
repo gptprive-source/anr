@@ -19,7 +19,7 @@ serve(async (req) => {
     console.log("[send-invitation] Code:", code);
 
     // Build invitation URL
-    const baseUrl = req.headers.get("origin") || "https://mkzpdmyymabgsntwmmir.lovable.app";
+    const baseUrl = "https://anr.lovable.app";
     const invitationUrl = `${baseUrl}/invitation?code=${code}`;
 
     // Create SMTP client
