@@ -73,6 +73,15 @@ export const useRingtone = () => {
     // Play immediately
     playRing();
     
+    // Start vibration pattern (1s vibrate, 1.5s pause)
+    const vibrateLoop = () => {
+      if (isPlayingRef.current && navigator.vibrate) {
+        navigator.vibrate([1000, 1500]);
+        setTimeout(vibrateLoop, 2500);
+      }
+    };
+    vibrateLoop();
+    
     // Then repeat every 2.5 seconds (ring pattern)
     intervalRef.current = window.setInterval(() => {
       if (isPlayingRef.current) {
@@ -88,6 +97,11 @@ export const useRingtone = () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+    }
+    
+    // Stop vibration
+    if (navigator.vibrate) {
+      navigator.vibrate(0);
     }
   }, []);
 
