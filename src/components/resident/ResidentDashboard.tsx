@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus, Phone, Trash2 } from "lucide-react";
+import { Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus, Phone, Trash2, BellOff, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import InviteResidentDialog from "./InviteResidentDialog";
+import CallHistorySection from "./CallHistorySection";
 import BottomNav from "@/components/layout/BottomNav";
 import logoAnr from "@/assets/logo-anr.png";
 
@@ -39,7 +41,11 @@ const ResidentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [habitationData, setHabitationData] = useState<HabitationData | null>(null);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [showCallHistory, setShowCallHistory] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [currentResidentId, setCurrentResidentId] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [togglingMute, setTogglingMute] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -58,7 +64,8 @@ const ResidentDashboard = () => {
         .select(`
           id,
           habitation_id,
-          is_owner
+          is_owner,
+          is_muted
         `)
         .eq("user_id", user?.id)
         .eq("status", "verified")
@@ -73,6 +80,8 @@ const ResidentDashboard = () => {
       }
 
       setIsOwner(residentData.is_owner || false);
+      setCurrentResidentId(residentData.id);
+      setIsMuted(residentData.is_muted || false);
 
       // Get habitation with ANR and all residents
       const { data: habitation, error: habError } = await supabase
@@ -173,6 +182,38 @@ const ResidentDashboard = () => {
         description: error.message || "Impossible de retirer le résident",
         variant: "destructive",
       });
+    }
+  };
+
+  const toggleMute = async () => {
+    if (!currentResidentId || togglingMute) return;
+    
+    setTogglingMute(true);
+    try {
+      const newMuteState = !isMuted;
+      const { error } = await supabase
+        .from("residents")
+        .update({ is_muted: newMuteState })
+        .eq("id", currentResidentId);
+
+      if (error) throw error;
+
+      setIsMuted(newMuteState);
+      toast({
+        title: newMuteState ? "Notifications désactivées" : "Notifications activées",
+        description: newMuteState 
+          ? "Vous ne recevrez plus les appels entrants" 
+          : "Vous recevrez à nouveau les appels entrants",
+      });
+    } catch (error: any) {
+      console.error("[Dashboard] Toggle mute error:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier le paramètre",
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingMute(false);
     }
   };
 
@@ -305,12 +346,14 @@ const ResidentDashboard = () => {
           <QuickAction
             icon={<History className="w-6 h-6" />}
             label="Historique"
-            onClick={() => {}}
+            onClick={() => setShowCallHistory(!showCallHistory)}
+            active={showCallHistory}
           />
           <QuickAction
-            icon={<Bell className="w-6 h-6" />}
-            label="Notifications"
-            onClick={() => {}}
+            icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />}
+            label={isMuted ? "En sourdine" : "Notifications"}
+            onClick={toggleMute}
+            active={isMuted}
           />
           <QuickAction
             icon={<MapPin className="w-6 h-6" />}
@@ -318,6 +361,14 @@ const ResidentDashboard = () => {
             onClick={() => {}}
           />
         </div>
+
+        {/* Call History Section */}
+        {showCallHistory && (
+          <div className="glass-effect rounded-2xl p-6 card-shadow">
+            <h2 className="text-lg font-semibold mb-4">Historique des appels</h2>
+            <CallHistorySection habitationId={habitationData.id} />
+          </div>
+        )}
 
         {/* Test Call Button (DEV) */}
         <Button 
@@ -414,17 +465,23 @@ const QuickAction = ({
   label,
   count,
   onClick,
+  active,
 }: {
   icon: React.ReactNode;
   label: string;
   count?: number;
   onClick: () => void;
+  active?: boolean;
 }) => (
   <button
     onClick={onClick}
-    className="glass-effect rounded-2xl p-4 flex flex-col items-center gap-2 hover:border-primary/30 transition-colors"
+    className={`glass-effect rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors ${
+      active ? "border-primary bg-primary/5" : "hover:border-primary/30"
+    }`}
   >
-    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+      active ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
+    }`}>
       {icon}
     </div>
     <span className="text-sm font-medium">{label}</span>
