@@ -1,10 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Phone, PhoneOff, User } from "lucide-react";
+import { Phone, PhoneOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { logger } from "@/lib/logger";
 import { useRingtone, requestNotificationPermission, showCallNotification } from "@/hooks/useRingtone";
 
 interface IncomingCall {
@@ -20,10 +19,17 @@ const IncomingCallListener = () => {
   const navigate = useNavigate();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const channelRef = useRef<any>(null);
   const notificationRef = useRef<Notification | null>(null);
   const { startRinging, stopRinging } = useRingtone();
   const mountedRef = useRef(true);
+  
+  // Use ref to track incoming call for realtime handlers (avoids stale closure)
+  const incomingCallRef = useRef<IncomingCall | null>(null);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    incomingCallRef.current = incomingCall;
+  }, [incomingCall]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -38,35 +44,75 @@ const IncomingCallListener = () => {
   useEffect(() => {
     if (incomingCall) {
       console.log("[IncomingCall] Call detected, starting ringtone:", incomingCall);
-      // Start ringing
       startRinging();
       
-      // Show notification
       notificationRef.current = showCallNotification(
         incomingCall.habitationName,
         incomingCall.address
       );
       
-      // Try to vibrate if supported
       if ("vibrate" in navigator) {
         navigator.vibrate([200, 100, 200, 100, 200, 100, 200]);
       }
     } else {
-      // Stop ringing
       stopRinging();
       
-      // Close notification
       if (notificationRef.current) {
         notificationRef.current.close();
         notificationRef.current = null;
       }
       
-      // Stop vibration
       if ("vibrate" in navigator) {
         navigator.vibrate(0);
       }
     }
   }, [incomingCall, startRinging, stopRinging]);
+
+  const loadCallDetails = useCallback(async (participantId: string, callId: string, habitationId: string) => {
+    // Don't load if we already have this call
+    if (incomingCallRef.current?.participantId === participantId) {
+      console.log("[IncomingCall] Already showing this call, skipping");
+      return;
+    }
+
+    try {
+      console.log("[IncomingCall] Loading call details for:", { participantId, callId, habitationId });
+      const { data: habitation, error: habError } = await supabase
+        .from("habitations")
+        .select("name, anrs(address)")
+        .eq("id", habitationId)
+        .single();
+
+      if (habError) {
+        console.error("[IncomingCall] Error fetching habitation:", habError);
+        if (mountedRef.current) setError("Erreur lors du chargement des détails");
+        return;
+      }
+
+      if (habitation && mountedRef.current) {
+        console.log("[IncomingCall] Setting incoming call:", habitation.name);
+        const callData = {
+          participantId,
+          callId,
+          habitationId,
+          habitationName: habitation.name,
+          address: (habitation.anrs as any)?.address || "",
+        };
+        setIncomingCall(callData);
+        setError(null);
+      }
+    } catch (err) {
+      console.error("[IncomingCall] Error loading details:", err);
+      if (mountedRef.current) setError("Erreur de chargement");
+    }
+  }, []);
+
+  const dismissCall = useCallback((reason: string) => {
+    console.log("[IncomingCall] Dismissing call:", reason);
+    if (mountedRef.current) {
+      setIncomingCall(null);
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -104,43 +150,13 @@ const IncomingCallListener = () => {
       }
     };
 
-    const loadCallDetails = async (participantId: string, callId: string, habitationId: string) => {
-      try {
-        console.log("[IncomingCall] Loading call details for:", { participantId, callId, habitationId });
-        const { data: habitation, error: habError } = await supabase
-          .from("habitations")
-          .select("name, anrs(address)")
-          .eq("id", habitationId)
-          .single();
-
-        if (habError) {
-          console.error("[IncomingCall] Error fetching habitation:", habError);
-          if (mountedRef.current) setError("Erreur lors du chargement des détails");
-          return;
-        }
-
-        if (habitation && mountedRef.current) {
-          console.log("[IncomingCall] Incoming call details loaded:", habitation);
-          setIncomingCall({
-            participantId,
-            callId,
-            habitationId,
-            habitationName: habitation.name,
-            address: (habitation.anrs as any)?.address || "",
-          });
-          setError(null);
-        }
-      } catch (err) {
-        console.error("[IncomingCall] Error loading details:", err);
-        if (mountedRef.current) setError("Erreur de chargement");
-      }
-    };
-
     checkExistingCalls();
 
-    // Subscribe to ALL call_participants changes (filter on client side for reliability)
+    const channelId = `incoming-calls-${user.id}-${Date.now()}`;
+    console.log("[IncomingCall] Creating channel:", channelId);
+
     const channel = supabase
-      .channel(`incoming-calls-${user.id}-${Date.now()}`)
+      .channel(channelId)
       .on(
         "postgres_changes",
         {
@@ -149,64 +165,53 @@ const IncomingCallListener = () => {
           table: "call_participants",
         },
         async (payload) => {
-          console.log("[IncomingCall] Participant change detected:", payload.eventType, payload);
+          console.log("[IncomingCall] Participant change:", payload.eventType, payload.new);
           
           if (payload.eventType === "INSERT") {
             const participant = payload.new as any;
-            console.log("[IncomingCall] INSERT - user_id:", participant.user_id, "current user:", user.id);
             if (participant.user_id === user.id && participant.status === "ringing" && participant.role === "resident") {
-              console.log("[IncomingCall] This is for us! Loading call details...");
+              console.log("[IncomingCall] New ringing call for us!");
               await loadCallDetails(participant.id, participant.call_id, participant.habitation_id);
             }
           } else if (payload.eventType === "UPDATE") {
             const participant = payload.new as any;
-            if (participant.user_id === user.id && incomingCall?.participantId === participant.id && participant.status !== "ringing") {
-              console.log("[IncomingCall] Our call no longer ringing, dismissing");
-              if (mountedRef.current) setIncomingCall(null);
+            const currentCall = incomingCallRef.current;
+            if (currentCall && participant.id === currentCall.participantId && participant.status !== "ringing") {
+              dismissCall(`Status changed to ${participant.status}`);
             }
           } else if (payload.eventType === "DELETE") {
             const deleted = payload.old as any;
-            if (incomingCall?.participantId === deleted.id) {
-              console.log("[IncomingCall] Our participant deleted");
-              if (mountedRef.current) setIncomingCall(null);
+            const currentCall = incomingCallRef.current;
+            if (currentCall && deleted.id === currentCall.participantId) {
+              dismissCall("Participant deleted");
             }
           }
         }
       )
       .subscribe((status) => {
-        console.log("[IncomingCall] Channel subscription status:", status);
-        if (status === "SUBSCRIBED") {
-          console.log("[IncomingCall] ✅ Successfully subscribed to realtime changes");
-        } else if (status === "CHANNEL_ERROR") {
-          console.error("[IncomingCall] ❌ Channel error - realtime may not work");
-        }
+        console.log("[IncomingCall] Participants channel:", status);
       });
 
-    channelRef.current = channel;
-
-    // Also subscribe to call_logs status changes
+    const callChannelId = `call-status-${user.id}-${Date.now()}`;
     const callChannel = supabase
-      .channel(`call-status-${user.id}-${Date.now()}`)
+      .channel(callChannelId)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "UPDATE",
           schema: "public",
           table: "call_logs",
         },
         (payload) => {
-          console.log("[IncomingCall] Call log changed:", payload.eventType, payload);
-          if (payload.eventType === "UPDATE") {
-            const callLog = payload.new as any;
-            if (incomingCall?.callId === callLog.id && callLog.status === "ended") {
-              console.log("[IncomingCall] Call ended by caller");
-              if (mountedRef.current) setIncomingCall(null);
-            }
+          const callLog = payload.new as any;
+          const currentCall = incomingCallRef.current;
+          if (currentCall && callLog.id === currentCall.callId && callLog.status === "ended") {
+            dismissCall("Call ended by caller");
           }
         }
       )
       .subscribe((status) => {
-        console.log("[IncomingCall] Call logs channel status:", status);
+        console.log("[IncomingCall] Call logs channel:", status);
       });
 
     return () => {
@@ -214,16 +219,14 @@ const IncomingCallListener = () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(callChannel);
     };
-  }, [user]);
+  }, [user, loadCallDetails, dismissCall]);
 
   const handleAnswer = async () => {
     if (!incomingCall) return;
     
     console.log("[IncomingCall] Answering call:", incomingCall.callId);
-    // Stop ringing immediately
     stopRinging();
     
-    // Update participant status
     const { error: updateError } = await supabase
       .from("call_participants")
       .update({ status: "answered", joined_at: new Date().toISOString() })
@@ -233,7 +236,6 @@ const IncomingCallListener = () => {
       console.error("[IncomingCall] Error updating status:", updateError);
     }
 
-    // Navigate to call
     navigate(`/call/${incomingCall.callId}?resident=true`);
     setIncomingCall(null);
   };
@@ -242,7 +244,6 @@ const IncomingCallListener = () => {
     if (!incomingCall || !user) return;
 
     console.log("[IncomingCall] Declining call:", incomingCall.callId);
-    // Stop ringing immediately
     stopRinging();
 
     await supabase
@@ -257,7 +258,6 @@ const IncomingCallListener = () => {
 
   return (
     <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col items-center justify-center p-6">
-      {/* Pulsing rings effect */}
       <div className="relative mb-8">
         <div className="absolute inset-0 w-40 h-40 rounded-full bg-green-500/30 animate-ping" style={{ animationDuration: '1.5s' }} />
         <div className="absolute inset-0 w-40 h-40 rounded-full bg-green-500/20 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
