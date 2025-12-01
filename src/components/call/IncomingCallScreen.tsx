@@ -105,13 +105,13 @@ const IncomingCallScreen = ({
 
   return (
     <div 
-      className="incoming-call-overlay"
+      id="incoming-call-screen"
       style={{
         position: 'fixed',
-        top: '0',
-        left: '0',
-        width: '100vw',
-        height: '100vh',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        minHeight: '100dvh',
         backgroundColor: '#1e293b',
         display: 'flex',
         flexDirection: 'column',
@@ -119,8 +119,15 @@ const IncomingCallScreen = ({
         justifyContent: 'center',
         zIndex: 2147483647,
         padding: '24px',
-        WebkitTransform: 'translateZ(0)',
-        transform: 'translateZ(0)'
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        isolation: 'isolate',
+        willChange: 'transform',
+        WebkitTransform: 'translate3d(0,0,0)',
+        transform: 'translate3d(0,0,0)',
+        WebkitBackfaceVisibility: 'hidden',
+        backfaceVisibility: 'hidden',
+        touchAction: 'none',
       }}>
       <div style={{
         width: '120px',
