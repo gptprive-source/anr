@@ -27,19 +27,23 @@ const IncomingCallScreen = ({
   const isRingingRef = useRef(false);
 
   useEffect(() => {
+    console.log("[IncomingCallScreen] 🎬 Screen mounted for call:", callId);
     requestNotificationPermission();
     
     if (!isRingingRef.current) {
+      console.log("[IncomingCallScreen] 🔔 Starting ringtone and alerts");
       isRingingRef.current = true;
       startRinging();
       notificationRef.current = showCallNotification(habitationName, address);
       
       if ("vibrate" in navigator) {
         navigator.vibrate([500, 200, 500, 200, 500]);
+        console.log("[IncomingCallScreen] 📳 Vibration started");
       }
     }
 
     return () => {
+      console.log("[IncomingCallScreen] 🛑 Screen unmounting, stopping alerts");
       stopRinging();
       if (notificationRef.current) {
         notificationRef.current.close();
@@ -48,41 +52,53 @@ const IncomingCallScreen = ({
         navigator.vibrate(0);
       }
     };
-  }, [startRinging, stopRinging, habitationName, address]);
+  }, [startRinging, stopRinging, habitationName, address, callId]);
 
   const handleAnswer = async () => {
-    if (isProcessing) return;
+    console.log("[IncomingCallScreen] ✅ ANSWER clicked for call:", callId);
+    if (isProcessing) {
+      console.log("[IncomingCallScreen] ⚠️ Already processing, ignoring");
+      return;
+    }
     setIsProcessing(true);
     stopRinging();
 
     try {
+      console.log("[IncomingCallScreen] 📝 Updating participant status to answered:", participantId);
       await supabase
         .from("call_participants")
         .update({ status: "answered", joined_at: new Date().toISOString() })
         .eq("id", participantId);
 
+      console.log("[IncomingCallScreen] 🚀 Navigating to call interface");
       onDismiss();
       navigate(`/call/${callId}?resident=true`);
     } catch (err) {
-      console.error("[IncomingCallScreen] Answer error:", err);
+      console.error("[IncomingCallScreen] ❌ Answer error:", err);
       setIsProcessing(false);
     }
   };
 
   const handleDecline = async () => {
-    if (isProcessing) return;
+    console.log("[IncomingCallScreen] ❌ DECLINE clicked for call:", callId);
+    if (isProcessing) {
+      console.log("[IncomingCallScreen] ⚠️ Already processing, ignoring");
+      return;
+    }
     setIsProcessing(true);
     stopRinging();
 
     try {
+      console.log("[IncomingCallScreen] 📝 Updating participant status to declined:", participantId);
       await supabase
         .from("call_participants")
         .update({ status: "declined", left_at: new Date().toISOString() })
         .eq("id", participantId);
 
+      console.log("[IncomingCallScreen] ✅ Call declined, dismissing screen");
       onDismiss();
     } catch (err) {
-      console.error("[IncomingCallScreen] Decline error:", err);
+      console.error("[IncomingCallScreen] ❌ Decline error:", err);
     }
     setIsProcessing(false);
   };
