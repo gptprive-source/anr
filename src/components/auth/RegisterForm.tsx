@@ -1,36 +1,30 @@
-import { useState, useEffect } from "react";
-import { Mail, Phone, User, MapPin, ArrowRight, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Mail, Phone, User, MapPin, ArrowRight, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { geocodeAddress } from "@/lib/geocoding";
 
-type Step = "credentials" | "profile" | "address" | "verification";
+type Step = "credentials" | "profile" | "address" | "success";
 
 const phoneSchema = z.string().regex(/^\+?[0-9]{10,15}$/, "Numéro de téléphone invalide");
 const emailSchema = z.string().email("Email invalide");
-
-// Generate or retrieve device token
-const getDeviceToken = (): string => {
-  let token = localStorage.getItem("anr_device_token");
-  if (!token) {
-    token = `device-${crypto.randomUUID()}`;
-    localStorage.setItem("anr_device_token", token);
-  }
-  return token;
-};
+const passwordSchema = z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères");
 
 const RegisterForm = () => {
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -42,6 +36,7 @@ const RegisterForm = () => {
     const formattedPhone = formatPhone(phone);
     const phoneValidation = phoneSchema.safeParse(formattedPhone);
     const emailValidation = emailSchema.safeParse(email);
+    const passwordValidation = passwordSchema.safeParse(password);
     
     if (!phoneValidation.success) {
       toast({
@@ -61,19 +56,26 @@ const RegisterForm = () => {
       return;
     }
 
+    if (!passwordValidation.success) {
+      toast({
+        title: "Erreur",
+        description: passwordValidation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setPhone(formattedPhone);
     setLoading(true);
     
     try {
-      // Sign up with email
+      // Sign up with email and password
       const { data, error } = await supabase.auth.signUp({
         email,
-        password: crypto.randomUUID(), // Auto-generated password (user will use magic link)
+        password,
         options: {
-          emailRedirectTo: `${window.location.origin}/verify-email`,
           data: {
             phone_number: formattedPhone,
-            device_token: getDeviceToken(),
           },
         },
       });
@@ -81,6 +83,8 @@ const RegisterForm = () => {
       if (error) throw error;
 
       if (data.user) {
+        setUserId(data.user.id);
+        
         // Update profile with phone number
         await supabase
           .from("profiles")
@@ -103,7 +107,6 @@ const RegisterForm = () => {
           title: "Compte existant",
           description: "Cet email est déjà associé à un compte. Redirection vers la connexion...",
         });
-        // Redirect to login after 2 seconds
         setTimeout(() => {
           navigate("/login");
         }, 2000);
@@ -246,8 +249,8 @@ const RegisterForm = () => {
 
       if (resError) throw resError;
 
-      // Move to verification step
-      setStep("verification");
+      // Move to success step
+      setStep("success");
       
       toast({
         title: "ANR créé",
@@ -267,44 +270,16 @@ const RegisterForm = () => {
     }
   };
 
-  const handleResendEmail = async () => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/verify-email`,
-        },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Email envoyé",
-        description: "Vérifiez votre boîte de réception",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'envoyer l'email",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex justify-center gap-2 mb-8">
-          {["credentials", "profile", "address", "verification"].map((s, i) => (
+          {["credentials", "profile", "address", "success"].map((s, i) => (
             <div
               key={s}
               className={`h-1 w-12 rounded-full transition-colors ${
-                ["credentials", "profile", "address", "verification"].indexOf(step) >= i
+                ["credentials", "profile", "address", "success"].indexOf(step) >= i
                   ? "bg-primary"
                   : "bg-secondary"
               }`}
@@ -317,8 +292,10 @@ const RegisterForm = () => {
             <CredentialsStep
               email={email}
               phone={phone}
+              password={password}
               setEmail={setEmail}
               setPhone={setPhone}
+              setPassword={setPassword}
               onSubmit={handleCredentialsSubmit}
               loading={loading}
             />
@@ -341,12 +318,8 @@ const RegisterForm = () => {
               loading={loading}
             />
           )}
-          {step === "verification" && (
-            <VerificationStep
-              email={email}
-              onResend={handleResendEmail}
-              loading={loading}
-            />
+          {step === "success" && (
+            <SuccessStep onGoToDashboard={() => navigate("/dashboard")} />
           )}
         </div>
 
@@ -366,15 +339,19 @@ const RegisterForm = () => {
 const CredentialsStep = ({
   email,
   phone,
+  password,
   setEmail,
   setPhone,
+  setPassword,
   onSubmit,
   loading,
 }: {
   email: string;
   phone: string;
+  password: string;
   setEmail: (v: string) => void;
   setPhone: (v: string) => void;
+  setPassword: (v: string) => void;
   onSubmit: () => void;
   loading: boolean;
 }) => (
@@ -385,41 +362,65 @@ const CredentialsStep = ({
       </div>
       <h2 className="text-2xl font-bold mb-2">Créez votre ANR</h2>
       <p className="text-muted-foreground">
-        Entrez votre email et numéro de téléphone
+        Entrez vos informations de connexion
       </p>
     </div>
 
     <div className="space-y-4">
-      <Input
-        type="email"
-        placeholder="votre@email.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="text-center text-lg"
-        disabled={loading}
-      />
-      <Input
-        type="tel"
-        placeholder="+33 6 12 34 56 78"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        className="text-center text-lg"
-        disabled={loading}
-      />
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="votre@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={loading}
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="phone">Téléphone</Label>
+        <div className="relative">
+          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            id="phone"
+            type="tel"
+            placeholder="+33 6 12 34 56 78"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="pl-10"
+            disabled={loading}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="password">Mot de passe</Label>
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            id="password"
+            type="password"
+            placeholder="Minimum 6 caractères"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="pl-10"
+            disabled={loading}
+          />
+        </div>
+      </div>
+
       <Button
         variant="hero"
         className="w-full"
         onClick={onSubmit}
-        disabled={!email.trim() || !phone.trim() || loading}
+        disabled={!email.trim() || !phone.trim() || !password.trim() || loading}
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
         {!loading && <ArrowRight className="w-4 h-4" />}
       </Button>
     </div>
-
-    <p className="text-xs text-center text-muted-foreground">
-      Un email de vérification vous sera envoyé
-    </p>
   </div>
 );
 
@@ -450,18 +451,26 @@ const ProfileStep = ({
     </div>
 
     <div className="space-y-4">
-      <Input
-        placeholder="Prénom"
-        value={firstName}
-        onChange={(e) => setFirstName(e.target.value)}
-        disabled={loading}
-      />
-      <Input
-        placeholder="Nom"
-        value={lastName}
-        onChange={(e) => setLastName(e.target.value)}
-        disabled={loading}
-      />
+      <div className="space-y-2">
+        <Label htmlFor="firstName">Prénom</Label>
+        <Input
+          id="firstName"
+          placeholder="Prénom"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          disabled={loading}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="lastName">Nom</Label>
+        <Input
+          id="lastName"
+          placeholder="Nom"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          disabled={loading}
+        />
+      </div>
       <Button
         variant="hero"
         className="w-full"
@@ -522,46 +531,30 @@ const AddressStep = ({
   </div>
 );
 
-const VerificationStep = ({
-  email,
-  onResend,
-  loading,
+const SuccessStep = ({
+  onGoToDashboard,
 }: {
-  email: string;
-  onResend: () => void;
-  loading: boolean;
+  onGoToDashboard: () => void;
 }) => (
   <div className="space-y-6">
     <div className="text-center">
-      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-        <Mail className="w-8 h-8 text-primary" />
+      <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto mb-4">
+        <MapPin className="w-8 h-8 text-success" />
       </div>
-      <h2 className="text-2xl font-bold mb-2">Vérifiez votre email</h2>
+      <h2 className="text-2xl font-bold mb-2">ANR créé avec succès !</h2>
       <p className="text-muted-foreground">
-        Un email a été envoyé à <strong>{email}</strong>
+        Votre interphone numérique est prêt à recevoir des appels
       </p>
     </div>
 
-    <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-sm space-y-2">
-      <p className="font-semibold text-primary">⚠️ Important</p>
-      <p className="text-muted-foreground">
-        Ouvrez l'email <strong>depuis votre téléphone</strong> (celui où vous utilisez l'application) pour valider votre numéro.
-      </p>
-      <p className="text-muted-foreground">
-        Ne cliquez pas sur le lien depuis un ordinateur.
-      </p>
-    </div>
-
-    <div className="space-y-4">
-      <Button
-        variant="secondary"
-        className="w-full"
-        onClick={onResend}
-        disabled={loading}
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Renvoyer l'email"}
-      </Button>
-    </div>
+    <Button
+      variant="hero"
+      className="w-full"
+      onClick={onGoToDashboard}
+    >
+      Accéder à mon tableau de bord
+      <ArrowRight className="w-4 h-4" />
+    </Button>
   </div>
 );
 
