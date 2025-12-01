@@ -151,6 +151,27 @@ const Call = () => {
 
           await supabase.from("call_participants").insert(participantsToInsert);
           logger.log("[Call] Created", residents.length, "resident participants");
+
+          // Send push notifications to all residents
+          const userIds = residents.map(r => r.user_id);
+          try {
+            await supabase.functions.invoke("send-push-notification", {
+              body: {
+                user_ids: userIds,
+                title: "📞 Appel entrant",
+                body: `Visiteur à ${anr.address}`,
+                data: {
+                  type: "incoming_call",
+                  callId: callLog.id,
+                  habitationId: habitation.id,
+                },
+              },
+            });
+            logger.log("[Call] Push notifications sent");
+          } catch (pushError) {
+            logger.error("[Call] Error sending push:", pushError);
+            // Don't fail the call if push fails
+          }
         }
 
         // Create visitor participant

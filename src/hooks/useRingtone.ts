@@ -2,8 +2,6 @@ import { useRef, useCallback, useEffect } from "react";
 
 export const useRingtone = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
-  const oscillatorRef = useRef<OscillatorNode | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
   const intervalRef = useRef<number | null>(null);
   const isPlayingRef = useRef(false);
 
@@ -14,76 +12,82 @@ export const useRingtone = () => {
     return audioContextRef.current;
   }, []);
 
+  // Play a realistic phone ring tone
   const playRing = useCallback(() => {
     const ctx = createRingtone();
-    
-    // Create oscillator for ring tone
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    // Classic phone ring frequencies
-    osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
-    osc.type = "sine";
-    
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
-    
-    // Second tone
-    setTimeout(() => {
-      if (!isPlayingRef.current) return;
-      
+    const currentTime = ctx.currentTime;
+
+    // Create master gain for overall volume
+    const masterGain = ctx.createGain();
+    masterGain.connect(ctx.destination);
+    masterGain.gain.setValueAtTime(0.5, currentTime);
+
+    // Classic dual-tone ring (similar to phone)
+    // First ring burst
+    const playBurst = (startTime: number) => {
+      // Tone 1: 440 Hz (A4)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(440, startTime);
+      gain1.gain.setValueAtTime(0, startTime);
+      gain1.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+      gain1.gain.setValueAtTime(0.3, startTime + 0.4);
+      gain1.gain.linearRampToValueAtTime(0, startTime + 0.42);
+      osc1.connect(gain1);
+      gain1.connect(masterGain);
+      osc1.start(startTime);
+      osc1.stop(startTime + 0.45);
+
+      // Tone 2: 480 Hz (B4) - creates the classic ring modulation
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
-      
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      
-      osc2.frequency.setValueAtTime(480, ctx.currentTime);
       osc2.type = "sine";
-      
-      gain2.gain.setValueAtTime(0.3, ctx.currentTime);
-      
-      osc2.start(ctx.currentTime);
-      osc2.stop(ctx.currentTime + 0.4);
-    }, 100);
+      osc2.frequency.setValueAtTime(480, startTime);
+      gain2.gain.setValueAtTime(0, startTime);
+      gain2.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+      gain2.gain.setValueAtTime(0.3, startTime + 0.4);
+      gain2.gain.linearRampToValueAtTime(0, startTime + 0.42);
+      osc2.connect(gain2);
+      gain2.connect(masterGain);
+      osc2.start(startTime);
+      osc2.stop(startTime + 0.45);
+    };
+
+    // Play two short bursts with a small gap (classic ring pattern)
+    playBurst(currentTime);
+    playBurst(currentTime + 0.5);
   }, [createRingtone]);
 
   const startRinging = useCallback(() => {
     if (isPlayingRef.current) return;
     
+    console.log("[Ringtone] Starting ringtone");
     isPlayingRef.current = true;
+    
+    // Resume audio context if suspended (browser autoplay policy)
+    if (audioContextRef.current?.state === "suspended") {
+      audioContextRef.current.resume();
+    }
     
     // Play immediately
     playRing();
     
-    // Then repeat every 2 seconds
+    // Then repeat every 2.5 seconds (ring pattern)
     intervalRef.current = window.setInterval(() => {
       if (isPlayingRef.current) {
         playRing();
       }
-    }, 2000);
+    }, 2500);
   }, [playRing]);
 
   const stopRinging = useCallback(() => {
+    console.log("[Ringtone] Stopping ringtone");
     isPlayingRef.current = false;
     
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
-    }
-    
-    if (oscillatorRef.current) {
-      try {
-        oscillatorRef.current.stop();
-      } catch (e) {
-        // Already stopped
-      }
-      oscillatorRef.current = null;
     }
   }, []);
 
@@ -93,6 +97,7 @@ export const useRingtone = () => {
       stopRinging();
       if (audioContextRef.current) {
         audioContextRef.current.close();
+        audioContextRef.current = null;
       }
     };
   }, [stopRinging]);
@@ -103,6 +108,7 @@ export const useRingtone = () => {
 // Request notification permission
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!("Notification" in window)) {
+    console.log("[Notification] Not supported in this browser");
     return false;
   }
   
@@ -121,12 +127,14 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 // Show notification
 export const showCallNotification = (habitationName: string, address: string): Notification | null => {
   if (!("Notification" in window) || Notification.permission !== "granted") {
+    console.log("[Notification] Permission not granted");
     return null;
   }
   
-  const notification = new Notification("Appel entrant", {
+  console.log("[Notification] Showing incoming call notification");
+  const notification = new Notification("📞 Appel entrant", {
     body: `${habitationName}\n${address}`,
-    icon: "/favicon.ico",
+    icon: "/pwa-192x192.png",
     tag: "incoming-call",
     requireInteraction: true,
   });
