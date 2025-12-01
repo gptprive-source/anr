@@ -245,7 +245,7 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
-          phone_number: string
+          phone_number: string | null
           phone_verified: boolean | null
           updated_at: string | null
         }
@@ -254,7 +254,7 @@ export type Database = {
           first_name?: string | null
           id: string
           last_name?: string | null
-          phone_number: string
+          phone_number?: string | null
           phone_verified?: boolean | null
           updated_at?: string | null
         }
@@ -263,7 +263,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
-          phone_number?: string
+          phone_number?: string | null
           phone_verified?: boolean | null
           updated_at?: string | null
         }
