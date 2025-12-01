@@ -17,46 +17,69 @@ interface PushPayload {
 const VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
 const VAPID_PRIVATE_KEY = "Dl8fLo1xrWxENv-iYBPX7wCVw1NZOHaCKVF2YwPQxQo";
 
-// Create JWT for Web Push authentication
+// Helper to convert base64url to Uint8Array
+function base64UrlToUint8Array(base64Url: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64Url.length % 4)) % 4);
+  const base64 = (base64Url + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Helper to convert Uint8Array to base64url
+function uint8ArrayToBase64Url(uint8Array: Uint8Array): string {
+  const base64 = btoa(String.fromCharCode(...uint8Array));
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+// Create VAPID JWT using proper JWK import
 async function createVapidJWT(endpoint: string): Promise<string> {
-  const header = { alg: "ES256", typ: "JWT" };
   const audience = new URL(endpoint).origin;
   const now = Math.floor(Date.now() / 1000);
+  
+  const header = { alg: "ES256", typ: "JWT" };
   const payload = {
     aud: audience,
     exp: now + 86400,
-    sub: "mailto:contact@anr.app",
+    sub: "mailto:contact@anr-app.fr",
   };
 
-  const encoder = new TextEncoder();
-  const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const headerB64 = uint8ArrayToBase64Url(new TextEncoder().encode(JSON.stringify(header)));
+  const payloadB64 = uint8ArrayToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
 
-  // Decode VAPID private key
-  const padding = "=".repeat((4 - (VAPID_PRIVATE_KEY.length % 4)) % 4);
-  const base64 = (VAPID_PRIVATE_KEY + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawKey = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  // Import private key as JWK for ECDSA P-256
+  const privateKeyBytes = base64UrlToUint8Array(VAPID_PRIVATE_KEY);
+  const publicKeyBytes = base64UrlToUint8Array(VAPID_PUBLIC_KEY);
+  
+  // Create JWK from raw keys (uncompressed public key format: 0x04 || x || y)
+  const jwk = {
+    kty: "EC",
+    crv: "P-256",
+    x: uint8ArrayToBase64Url(publicKeyBytes.slice(1, 33)),
+    y: uint8ArrayToBase64Url(publicKeyBytes.slice(33, 65)),
+    d: uint8ArrayToBase64Url(privateKeyBytes),
+  };
 
-  // Import as ECDSA P-256 key
   const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    rawKey,
+    "jwk",
+    jwk,
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"]
   );
 
-  const signatureInput = encoder.encode(`${headerB64}.${payloadB64}`);
-  const signature = await crypto.subtle.sign(
+  const signatureInput = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+  const signatureBuffer = await crypto.subtle.sign(
     { name: "ECDSA", hash: "SHA-256" },
     cryptoKey,
     signatureInput
   );
 
-  const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
+  const signature = new Uint8Array(signatureBuffer);
+  const signatureB64 = uint8ArrayToBase64Url(signature);
 
   return `${headerB64}.${payloadB64}.${signatureB64}`;
 }
@@ -65,16 +88,20 @@ async function createVapidJWT(endpoint: string): Promise<string> {
 async function sendWebPush(subscription: any, payload: any): Promise<boolean> {
   try {
     const endpoint = subscription.endpoint;
+    console.log("[WebPush] Sending to endpoint:", endpoint);
+    
     const jwt = await createVapidJWT(endpoint);
+    console.log("[WebPush] JWT created successfully");
 
-    const payloadBytes = new TextEncoder().encode(JSON.stringify(payload));
+    const payloadString = JSON.stringify(payload);
+    const payloadBytes = new TextEncoder().encode(payloadString);
 
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Authorization": `vapid t=${jwt}, k=${VAPID_PUBLIC_KEY}`,
         "Content-Type": "application/octet-stream",
-        "Content-Encoding": "aes128gcm",
+        "Content-Length": payloadBytes.length.toString(),
         "TTL": "86400",
         "Urgency": "high",
       },
@@ -82,6 +109,12 @@ async function sendWebPush(subscription: any, payload: any): Promise<boolean> {
     });
 
     console.log("[WebPush] Response status:", response.status);
+    
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("[WebPush] Error response:", text);
+    }
+    
     return response.ok || response.status === 201;
   } catch (error) {
     console.error("[WebPush] Send error:", error);
@@ -110,7 +143,6 @@ serve(async (req) => {
       );
     }
 
-    // Get push tokens for the specified users
     const { data: tokens, error: tokensError } = await supabase
       .from("push_tokens")
       .select("token, platform, user_id")
@@ -140,24 +172,20 @@ serve(async (req) => {
       data: payload.data,
     };
 
-    // Send notifications
     const results = [];
     for (const tokenData of tokens) {
       try {
         console.log(`[Push] Sending to ${tokenData.platform} device...`);
         
         if (tokenData.platform === "web") {
-          // Web Push
           const subscription = JSON.parse(tokenData.token);
           const success = await sendWebPush(subscription, pushPayload);
           results.push({ user_id: tokenData.user_id, platform: "web", success });
           
           if (!success) {
-            // Remove invalid subscription
             await supabase.from("push_tokens").delete().eq("token", tokenData.token);
           }
         } else {
-          // Native FCM - would need FCM service account for native apps
           console.log("[Push] Native FCM not configured for:", tokenData.platform);
           results.push({ user_id: tokenData.user_id, platform: tokenData.platform, success: false });
         }
