@@ -121,14 +121,12 @@ const CallInterface = memo(({
   const handleHangup = async () => {
     logger.log("[CallInterface] Hanging up");
     
-    // Update call_log status to ended
     if (callId) {
       await supabase
         .from("call_logs")
         .update({ status: "ended", ended_at: new Date().toISOString() })
         .eq("id", callId);
 
-      // Update all participants to ended
       await supabase
         .from("call_participants")
         .update({ status: "ended", left_at: new Date().toISOString() })
