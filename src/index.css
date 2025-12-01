@@ -145,3 +145,26 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* Incoming call screen - ensure it always displays on top on Android */
+#incoming-call-screen {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  isolation: isolate !important;
+  contain: layout style paint !important;
+  -webkit-transform: translate3d(0, 0, 0) !important;
+  transform: translate3d(0, 0, 0) !important;
+}
+
+/* Prevent any parent from hiding the call screen */
+body:has(#incoming-call-screen) {
+  overflow: visible !important;
+}
+
+/* Force visibility for Android WebView */
+@supports (-webkit-touch-callout: none) {
+  #incoming-call-screen {
+    height: -webkit-fill-available !important;
+  }
+}
