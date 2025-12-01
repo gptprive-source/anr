@@ -138,92 +138,83 @@ const IncomingCallListener = () => {
 
     checkExistingCalls();
 
-    // Subscribe to new call_participants
+    // Subscribe to ALL call_participants changes (filter on client side for reliability)
     const channel = supabase
-      .channel(`incoming-calls-${user.id}`)
+      .channel(`incoming-calls-${user.id}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "call_participants",
-          filter: `user_id=eq.${user.id}`,
         },
         async (payload) => {
-          console.log("[IncomingCall] New participant inserted:", payload);
-          const participant = payload.new as any;
-          if (participant.status === "ringing" && participant.role === "resident") {
-            await loadCallDetails(participant.id, participant.call_id, participant.habitation_id);
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "call_participants",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log("[IncomingCall] Participant updated:", payload);
-          const participant = payload.new as any;
-          // If our participant was updated to something other than ringing, dismiss
-          if (incomingCall?.participantId === participant.id && participant.status !== "ringing") {
-            console.log("[IncomingCall] Call no longer ringing, dismissing");
-            if (mountedRef.current) setIncomingCall(null);
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "call_participants",
-        },
-        (payload) => {
-          console.log("[IncomingCall] Participant deleted:", payload);
-          const deleted = payload.old as any;
-          if (incomingCall?.participantId === deleted.id) {
-            console.log("[IncomingCall] Our participant deleted");
-            if (mountedRef.current) setIncomingCall(null);
+          console.log("[IncomingCall] Participant change detected:", payload.eventType, payload);
+          
+          if (payload.eventType === "INSERT") {
+            const participant = payload.new as any;
+            console.log("[IncomingCall] INSERT - user_id:", participant.user_id, "current user:", user.id);
+            if (participant.user_id === user.id && participant.status === "ringing" && participant.role === "resident") {
+              console.log("[IncomingCall] This is for us! Loading call details...");
+              await loadCallDetails(participant.id, participant.call_id, participant.habitation_id);
+            }
+          } else if (payload.eventType === "UPDATE") {
+            const participant = payload.new as any;
+            if (participant.user_id === user.id && incomingCall?.participantId === participant.id && participant.status !== "ringing") {
+              console.log("[IncomingCall] Our call no longer ringing, dismissing");
+              if (mountedRef.current) setIncomingCall(null);
+            }
+          } else if (payload.eventType === "DELETE") {
+            const deleted = payload.old as any;
+            if (incomingCall?.participantId === deleted.id) {
+              console.log("[IncomingCall] Our participant deleted");
+              if (mountedRef.current) setIncomingCall(null);
+            }
           }
         }
       )
       .subscribe((status) => {
         console.log("[IncomingCall] Channel subscription status:", status);
+        if (status === "SUBSCRIBED") {
+          console.log("[IncomingCall] ✅ Successfully subscribed to realtime changes");
+        } else if (status === "CHANNEL_ERROR") {
+          console.error("[IncomingCall] ❌ Channel error - realtime may not work");
+        }
       });
 
     channelRef.current = channel;
 
     // Also subscribe to call_logs status changes
     const callChannel = supabase
-      .channel(`call-status-${user.id}`)
+      .channel(`call-status-${user.id}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
-          event: "UPDATE",
+          event: "*",
           schema: "public",
           table: "call_logs",
         },
         (payload) => {
-          console.log("[IncomingCall] Call log updated:", payload);
-          const callLog = payload.new as any;
-          if (incomingCall?.callId === callLog.id && callLog.status === "ended") {
-            console.log("[IncomingCall] Call ended by caller");
-            if (mountedRef.current) setIncomingCall(null);
+          console.log("[IncomingCall] Call log changed:", payload.eventType, payload);
+          if (payload.eventType === "UPDATE") {
+            const callLog = payload.new as any;
+            if (incomingCall?.callId === callLog.id && callLog.status === "ended") {
+              console.log("[IncomingCall] Call ended by caller");
+              if (mountedRef.current) setIncomingCall(null);
+            }
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[IncomingCall] Call logs channel status:", status);
+      });
 
     return () => {
       console.log("[IncomingCall] Cleaning up subscriptions");
       supabase.removeChannel(channel);
       supabase.removeChannel(callChannel);
     };
-  }, [user, incomingCall?.participantId, incomingCall?.callId]);
+  }, [user]);
 
   const handleAnswer = async () => {
     if (!incomingCall) return;
