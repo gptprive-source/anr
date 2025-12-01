@@ -207,20 +207,9 @@ const IncomingCallListener = () => {
     setIsProcessing(false);
   }, [incomingCall, isProcessing, stopAllAlerts, addLog]);
 
-  // Debug panel
-  const DebugPanel = () => (
-    <div className="fixed bottom-0 left-0 right-0 bg-black/95 text-green-400 text-xs p-2 font-mono max-h-40 overflow-auto z-[10001]">
-      <div className="font-bold mb-1 text-yellow-400">🔍 Debug ({user ? "connecté" : "non connecté"}):</div>
-      {debugLog.length === 0 ? (
-        <div>En attente d'événements...</div>
-      ) : (
-        debugLog.map((log, i) => <div key={i}>{log}</div>)
-      )}
-    </div>
-  );
-
+  // Ne rien afficher si pas d'appel entrant
   if (!incomingCall) {
-    return <DebugPanel />;
+    return null;
   }
 
   return (
@@ -264,7 +253,6 @@ const IncomingCallListener = () => {
           </div>
         </div>
       </div>
-      <DebugPanel />
     </>
   );
 };
