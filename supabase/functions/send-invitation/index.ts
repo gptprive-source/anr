@@ -12,11 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const { email, habitationId, invitedBy, code, habitationName, anrAddress } = await req.json();
+    const { email, firstName, lastName, habitationId, invitedBy, code, habitationName, anrAddress } = await req.json();
 
     console.log("[send-invitation] Sending invitation to:", email);
+    console.log("[send-invitation] Name:", firstName, lastName);
     console.log("[send-invitation] Habitation:", habitationName);
-    console.log("[send-invitation] Code:", code);
 
     // Build invitation URL
     const baseUrl = "https://anr.lovable.app";
@@ -35,12 +35,14 @@ serve(async (req) => {
       },
     });
 
+    const fullName = `${firstName} ${lastName}`.trim();
+
     // Send email
     await client.send({
       from: Deno.env.get("SMTP_USER") || "contact@soqotomobil.com",
       to: email,
-      subject: `Invitation à rejoindre ${habitationName} sur ANR`,
-      content: `Bonjour,
+      subject: `${fullName}, vous êtes invité(e) à rejoindre ${habitationName} sur ANR`,
+      content: `Bonjour ${firstName},
 
 Vous avez été invité(e) à rejoindre l'habitation "${habitationName}" sur ANR (Adresse Numérique Résidentielle).
 
@@ -48,8 +50,6 @@ ${anrAddress ? `Adresse : ${anrAddress}` : ""}
 
 Pour accepter cette invitation, cliquez sur le lien ci-dessous :
 ${invitationUrl}
-
-Ou utilisez ce code d'invitation : ${code}
 
 Cette invitation expire dans 24 heures.
 
@@ -66,7 +66,6 @@ L'équipe ANR`,
     .header { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
     .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
     .button { display: inline-block; background: #0ea5e9; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
-    .code { background: #e5e7eb; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 24px; text-align: center; letter-spacing: 3px; }
     .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }
   </style>
 </head>
@@ -76,14 +75,12 @@ L'équipe ANR`,
       <h1>🏠 Invitation ANR</h1>
     </div>
     <div class="content">
-      <p>Bonjour,</p>
+      <p>Bonjour <strong>${firstName}</strong>,</p>
       <p>Vous avez été invité(e) à rejoindre l'habitation <strong>"${habitationName}"</strong> sur ANR (Adresse Numérique Résidentielle).</p>
       ${anrAddress ? `<p>📍 <strong>Adresse :</strong> ${anrAddress}</p>` : ""}
       <p style="text-align: center;">
         <a href="${invitationUrl}" class="button">Accepter l'invitation</a>
       </p>
-      <p>Ou utilisez ce code d'invitation :</p>
-      <div class="code">${code}</div>
       <p style="color: #ef4444; font-size: 14px;">⏰ Cette invitation expire dans 24 heures.</p>
     </div>
     <div class="footer">
@@ -102,8 +99,7 @@ L'équipe ANR`,
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Invitation envoyée",
-        invitationUrl 
+        message: "Invitation envoyée"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
