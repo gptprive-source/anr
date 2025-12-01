@@ -146,39 +146,34 @@
   }
 }
 
-/* Portal container for incoming call - outside React root */
-#incoming-call-portal {
+/* Vanilla JS incoming call screen - completely outside React */
+#vanilla-incoming-call {
   position: fixed !important;
-  inset: 0 !important;
-  z-index: 2147483647 !important;
-  pointer-events: none;
-}
-
-#incoming-call-portal:not(:empty) {
-  pointer-events: auto;
-}
-
-/* Incoming call screen - ensure it always displays on top on Android */
-#incoming-call-screen {
-  position: fixed !important;
-  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
   z-index: 2147483647 !important;
   isolation: isolate !important;
   contain: layout style paint !important;
   -webkit-transform: translate3d(0, 0, 0) !important;
   transform: translate3d(0, 0, 0) !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
 }
 
 /* Prevent any parent from hiding the call screen */
-body:has(#incoming-call-screen),
-html:has(#incoming-call-screen),
-#root:has(~ #incoming-call-portal:not(:empty)) {
+body:has(#vanilla-incoming-call),
+html:has(#vanilla-incoming-call) {
   overflow: visible !important;
 }
 
-/* Force visibility for Android WebView */
+/* Force full height on iOS */
 @supports (-webkit-touch-callout: none) {
-  #incoming-call-screen {
+  #vanilla-incoming-call {
     height: -webkit-fill-available !important;
   }
 }
