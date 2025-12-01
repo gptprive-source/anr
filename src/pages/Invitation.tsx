@@ -133,31 +133,17 @@ const Invitation = () => {
         return;
       }
 
-      // Add as resident
-      const { error: residentError } = await supabase.from("residents").insert({
-        user_id: user.id,
-        habitation_id: invitation.habitation_id,
-        is_owner: false,
-        status: "verified",
+      // Call edge function to accept invitation
+      const { data, error } = await supabase.functions.invoke("accept-invitation", {
+        body: {
+          code,
+          userId: user.id,
+          email: user.email,
+        },
       });
 
-      if (residentError) {
-        if (residentError.code === "23505") {
-          toast({
-            title: "Déjà résident",
-            description: "Vous êtes déjà résident de cette habitation",
-          });
-          navigate("/dashboard");
-          return;
-        }
-        throw residentError;
-      }
-
-      // Mark invitation as used
-      await supabase
-        .from("resident_invitations")
-        .update({ used_at: new Date().toISOString(), used_by: user.id })
-        .eq("id", invitation.id);
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       setStep("success");
       toast({
@@ -166,6 +152,16 @@ const Invitation = () => {
       });
     } catch (err: any) {
       console.error("[Invitation] Accept error:", err);
+      
+      if (err.message?.includes("Déjà résident")) {
+        toast({
+          title: "Déjà résident",
+          description: "Vous êtes déjà résident de cette habitation",
+        });
+        navigate("/dashboard");
+        return;
+      }
+
       toast({
         title: "Erreur",
         description: err.message || "Impossible de rejoindre l'habitation",
@@ -199,50 +195,29 @@ const Invitation = () => {
 
     setSubmitting(true);
     try {
-      // Sign up the user
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: invitation.email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-          },
+      // Call edge function to create user and accept invitation
+      const { data, error } = await supabase.functions.invoke("accept-invitation", {
+        body: {
+          code,
+          email: invitation.email,
+          firstName,
+          lastName,
+          password,
         },
       });
 
-      if (signUpError) throw signUpError;
-
-      if (!signUpData.user) {
-        throw new Error("Erreur lors de la création du compte");
-      }
-
-      // Add as resident
-      const { error: residentError } = await supabase.from("residents").insert({
-        user_id: signUpData.user.id,
-        habitation_id: invitation.habitation_id,
-        is_owner: false,
-        status: "verified",
-      });
-
-      if (residentError) throw residentError;
-
-      // Mark invitation as used
-      await supabase
-        .from("resident_invitations")
-        .update({ used_at: new Date().toISOString(), used_by: signUpData.user.id })
-        .eq("id", invitation.id);
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       setStep("success");
       toast({
         title: "Compte créé !",
-        description: "Vérifiez votre email pour confirmer votre compte",
+        description: "Vous pouvez maintenant vous connecter",
       });
     } catch (err: any) {
       console.error("[Invitation] Register error:", err);
       
-      if (err.message?.includes("already registered")) {
+      if (err.message?.includes("déjà enregistré") || err.message?.includes("already registered")) {
         toast({
           title: "Email déjà utilisé",
           description: "Connectez-vous avec votre compte existant",
