@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useIncomingCallDetection } from "@/hooks/useIncomingCallDetection";
 import IncomingCallScreen from "@/components/call/IncomingCallScreen";
+import IncomingCallPortal from "@/components/call/IncomingCallPortal";
 
 const IncomingCallListener = () => {
   const { user } = useAuth();
@@ -16,15 +17,17 @@ const IncomingCallListener = () => {
     return null;
   }
 
-  console.log("[IncomingCallListener] ✅ Rendering IncomingCallScreen for call:", incomingCall.callId);
+  console.log("[IncomingCallListener] ✅ Rendering IncomingCallScreen via Portal for call:", incomingCall.callId);
   return (
-    <IncomingCallScreen
-      participantId={incomingCall.participantId}
-      callId={incomingCall.callId}
-      habitationName={incomingCall.habitationName}
-      address={incomingCall.address}
-      onDismiss={clearIncomingCall}
-    />
+    <IncomingCallPortal>
+      <IncomingCallScreen
+        participantId={incomingCall.participantId}
+        callId={incomingCall.callId}
+        habitationName={incomingCall.habitationName}
+        address={incomingCall.address}
+        onDismiss={clearIncomingCall}
+      />
+    </IncomingCallPortal>
   );
 };
 
