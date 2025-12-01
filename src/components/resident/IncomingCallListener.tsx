@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Phone, PhoneOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useRingtone, requestNotificationPermission, showCallNotification } from "@/hooks/useRingtone";
 
 interface IncomingCall {
@@ -18,39 +17,30 @@ const IncomingCallListener = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
-  const [debugLog, setDebugLog] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const incomingCallRef = useRef<IncomingCall | null>(null);
   const notificationRef = useRef<Notification | null>(null);
   const { startRinging, stopRinging } = useRingtone();
   const isRingingRef = useRef(false);
-  const showTimeRef = useRef<number>(0);
   const mountedRef = useRef(true);
-
-  const addLog = useCallback((msg: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    console.log(`[IncomingCall] ${msg}`);
-    setDebugLog(prev => [...prev.slice(-15), `${timestamp}: ${msg}`]);
-  }, []);
 
   // Track mounted state
   useEffect(() => {
     mountedRef.current = true;
-    addLog("Composant monté");
+    console.log("[IncomingCall] Mounted");
     return () => {
       mountedRef.current = false;
-      addLog("Composant démonté");
+      console.log("[IncomingCall] Unmounted");
     };
-  }, [addLog]);
+  }, []);
 
   // Keep ref in sync
   useEffect(() => {
     incomingCallRef.current = incomingCall;
     if (incomingCall) {
-      showTimeRef.current = Date.now();
-      addLog(`Appel affiché: ${incomingCall.habitationName}`);
+      console.log("[IncomingCall] Call displayed:", incomingCall.habitationName);
     }
-  }, [incomingCall, addLog]);
+  }, [incomingCall]);
 
   // Request notification permission
   useEffect(() => {
@@ -60,7 +50,7 @@ const IncomingCallListener = () => {
   // Start ringtone when call appears
   useEffect(() => {
     if (incomingCall && !isRingingRef.current) {
-      addLog("Démarrage sonnerie");
+      console.log("[IncomingCall] Starting ringtone");
       isRingingRef.current = true;
       startRinging();
       notificationRef.current = showCallNotification(incomingCall.habitationName, incomingCall.address);
@@ -68,17 +58,16 @@ const IncomingCallListener = () => {
         navigator.vibrate([500, 200, 500, 200, 500]);
       }
     }
-  }, [incomingCall, startRinging, addLog]);
+  }, [incomingCall, startRinging]);
 
   // Polling for ringing calls
   useEffect(() => {
     if (!user) return;
 
-    addLog(`Polling démarré pour user`);
+    console.log("[IncomingCall] Polling started");
 
     const checkCalls = async () => {
-      if (!mountedRef.current) return;
-      if (incomingCallRef.current) return;
+      if (!mountedRef.current || incomingCallRef.current) return;
 
       try {
         const { data, error } = await supabase
@@ -93,7 +82,7 @@ const IncomingCallListener = () => {
 
         if (data && data.length > 0) {
           const p = data[0];
-          addLog(`Appel ringing trouvé`);
+          console.log("[IncomingCall] Ringing call found");
 
           const { data: hab } = await supabase
             .from("habitations")
@@ -112,15 +101,14 @@ const IncomingCallListener = () => {
           }
         }
       } catch (err: any) {
-        addLog(`Erreur: ${err.message}`);
+        console.error("[IncomingCall] Error:", err.message);
       }
     };
 
     checkCalls();
     const interval = setInterval(checkCalls, 2000);
-
     return () => clearInterval(interval);
-  }, [user, addLog]);
+  }, [user]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -147,17 +135,11 @@ const IncomingCallListener = () => {
     if ("vibrate" in navigator) navigator.vibrate(0);
   }, [stopRinging]);
 
-  const handleAnswer = useCallback(async () => {
-    addLog(`RÉPONDRE cliqué`);
-    
-    if (isProcessing || !incomingCall) {
-      addLog("Ignoré: déjà en cours ou pas d'appel");
-      return;
-    }
+  const handleAnswer = async () => {
+    console.log("[IncomingCall] ANSWER clicked");
+    if (isProcessing || !incomingCall) return;
     
     setIsProcessing(true);
-    addLog("Traitement réponse...");
-    
     const callId = incomingCall.callId;
     const participantId = incomingCall.participantId;
     
@@ -169,26 +151,19 @@ const IncomingCallListener = () => {
         .update({ status: "answered", joined_at: new Date().toISOString() })
         .eq("id", participantId);
       
-      addLog("Status mis à jour, navigation...");
       setIncomingCall(null);
       navigate(`/call/${callId}?resident=true`);
     } catch (err: any) {
-      addLog(`Erreur: ${err.message}`);
+      console.error("[IncomingCall] Error:", err.message);
       setIsProcessing(false);
     }
-  }, [incomingCall, isProcessing, navigate, stopAllAlerts, addLog]);
+  };
 
-  const handleDecline = useCallback(async () => {
-    addLog(`REFUSER cliqué`);
-    
-    if (isProcessing || !incomingCall) {
-      addLog("Ignoré: déjà en cours ou pas d'appel");
-      return;
-    }
+  const handleDecline = async () => {
+    console.log("[IncomingCall] DECLINE clicked");
+    if (isProcessing || !incomingCall) return;
     
     setIsProcessing(true);
-    addLog("Traitement refus...");
-    
     const participantId = incomingCall.participantId;
     
     stopAllAlerts();
@@ -199,61 +174,126 @@ const IncomingCallListener = () => {
         .update({ status: "declined", left_at: new Date().toISOString() })
         .eq("id", participantId);
       
-      addLog("Appel refusé");
       setIncomingCall(null);
     } catch (err: any) {
-      addLog(`Erreur: ${err.message}`);
+      console.error("[IncomingCall] Error:", err.message);
     }
     setIsProcessing(false);
-  }, [incomingCall, isProcessing, stopAllAlerts, addLog]);
+  };
 
-  // Ne rien afficher si pas d'appel entrant
   if (!incomingCall) {
     return null;
   }
 
+  // Style inline simple et compatible Android
   return (
-    <>
-      <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col items-center justify-center p-6">
-        <div className="relative mb-8">
-          <div className="absolute inset-0 w-40 h-40 rounded-full bg-green-500/30 animate-ping" style={{ animationDuration: '1.5s' }} />
-          <div className="absolute inset-0 w-40 h-40 rounded-full bg-green-500/20 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
-          <div className="relative w-40 h-40 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-2xl shadow-green-500/50">
-            <Phone className="w-16 h-16 text-white animate-bounce" />
-          </div>
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: '#1e293b',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 99999,
+      padding: '24px'
+    }}>
+      {/* Icon */}
+      <div style={{
+        width: '120px',
+        height: '120px',
+        borderRadius: '60px',
+        backgroundColor: '#22c55e',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: '32px',
+        boxShadow: '0 0 40px rgba(34, 197, 94, 0.5)'
+      }}>
+        <Phone style={{ width: '48px', height: '48px', color: 'white' }} />
+      </div>
+
+      {/* Text */}
+      <h2 style={{ 
+        fontSize: '28px', 
+        fontWeight: 'bold', 
+        color: 'white', 
+        marginBottom: '8px',
+        textAlign: 'center'
+      }}>
+        📞 Appel entrant
+      </h2>
+      <p style={{ 
+        fontSize: '20px', 
+        color: 'white', 
+        marginBottom: '4px',
+        textAlign: 'center'
+      }}>
+        {incomingCall.habitationName}
+      </p>
+      <p style={{ 
+        fontSize: '16px', 
+        color: '#94a3b8', 
+        marginBottom: '48px',
+        textAlign: 'center'
+      }}>
+        {incomingCall.address}
+      </p>
+
+      {/* Buttons */}
+      <div style={{ display: 'flex', gap: '64px' }}>
+        {/* Decline */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+          <button
+            onClick={handleDecline}
+            disabled={isProcessing}
+            style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '40px',
+              backgroundColor: '#ef4444',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              opacity: isProcessing ? 0.5 : 1,
+              boxShadow: '0 10px 30px rgba(239, 68, 68, 0.4)'
+            }}
+          >
+            <PhoneOff style={{ width: '40px', height: '40px', color: 'white' }} />
+          </button>
+          <span style={{ fontSize: '14px', color: '#94a3b8' }}>Refuser</span>
         </div>
 
-        <h2 className="text-3xl font-bold mb-2 text-white">📞 Appel entrant</h2>
-        <p className="text-xl text-white mb-1">{incomingCall.habitationName}</p>
-        <p className="text-slate-300 mb-8">{incomingCall.address}</p>
-        <div className="flex gap-16">
-          <div className="flex flex-col items-center gap-3">
-            <Button 
-              variant="destructive"
-              size="lg"
-              onClick={handleDecline}
-              disabled={isProcessing}
-              className="w-20 h-20 rounded-full text-white shadow-xl flex items-center justify-center"
-            >
-              <PhoneOff className="w-10 h-10" />
-            </Button>
-            <span className="text-sm text-slate-300">Refuser</span>
-          </div>
-          <div className="flex flex-col items-center gap-3">
-            <Button 
-              variant="default"
-              size="lg"
-              onClick={handleAnswer}
-              disabled={isProcessing}
-              className="w-20 h-20 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-xl animate-pulse flex items-center justify-center"
-            >
-              <Phone className="w-10 h-10" />
-            </Button>
-            <span className="text-sm text-slate-300">Répondre</span>
-          </div>
+        {/* Answer */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+          <button
+            onClick={handleAnswer}
+            disabled={isProcessing}
+            style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '40px',
+              backgroundColor: '#22c55e',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              opacity: isProcessing ? 0.5 : 1,
+              boxShadow: '0 10px 30px rgba(34, 197, 94, 0.4)'
+            }}
+          >
+            <Phone style={{ width: '40px', height: '40px', color: 'white' }} />
+          </button>
+          <span style={{ fontSize: '14px', color: '#94a3b8' }}>Répondre</span>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
