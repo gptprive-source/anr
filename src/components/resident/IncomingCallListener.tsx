@@ -147,17 +147,8 @@ const IncomingCallListener = () => {
     if ("vibrate" in navigator) navigator.vibrate(0);
   }, [stopRinging]);
 
-  const handleAnswer = useCallback(async (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const timeSinceShow = Date.now() - showTimeRef.current;
-    addLog(`RÉPONDRE cliqué (${timeSinceShow}ms)`);
-    
-    if (timeSinceShow < 2000) {
-      addLog("Ignoré: trop rapide");
-      return;
-    }
+  const handleAnswer = useCallback(async () => {
+    addLog(`RÉPONDRE cliqué`);
     
     if (isProcessing || !incomingCall) {
       addLog("Ignoré: déjà en cours ou pas d'appel");
@@ -187,17 +178,8 @@ const IncomingCallListener = () => {
     }
   }, [incomingCall, isProcessing, navigate, stopAllAlerts, addLog]);
 
-  const handleDecline = useCallback(async (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const timeSinceShow = Date.now() - showTimeRef.current;
-    addLog(`REFUSER cliqué (${timeSinceShow}ms)`);
-    
-    if (timeSinceShow < 2000) {
-      addLog("Ignoré: trop rapide");
-      return;
-    }
+  const handleDecline = useCallback(async () => {
+    addLog(`REFUSER cliqué`);
     
     if (isProcessing || !incomingCall) {
       addLog("Ignoré: déjà en cours ou pas d'appel");
@@ -243,11 +225,7 @@ const IncomingCallListener = () => {
 
   return (
     <>
-      <div 
-        className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col items-center justify-center p-6"
-        onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-      >
+      <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col items-center justify-center p-6">
         <div className="relative mb-8">
           <div className="absolute inset-0 w-40 h-40 rounded-full bg-green-500/30 animate-ping" style={{ animationDuration: '1.5s' }} />
           <div className="absolute inset-0 w-40 h-40 rounded-full bg-green-500/20 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
@@ -259,33 +237,29 @@ const IncomingCallListener = () => {
         <h2 className="text-3xl font-bold mb-2 text-white">📞 Appel entrant</h2>
         <p className="text-xl text-white mb-1">{incomingCall.habitationName}</p>
         <p className="text-slate-300 mb-8">{incomingCall.address}</p>
-        
-        {/* Timer indicator */}
-        <p className="text-yellow-400 text-sm mb-4">
-          {Date.now() - showTimeRef.current < 2000 ? "⏳ Attendez 2s..." : "✅ Prêt"}
-        </p>
-
-        <div className="flex gap-20">
+        <div className="flex gap-16">
           <div className="flex flex-col items-center gap-3">
-            <button 
+            <Button 
+              variant="destructive"
+              size="lg"
               onClick={handleDecline}
-              onTouchEnd={handleDecline}
-              disabled={isProcessing || Date.now() - showTimeRef.current < 2000}
-              className="w-24 h-24 rounded-full bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white shadow-xl shadow-red-500/50 flex items-center justify-center touch-manipulation"
+              disabled={isProcessing}
+              className="w-20 h-20 rounded-full text-white shadow-xl flex items-center justify-center"
             >
-              <PhoneOff className="w-12 h-12" />
-            </button>
+              <PhoneOff className="w-10 h-10" />
+            </Button>
             <span className="text-sm text-slate-300">Refuser</span>
           </div>
           <div className="flex flex-col items-center gap-3">
-            <button 
+            <Button 
+              variant="default"
+              size="lg"
               onClick={handleAnswer}
-              onTouchEnd={handleAnswer}
-              disabled={isProcessing || Date.now() - showTimeRef.current < 2000}
-              className="w-24 h-24 rounded-full bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white shadow-xl shadow-green-500/50 animate-pulse flex items-center justify-center touch-manipulation"
+              disabled={isProcessing}
+              className="w-20 h-20 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-xl animate-pulse flex items-center justify-center"
             >
-              <Phone className="w-12 h-12" />
-            </button>
+              <Phone className="w-10 h-10" />
+            </Button>
             <span className="text-sm text-slate-300">Répondre</span>
           </div>
         </div>
