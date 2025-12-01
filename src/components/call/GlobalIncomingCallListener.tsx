@@ -12,6 +12,8 @@ import { useWebPush } from "@/hooks/useWebPush";
 const GlobalIncomingCallListener = () => {
   const { user } = useAuth();
   
+  console.log("[GlobalIncomingCallListener] 🔄 Rendering, user:", user?.id || "NOT_AUTHENTICATED");
+  
   // Register for push notifications (native platforms)
   usePushNotifications();
   
@@ -20,6 +22,7 @@ const GlobalIncomingCallListener = () => {
 
   // Register push service worker for PWA
   useEffect(() => {
+    console.log("[GlobalIncomingCallListener] 📱 ServiceWorker check, user:", user?.id);
     if ("serviceWorker" in navigator && user) {
       navigator.serviceWorker.register("/sw-push.js").then((registration) => {
         console.log("[SW] Push service worker registered:", registration.scope);
@@ -30,8 +33,12 @@ const GlobalIncomingCallListener = () => {
   }, [user]);
 
   // Only render for authenticated users
-  if (!user) return null;
+  if (!user) {
+    console.log("[GlobalIncomingCallListener] ⛔ No user, not rendering IncomingCallListener");
+    return null;
+  }
 
+  console.log("[GlobalIncomingCallListener] ✅ User authenticated, rendering IncomingCallListener");
   return <IncomingCallListener />;
 };
 
