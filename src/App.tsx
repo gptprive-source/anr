@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
+import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallListener";
 import Index from "./pages/Index";
 import Visitor from "./pages/Visitor";
 import Register from "./pages/Register";
@@ -27,6 +28,7 @@ const App = () => (
         <Sonner />
         <InstallPrompt />
         <BrowserRouter>
+          <GlobalIncomingCallListener />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/visitor" element={<Visitor />} />
