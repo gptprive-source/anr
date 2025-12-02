@@ -79,11 +79,11 @@ const ANRLanding = () => {
     if (!anrData) return;
     
     if (anrData.habitationCount > 1) {
-      // Multi-habitat: go to selection page
-      navigate(`/multi-habitat/${anrData.id}`);
+      // Multi-habitat: go to selection page (pass code, not UUID)
+      navigate(`/multi-habitat/${anrData.code}`);
     } else {
-      // Single habitat: go directly to call
-      navigate(`/call/${anrData.id}`);
+      // Single habitat: go directly to call (pass code, not UUID)
+      navigate(`/call/${anrData.code}`);
     }
   };
 
