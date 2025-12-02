@@ -32,8 +32,8 @@ const ShareANRDialog = ({
 }: ShareANRDialogProps) => {
   const { toast } = useToast();
 
-  // Generate Google Maps link
-  const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+  // Generate geo: URI for native GPS apps
+  const mapsLink = `geo:${latitude},${longitude}?q=${latitude},${longitude}`;
   
   // Generate the ANR URL (visitor page with code)
   const anrUrl = `${window.location.origin}/visitor?code=${anrCode}`;
