@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, User, MapPin, ArrowRight, Loader2, Lock, CheckCircle } from "lucide-react";
+import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,6 +82,29 @@ const RegisterForm = () => {
           variant: "destructive",
         });
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+      if (error) throw error;
+      toast({
+        title: "Email renvoyé",
+        description: "Vérifiez votre boîte mail",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de renvoyer l'email",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -274,7 +297,12 @@ const RegisterForm = () => {
             />
           )}
           {step === "email-sent" && (
-            <EmailSentStep email={email} />
+            <EmailSentStep 
+              email={email} 
+              onResend={handleResendEmail}
+              onBack={() => setStep("credentials")}
+              loading={loading}
+            />
           )}
           {step === "profile" && (
             <ProfileStep
@@ -283,6 +311,7 @@ const RegisterForm = () => {
               setFirstName={setFirstName}
               setLastName={setLastName}
               onSubmit={handleProfileSubmit}
+              onBack={() => setStep("email-sent")}
               loading={loading}
             />
           )}
@@ -291,6 +320,7 @@ const RegisterForm = () => {
               address={address}
               setAddress={setAddress}
               onSubmit={handleAddressSubmit}
+              onBack={() => setStep("profile")}
               loading={loading}
             />
           )}
@@ -380,7 +410,7 @@ const CredentialsStep = ({
   </div>
 );
 
-const EmailSentStep = ({ email }: { email: string }) => (
+const EmailSentStep = ({ email, onResend, onBack, loading }: { email: string; onResend: () => void; onBack: () => void; loading: boolean }) => (
   <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto mb-4">
@@ -405,6 +435,16 @@ const EmailSentStep = ({ email }: { email: string }) => (
     <p className="text-xs text-center text-muted-foreground">
       Pensez à vérifier vos spams si vous ne trouvez pas l'email
     </p>
+
+    <div className="flex gap-3">
+      <Button variant="outline" className="flex-1" onClick={onBack}>
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Retour
+      </Button>
+      <Button variant="hero" className="flex-1" onClick={onResend} disabled={loading}>
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Renvoyer l'email"}
+      </Button>
+    </div>
   </div>
 );
 
@@ -414,6 +454,7 @@ const ProfileStep = ({
   setFirstName,
   setLastName,
   onSubmit,
+  onBack,
   loading,
 }: {
   firstName: string;
@@ -421,6 +462,7 @@ const ProfileStep = ({
   setFirstName: (v: string) => void;
   setLastName: (v: string) => void;
   onSubmit: () => void;
+  onBack: () => void;
   loading: boolean;
 }) => (
   <div className="space-y-6">
@@ -455,15 +497,21 @@ const ProfileStep = ({
           disabled={loading}
         />
       </div>
-      <Button
-        variant="hero"
-        className="w-full"
-        onClick={onSubmit}
-        disabled={!firstName.trim() || !lastName.trim() || loading}
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
-        {!loading && <ArrowRight className="w-4 h-4" />}
-      </Button>
+      <div className="flex gap-3">
+        <Button variant="outline" className="flex-1" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Retour
+        </Button>
+        <Button
+          variant="hero"
+          className="flex-1"
+          onClick={onSubmit}
+          disabled={!firstName.trim() || !lastName.trim() || loading}
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
+          {!loading && <ArrowRight className="w-4 h-4" />}
+        </Button>
+      </div>
     </div>
   </div>
 );
@@ -472,11 +520,13 @@ const AddressStep = ({
   address,
   setAddress,
   onSubmit,
+  onBack,
   loading,
 }: {
   address: string;
   setAddress: (v: string) => void;
   onSubmit: () => void;
+  onBack: () => void;
   loading: boolean;
 }) => (
   <div className="space-y-6">
@@ -502,15 +552,21 @@ const AddressStep = ({
           Si cette adresse existe déjà, vous serez ajouté comme second habitat (multi-logement)
         </p>
       </div>
-      <Button
-        variant="hero"
-        className="w-full"
-        onClick={onSubmit}
-        disabled={!address.trim() || loading}
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Créer mon ANR"}
-        {!loading && <ArrowRight className="w-4 h-4" />}
-      </Button>
+      <div className="flex gap-3">
+        <Button variant="outline" className="flex-1" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Retour
+        </Button>
+        <Button
+          variant="hero"
+          className="flex-1"
+          onClick={onSubmit}
+          disabled={!address.trim() || loading}
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Créer mon ANR"}
+          {!loading && <ArrowRight className="w-4 h-4" />}
+        </Button>
+      </div>
     </div>
   </div>
 );
