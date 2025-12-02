@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, User, MapPin, ArrowRight, Loader2, Lock } from "lucide-react";
+import { Mail, User, MapPin, ArrowRight, Loader2, Lock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { geocodeAddress } from "@/lib/geocoding";
 
-type Step = "credentials" | "profile" | "address" | "success";
+type Step = "credentials" | "email-sent" | "profile" | "address" | "success";
 
 const emailSchema = z.string().email("Email invalide");
 const passwordSchema = z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères");
@@ -63,11 +63,8 @@ const RegisterForm = () => {
         setUserId(data.user.id);
       }
 
-      setStep("profile");
-      toast({
-        title: "Compte créé",
-        description: "Complétez maintenant votre profil",
-      });
+      // Show email verification step
+      setStep("email-sent");
     } catch (error: any) {
       // Handle "user already registered" error
       if (error.message?.includes("already registered") || error.message?.includes("User already registered")) {
@@ -253,11 +250,11 @@ const RegisterForm = () => {
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex justify-center gap-2 mb-8">
-          {["credentials", "profile", "address", "success"].map((s, i) => (
+          {["credentials", "email-sent", "profile", "address", "success"].map((s, i) => (
             <div
               key={s}
-              className={`h-1 w-12 rounded-full transition-colors ${
-                ["credentials", "profile", "address", "success"].indexOf(step) >= i
+              className={`h-1 w-10 rounded-full transition-colors ${
+                ["credentials", "email-sent", "profile", "address", "success"].indexOf(step) >= i
                   ? "bg-primary"
                   : "bg-secondary"
               }`}
@@ -266,7 +263,7 @@ const RegisterForm = () => {
         </div>
 
         <div className="glass-effect rounded-3xl p-8 card-shadow">
-        {step === "credentials" && (
+          {step === "credentials" && (
             <CredentialsStep
               email={email}
               password={password}
@@ -275,6 +272,9 @@ const RegisterForm = () => {
               onSubmit={handleCredentialsSubmit}
               loading={loading}
             />
+          )}
+          {step === "email-sent" && (
+            <EmailSentStep email={email} />
           )}
           {step === "profile" && (
             <ProfileStep
@@ -377,6 +377,34 @@ const CredentialsStep = ({
         {!loading && <ArrowRight className="w-4 h-4" />}
       </Button>
     </div>
+  </div>
+);
+
+const EmailSentStep = ({ email }: { email: string }) => (
+  <div className="space-y-6">
+    <div className="text-center">
+      <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto mb-4">
+        <CheckCircle className="w-8 h-8 text-success" />
+      </div>
+      <h2 className="text-2xl font-bold mb-2">Vérifiez votre email</h2>
+      <p className="text-muted-foreground">
+        Un email de confirmation a été envoyé à
+      </p>
+      <p className="font-semibold text-primary mt-2">{email}</p>
+    </div>
+
+    <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-sm space-y-2">
+      <p className="font-medium">Pour continuer :</p>
+      <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+        <li>Ouvrez votre boîte mail</li>
+        <li>Cliquez sur le lien de confirmation</li>
+        <li>Vous serez redirigé automatiquement</li>
+      </ol>
+    </div>
+
+    <p className="text-xs text-center text-muted-foreground">
+      Pensez à vérifier vos spams si vous ne trouvez pas l'email
+    </p>
   </div>
 );
 
