@@ -156,23 +156,23 @@ ${mapsLink}`;
           <DialogTitle className="text-center">Partager mon ANR</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 max-h-[80vh] overflow-y-auto">
           {/* QR Code */}
-          <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-2xl">
+          <div className="flex flex-col items-center gap-3 p-4 sm:p-6 bg-white rounded-2xl">
             <QRCodeCanvas
               ref={qrRef}
               value={anrUrl}
-              size={180}
+              size={140}
               level="H"
               includeMargin
               imageSettings={{
                 src: logoAnr,
-                height: 40,
-                width: 40,
+                height: 30,
+                width: 30,
                 excavate: true,
               }}
             />
-            <p className="text-2xl font-mono font-bold tracking-wider text-slate-900">
+            <p className="text-xl sm:text-2xl font-mono font-bold tracking-wider text-slate-900">
               {anrCode}
             </p>
           </div>
@@ -184,32 +184,32 @@ ${mapsLink}`;
           </div>
 
           {/* Share Options */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <Button
               variant="outline"
-              className="flex flex-col h-auto py-4 gap-2"
+              className="flex flex-col h-auto py-3 gap-1"
               onClick={shareViaEmail}
             >
-              <Mail className="w-6 h-6 text-primary" />
+              <Mail className="w-5 h-5 text-primary" />
               <span className="text-xs">Email</span>
             </Button>
             
             <Button
               variant="outline"
-              className="flex flex-col h-auto py-4 gap-2"
+              className="flex flex-col h-auto py-3 gap-1"
               onClick={shareViaSMS}
             >
-              <MessageSquare className="w-6 h-6 text-green-600" />
+              <MessageSquare className="w-5 h-5 text-green-600" />
               <span className="text-xs">SMS</span>
             </Button>
             
             <Button
               variant="outline"
-              className="flex flex-col h-auto py-4 gap-2"
+              className="flex flex-col h-auto py-3 gap-1"
               onClick={shareViaWhatsApp}
             >
               <svg 
-                className="w-6 h-6 text-green-500" 
+                className="w-5 h-5 text-green-500" 
                 viewBox="0 0 24 24" 
                 fill="currentColor"
               >
@@ -220,21 +220,21 @@ ${mapsLink}`;
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button 
               variant="outline"
-              className="flex-1" 
+              className="flex-1 text-sm" 
               onClick={downloadQRCode}
             >
               <Download className="w-4 h-4 mr-2" />
               Télécharger
             </Button>
             <Button 
-              className="flex-1" 
+              className="flex-1 text-sm" 
               onClick={shareNative}
             >
               <Share2 className="w-4 h-4 mr-2" />
-              Partager avec image
+              Partager
             </Button>
           </div>
         </div>
