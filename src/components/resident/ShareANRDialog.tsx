@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
-import { Mail, MessageSquare, Share2, X } from "lucide-react";
+import { useState, useRef } from "react";
+import { QRCodeCanvas } from "qrcode.react";
+import { Mail, MessageSquare, Share2, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,7 @@ const ShareANRDialog = ({
   ownerName,
 }: ShareANRDialogProps) => {
   const { toast } = useToast();
+  const qrRef = useRef<HTMLCanvasElement>(null);
 
   // Generate geo: URI for native GPS apps
   const mapsLink = `geo:${latitude},${longitude}?q=${latitude},${longitude}`;
@@ -51,6 +52,33 @@ ${anrUrl}
 🗺️ Navigation GPS:
 ${mapsLink}`;
 
+  // Get QR code as blob for sharing
+  const getQRCodeBlob = (): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const canvas = qrRef.current;
+      if (!canvas) {
+        resolve(null);
+        return;
+      }
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, "image/png");
+    });
+  };
+
+  // Download QR code image
+  const downloadQRCode = () => {
+    const canvas = qrRef.current;
+    if (!canvas) return;
+    
+    const url = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.download = `ANR-${anrCode}.png`;
+    link.href = url;
+    link.click();
+    toast({ title: "Téléchargé!", description: "QR code sauvegardé dans vos téléchargements" });
+  };
+
   const shareViaEmail = () => {
     const subject = encodeURIComponent(`ANR de ${ownerName}`);
     const body = encodeURIComponent(shareMessage);
@@ -60,12 +88,10 @@ ${mapsLink}`;
 
   const shareViaSMS = () => {
     const body = encodeURIComponent(shareMessage);
-    // Check if on mobile
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
       window.open(`sms:?body=${body}`, "_blank");
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(shareMessage);
       toast({ 
         title: "Copié!", 
@@ -81,6 +107,28 @@ ${mapsLink}`;
   };
 
   const shareNative = async () => {
+    const blob = await getQRCodeBlob();
+    
+    if (navigator.share && blob) {
+      try {
+        const file = new File([blob], `ANR-${anrCode}.png`, { type: "image/png" });
+        
+        // Check if file sharing is supported
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: `ANR de ${ownerName}`,
+            text: shareMessage,
+            files: [file],
+          });
+          toast({ title: "Partagé!", description: "ANR partagé avec succès" });
+          return;
+        }
+      } catch (error) {
+        console.log("File share failed, falling back to text share:", error);
+      }
+    }
+    
+    // Fallback to text-only share or clipboard
     if (navigator.share) {
       try {
         await navigator.share({
@@ -90,11 +138,9 @@ ${mapsLink}`;
         });
         toast({ title: "Partagé!", description: "ANR partagé avec succès" });
       } catch (error) {
-        // User cancelled or error
-        console.log("Share cancelled or failed:", error);
+        console.log("Share cancelled:", error);
       }
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(shareMessage);
       toast({ 
         title: "Copié!", 
@@ -113,7 +159,8 @@ ${mapsLink}`;
         <div className="space-y-6">
           {/* QR Code */}
           <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-2xl">
-            <QRCodeSVG
+            <QRCodeCanvas
+              ref={qrRef}
               value={anrUrl}
               size={180}
               level="H"
@@ -172,14 +219,24 @@ ${mapsLink}`;
             </Button>
           </div>
 
-          {/* Native Share Button */}
-          <Button 
-            className="w-full" 
-            onClick={shareNative}
-          >
-            <Share2 className="w-4 h-4 mr-2" />
-            Autres options de partage
-          </Button>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              className="flex-1" 
+              onClick={downloadQRCode}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Télécharger
+            </Button>
+            <Button 
+              className="flex-1" 
+              onClick={shareNative}
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              Partager avec image
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
