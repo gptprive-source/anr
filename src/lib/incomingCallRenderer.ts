@@ -332,91 +332,20 @@ const createCallScreen = (data: IncomingCallData): HTMLDivElement => {
 };
 
 const startPreview = async (callId: string) => {
-  console.log("[IncomingCallRenderer] 👁️ Starting video preview");
+  console.log("[IncomingCallRenderer] 👁️ Starting video preview - DISABLED to prevent call conflicts");
+  
+  // Preview feature temporarily disabled because joining the same Daily room
+  // before answering causes conflicts when the actual call starts.
+  // The preview would need a separate "observer" mechanism.
   
   const previewContainer = document.getElementById('preview-container');
-  const previewVideo = document.getElementById('preview-video') as HTMLVideoElement;
   const previewLoading = document.getElementById('preview-loading');
   
-  if (!previewContainer || !previewVideo) return;
-  
-  previewContainer.style.display = 'block';
-  previewVideoElement = previewVideo;
-  
-  try {
-    // Get Daily room URL
-    const { data, error } = await supabase.functions.invoke("daily-room", {
-      body: { callId },
-    });
-    
-    if (error || !data?.url) {
-      console.error("[IncomingCallRenderer] ❌ Failed to get room URL");
-      if (previewLoading) previewLoading.textContent = "Erreur de connexion";
-      return;
-    }
-    
-    // Import Daily.js dynamically for preview
-    const DailyIframe = (await import("@daily-co/daily-js")).default;
-    
-    const previewCall = DailyIframe.createCallObject({
-      audioSource: false,
-      videoSource: false,
-    });
-    
-    previewCall.on("participant-joined", () => {
-      const participants = previewCall.participants();
-      const remote = Object.values(participants).find(p => !p.local);
-      if (remote?.tracks?.video?.persistentTrack) {
-        const stream = new MediaStream([remote.tracks.video.persistentTrack]);
-        previewVideo.srcObject = stream;
-        if (previewLoading) previewLoading.style.display = 'none';
-        console.log("[IncomingCallRenderer] 👁️ Preview video connected");
-      }
-    });
-    
-    previewCall.on("participant-updated", () => {
-      const participants = previewCall.participants();
-      const remote = Object.values(participants).find(p => !p.local);
-      if (remote?.tracks?.video?.persistentTrack && !previewVideo.srcObject) {
-        const stream = new MediaStream([remote.tracks.video.persistentTrack]);
-        previewVideo.srcObject = stream;
-        if (previewLoading) previewLoading.style.display = 'none';
-      }
-    });
-    
-    previewCall.on("track-started", () => {
-      const participants = previewCall.participants();
-      const remote = Object.values(participants).find(p => !p.local);
-      if (remote?.tracks?.video?.persistentTrack) {
-        const stream = new MediaStream([remote.tracks.video.persistentTrack]);
-        previewVideo.srcObject = stream;
-        if (previewLoading) previewLoading.style.display = 'none';
-      }
-    });
-    
-    // Store reference for cleanup
-    (window as any).__previewCall = previewCall;
-    
-    await previewCall.join({
-      url: data.url,
-      startVideoOff: true,
-      startAudioOff: true,
-    });
-    
-    // Check if there's already a participant
-    setTimeout(() => {
-      const participants = previewCall.participants();
-      const remote = Object.values(participants).find(p => !p.local);
-      if (remote?.tracks?.video?.persistentTrack) {
-        const stream = new MediaStream([remote.tracks.video.persistentTrack]);
-        previewVideo.srcObject = stream;
-        if (previewLoading) previewLoading.style.display = 'none';
-      }
-    }, 1000);
-    
-  } catch (err) {
-    console.error("[IncomingCallRenderer] ❌ Preview error:", err);
-    if (previewLoading) previewLoading.textContent = "Erreur vidéo";
+  if (previewContainer) {
+    previewContainer.style.display = 'block';
+  }
+  if (previewLoading) {
+    previewLoading.textContent = "Fonctionnalité en cours de développement";
   }
 };
 
