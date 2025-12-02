@@ -1,4 +1,4 @@
-import { Search, Home, Loader2, User } from "lucide-react";
+import { Search, Home, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -43,15 +43,16 @@ const MultiHabitatSelector = () => {
 
       setAddress(anr.address);
 
-      // Fetch all habitations for this ANR with their residents
+      // Fetch all habitations for this ANR with only owners (not invited residents)
       const { data: habitationsData } = await supabase
         .from("habitations")
         .select(`
           id, 
           name, 
           floor,
-          residents (
+          residents!inner (
             user_id,
+            is_owner,
             profiles:user_id (
               first_name,
               last_name
@@ -59,6 +60,7 @@ const MultiHabitatSelector = () => {
           )
         `)
         .eq("anr_id", anr.id)
+        .eq("residents.is_owner", true)
         .order("name");
 
       if (habitationsData) {
@@ -179,12 +181,6 @@ const MultiHabitatSelector = () => {
                   <p className="font-semibold text-foreground truncate">{displayName}</p>
                   {habitat.floor && (
                     <p className="text-sm text-muted-foreground">{habitat.floor}</p>
-                  )}
-                  {habitat.residents.length > 1 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      <User className="w-3 h-3 inline mr-1" />
-                      {habitat.residents.length} résidents
-                    </p>
                   )}
                 </div>
 
