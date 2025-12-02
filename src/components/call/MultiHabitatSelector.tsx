@@ -43,36 +43,42 @@ const MultiHabitatSelector = () => {
 
       setAddress(anr.address);
 
-      // Fetch all habitations for this ANR with only owners (not invited residents)
+      // Fetch all habitations for this ANR
       const { data: habitationsData } = await supabase
         .from("habitations")
-        .select(`
-          id, 
-          name, 
-          floor,
-          residents!inner (
-            user_id,
-            is_owner,
+        .select(`id, name, floor`)
+        .eq("anr_id", anr.id)
+        .order("name");
+
+      if (habitationsData && habitationsData.length > 0) {
+        const habitationIds = habitationsData.map(h => h.id);
+        
+        // Fetch owners separately
+        const { data: residentsData } = await supabase
+          .from("residents")
+          .select(`
+            habitation_id,
             profiles:user_id (
               first_name,
               last_name
             )
-          )
-        `)
-        .eq("anr_id", anr.id)
-        .eq("residents.is_owner", true)
-        .order("name");
+          `)
+          .in("habitation_id", habitationIds)
+          .eq("is_owner", true);
 
-      if (habitationsData) {
-        const formattedHabitats: Habitat[] = habitationsData.map((hab: any) => ({
-          id: hab.id,
-          name: hab.name,
-          floor: hab.floor,
-          residents: hab.residents?.map((r: any) => ({
-            first_name: r.profiles?.first_name || null,
-            last_name: r.profiles?.last_name || null,
-          })) || [],
-        }));
+        // Combine habitations with their owners
+        const formattedHabitats: Habitat[] = habitationsData.map((hab) => {
+          const owners = residentsData?.filter(r => r.habitation_id === hab.id) || [];
+          return {
+            id: hab.id,
+            name: hab.name,
+            floor: hab.floor,
+            residents: owners.map((r: any) => ({
+              first_name: r.profiles?.first_name || null,
+              last_name: r.profiles?.last_name || null,
+            })),
+          };
+        });
         setHabitats(formattedHabitats);
       }
       setLoading(false);
