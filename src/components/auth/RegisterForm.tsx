@@ -165,7 +165,7 @@ const RegisterForm = () => {
       const anrCode = `ANR-${Date.now().toString(36).toUpperCase()}`;
       const { latitude, longitude } = geoResult;
 
-      // Check if ANR already exists
+      // Check if ANR already exists for this address
       const { data: existingAnr } = await supabase
         .from("anrs")
         .select("id")
@@ -173,9 +173,11 @@ const RegisterForm = () => {
         .maybeSingle();
 
       let anrId: string;
+      let isExistingAnr = false;
 
       if (existingAnr) {
         anrId = existingAnr.id;
+        isExistingAnr = true;
       } else {
         const { data: newAnr, error: anrError } = await supabase
           .from("anrs")
@@ -192,8 +194,16 @@ const RegisterForm = () => {
         anrId = newAnr.id;
       }
 
+      // Count existing habitations for this ANR to determine residence number
+      const { count: habitationCount } = await supabase
+        .from("habitations")
+        .select("*", { count: "exact", head: true })
+        .eq("anr_id", anrId);
+
+      const residenceNumber = (habitationCount || 0) + 1;
+      const habitationName = `Résidence ${residenceNumber} - ${firstName} ${lastName}`;
+
       // Create habitation
-      const habitationName = `${firstName} ${lastName}`;
       const { data: habitation, error: habError } = await supabase
         .from("habitations")
         .insert({
@@ -221,9 +231,9 @@ const RegisterForm = () => {
       setStep("success");
       
       toast({
-        title: "ANR créé",
-        description: existingAnr 
-          ? "Vous avez été ajouté comme habitant à cette adresse"
+        title: isExistingAnr ? "Habitation ajoutée" : "ANR créé",
+        description: isExistingAnr 
+          ? `Vous êtes maintenant Résidence ${residenceNumber} à cette adresse`
           : "Votre ANR a été créé avec succès",
       });
 
