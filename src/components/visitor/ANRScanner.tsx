@@ -207,14 +207,11 @@ const ModeButton = ({
 
 const QRScannerContent = ({ onScan, loading }: { onScan: (code: string) => void; loading: boolean }) => {
   const [scanning, setScanning] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  const startScanning = async () => {
-    setError(null);
-    setScanning(true);
-
+  const initScanner = async () => {
     try {
       const html5QrCode = new Html5Qrcode("qr-reader");
       scannerRef.current = html5QrCode;
@@ -230,20 +227,38 @@ const QRScannerContent = ({ onScan, loading }: { onScan: (code: string) => void;
           stopScanning();
           onScan(decodedText);
         },
-        (errorMessage) => {
+        () => {
           // Ignore continuous scan errors
         }
       );
+      setCameraReady(true);
     } catch (err: any) {
       console.error("[QR Scanner] Error:", err);
       setScanning(false);
+      setCameraReady(false);
       if (err.name === "NotAllowedError") {
-        setError("Accès à la caméra refusé. Veuillez autoriser l'accès.");
+        setError("Accès à la caméra refusé. Veuillez autoriser l'accès dans les paramètres.");
       } else {
-        setError("Impossible d'accéder à la caméra.");
+        setError("Impossible d'accéder à la caméra: " + (err.message || err));
       }
     }
   };
+
+  const startScanning = () => {
+    setError(null);
+    setScanning(true);
+  };
+
+  // Initialize scanner after DOM is ready
+  useEffect(() => {
+    if (scanning && !scannerRef.current) {
+      // Small delay to ensure DOM is rendered
+      const timer = setTimeout(() => {
+        initScanner();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [scanning]);
 
   const stopScanning = async () => {
     if (scannerRef.current) {
@@ -256,6 +271,7 @@ const QRScannerContent = ({ onScan, loading }: { onScan: (code: string) => void;
       scannerRef.current = null;
     }
     setScanning(false);
+    setCameraReady(false);
   };
 
   useEffect(() => {
@@ -269,11 +285,17 @@ const QRScannerContent = ({ onScan, loading }: { onScan: (code: string) => void;
   return (
     <div className="text-center">
       <div 
-        ref={containerRef}
         className="relative w-full aspect-square max-w-[300px] mx-auto mb-6 rounded-2xl overflow-hidden bg-secondary/30"
       >
         {scanning ? (
-          <div id="qr-reader" className="w-full h-full" />
+          <>
+            <div id="qr-reader" className="w-full h-full" />
+            {!cameraReady && (
+              <div className="absolute inset-0 flex items-center justify-center bg-secondary/50">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              </div>
+            )}
+          </>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center border-2 border-dashed border-primary/50 rounded-2xl">
             {loading ? (
