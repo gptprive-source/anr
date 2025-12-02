@@ -11,6 +11,7 @@ import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallList
 import { useAudioUnlock } from "@/hooks/useAudioUnlock";
 import Index from "./pages/Index";
 import Visitor from "./pages/Visitor";
+import ANRLanding from "./pages/ANRLanding";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -39,6 +40,7 @@ const AppContent = () => {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/visitor" element={<Visitor />} />
+          <Route path="/anr/:code" element={<ANRLanding />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route
