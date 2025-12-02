@@ -18,6 +18,7 @@ let oscillator: OscillatorNode | null = null;
 let gainNode: GainNode | null = null;
 let ringtoneInterval: NodeJS.Timeout | null = null;
 let vibrationInterval: NodeJS.Timeout | null = null;
+let callSubscription: any = null;
 
 const startRingtone = () => {
   try {
@@ -90,6 +91,40 @@ const stopVibration = () => {
   }
   if ("vibrate" in navigator) {
     navigator.vibrate(0);
+  }
+};
+
+// Subscribe to call status changes to detect when visitor hangs up
+const subscribeToCallStatus = (callId: string) => {
+  console.log("[IncomingCallRenderer] 📡 Subscribing to call status:", callId);
+  
+  callSubscription = supabase
+    .channel(`incoming-call-${callId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "call_logs",
+        filter: `id=eq.${callId}`,
+      },
+      (payload) => {
+        const callLog = payload.new as any;
+        console.log("[IncomingCallRenderer] 📡 Call status changed:", callLog.status);
+        if (callLog.status === "ended" || callLog.status === "answered") {
+          console.log("[IncomingCallRenderer] 🛑 Call ended/answered by other party, hiding screen");
+          hideIncomingCall();
+        }
+      }
+    )
+    .subscribe();
+};
+
+const unsubscribeFromCallStatus = () => {
+  if (callSubscription) {
+    console.log("[IncomingCallRenderer] 📡 Unsubscribing from call status");
+    supabase.removeChannel(callSubscription);
+    callSubscription = null;
   }
 };
 
@@ -229,6 +264,9 @@ export const showIncomingCall = (data: IncomingCallData) => {
   startRingtone();
   startVibration();
   
+  // Subscribe to call status changes (to detect when visitor hangs up)
+  subscribeToCallStatus(data.callId);
+  
   // Attach event handlers
   const answerBtn = document.getElementById('answer-call-btn');
   const declineBtn = document.getElementById('decline-call-btn');
@@ -282,6 +320,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
 export const hideIncomingCall = () => {
   stopRingtone();
   stopVibration();
+  unsubscribeFromCallStatus();
   
   const existing = document.getElementById('vanilla-incoming-call');
   if (existing) {
