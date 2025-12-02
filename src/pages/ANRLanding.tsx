@@ -70,9 +70,9 @@ const ANRLanding = () => {
 
   const handleNavigate = () => {
     if (!anrData) return;
-    // Open Google Maps with coordinates - will prompt GPS app choice on mobile
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${anrData.latitude},${anrData.longitude}`;
-    window.open(mapsUrl, "_blank");
+    // Use geo: URI scheme to trigger native app chooser (Waze, Google Maps, etc.)
+    const geoUrl = `geo:${anrData.latitude},${anrData.longitude}?q=${anrData.latitude},${anrData.longitude}(${encodeURIComponent(anrData.address)})`;
+    window.location.href = geoUrl;
   };
 
   const handleCall = () => {
