@@ -19,6 +19,7 @@ import Call from "./pages/Call";
 import MultiHabitat from "./pages/MultiHabitat";
 import VerifyEmail from "./pages/VerifyEmail";
 import Invitation from "./pages/Invitation";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const AppContent = () => {
           <Route path="/multi-habitat/:anrId" element={<MultiHabitat />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/invitation" element={<Invitation />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
