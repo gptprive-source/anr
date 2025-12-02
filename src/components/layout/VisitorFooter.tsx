@@ -1,0 +1,40 @@
+import { Home, UserPlus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+
+interface NavItem {
+  icon: React.ReactNode;
+  label: string;
+  path: string;
+}
+
+const VisitorFooter = () => {
+  const navigate = useNavigate();
+
+  const navItems: NavItem[] = [
+    { icon: <Home className="w-6 h-6" />, label: "Accueil", path: "/" },
+    { icon: <UserPlus className="w-6 h-6" />, label: "Créer un compte", path: "/register" },
+  ];
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-t border-border safe-area-bottom">
+      <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
+        {navItems.map((item) => (
+          <button
+            key={item.path}
+            onClick={() => navigate(item.path)}
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
+              "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {item.icon}
+            <span className="text-xs font-medium">{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </nav>
+  );
+};
+
+export default VisitorFooter;
