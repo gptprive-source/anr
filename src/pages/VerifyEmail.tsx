@@ -24,35 +24,51 @@ const VerifyEmail = () => {
       console.log("VerifyEmail - user:", user?.email, "authLoading:", authLoading);
 
       if (user) {
-        // User is authenticated
         try {
-          // Verify device token for additional security (signup flow)
-          const storedDeviceToken = localStorage.getItem("anr_device_token");
-          const userDeviceToken = user.user_metadata?.device_token;
+          // Check if profile is complete
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name, last_name")
+            .eq("id", user.id)
+            .single();
 
-          if (userDeviceToken && storedDeviceToken && storedDeviceToken !== userDeviceToken) {
-            setStatus("error");
-            setMessage("Ce lien doit être ouvert depuis le téléphone où vous avez créé votre compte.");
-            return;
-          }
+          const profileComplete = profile?.first_name && profile?.last_name;
 
-          // Mark phone as verified if device tokens match
-          if (userDeviceToken && storedDeviceToken === userDeviceToken) {
-            await supabase
-              .from("profiles")
-              .update({ phone_verified: true })
-              .eq("id", user.id);
-          }
+          // Check if user has a habitation (resident record)
+          const { data: resident } = await supabase
+            .from("residents")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          const hasHabitation = !!resident;
 
           setStatus("success");
-          setMessage("Connexion réussie !");
-          
-          setTimeout(() => {
-            navigate("/dashboard", { replace: true });
-          }, 1000);
+
+          if (!profileComplete) {
+            // Profile not complete - redirect to register at profile step
+            setMessage("Email vérifié ! Complétez votre profil...");
+            localStorage.setItem("anr_register_step", "profile");
+            setTimeout(() => {
+              navigate("/register", { replace: true });
+            }, 1500);
+          } else if (!hasHabitation) {
+            // Profile complete but no habitation - redirect to register at address step
+            setMessage("Email vérifié ! Ajoutez votre adresse...");
+            localStorage.setItem("anr_register_step", "address");
+            setTimeout(() => {
+              navigate("/register", { replace: true });
+            }, 1500);
+          } else {
+            // Everything complete - go to dashboard
+            setMessage("Connexion réussie !");
+            setTimeout(() => {
+              navigate("/dashboard", { replace: true });
+            }, 1000);
+          }
         } catch (error) {
           console.error("Verification error:", error);
-          // Even if profile update fails, user is still authenticated
+          // Even if profile check fails, user is still authenticated
           setStatus("success");
           setMessage("Connexion réussie !");
           setTimeout(() => {
