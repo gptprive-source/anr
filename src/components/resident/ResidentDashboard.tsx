@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus, Phone, Trash2, BellOff, BellRing } from "lucide-react";
+import { Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus, Phone, Trash2, BellOff, BellRing, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import InviteResidentDialog from "./InviteResidentDialog";
 import CallHistorySection from "./CallHistorySection";
+import ShareANRDialog from "./ShareANRDialog";
 import BottomNav from "@/components/layout/BottomNav";
 import logoAnr from "@/assets/logo-anr.png";
 
@@ -41,11 +42,13 @@ const ResidentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [habitationData, setHabitationData] = useState<HabitationData | null>(null);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [currentResidentId, setCurrentResidentId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [togglingMute, setTogglingMute] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState("");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -82,6 +85,17 @@ const ResidentDashboard = () => {
       setIsOwner(residentData.is_owner || false);
       setCurrentResidentId(residentData.id);
       setIsMuted(residentData.is_muted || false);
+
+      // Get current user profile name
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", user?.id)
+        .single();
+      
+      if (profileData) {
+        setCurrentUserName(`${profileData.first_name || ""} ${profileData.last_name || ""}`.trim());
+      }
 
       // Get habitation with ANR and all residents
       const { data: habitation, error: habError } = await supabase
@@ -328,9 +342,15 @@ const ResidentDashboard = () => {
                 </span>
               </div>
               
-              <p className="text-sm text-muted-foreground">
-                Partagez ce code avec vos visiteurs ou commandez votre doming officiel
-              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                onClick={() => setShareDialogOpen(true)}
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Partager mon ANR
+              </Button>
             </div>
           </div>
         </div>
@@ -453,6 +473,17 @@ const ResidentDashboard = () => {
         habitationName={habitationData.name}
         anrAddress={habitationData.anr.address}
         onInvitationSent={fetchHabitationData}
+      />
+
+      {/* Share ANR Dialog */}
+      <ShareANRDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        anrCode={habitationData.anr.code}
+        anrAddress={habitationData.anr.address}
+        latitude={habitationData.anr.latitude}
+        longitude={habitationData.anr.longitude}
+        ownerName={currentUserName || "Résident"}
       />
 
       <BottomNav />
