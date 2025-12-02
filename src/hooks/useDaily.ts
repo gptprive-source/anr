@@ -185,6 +185,7 @@ export const useDaily = ({
 
       const call = DailyIframe.createCallObject({
         audioSource: true,
+        // Visitor has video, resident starts without video (voice-only mode)
         videoSource: !isResident,
       });
       callRef.current = call;
@@ -193,9 +194,16 @@ export const useDaily = ({
 
       await call.join({
         url: roomUrl,
+        // Resident: voice-only mode after answering (no video)
+        // Visitor: video enabled
         startVideoOff: isResident,
         startAudioOff: false,
       });
+
+      // Ensure audio is properly enabled after join
+      call.setLocalAudio(true);
+      
+      logger.log("[useDaily] Joined with audio enabled, video:", !isResident);
 
       safeSetState(prev => ({
         ...prev,

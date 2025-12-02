@@ -7,7 +7,6 @@ interface VideoCallProps {
   showLocalVideo: boolean;
   callerName: string;
   isConnected: boolean;
-  isAudioEnabled?: boolean;
   isVideoEnabled?: boolean;
   isMuted?: boolean;
 }
@@ -18,7 +17,6 @@ const VideoCall = memo(({
   showLocalVideo,
   callerName,
   isConnected,
-  isAudioEnabled = true,
   isVideoEnabled = true,
   isMuted = false,
 }: VideoCallProps) => {
@@ -34,15 +32,36 @@ const VideoCall = memo(({
     video.play().catch(() => {});
   }, [localStream]);
 
-  // Handle remote stream
+  // Handle remote stream with audio
   useEffect(() => {
     const video = remoteVideoRef.current;
     if (!video || !remoteStream) return;
 
     video.srcObject = remoteStream;
-    video.muted = !isAudioEnabled;
-    video.play().catch(() => {});
-  }, [remoteStream, isAudioEnabled]);
+    // IMPORTANT: Never mute the video element for remote audio
+    video.muted = false;
+    video.volume = 1.0;
+    
+    // Try to play with error handling for autoplay restrictions
+    const playVideo = async () => {
+      try {
+        await video.play();
+        console.log("[VideoCall] Remote video/audio playing");
+      } catch (err) {
+        console.log("[VideoCall] Play failed, trying unmuted:", err);
+        // If autoplay fails, try again on user interaction
+        const unlockPlay = () => {
+          video.play().catch(() => {});
+          document.removeEventListener('click', unlockPlay);
+          document.removeEventListener('touchstart', unlockPlay);
+        };
+        document.addEventListener('click', unlockPlay, { once: true });
+        document.addEventListener('touchstart', unlockPlay, { once: true });
+      }
+    };
+    
+    playVideo();
+  }, [remoteStream]);
 
   return (
     <div className="flex-1 relative bg-black rounded-lg overflow-hidden">
@@ -78,16 +97,10 @@ const VideoCall = memo(({
 
       {/* Status indicators */}
       <div className="absolute top-4 left-4 z-20 flex gap-2">
-        {!isAudioEnabled && (
-          <div className="bg-red-500 text-white px-2 py-1 rounded-md text-sm flex items-center gap-1">
-            <MicOff className="w-3 h-3" />
-            <span>Audio coupé</span>
-          </div>
-        )}
         {!isVideoEnabled && (
-          <div className="bg-red-500 text-white px-2 py-1 rounded-md text-sm flex items-center gap-1">
+          <div className="bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm flex items-center gap-1">
             <VideoOff className="w-3 h-3" />
-            <span>Vidéo coupée</span>
+            <span>Mode vocal</span>
           </div>
         )}
       </div>

@@ -174,7 +174,8 @@ const CallInterface = memo(({
         showLocalVideo={isVideoEnabled}
         callerName={callerName}
         isConnected={isJoined && callState === "connected"}
-        isAudioEnabled={true}
+        isVideoEnabled={isVideoEnabled}
+        isMuted={isMuted}
       />
 
       {/* Header */}
