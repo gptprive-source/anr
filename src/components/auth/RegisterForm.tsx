@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { geocodeAddress } from "@/lib/geocoding";
+import { useAuth } from "@/hooks/useAuth";
 
 type Step = "credentials" | "email-sent" | "profile" | "address" | "success";
 
@@ -22,9 +23,61 @@ const RegisterForm = () => {
   const [lastName, setLastName] = useState("");
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+
+  // Check if user is returning after email verification
+  useEffect(() => {
+    if (authLoading || initialCheckDone) return;
+
+    const checkUserState = async () => {
+      // Check localStorage for saved step
+      const savedStep = localStorage.getItem("anr_register_step") as Step | null;
+      
+      if (user && savedStep) {
+        // User is authenticated and has a saved step - resume registration
+        localStorage.removeItem("anr_register_step");
+        setStep(savedStep);
+        setInitialCheckDone(true);
+        return;
+      }
+
+      if (user) {
+        // User is logged in but no saved step - check their profile state
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name, last_name")
+            .eq("id", user.id)
+            .single();
+
+          const { data: resident } = await supabase
+            .from("residents")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (!profile?.first_name || !profile?.last_name) {
+            setStep("profile");
+          } else if (!resident) {
+            setStep("address");
+          } else {
+            // User is fully registered - redirect to dashboard
+            navigate("/dashboard", { replace: true });
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking user state:", error);
+        }
+      }
+      
+      setInitialCheckDone(true);
+    };
+
+    checkUserState();
+  }, [user, authLoading, initialCheckDone, navigate]);
 
   const handleCredentialsSubmit = async () => {
     const emailValidation = emailSchema.safeParse(email);
@@ -58,10 +111,6 @@ const RegisterForm = () => {
       });
 
       if (error) throw error;
-
-      if (data.user) {
-        setUserId(data.user.id);
-      }
 
       // Show email verification step
       setStep("email-sent");
@@ -122,9 +171,9 @@ const RegisterForm = () => {
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      if (!user) {
+      if (!currentUser) {
         throw new Error("Utilisateur non connecté");
       }
 
@@ -134,7 +183,7 @@ const RegisterForm = () => {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
         })
-        .eq("id", user.id);
+        .eq("id", currentUser.id);
 
       if (error) throw error;
 
@@ -162,11 +211,21 @@ const RegisterForm = () => {
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      if (!user) {
+      if (!currentUser) {
         throw new Error("Utilisateur non connecté");
       }
+
+      // Get profile for name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", currentUser.id)
+        .single();
+
+      const userFirstName = profile?.first_name || firstName;
+      const userLastName = profile?.last_name || lastName;
 
       // Geocode the address
       const geoResult = await geocodeAddress(address.trim());
@@ -221,7 +280,7 @@ const RegisterForm = () => {
         .eq("anr_id", anrId);
 
       const residenceNumber = (habitationCount || 0) + 1;
-      const habitationName = `Résidence ${residenceNumber} - ${firstName} ${lastName}`;
+      const habitationName = `Résidence ${residenceNumber} - ${userFirstName} ${userLastName}`;
 
       // Create habitation
       const { data: habitation, error: habError } = await supabase
@@ -240,7 +299,7 @@ const RegisterForm = () => {
         .from("residents")
         .insert({
           habitation_id: habitation.id,
-          user_id: user.id,
+          user_id: currentUser.id,
           is_owner: true,
           status: "verified",
         });
@@ -267,6 +326,15 @@ const RegisterForm = () => {
       setLoading(false);
     }
   };
+
+  // Show loading while checking user state
+  if (!initialCheckDone && authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -311,7 +379,6 @@ const RegisterForm = () => {
               setFirstName={setFirstName}
               setLastName={setLastName}
               onSubmit={handleProfileSubmit}
-              onBack={() => setStep("email-sent")}
               loading={loading}
             />
           )}
@@ -428,8 +495,14 @@ const EmailSentStep = ({ email, onResend, onBack, loading }: { email: string; on
       <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
         <li>Ouvrez votre boîte mail</li>
         <li>Cliquez sur le lien de confirmation</li>
-        <li>Vous serez redirigé automatiquement</li>
+        <li>Complétez votre profil et adresse</li>
       </ol>
+    </div>
+
+    <div className="p-3 rounded-xl bg-secondary/50 border border-border text-sm text-center">
+      <p className="text-muted-foreground">
+        Après confirmation, vous pourrez vous connecter avec votre <span className="font-medium text-foreground">email et mot de passe</span>
+      </p>
     </div>
 
     <p className="text-xs text-center text-muted-foreground">
@@ -454,7 +527,6 @@ const ProfileStep = ({
   setFirstName,
   setLastName,
   onSubmit,
-  onBack,
   loading,
 }: {
   firstName: string;
@@ -462,7 +534,6 @@ const ProfileStep = ({
   setFirstName: (v: string) => void;
   setLastName: (v: string) => void;
   onSubmit: () => void;
-  onBack: () => void;
   loading: boolean;
 }) => (
   <div className="space-y-6">
@@ -497,21 +568,15 @@ const ProfileStep = ({
           disabled={loading}
         />
       </div>
-      <div className="flex gap-3">
-        <Button variant="outline" className="flex-1" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Retour
-        </Button>
-        <Button
-          variant="hero"
-          className="flex-1"
-          onClick={onSubmit}
-          disabled={!firstName.trim() || !lastName.trim() || loading}
-        >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
-          {!loading && <ArrowRight className="w-4 h-4" />}
-        </Button>
-      </div>
+      <Button
+        variant="hero"
+        className="w-full"
+        onClick={onSubmit}
+        disabled={!firstName.trim() || !lastName.trim() || loading}
+      >
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
+        {!loading && <ArrowRight className="w-4 h-4" />}
+      </Button>
     </div>
   </div>
 );
