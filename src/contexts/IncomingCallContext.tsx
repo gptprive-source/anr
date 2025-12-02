@@ -15,10 +15,7 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
-  const isPollingRef = useRef(false);
   const currentCallIdRef = useRef<string | null>(null);
-
-  console.log("[IncomingCallContext] 🔄 Provider render, userId:", user?.id || "NO_USER");
 
   // Cleanup on unmount
   useEffect(() => {
@@ -42,23 +39,14 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     console.log("[IncomingCallContext] 🚀 Starting polling for userId:", user.id);
 
     const checkForIncomingCalls = async () => {
-      // Skip if already have a call displayed or already polling
+      // Skip if already have a call displayed
       if (isCallScreenVisible()) {
-        console.log("[IncomingCallContext] ⏭️ Call screen visible, skipping poll");
         return;
       }
 
       if (!mountedRef.current) {
-        console.log("[IncomingCallContext] ⏭️ Unmounted, skipping poll");
         return;
       }
-
-      if (isPollingRef.current) {
-        console.log("[IncomingCallContext] ⏭️ Already polling, skipping");
-        return;
-      }
-
-      isPollingRef.current = true;
 
       try {
         // First check if user is muted
@@ -69,14 +57,12 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           .eq("status", "verified")
           .maybeSingle();
 
-        if (residentError) {
-          console.error("[IncomingCallContext] ❌ Resident query error:", residentError);
+        if (residentError || !mountedRef.current) {
           return;
         }
 
         // Skip if user is muted
         if (residentData?.is_muted) {
-          console.log("[IncomingCallContext] 🔇 User is muted, skipping call notifications");
           return;
         }
 
@@ -88,12 +74,9 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           .eq("role", "resident")
           .limit(1);
 
-        if (error) {
-          console.error("[IncomingCallContext] ❌ Query error:", error);
+        if (error || !mountedRef.current || isCallScreenVisible()) {
           return;
         }
-
-        if (!mountedRef.current || isCallScreenVisible()) return;
 
         if (data && data.length > 0) {
           const p = data[0];
@@ -101,7 +84,6 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
 
           // Avoid showing same call twice
           if (currentCallIdRef.current === p.call_id) {
-            console.log("[IncomingCallContext] ⏭️ Same call, skipping");
             return;
           }
 
@@ -111,12 +93,11 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
             .eq("id", p.habitation_id)
             .single();
 
-          if (habError) {
-            console.error("[IncomingCallContext] ❌ Habitation error:", habError);
+          if (habError || !mountedRef.current || isCallScreenVisible()) {
             return;
           }
 
-          if (hab && mountedRef.current && !isCallScreenVisible()) {
+          if (hab) {
             currentCallIdRef.current = p.call_id;
             
             // Use vanilla JS renderer instead of React state
@@ -129,9 +110,7 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           }
         }
       } catch (err) {
-        console.error("[IncomingCallContext] ❌ Unexpected error:", err);
-      } finally {
-        isPollingRef.current = false;
+        console.error("[IncomingCallContext] ❌ Error:", err);
       }
     };
 
