@@ -36,8 +36,8 @@ const ShareANRDialog = ({
   // Generate clickable Google Maps link (opens GPS app choice on mobile)
   const mapsLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
   
-  // Generate the ANR URL (visitor page with code)
-  const anrUrl = `${window.location.origin}/visitor?code=${anrCode}`;
+  // Generate the ANR URL (landing page with navigation/call options)
+  const anrUrl = `${window.location.origin}/anr/${anrCode}`;
 
   // Message content for sharing
   const shareMessage = `🏠 ANR de ${ownerName}
