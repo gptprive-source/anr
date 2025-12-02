@@ -1,7 +1,13 @@
 import RegisterForm from "@/components/auth/RegisterForm";
+import VisitorFooter from "@/components/layout/VisitorFooter";
 
 const Register = () => {
-  return <RegisterForm />;
+  return (
+    <>
+      <RegisterForm />
+      <VisitorFooter />
+    </>
+  );
 };
 
 export default Register;
