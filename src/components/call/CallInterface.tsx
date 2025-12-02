@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, memo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Users, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDaily } from "@/hooks/useDaily";
@@ -27,6 +28,7 @@ const CallInterface = memo(({
   habitationId = "",
   userId,
 }: CallInterfaceProps) => {
+  const navigate = useNavigate();
   const [callState, setCallState] = useState<CallState>(isResident ? "ringing" : "connecting");
   const hasJoinedRef = useRef(false);
   const channelRef = useRef<any>(null);
@@ -117,6 +119,16 @@ const CallInterface = memo(({
       setCallState("connecting");
     }
   }, [isJoined, isLoading, callState]);
+
+  // Auto-navigate back when call ends
+  useEffect(() => {
+    if (callState === "ended") {
+      const timeout = setTimeout(() => {
+        navigate(-1);
+      }, 1500);
+      return () => clearTimeout(timeout);
+    }
+  }, [callState, navigate]);
 
   const handleHangup = async () => {
     logger.log("[CallInterface] Hanging up");
