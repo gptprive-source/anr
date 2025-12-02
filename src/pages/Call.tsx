@@ -29,6 +29,7 @@ const Call = () => {
 
   const visitorLat = location.state?.visitorLat;
   const visitorLon = location.state?.visitorLon;
+  const selectedHabitationId = location.state?.habitationId;
 
   useEffect(() => {
     const initializeCall = async () => {
@@ -105,12 +106,24 @@ const Call = () => {
           return;
         }
 
-        const { data: habitation } = await supabase
-          .from("habitations")
-          .select("id, name")
-          .eq("anr_id", anr.id)
-          .limit(1)
-          .maybeSingle();
+        // Use selected habitation if provided, otherwise get first one
+        let habitation;
+        if (selectedHabitationId) {
+          const { data } = await supabase
+            .from("habitations")
+            .select("id, name")
+            .eq("id", selectedHabitationId)
+            .single();
+          habitation = data;
+        } else {
+          const { data } = await supabase
+            .from("habitations")
+            .select("id, name")
+            .eq("anr_id", anr.id)
+            .limit(1)
+            .maybeSingle();
+          habitation = data;
+        }
 
         if (!habitation) {
           setError("Aucune habitation pour cet ANR");
@@ -200,7 +213,7 @@ const Call = () => {
     };
 
     initializeCall();
-  }, [anrId, isResident, visitorLat, visitorLon, user?.id]);
+  }, [anrId, isResident, visitorLat, visitorLon, selectedHabitationId, user?.id]);
 
   if (loading) {
     return (
