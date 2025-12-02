@@ -218,13 +218,16 @@ const CallInterface = memo(({
               {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
             </Button>
 
-            <Button 
-              variant={isVideoEnabled ? "default" : "secondary"} 
-              size="icon-lg" 
-              onClick={handleToggleVideo}
-            >
-              {isVideoEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
-            </Button>
+            {/* Only residents can toggle video */}
+            {isResident && (
+              <Button 
+                variant={isVideoEnabled ? "default" : "secondary"} 
+                size="icon-lg" 
+                onClick={handleToggleVideo}
+              >
+                {isVideoEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+              </Button>
+            )}
 
             <Button variant="hangup" size="icon-lg" onClick={handleHangup}>
               <PhoneOff className="w-6 h-6" />
