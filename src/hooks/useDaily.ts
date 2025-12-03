@@ -134,6 +134,11 @@ export const useDaily = ({
       safeSetState(prev => ({ ...prev, isJoined: true, isLoading: false, error: null }));
       updateTracks();
       onCallConnected?.();
+      
+      // Rafraîchir les tracks après délai pour s'assurer qu'ils sont disponibles
+      setTimeout(() => {
+        updateTracks();
+      }, 500);
     });
 
     call.on("left-meeting", () => {
@@ -249,6 +254,12 @@ export const useDaily = ({
       // Ensure audio is properly enabled after join
       call.setLocalAudio(true);
       
+      // Si visiteur, s'assurer que la vidéo est bien activée
+      if (!isResident) {
+        call.setLocalVideo(true);
+        logger.log("[useDaily] Visitor video explicitly enabled");
+      }
+      
       logger.log("[useDaily] Joined - isResident:", isResident, "video:", !isResident);
 
       safeSetState(prev => ({
@@ -315,7 +326,12 @@ export const useDaily = ({
       videoMode: mode,
       isVideoEnabled: mode !== "off"
     }));
-  }, [safeSetState]);
+    
+    // IMPORTANT: Rafraîchir les tracks après changement de mode
+    setTimeout(() => {
+      updateTracks();
+    }, 200);
+  }, [safeSetState, updateTracks]);
 
   // Cleanup on unmount
   useEffect(() => {
