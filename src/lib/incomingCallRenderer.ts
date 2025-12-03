@@ -1,5 +1,5 @@
 /**
- * Simple vanilla JS renderer for incoming call screen
+ * Ultra-simple vanilla JS renderer for incoming call screen
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -53,10 +53,14 @@ const startRingtone = () => {
 const stopRingtone = () => {
   if (ringtoneInterval) clearInterval(ringtoneInterval);
   ringtoneInterval = null;
-  if (oscillator) oscillator.stop();
+  if (oscillator) {
+    try { oscillator.stop(); } catch(e) {}
+  }
   oscillator = null;
   gainNode = null;
-  if (audioContext) audioContext.close();
+  if (audioContext) {
+    try { audioContext.close(); } catch(e) {}
+  }
   audioContext = null;
 };
 
@@ -75,40 +79,51 @@ const stopVibration = () => {
   if ("vibrate" in navigator) navigator.vibrate(0);
 };
 
-const createCallScreen = (data: IncomingCallData): HTMLDivElement => {
+export const showIncomingCall = (data: IncomingCallData) => {
+  console.log("[CALL] === showIncomingCall START ===");
+  console.log("[CALL] callId:", data.callId);
+  
+  // Remove any existing screen first
+  const existing = document.getElementById('vanilla-incoming-call');
+  if (existing) {
+    console.log("[CALL] Removing existing screen");
+    existing.remove();
+  }
+  
+  currentCallData = data;
+  
+  // Create container
   const container = document.createElement('div');
   container.id = 'vanilla-incoming-call';
   container.style.cssText = `
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    height: 100dvh !important;
-    background-color: #1e293b !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    z-index: 2147483647 !important;
-    padding: 24px !important;
-    box-sizing: border-box !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #1e293b;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    padding: 24px;
+    box-sizing: border-box;
   `;
 
   container.innerHTML = `
     <div style="
       width: 100px;
       height: 100px;
-      border-radius: 50px;
-      background-color: #22c55e;
+      border-radius: 50%;
+      background: #22c55e;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 24px;
       box-shadow: 0 0 40px rgba(34, 197, 94, 0.5);
-      animation: pulse-call 2s infinite;
     ">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
@@ -124,8 +139,8 @@ const createCallScreen = (data: IncomingCallData): HTMLDivElement => {
         <button id="decline-call-btn" style="
           width: 72px;
           height: 72px;
-          border-radius: 36px;
-          background-color: #ef4444;
+          border-radius: 50%;
+          background: #ef4444;
           border: none;
           display: flex;
           align-items: center;
@@ -133,8 +148,8 @@ const createCallScreen = (data: IncomingCallData): HTMLDivElement => {
           cursor: pointer;
         ">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-            <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/>
-            <line x1="23" y1="1" x2="1" y2="23"/>
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
         <span style="font-size: 13px; color: #94a3b8;">Refuser</span>
@@ -144,8 +159,8 @@ const createCallScreen = (data: IncomingCallData): HTMLDivElement => {
         <button id="answer-call-btn" style="
           width: 72px;
           height: 72px;
-          border-radius: 36px;
-          background-color: #22c55e;
+          border-radius: 50%;
+          background: #22c55e;
           border: none;
           display: flex;
           align-items: center;
@@ -159,71 +174,72 @@ const createCallScreen = (data: IncomingCallData): HTMLDivElement => {
         <span style="font-size: 13px; color: #94a3b8;">Répondre</span>
       </div>
     </div>
-    
-    <style>
-      @keyframes pulse-call {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-      }
-    </style>
   `;
-
-  return container;
-};
-
-export const showIncomingCall = (data: IncomingCallData) => {
-  console.log("[Call] Showing:", data.callId);
   
-  // Remove any existing screen
-  const existing = document.getElementById('vanilla-incoming-call');
-  if (existing) existing.remove();
+  // Append to body
+  document.body.appendChild(container);
   
-  currentCallData = data;
-  
-  // Create and show screen
-  const screen = createCallScreen(data);
-  document.body.appendChild(screen);
+  const check = document.getElementById('vanilla-incoming-call');
+  console.log("[CALL] Element appended, exists in DOM:", !!check);
+  console.log("[CALL] Element display:", check?.style.display);
+  console.log("[CALL] Body children count:", document.body.children.length);
   
   // Start alerts
   startRingtone();
   startVibration();
   
   // Attach handlers
-  document.getElementById('answer-call-btn')!.onclick = async () => {
-    console.log("[Call] Answer clicked");
-    await supabase
-      .from("call_participants")
-      .update({ status: "answered", joined_at: new Date().toISOString() })
-      .eq("id", data.participantId);
-    
-    hideIncomingCall();
-    window.location.href = `/call/${data.callId}?resident=true`;
-  };
+  const answerBtn = document.getElementById('answer-call-btn');
+  const declineBtn = document.getElementById('decline-call-btn');
   
-  document.getElementById('decline-call-btn')!.onclick = async () => {
-    console.log("[Call] Decline clicked");
-    await supabase
-      .from("call_participants")
-      .update({ status: "declined", left_at: new Date().toISOString() })
-      .eq("id", data.participantId);
-    
-    hideIncomingCall();
-  };
+  console.log("[CALL] Answer btn found:", !!answerBtn);
+  console.log("[CALL] Decline btn found:", !!declineBtn);
+  
+  if (answerBtn) {
+    answerBtn.onclick = async () => {
+      console.log("[CALL] Answer clicked");
+      await supabase
+        .from("call_participants")
+        .update({ status: "answered", joined_at: new Date().toISOString() })
+        .eq("id", data.participantId);
+      
+      hideIncomingCall();
+      window.location.href = `/call/${data.callId}?resident=true`;
+    };
+  }
+  
+  if (declineBtn) {
+    declineBtn.onclick = async () => {
+      console.log("[CALL] Decline clicked");
+      await supabase
+        .from("call_participants")
+        .update({ status: "declined", left_at: new Date().toISOString() })
+        .eq("id", data.participantId);
+      
+      hideIncomingCall();
+    };
+  }
+  
+  console.log("[CALL] === showIncomingCall END ===");
 };
 
 export const hideIncomingCall = () => {
-  console.log("[Call] Hiding");
+  console.log("[CALL] hideIncomingCall called");
   stopRingtone();
   stopVibration();
   
   const existing = document.getElementById('vanilla-incoming-call');
-  if (existing) existing.remove();
+  if (existing) {
+    existing.remove();
+    console.log("[CALL] Screen removed from DOM");
+  }
   
   currentCallData = null;
 };
 
 export const isCallScreenVisible = () => {
-  return !!document.getElementById('vanilla-incoming-call');
+  const visible = !!document.getElementById('vanilla-incoming-call');
+  return visible;
 };
 
 export const getCurrentCallData = () => currentCallData;

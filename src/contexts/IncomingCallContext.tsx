@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useEffect, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { showIncomingCall, hideIncomingCall, isCallScreenVisible } from "@/lib/incomingCallRenderer";
@@ -13,14 +13,20 @@ const IncomingCallContext = createContext<IncomingCallContextType>({
 
 export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log("[POLL] No user, skipping");
+      return;
+    }
+
+    console.log("[POLL] Starting polling for user:", user.id);
 
     const checkForCalls = async () => {
-      // Skip if screen already showing
-      if (isCallScreenVisible()) return;
+      // Skip if already showing
+      if (isCallScreenVisible()) {
+        return;
+      }
 
       try {
         // Check if muted
@@ -31,10 +37,13 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           .eq("status", "verified")
           .maybeSingle();
 
-        if (resident?.is_muted) return;
+        if (resident?.is_muted) {
+          console.log("[POLL] User is muted");
+          return;
+        }
 
         // Check for ringing calls
-        const { data: calls } = await supabase
+        const { data: calls, error } = await supabase
           .from("call_participants")
           .select("id, call_id, habitation_id")
           .eq("user_id", user.id)
@@ -42,9 +51,17 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           .eq("role", "resident")
           .limit(1);
 
-        if (!calls || calls.length === 0) return;
+        if (error) {
+          console.error("[POLL] Error:", error);
+          return;
+        }
+
+        if (!calls || calls.length === 0) {
+          return;
+        }
 
         const call = calls[0];
+        console.log("[POLL] Found ringing call:", call.call_id);
 
         // Get habitation info
         const { data: hab } = await supabase
@@ -53,8 +70,13 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           .eq("id", call.habitation_id)
           .single();
 
-        if (!hab) return;
+        if (!hab) {
+          console.log("[POLL] No habitation found");
+          return;
+        }
 
+        console.log("[POLL] Calling showIncomingCall");
+        
         // Show the call screen
         showIncomingCall({
           participantId: call.id,
@@ -63,16 +85,19 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           address: (hab.anrs as any)?.address || "",
         });
       } catch (err) {
-        console.error("[IncomingCall] Error:", err);
+        console.error("[POLL] Error:", err);
       }
     };
 
-    // Check immediately then every 2 seconds
+    // Check immediately
     checkForCalls();
-    intervalRef.current = setInterval(checkForCalls, 2000);
+    
+    // Then every 2 seconds
+    const interval = setInterval(checkForCalls, 2000);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      console.log("[POLL] Stopping polling");
+      clearInterval(interval);
     };
   }, [user?.id]);
 
