@@ -1,16 +1,26 @@
 import { useState, useEffect } from "react";
-import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle } from "lucide-react";
+import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle, CreditCard, Plus, Minus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useNavigate } from "react-router-dom";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { geocodeAddress } from "@/lib/geocoding";
 import { useAuth } from "@/hooks/useAuth";
 
-type Step = "credentials" | "email-sent" | "profile" | "address" | "success";
+type Step = "credentials" | "email-sent" | "profile" | "address" | "payment" | "success";
+
+interface AddressData {
+  address: string;
+  latitude: number;
+  longitude: number;
+  isNewAnr: boolean;
+  existingAnrId?: string;
+  habitationName: string;
+}
 
 const emailSchema = z.string().email("Email invalide");
 const passwordSchema = z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères");
@@ -24,28 +34,84 @@ const RegisterForm = () => {
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const [addressData, setAddressData] = useState<AddressData | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  // Handle Stripe return
+  useEffect(() => {
+    const paymentStatus = searchParams.get("payment");
+    const sessionId = searchParams.get("session_id");
+
+    if (paymentStatus === "success" && sessionId) {
+      verifyPaymentAndFinalize(sessionId);
+    } else if (paymentStatus === "cancelled") {
+      toast({
+        title: "Paiement annulé",
+        description: "Vous pouvez réessayer quand vous le souhaitez",
+        variant: "destructive",
+      });
+      setStep("payment");
+    }
+  }, [searchParams]);
+
+  const verifyPaymentAndFinalize = async (sessionId: string) => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Session expirée, veuillez vous reconnecter");
+
+      const { data, error } = await supabase.functions.invoke("verify-payment", {
+        body: { sessionId },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: data.isNewAnr ? "ANR créé avec succès !" : "Habitation ajoutée !",
+        description: "Votre paiement a été validé",
+      });
+
+      // Clear URL params and go to success
+      window.history.replaceState({}, "", "/register");
+      setStep("success");
+    } catch (error: any) {
+      console.error("Payment verification error:", error);
+      toast({
+        title: "Erreur de vérification",
+        description: error.message || "Impossible de vérifier le paiement",
+        variant: "destructive",
+      });
+      setStep("payment");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Check if user is returning after email verification
   useEffect(() => {
     if (authLoading || initialCheckDone) return;
+    if (searchParams.get("payment")) return; // Don't check if handling payment return
 
     const checkUserState = async () => {
-      // Check localStorage for saved step
       const savedStep = localStorage.getItem("anr_register_step") as Step | null;
+      const savedAddressData = localStorage.getItem("anr_register_address_data");
       
       if (user && savedStep) {
-        // User is authenticated and has a saved step - resume registration
         localStorage.removeItem("anr_register_step");
+        if (savedAddressData) {
+          setAddressData(JSON.parse(savedAddressData));
+          localStorage.removeItem("anr_register_address_data");
+        }
         setStep(savedStep);
         setInitialCheckDone(true);
         return;
       }
 
       if (user) {
-        // User is logged in but no saved step - check their profile state
         try {
           const { data: profile } = await supabase
             .from("profiles")
@@ -64,7 +130,6 @@ const RegisterForm = () => {
           } else if (!resident) {
             setStep("address");
           } else {
-            // User is fully registered - redirect to dashboard
             navigate("/dashboard", { replace: true });
             return;
           }
@@ -77,7 +142,7 @@ const RegisterForm = () => {
     };
 
     checkUserState();
-  }, [user, authLoading, initialCheckDone, navigate]);
+  }, [user, authLoading, initialCheckDone, navigate, searchParams]);
 
   const handleCredentialsSubmit = async () => {
     const emailValidation = emailSchema.safeParse(email);
@@ -104,18 +169,14 @@ const RegisterForm = () => {
     setLoading(true);
     
     try {
-      // Sign up with email and password
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (error) throw error;
-
-      // Show email verification step
       setStep("email-sent");
     } catch (error: any) {
-      // Handle "user already registered" error
       if (error.message?.includes("already registered") || error.message?.includes("User already registered")) {
         toast({
           title: "Compte existant",
@@ -217,7 +278,6 @@ const RegisterForm = () => {
         throw new Error("Utilisateur non connecté");
       }
 
-      // Get profile for name
       const { data: profile } = await supabase
         .from("profiles")
         .select("first_name, last_name")
@@ -227,7 +287,6 @@ const RegisterForm = () => {
       const userFirstName = profile?.first_name || firstName;
       const userLastName = profile?.last_name || lastName;
 
-      // Geocode the address
       const geoResult = await geocodeAddress(address.trim());
       
       if (!geoResult) {
@@ -240,8 +299,6 @@ const RegisterForm = () => {
         return;
       }
 
-      // Generate ANR code
-      const anrCode = `ANR-${Date.now().toString(36).toUpperCase()}`;
       const { latitude, longitude } = geoResult;
 
       // Check if ANR already exists for this address
@@ -251,75 +308,41 @@ const RegisterForm = () => {
         .eq("address", address.trim())
         .maybeSingle();
 
-      let anrId: string;
-      let isExistingAnr = false;
-
-      if (existingAnr) {
-        anrId = existingAnr.id;
-        isExistingAnr = true;
-      } else {
-        const { data: newAnr, error: anrError } = await supabase
-          .from("anrs")
-          .insert({
-            code: anrCode,
-            address: address.trim(),
-            latitude,
-            longitude,
-          })
-          .select("id")
-          .single();
-
-        if (anrError) throw anrError;
-        anrId = newAnr.id;
-      }
+      let isNewAnr = !existingAnr;
+      let existingAnrId = existingAnr?.id;
 
       // Count existing habitations for this ANR to determine residence number
-      const { count: habitationCount } = await supabase
-        .from("habitations")
-        .select("*", { count: "exact", head: true })
-        .eq("anr_id", anrId);
+      let residenceNumber = 1;
+      if (existingAnrId) {
+        const { count } = await supabase
+          .from("habitations")
+          .select("*", { count: "exact", head: true })
+          .eq("anr_id", existingAnrId);
+        residenceNumber = (count || 0) + 1;
+      }
 
-      const residenceNumber = (habitationCount || 0) + 1;
       const habitationName = `Résidence ${residenceNumber} - ${userFirstName} ${userLastName}`;
 
-      // Create habitation
-      const { data: habitation, error: habError } = await supabase
-        .from("habitations")
-        .insert({
-          anr_id: anrId,
-          name: habitationName,
-        })
-        .select("id")
-        .single();
+      // Store address data for payment step (don't create anything in DB yet)
+      const newAddressData: AddressData = {
+        address: address.trim(),
+        latitude,
+        longitude,
+        isNewAnr,
+        existingAnrId,
+        habitationName,
+      };
 
-      if (habError) throw habError;
+      setAddressData(newAddressData);
+      // Save to localStorage in case user refreshes
+      localStorage.setItem("anr_register_address_data", JSON.stringify(newAddressData));
 
-      // Create resident as owner
-      const { error: resError } = await supabase
-        .from("residents")
-        .insert({
-          habitation_id: habitation.id,
-          user_id: currentUser.id,
-          is_owner: true,
-          status: "verified",
-        });
-
-      if (resError) throw resError;
-
-      // Move to success step
-      setStep("success");
-      
-      toast({
-        title: isExistingAnr ? "Habitation ajoutée" : "ANR créé",
-        description: isExistingAnr 
-          ? `Vous êtes maintenant Résidence ${residenceNumber} à cette adresse`
-          : "Votre ANR a été créé avec succès",
-      });
+      setStep("payment");
 
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de créer l'ANR",
+        description: error.message || "Impossible de vérifier l'adresse",
         variant: "destructive",
       });
     } finally {
@@ -336,16 +359,26 @@ const RegisterForm = () => {
     );
   }
 
+  // Show loading while verifying payment
+  if (loading && searchParams.get("payment") === "success") {
+    return (
+      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Vérification du paiement...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex justify-center gap-2 mb-8">
-          {["credentials", "email-sent", "profile", "address", "success"].map((s, i) => (
+          {["credentials", "email-sent", "profile", "address", "payment", "success"].map((s, i) => (
             <div
               key={s}
-              className={`h-1 w-10 rounded-full transition-colors ${
-                ["credentials", "email-sent", "profile", "address", "success"].indexOf(step) >= i
+              className={`h-1 w-8 rounded-full transition-colors ${
+                ["credentials", "email-sent", "profile", "address", "payment", "success"].indexOf(step) >= i
                   ? "bg-primary"
                   : "bg-secondary"
               }`}
@@ -389,6 +422,14 @@ const RegisterForm = () => {
               onSubmit={handleAddressSubmit}
               onBack={() => setStep("profile")}
               loading={loading}
+            />
+          )}
+          {step === "payment" && addressData && (
+            <PaymentStep
+              addressData={addressData}
+              onBack={() => setStep("address")}
+              loading={loading}
+              setLoading={setLoading}
             />
           )}
           {step === "success" && (
@@ -628,13 +669,208 @@ const AddressStep = ({
           onClick={onSubmit}
           disabled={!address.trim() || loading}
         >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Créer mon ANR"}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
           {!loading && <ArrowRight className="w-4 h-4" />}
         </Button>
       </div>
     </div>
   </div>
 );
+
+const PaymentStep = ({
+  addressData,
+  onBack,
+  loading,
+  setLoading,
+}: {
+  addressData: AddressData;
+  onBack: () => void;
+  loading: boolean;
+  setLoading: (v: boolean) => void;
+}) => {
+  const [extraDomings, setExtraDomings] = useState(0);
+  const [acceptedCGU, setAcceptedCGU] = useState(false);
+  const { toast } = useToast();
+
+  const subscriptionPrice = 12; // 12€
+  const domingPrice = 7; // 7€
+  const extraDomingsTotal = extraDomings * domingPrice;
+  const total = subscriptionPrice + extraDomingsTotal;
+
+  const handlePayment = async () => {
+    if (!acceptedCGU) {
+      toast({
+        title: "Conditions requises",
+        description: "Veuillez accepter les conditions générales d'utilisation",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+        body: {
+          extraDomings,
+          isNewAnr: addressData.isNewAnr,
+          addressData: {
+            address: addressData.address,
+            latitude: addressData.latitude,
+            longitude: addressData.longitude,
+          },
+          habitationName: addressData.habitationName,
+          existingAnrId: addressData.existingAnrId,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.url) {
+        // Redirect to Stripe Checkout in new tab
+        window.open(data.url, "_blank");
+      }
+    } catch (error: any) {
+      console.error("Checkout error:", error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de créer la session de paiement",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+          <CreditCard className="w-8 h-8 text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Récapitulatif</h2>
+        <p className="text-muted-foreground">
+          Votre commande ANR
+        </p>
+      </div>
+
+      {/* Order summary */}
+      <div className="rounded-xl border border-border overflow-hidden">
+        <div className="p-4 space-y-3">
+          {/* Subscription */}
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="font-medium">Abonnement ANR (1 an)</p>
+              <p className="text-xs text-muted-foreground">Reconduction tacite annuelle</p>
+            </div>
+            <p className="font-semibold">{subscriptionPrice},00 €</p>
+          </div>
+
+          {/* Free Doming */}
+          {addressData.isNewAnr && (
+            <div className="flex justify-between items-center text-success">
+              <div>
+                <p className="font-medium">Doming QR/NFC</p>
+                <p className="text-xs opacity-80">Inclus pour nouvelle ANR</p>
+              </div>
+              <p className="font-semibold">OFFERT</p>
+            </div>
+          )}
+
+          <div className="border-t border-border my-2" />
+
+          {/* Extra Domings */}
+          <div className="flex justify-between items-center">
+            <div className="flex-1">
+              <p className="font-medium">Domings supplémentaires</p>
+              <p className="text-xs text-muted-foreground">{domingPrice}€ / pièce</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setExtraDomings(Math.max(0, extraDomings - 1))}
+                disabled={extraDomings === 0}
+              >
+                <Minus className="w-4 h-4" />
+              </Button>
+              <span className="w-8 text-center font-semibold">{extraDomings}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setExtraDomings(extraDomings + 1)}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="font-semibold w-20 text-right">{extraDomingsTotal},00 €</p>
+          </div>
+        </div>
+
+        {/* Total */}
+        <div className="bg-primary/5 p-4 border-t border-border">
+          <div className="flex justify-between items-center">
+            <p className="font-bold text-lg">TOTAL</p>
+            <p className="font-bold text-xl text-primary">{total},00 €</p>
+          </div>
+        </div>
+      </div>
+
+      {/* CGU Checkbox */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <Checkbox
+            id="cgu"
+            checked={acceptedCGU}
+            onCheckedChange={(checked) => setAcceptedCGU(checked === true)}
+          />
+          <label htmlFor="cgu" className="text-sm leading-relaxed cursor-pointer">
+            J'accepte les{" "}
+            <a href="/cgu" target="_blank" className="text-primary underline">
+              conditions générales d'utilisation
+            </a>{" "}
+            et la reconduction tacite annuelle de mon abonnement.
+          </label>
+        </div>
+
+        <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
+          <div className="flex gap-2">
+            <FileText className="w-4 h-4 flex-shrink-0 text-primary" />
+            <p>
+              Votre abonnement sera renouvelé automatiquement chaque année au tarif en vigueur. 
+              Vous pouvez annuler à tout moment depuis votre compte.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Buttons */}
+      <div className="flex gap-3">
+        <Button variant="outline" className="flex-1" onClick={onBack} disabled={loading}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Retour
+        </Button>
+        <Button
+          variant="hero"
+          className="flex-1"
+          onClick={handlePayment}
+          disabled={!acceptedCGU || loading}
+        >
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <>
+              Payer {total},00 €
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 const SuccessStep = ({
   onGoToDashboard,
@@ -644,11 +880,11 @@ const SuccessStep = ({
   <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto mb-4">
-        <MapPin className="w-8 h-8 text-success" />
+        <CheckCircle className="w-8 h-8 text-success" />
       </div>
-      <h2 className="text-2xl font-bold mb-2">ANR créé avec succès !</h2>
+      <h2 className="text-2xl font-bold mb-2">Paiement validé !</h2>
       <p className="text-muted-foreground">
-        Votre interphone numérique est prêt à recevoir des appels
+        Votre ANR est créé et votre Doming sera expédié prochainement
       </p>
     </div>
 

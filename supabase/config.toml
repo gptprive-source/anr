@@ -55,3 +55,12 @@ verify_jwt = false
 
 [functions.delete-user]
 verify_jwt = false
+
+[functions.create-checkout-session]
+verify_jwt = false
+
+[functions.verify-payment]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
