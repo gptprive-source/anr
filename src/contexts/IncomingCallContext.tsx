@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { showIncomingCall, hideIncomingCall, isCallScreenVisible } from "@/lib/incomingCallRenderer";
+import { showIncomingCall, hideIncomingCall, isCallScreenVisible, getCurrentCallData } from "@/lib/incomingCallRenderer";
 
 interface IncomingCallContextType {
   clearIncomingCall: () => void;
@@ -23,8 +23,21 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     console.log("[POLL] Starting polling for user:", user.id);
 
     const checkForCalls = async () => {
-      // Skip if already showing
-      if (isCallScreenVisible()) {
+      const currentCall = getCurrentCallData();
+      
+      // If call screen is visible, check if call is still ringing
+      if (isCallScreenVisible() && currentCall) {
+        const { data: participant } = await supabase
+          .from("call_participants")
+          .select("status")
+          .eq("id", currentCall.participantId)
+          .single();
+        
+        // If call is no longer ringing (visitor hung up), hide screen
+        if (!participant || participant.status !== "ringing") {
+          console.log("[POLL] Call ended, hiding screen");
+          hideIncomingCall();
+        }
         return;
       }
 
@@ -38,7 +51,6 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           .maybeSingle();
 
         if (resident?.is_muted) {
-          console.log("[POLL] User is muted");
           return;
         }
 
