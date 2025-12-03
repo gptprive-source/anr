@@ -81,7 +81,10 @@ export const useDaily = ({
       const remoteVideo = remote?.tracks?.video;
       const remoteAudio = remote?.tracks?.audio;
 
-      logger.log("[useDaily] Tracks update - local video state:", localVideo?.state, "remote video state:", remoteVideo?.state);
+      logger.log("[useDaily] updateTracks - participants count:", Object.keys(participants).length);
+      logger.log("[useDaily] Local video:", localVideo?.state, "track:", !!localVideo?.track, "persistent:", !!localVideo?.persistentTrack);
+      logger.log("[useDaily] Remote video:", remoteVideo?.state, "track:", !!remoteVideo?.track, "persistent:", !!remoteVideo?.persistentTrack);
+      logger.log("[useDaily] Remote participant session:", remote?.session_id);
 
       safeSetState(prev => ({
         ...prev,
@@ -257,7 +260,16 @@ export const useDaily = ({
       // Si visiteur, s'assurer que la vidéo est bien activée
       if (!isResident) {
         call.setLocalVideo(true);
-        logger.log("[useDaily] Visitor video explicitly enabled");
+        logger.log("[useDaily] Visitor video explicitly enabled at join");
+        
+        // Force video after a delay to ensure it's properly activated
+        setTimeout(() => {
+          if (callRef.current) {
+            callRef.current.setLocalVideo(true);
+            logger.log("[useDaily] Visitor video force-enabled after delay");
+            updateTracks();
+          }
+        }, 500);
       }
       
       logger.log("[useDaily] Joined - isResident:", isResident, "video:", !isResident);

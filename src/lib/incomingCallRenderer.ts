@@ -277,33 +277,48 @@ export const showIncomingCall = (data: IncomingCallData) => {
           // Clear container first
           previewContainer.innerHTML = '';
           
-          const callFrame = Daily.createFrame(previewContainer, {
-            iframeStyle: {
-              width: "100%",
-              height: "100%",
-              border: "none",
-              position: "absolute",
-              top: "0",
-              left: "0",
-              zIndex: "1",
-            },
-            showLeaveButton: false,
-            showFullscreenButton: false,
-            showLocalVideo: false,
+          // Create video element for preview
+          const videoEl = document.createElement('video');
+          videoEl.autoplay = true;
+          videoEl.playsInline = true;
+          videoEl.muted = false;
+          videoEl.style.cssText = 'width:100%;height:100%;object-fit:cover;background:#000;';
+          previewContainer.appendChild(videoEl);
+          
+          // Create call object (not frame) for better track control
+          const callObject = Daily.createCallObject({
+            audioSource: false,  // Résident: pas de micro en preview
+            videoSource: false,  // Résident: pas de vidéo en preview
+            subscribeToTracksAutomatically: true,
           });
           
-          console.log("[CALL] Preview callFrame created");
+          console.log("[CALL] Preview callObject created");
           
-          await callFrame.join({
+          // Listen for remote video tracks
+          callObject.on('track-started', (event: any) => {
+            console.log("[CALL] Preview track-started:", event.track?.kind, "local:", event.participant?.local);
+            if (event.participant && !event.participant.local && event.track?.kind === 'video') {
+              console.log("[CALL] Preview received remote video track");
+              const stream = new MediaStream([event.track]);
+              videoEl.srcObject = stream;
+              videoEl.play().catch(e => console.error("[CALL] Preview video play error:", e));
+            }
+          });
+          
+          callObject.on('participant-joined', (event: any) => {
+            console.log("[CALL] Preview participant-joined:", event.participant?.session_id, "local:", event.participant?.local);
+          });
+          
+          // Join in receive-only mode
+          await callObject.join({
             url: roomData.url,
-            token: roomData.token,
             startVideoOff: true,
             startAudioOff: true,
           });
           
-          // Store callFrame for cleanup
-          (window as any).__previewCallFrame = callFrame;
-          console.log("[CALL] Preview joined successfully - participants:", callFrame.participants());
+          // Store callObject for cleanup
+          (window as any).__previewCallFrame = callObject;
+          console.log("[CALL] Preview joined successfully - participants:", callObject.participants());
         }
       } catch (err) {
         console.error("[CALL] Preview error:", err);

@@ -80,7 +80,7 @@ serve(async (req) => {
           exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
           max_participants: 10,
           enable_knocking: false,
-          start_video_off: true,
+          start_video_off: false, // Allow video by default
           start_audio_off: false,
           // Optimize for low latency
           sfu_switchover: 0.5,
