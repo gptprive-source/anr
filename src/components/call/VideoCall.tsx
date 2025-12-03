@@ -95,15 +95,6 @@ const VideoCall = memo(({
         )}
       </div>
 
-      {/* Status indicators */}
-      <div className="absolute top-4 left-4 z-20 flex gap-2">
-        {!isVideoEnabled && (
-          <div className="bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm flex items-center gap-1">
-            <VideoOff className="w-3 h-3" />
-            <span>Mode vocal</span>
-          </div>
-        )}
-      </div>
 
       {/* Local video (overlay) */}
       {showLocalVideo && (
