@@ -23,6 +23,7 @@ import Invitation from "./pages/Invitation";
 import ResetPassword from "./pages/ResetPassword";
 import UpdateGPS from "./pages/UpdateGPS";
 import Residents from "./pages/Residents";
+import CallHistory from "./pages/CallHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -79,6 +80,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <Residents />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/call-history"
+            element={
+              <ProtectedRoute>
+                <CallHistory />
               </ProtectedRoute>
             }
           />
