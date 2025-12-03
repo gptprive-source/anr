@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { Users, History, Bell, Shield, MapPin, Copy, Check, Loader2, UserPlus, Phone, Trash2, BellOff, BellRing, Share2 } from "lucide-react";
+import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import InviteResidentDialog from "./InviteResidentDialog";
 import CallHistorySection from "./CallHistorySection";
 import ShareANRDialog from "./ShareANRDialog";
 import BottomNav from "@/components/layout/BottomNav";
@@ -41,7 +40,6 @@ const ResidentDashboard = () => {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [habitationData, setHabitationData] = useState<HabitationData | null>(null);
-  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
@@ -168,38 +166,6 @@ const ResidentDashboard = () => {
       navigator.clipboard.writeText(habitationData.anr.code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleDeleteResident = async (residentId: string, residentUserId: string, residentName: string) => {
-    if (!confirm(`Voulez-vous vraiment supprimer définitivement le compte de ${residentName} ?`)) {
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke("delete-user", {
-        body: {
-          targetUserId: residentUserId,
-          requestingUserId: user?.id,
-          habitationId: habitationData?.id,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      toast({
-        title: "Compte supprimé",
-        description: `Le compte de ${residentName} a été supprimé définitivement`,
-      });
-      fetchHabitationData();
-    } catch (error: any) {
-      console.error("[Dashboard] Delete resident error:", error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer le compte",
-        variant: "destructive",
-      });
     }
   };
 
@@ -365,7 +331,7 @@ const ResidentDashboard = () => {
             icon={<Users className="w-6 h-6" />}
             label="Résidents"
             count={habitationData.residents.length}
-            onClick={() => {}}
+            onClick={() => navigate("/residents")}
           />
           <QuickAction
             icon={<History className="w-6 h-6" />}
@@ -405,81 +371,7 @@ const ResidentDashboard = () => {
           🧪 Tester appel entrant
         </Button>
 
-        {/* Residents list */}
-        <div className="glass-effect rounded-2xl p-6 card-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Résidents ({habitationData.residents.length}/7)</h2>
-            {isOwner && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                disabled={habitationData.residents.length >= 7}
-                onClick={() => setInviteDialogOpen(true)}
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                Inviter
-              </Button>
-            )}
-          </div>
-          
-          <div className="space-y-3">
-            {habitationData.residents.map((resident) => {
-              const name = resident.profile 
-                ? `${resident.profile.first_name || ""} ${resident.profile.last_name || ""}`.trim() || "Sans nom"
-                : "Sans nom";
-              const phone = resident.profile?.phone_number || "N/A";
-              const canDelete = isOwner && !resident.is_owner && resident.user_id !== user?.id;
-              
-              return (
-                <div
-                  key={resident.id}
-                  className="flex items-center justify-between p-4 rounded-xl bg-secondary/50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="font-semibold text-primary">
-                        {name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-medium">{name}</p>
-                      <p className="text-sm text-muted-foreground">{phone}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {resident.is_owner && (
-                      <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs">
-                        Propriétaire
-                      </span>
-                    )}
-                    {canDelete && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteResident(resident.id, resident.user_id, name)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
       </div>
-
-      {/* Invite Resident Dialog */}
-      <InviteResidentDialog
-        open={inviteDialogOpen}
-        onOpenChange={setInviteDialogOpen}
-        habitationId={habitationData.id}
-        habitationName={habitationData.name}
-        anrAddress={habitationData.anr.address}
-        onInvitationSent={fetchHabitationData}
-      />
 
       {/* Share ANR Dialog */}
       <ShareANRDialog

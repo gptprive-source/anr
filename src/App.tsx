@@ -22,6 +22,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import Invitation from "./pages/Invitation";
 import ResetPassword from "./pages/ResetPassword";
 import UpdateGPS from "./pages/UpdateGPS";
+import Residents from "./pages/Residents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <UpdateGPS />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/residents"
+            element={
+              <ProtectedRoute>
+                <Residents />
               </ProtectedRoute>
             }
           />
