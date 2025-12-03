@@ -341,10 +341,21 @@ export const showIncomingCall = (data: IncomingCallData) => {
         (window as any).__previewCallFrame = null;
       }
       
+      // 1. Update my participant to "answered"
       await supabase
         .from("call_participants")
         .update({ status: "answered", joined_at: new Date().toISOString() })
         .eq("id", data.participantId);
+      
+      // 2. Update ALL other ringing participants to "call_answered_by_other"
+      await supabase
+        .from("call_participants")
+        .update({ status: "call_answered_by_other", left_at: new Date().toISOString() })
+        .eq("call_id", data.callId)
+        .eq("status", "ringing")
+        .neq("id", data.participantId);
+      
+      console.log("[CALL] Updated other participants to call_answered_by_other");
       
       hideIncomingCall();
       window.location.href = `/call/${data.callId}?resident=true`;
@@ -366,17 +377,30 @@ export const showIncomingCall = (data: IncomingCallData) => {
         (window as any).__previewCallFrame = null;
       }
       
-      // Update participant status
+      // Update MY participant status to "declined"
       await supabase
         .from("call_participants")
         .update({ status: "declined", left_at: new Date().toISOString() })
         .eq("id", data.participantId);
       
-      // Update call_logs to "ended" so visitor hangs up
-      await supabase
-        .from("call_logs")
-        .update({ status: "ended", ended_at: new Date().toISOString() })
-        .eq("id", data.callId);
+      // Check if there are other residents still ringing or in call
+      const { data: activeResidents } = await supabase
+        .from("call_participants")
+        .select("id")
+        .eq("call_id", data.callId)
+        .eq("role", "resident")
+        .in("status", ["ringing", "answered", "in_group"]);
+      
+      // Only end the call if NO other residents can answer
+      if (!activeResidents || activeResidents.length === 0) {
+        console.log("[CALL] No other residents available, ending call");
+        await supabase
+          .from("call_logs")
+          .update({ status: "ended", ended_at: new Date().toISOString() })
+          .eq("id", data.callId);
+      } else {
+        console.log("[CALL] Other residents can still answer:", activeResidents.length);
+      }
       
       hideIncomingCall();
     };

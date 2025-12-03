@@ -45,7 +45,10 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
         const callEnded = !callLog || callLog.status === "ended" || callLog.status === "missed";
         const notRinging = !participant || participant.status !== "ringing";
         
-        if (callEnded || notRinging) {
+        // Also check if another resident answered
+        const answeredByOther = participant?.status === "call_answered_by_other";
+        
+        if (callEnded || notRinging || answeredByOther) {
           console.log("[POLL] Call ended - callLog:", callLog?.status, "participant:", participant?.status);
           hideIncomingCall();
         }
