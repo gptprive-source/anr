@@ -22,19 +22,17 @@ const GlobalIncomingCallListener = () => {
   useEffect(() => {
     const requestMediaPermissions = async () => {
       try {
-        // Check if permissions already granted
-        const cameraPermission = await navigator.permissions.query({ name: "camera" as PermissionName });
-        const micPermission = await navigator.permissions.query({ name: "microphone" as PermissionName });
+        // Request VIDEO first (most important for peephole preview)
+        console.log("[Permissions] Requesting VIDEO permission...");
+        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoStream.getTracks().forEach(track => track.stop());
+        console.log("[Permissions] VIDEO permission granted");
         
-        if (cameraPermission.state === "granted" && micPermission.state === "granted") {
-          console.log("[Permissions] Camera and microphone already granted");
-          return;
-        }
-        
-        console.log("[Permissions] Requesting camera and microphone access...");
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        stream.getTracks().forEach(track => track.stop());
-        console.log("[Permissions] Camera and microphone permissions granted");
+        // Then request AUDIO
+        console.log("[Permissions] Requesting AUDIO permission...");
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioStream.getTracks().forEach(track => track.stop());
+        console.log("[Permissions] AUDIO permission granted");
       } catch (err) {
         console.error("[Permissions] Failed to get media permissions:", err);
       }
