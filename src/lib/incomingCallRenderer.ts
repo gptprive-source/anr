@@ -112,6 +112,12 @@ const stopPreview = () => {
 };
 
 // Subscribe to call status changes to detect when visitor hangs up
+// Timestamp when call screen was shown - used to prevent premature hiding
+let callScreenShownAt: number | null = null;
+
+// Minimum time (ms) the call screen must be visible before it can be hidden by subscription
+const MIN_DISPLAY_TIME_MS = 3000;
+
 const subscribeToCallStatus = (callId: string) => {
   console.log("[IncomingCallRenderer] 📡 Subscribing to call status:", callId);
   
@@ -128,7 +134,17 @@ const subscribeToCallStatus = (callId: string) => {
       (payload) => {
         const callLog = payload.new as any;
         console.log("[IncomingCallRenderer] 📡 Call status changed:", callLog.status);
+        
         if (callLog.status === "ended" || callLog.status === "answered") {
+          // Check if minimum display time has passed
+          const now = Date.now();
+          const timeSinceShown = callScreenShownAt ? now - callScreenShownAt : Infinity;
+          
+          if (timeSinceShown < MIN_DISPLAY_TIME_MS) {
+            console.log(`[IncomingCallRenderer] ⏳ Ignoring status change - screen shown ${timeSinceShown}ms ago (min: ${MIN_DISPLAY_TIME_MS}ms)`);
+            return;
+          }
+          
           console.log("[IncomingCallRenderer] 🛑 Call ended/answered by other party, hiding screen");
           hideIncomingCall();
         }
@@ -435,6 +451,7 @@ export const showIncomingCall = async (data: IncomingCallData) => {
   await hideIncomingCall();
   
   currentCallData = data;
+  callScreenShownAt = Date.now(); // Track when screen was shown
   
   // Create and append the screen
   const screen = createCallScreen(data);
@@ -551,6 +568,7 @@ export const hideIncomingCall = async () => {
   }
   
   currentCallData = null;
+  callScreenShownAt = null; // Reset timestamp
 };
 
 export const isCallScreenVisible = () => {
