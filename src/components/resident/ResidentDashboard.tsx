@@ -171,29 +171,33 @@ const ResidentDashboard = () => {
     }
   };
 
-  const handleDeleteResident = async (residentId: string, residentName: string) => {
-    if (!confirm(`Voulez-vous vraiment retirer ${residentName} de l'habitation ?`)) {
+  const handleDeleteResident = async (residentId: string, residentUserId: string, residentName: string) => {
+    if (!confirm(`Voulez-vous vraiment supprimer définitivement le compte de ${residentName} ?`)) {
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from("residents")
-        .delete()
-        .eq("id", residentId);
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: {
+          targetUserId: residentUserId,
+          requestingUserId: user?.id,
+          habitationId: habitationData?.id,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
-        title: "Résident retiré",
-        description: `${residentName} a été retiré de l'habitation`,
+        title: "Compte supprimé",
+        description: `Le compte de ${residentName} a été supprimé définitivement`,
       });
       fetchHabitationData();
     } catch (error: any) {
       console.error("[Dashboard] Delete resident error:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de retirer le résident",
+        description: error.message || "Impossible de supprimer le compte",
         variant: "destructive",
       });
     }
@@ -450,7 +454,7 @@ const ResidentDashboard = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteResident(resident.id, name)}
+                        onClick={() => handleDeleteResident(resident.id, resident.user_id, name)}
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="w-4 h-4" />
