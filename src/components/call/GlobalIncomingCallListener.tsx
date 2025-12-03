@@ -18,10 +18,8 @@ const GlobalIncomingCallListener = () => {
   // Register for web push notifications (PWA)
   useWebPush();
 
-  // Request camera/microphone permissions early for PWA
+  // Request camera/microphone permissions early for PWA (all users including visitors)
   useEffect(() => {
-    if (!user) return;
-    
     const requestMediaPermissions = async () => {
       try {
         // Check if permissions already granted
@@ -43,7 +41,7 @@ const GlobalIncomingCallListener = () => {
     };
     
     requestMediaPermissions();
-  }, [user]);
+  }, []);
 
   // Register push service worker for PWA
   useEffect(() => {
