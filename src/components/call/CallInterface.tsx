@@ -147,7 +147,7 @@ const CallInterface = memo(({
     setCallState("ended");
   };
 
-  // Resident toggles video mode: off -> simple (see visitor) -> off
+  // Visio simple: résident voit visiteur (résident pas vu)
   const handleVisioSimple = () => {
     if (videoMode === "simple") {
       setVideoMode("off");
@@ -156,8 +156,14 @@ const CallInterface = memo(({
     }
   };
 
-  // Note: "Visio double" is NOT implemented because resident NEVER sends video
-  // This is a one-way intercom: visitor is always seen, resident is never seen
+  // Visio double: résident ET visiteur se voient
+  const handleVisioDouble = () => {
+    if (videoMode === "double") {
+      setVideoMode("off");
+    } else {
+      setVideoMode("double");
+    }
+  };
 
   // Build streams from tracks
   const localStream = (localVideoTrack || localAudioTrack)
@@ -173,10 +179,10 @@ const CallInterface = memo(({
       <VideoCall
         localStream={localStream}
         remoteStream={remoteStream}
-        showLocalVideo={false} // Resident never shows their own video
+        showLocalVideo={isResident && videoMode === "double"}
         callerName={callerName}
         isConnected={isJoined && callState === "connected"}
-        isVideoEnabled={videoMode === "simple" || !isResident} // Show remote video when in simple mode or if visitor
+        isVideoEnabled={videoMode === "simple" || videoMode === "double" || !isResident}
         isMuted={isMuted}
       />
 
@@ -239,13 +245,12 @@ const CallInterface = memo(({
                   <span>Visio simple</span>
                 </Button>
 
-                {/* Visio Double: désactivé car le résident n'est jamais vu */}
+                {/* Visio Double: résident et visiteur se voient */}
                 <Button 
-                  variant="secondary" 
+                  variant={videoMode === "double" ? "default" : "secondary"} 
                   size="sm"
-                  disabled
-                  className="flex items-center gap-2 opacity-50"
-                  title="Le résident n'est jamais visible par le visiteur"
+                  onClick={handleVisioDouble}
+                  className="flex items-center gap-2"
                 >
                   <Users2 className="w-5 h-5" />
                   <span>Visio double</span>
