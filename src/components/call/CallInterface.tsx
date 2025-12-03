@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
-import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDaily } from "@/hooks/useDaily";
+import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
 import { supabase } from "@/integrations/supabase/client";
 import VideoCall from "./VideoCall";
+import GroupCallPanel from "./GroupCallPanel";
 import { logger } from "@/lib/logger";
 
 type CallState = "ringing" | "connecting" | "connected" | "ended";
@@ -30,6 +32,19 @@ const CallInterface = memo(({
   const [callState, setCallState] = useState<CallState>(isResident ? "ringing" : "connecting");
   const hasJoinedRef = useRef(false);
   const channelRef = useRef<any>(null);
+
+  // Multi-resident call management
+  const {
+    participants,
+    activeParticipants,
+    availableResidents,
+    startGroupCall,
+  } = useMultiResidentCall({
+    callId,
+    habitationId,
+    userId,
+    isVisitor: !isResident,
+  });
 
   const {
     isJoined,
@@ -128,10 +143,48 @@ const CallInterface = memo(({
     }
   }, [callState, navigate]);
 
+  // Individual hangup - only ends call if no other residents are active
   const handleHangup = async () => {
     logger.log("[CallInterface] Hanging up");
     
-    if (callId) {
+    // Leave Daily first
+    await leaveCall();
+    
+    if (callId && userId && isResident) {
+      // Update MY participant to "left"
+      await supabase
+        .from("call_participants")
+        .update({ status: "left", left_at: new Date().toISOString() })
+        .eq("call_id", callId)
+        .eq("user_id", userId);
+      
+      // Check if there are other active residents
+      const { data: activeResidents } = await supabase
+        .from("call_participants")
+        .select("id")
+        .eq("call_id", callId)
+        .eq("role", "resident")
+        .in("status", ["answered", "in_group"]);
+      
+      // Only end the call if NO other residents are active
+      if (!activeResidents || activeResidents.length === 0) {
+        logger.log("[CallInterface] No other active residents, ending call");
+        await supabase
+          .from("call_logs")
+          .update({ status: "ended", ended_at: new Date().toISOString() })
+          .eq("id", callId);
+        
+        // End visitor participant too
+        await supabase
+          .from("call_participants")
+          .update({ status: "ended", left_at: new Date().toISOString() })
+          .eq("call_id", callId)
+          .eq("role", "visitor");
+      } else {
+        logger.log("[CallInterface] Other residents still in call:", activeResidents.length);
+      }
+    } else if (callId && !isResident) {
+      // Visitor hanging up - end the entire call
       await supabase
         .from("call_logs")
         .update({ status: "ended", ended_at: new Date().toISOString() })
@@ -143,8 +196,13 @@ const CallInterface = memo(({
         .eq("call_id", callId);
     }
 
-    await leaveCall();
     setCallState("ended");
+  };
+
+  // Invite other residents to group call
+  const handleInviteResidents = async () => {
+    logger.log("[CallInterface] Inviting other residents to group call");
+    await startGroupCall();
   };
 
   // Visio simple: résident voit visiteur (résident pas vu)
@@ -174,6 +232,11 @@ const CallInterface = memo(({
     ? new MediaStream([remoteVideoTrack, remoteAudioTrack].filter(Boolean) as MediaStreamTrack[])
     : null;
 
+  // Count residents not yet in the call
+  const residentsToInvite = availableResidents.filter(
+    r => !participants.find(p => p.user_id === r.user_id && ["answered", "in_group", "ringing"].includes(p.status))
+  );
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <VideoCall
@@ -196,6 +259,16 @@ const CallInterface = memo(({
           <p className="text-muted-foreground text-sm">{anrAddress}</p>
         </div>
       </div>
+
+      {/* Group Call Panel - show when multiple active participants */}
+      {isResident && activeParticipants.length > 0 && (
+        <div className="absolute top-28 right-4 z-20">
+          <GroupCallPanel 
+            participants={participants} 
+            currentUserId={userId || ""} 
+          />
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -234,6 +307,19 @@ const CallInterface = memo(({
             {/* RESIDENT CONTROLS */}
             {isResident && (
               <>
+                {/* Invite other residents */}
+                {residentsToInvite.length > 0 && (
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={handleInviteResidents}
+                    className="flex items-center gap-2"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    <span>Inviter ({residentsToInvite.length})</span>
+                  </Button>
+                )}
+
                 {/* Visio Simple: voir le visiteur */}
                 <Button 
                   variant={videoMode === "simple" ? "default" : "secondary"} 
