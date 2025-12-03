@@ -428,11 +428,11 @@ const cleanupPreview = async (): Promise<void> => {
   await new Promise(resolve => setTimeout(resolve, 300));
 };
 
-export const showIncomingCall = (data: IncomingCallData) => {
+export const showIncomingCall = async (data: IncomingCallData) => {
   console.log("[IncomingCallRenderer] 📞 Showing call screen:", data.callId);
   
-  // Remove any existing call screen
-  hideIncomingCall();
+  // Remove any existing call screen - MUST await to prevent race condition
+  await hideIncomingCall();
   
   currentCallData = data;
   
