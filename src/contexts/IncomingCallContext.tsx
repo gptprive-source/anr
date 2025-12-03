@@ -100,8 +100,8 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           if (hab) {
             currentCallIdRef.current = p.call_id;
             
-            // Use vanilla JS renderer instead of React state
-            showIncomingCall({
+            // Use vanilla JS renderer instead of React state - MUST await
+            await showIncomingCall({
               participantId: p.id,
               callId: p.call_id,
               habitationName: hab.name,
