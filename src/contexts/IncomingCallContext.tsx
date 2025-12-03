@@ -25,17 +25,28 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     const checkForCalls = async () => {
       const currentCall = getCurrentCallData();
       
-      // If call screen is visible, check if call is still ringing
+      // If call screen is visible, check if call is still active
       if (isCallScreenVisible() && currentCall) {
-        const { data: participant } = await supabase
-          .from("call_participants")
-          .select("status")
-          .eq("id", currentCall.participantId)
-          .single();
+        // Check both call_logs status AND participant status
+        const [{ data: callLog }, { data: participant }] = await Promise.all([
+          supabase
+            .from("call_logs")
+            .select("status")
+            .eq("id", currentCall.callId)
+            .single(),
+          supabase
+            .from("call_participants")
+            .select("status")
+            .eq("id", currentCall.participantId)
+            .single()
+        ]);
         
-        // If call is no longer ringing (visitor hung up), hide screen
-        if (!participant || participant.status !== "ringing") {
-          console.log("[POLL] Call ended, hiding screen");
+        // If call ended (visitor hung up) or participant no longer ringing, hide screen
+        const callEnded = !callLog || callLog.status === "ended" || callLog.status === "missed";
+        const notRinging = !participant || participant.status !== "ringing";
+        
+        if (callEnded || notRinging) {
+          console.log("[POLL] Call ended - callLog:", callLog?.status, "participant:", participant?.status);
           hideIncomingCall();
         }
         return;
