@@ -148,9 +148,9 @@ export const showIncomingCall = (data: IncomingCallData) => {
       <p id="preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #64748b; font-size: 14px;">Chargement...</p>
     </div>
 
-    <div style="display: flex; gap: 32px;">
+    <div style="display: flex; gap: 32px; position: relative; z-index: 10;">
       <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <button id="decline-call-btn" style="
+        <button type="button" id="decline-call-btn" style="
           width: 72px;
           height: 72px;
           border-radius: 50%;
@@ -160,6 +160,9 @@ export const showIncomingCall = (data: IncomingCallData) => {
           align-items: center;
           justify-content: center;
           cursor: pointer;
+          pointer-events: auto;
+          position: relative;
+          z-index: 20;
         ">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
@@ -170,7 +173,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
       </div>
 
       <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <button id="preview-call-btn" style="
+        <button type="button" id="preview-call-btn" style="
           width: 72px;
           height: 72px;
           border-radius: 50%;
@@ -180,6 +183,9 @@ export const showIncomingCall = (data: IncomingCallData) => {
           align-items: center;
           justify-content: center;
           cursor: pointer;
+          pointer-events: auto;
+          position: relative;
+          z-index: 20;
         ">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -190,7 +196,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
       </div>
 
       <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <button id="answer-call-btn" style="
+        <button type="button" id="answer-call-btn" style="
           width: 72px;
           height: 72px;
           border-radius: 50%;
@@ -200,6 +206,9 @@ export const showIncomingCall = (data: IncomingCallData) => {
           align-items: center;
           justify-content: center;
           cursor: pointer;
+          pointer-events: auto;
+          position: relative;
+          z-index: 20;
         ">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
@@ -227,7 +236,6 @@ export const showIncomingCall = (data: IncomingCallData) => {
   const declineBtn = document.getElementById('decline-call-btn');
   const previewBtn = document.getElementById('preview-call-btn');
   const previewContainer = document.getElementById('preview-container');
-  const previewVideo = document.getElementById('preview-video') as HTMLVideoElement;
   
   console.log("[CALL] Answer btn found:", !!answerBtn);
   console.log("[CALL] Decline btn found:", !!declineBtn);
@@ -235,7 +243,9 @@ export const showIncomingCall = (data: IncomingCallData) => {
   
   // Preview functionality - fetch Daily room URL and show video
   if (previewBtn && previewContainer) {
-    previewBtn.onclick = async () => {
+    previewBtn.onclick = async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       console.log("[CALL] Preview clicked");
       
       // Show preview container
@@ -292,7 +302,9 @@ export const showIncomingCall = (data: IncomingCallData) => {
   }
   
   if (answerBtn) {
-    answerBtn.onclick = async () => {
+    answerBtn.onclick = async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       console.log("[CALL] Answer clicked");
       
       // Cleanup preview if active
@@ -315,7 +327,9 @@ export const showIncomingCall = (data: IncomingCallData) => {
   }
   
   if (declineBtn) {
-    declineBtn.onclick = async () => {
+    declineBtn.onclick = async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       console.log("[CALL] Decline clicked");
       
       // Cleanup preview if active
