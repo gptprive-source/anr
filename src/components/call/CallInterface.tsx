@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Users, AlertCircle } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDaily } from "@/hooks/useDaily";
 import { supabase } from "@/integrations/supabase/client";
 import VideoCall from "./VideoCall";
-import TransferCallDialog from "./TransferCallDialog";
-import GroupCallPanel from "./GroupCallPanel";
 import { logger } from "@/lib/logger";
 
 type CallState = "ringing" | "connecting" | "connected" | "ended";
@@ -39,6 +37,7 @@ const CallInterface = memo(({
     error,
     isMuted,
     isVideoEnabled,
+    videoMode,
     localVideoTrack,
     remoteVideoTrack,
     localAudioTrack,
@@ -46,8 +45,7 @@ const CallInterface = memo(({
     joinCall,
     leaveCall,
     toggleMute,
-    toggleVideo,
-    enableVideo,
+    setVideoMode,
   } = useDaily({
     callId,
     isResident,
@@ -149,13 +147,17 @@ const CallInterface = memo(({
     setCallState("ended");
   };
 
-  const handleToggleVideo = async () => {
-    if (!isVideoEnabled) {
-      await enableVideo();
+  // Resident toggles video mode: off -> simple (see visitor) -> off
+  const handleVisioSimple = () => {
+    if (videoMode === "simple") {
+      setVideoMode("off");
     } else {
-      toggleVideo();
+      setVideoMode("simple");
     }
   };
+
+  // Note: "Visio double" is NOT implemented because resident NEVER sends video
+  // This is a one-way intercom: visitor is always seen, resident is never seen
 
   // Build streams from tracks
   const localStream = (localVideoTrack || localAudioTrack)
@@ -171,10 +173,10 @@ const CallInterface = memo(({
       <VideoCall
         localStream={localStream}
         remoteStream={remoteStream}
-        showLocalVideo={isVideoEnabled}
+        showLocalVideo={false} // Resident never shows their own video
         callerName={callerName}
         isConnected={isJoined && callState === "connected"}
-        isVideoEnabled={isVideoEnabled}
+        isVideoEnabled={videoMode === "simple" || !isResident} // Show remote video when in simple mode or if visitor
         isMuted={isMuted}
       />
 
@@ -222,28 +224,50 @@ const CallInterface = memo(({
       {/* Controls */}
       {callState !== "ended" && (
         <div className="glass-effect border-t border-border p-6 relative z-30">
-          <div className="flex justify-center gap-4">
-            <Button 
-              variant={isMuted ? "destructive" : "secondary"} 
-              size="icon-lg" 
-              onClick={toggleMute}
-            >
-              {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-            </Button>
-
-            {/* Only residents can toggle video */}
+          <div className="flex justify-center gap-3 flex-wrap">
+            {/* RESIDENT CONTROLS */}
             {isResident && (
-              <Button 
-                variant={isVideoEnabled ? "default" : "secondary"} 
-                size="icon-lg" 
-                onClick={handleToggleVideo}
-              >
-                {isVideoEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
-              </Button>
+              <>
+                {/* Visio Simple: voir le visiteur */}
+                <Button 
+                  variant={videoMode === "simple" ? "default" : "secondary"} 
+                  size="sm"
+                  onClick={handleVisioSimple}
+                  className="flex items-center gap-2"
+                >
+                  <Eye className="w-5 h-5" />
+                  <span>Visio simple</span>
+                </Button>
+
+                {/* Visio Double: désactivé car le résident n'est jamais vu */}
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  disabled
+                  className="flex items-center gap-2 opacity-50"
+                  title="Le résident n'est jamais visible par le visiteur"
+                >
+                  <Users2 className="w-5 h-5" />
+                  <span>Visio double</span>
+                </Button>
+
+                {/* Mute */}
+                <Button 
+                  variant={isMuted ? "destructive" : "secondary"} 
+                  size="sm"
+                  onClick={toggleMute}
+                  className="flex items-center gap-2"
+                >
+                  {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                  <span>{isMuted ? "Unmute" : "Mute"}</span>
+                </Button>
+              </>
             )}
 
-            <Button variant="hangup" size="icon-lg" onClick={handleHangup}>
-              <PhoneOff className="w-6 h-6" />
+            {/* Raccrocher - pour tous */}
+            <Button variant="hangup" size="sm" onClick={handleHangup} className="flex items-center gap-2">
+              <PhoneOff className="w-5 h-5" />
+              <span>Raccrocher</span>
             </Button>
           </div>
         </div>
