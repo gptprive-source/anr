@@ -86,6 +86,23 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
         const call = calls[0];
         console.log("[POLL] Found ringing call:", call.call_id);
 
+        // IMPORTANT: Vérifier que le call_logs n'est pas déjà terminé
+        const { data: callLog } = await supabase
+          .from("call_logs")
+          .select("status")
+          .eq("id", call.call_id)
+          .single();
+        
+        if (!callLog || callLog.status === "ended" || callLog.status === "missed") {
+          console.log("[POLL] Call already ended, updating stale participant");
+          // Nettoyer le participant stale
+          await supabase
+            .from("call_participants")
+            .update({ status: "ended", left_at: new Date().toISOString() })
+            .eq("id", call.id);
+          return;
+        }
+
         // Get habitation info
         const { data: hab } = await supabase
           .from("habitations")
