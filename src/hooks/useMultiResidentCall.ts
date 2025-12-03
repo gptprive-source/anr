@@ -177,12 +177,21 @@ export const useMultiResidentCall = ({
     }
   }, [callId, habitationId]);
 
-  // Start group call - invite all other residents
-  const startGroupCall = useCallback(async () => {
-    logger.log("[MultiResident] Starting group call");
+  // Invite a single resident to join the call
+  const inviteResident = useCallback(async (targetUserId: string) => {
+    logger.log("[MultiResident] Inviting resident:", targetUserId);
 
     try {
-      // Update current user's status to in_group if they have a participant
+      // Check if already invited/in call
+      const existing = participants.find(
+        p => p.user_id === targetUserId && ["answered", "in_group", "ringing"].includes(p.status)
+      );
+      if (existing) {
+        logger.log("[MultiResident] Resident already in call or ringing");
+        return;
+      }
+
+      // Update current user's status to in_group
       if (userId) {
         await supabase
           .from("call_participants")
@@ -192,36 +201,22 @@ export const useMultiResidentCall = ({
           .eq("role", "resident");
       }
 
-      // Find residents not yet in the call
-      const residentsToInvite = availableResidents.filter(
-        r => !participants.find(p => p.user_id === r.user_id && ["answered", "in_group", "ringing"].includes(p.status))
-      );
+      // Insert new participant for invited resident
+      const { error: insertError } = await supabase
+        .from("call_participants")
+        .insert({
+          call_id: callId,
+          user_id: targetUserId,
+          habitation_id: habitationId,
+          role: "resident",
+          status: "ringing",
+        });
 
-      if (residentsToInvite.length === 0) {
-        logger.log("[MultiResident] No residents to invite");
-        return;
-      }
-
-      // Insert new participants for invited residents
-      const invites = residentsToInvite.map(r => ({
-        call_id: callId,
-        user_id: r.user_id,
-        habitation_id: habitationId,
-        role: "resident",
-        status: "ringing",
-      }));
-
-      const { error: insertError } = await supabase.from("call_participants").insert(invites);
       if (insertError) {
-        logger.error("[MultiResident] Insert invites error:", insertError);
+        logger.error("[MultiResident] Insert invite error:", insertError);
         return;
       }
 
-      logger.log("[MultiResident] Invited", invites.length, "residents");
-
-      // Send push notifications to invited residents
-      const userIds = residentsToInvite.map(r => r.user_id);
-      
       // Get habitation name for notification
       const { data: hab } = await supabase
         .from("habitations")
@@ -229,22 +224,22 @@ export const useMultiResidentCall = ({
         .eq("id", habitationId)
         .single();
 
+      // Send push notification
       await supabase.functions.invoke("send-push-notification", {
         body: {
-          user_ids: userIds,
+          user_ids: [targetUserId],
           title: "📞 Invitation à rejoindre l'appel",
           body: `Vous êtes invité à rejoindre l'appel en cours${hab?.name ? ` - ${hab.name}` : ""}`,
           data: { type: "incoming_call", callId, habitationId },
         },
       });
 
-      logger.log("[MultiResident] Sent push notifications to", userIds.length, "residents");
-
+      logger.log("[MultiResident] Invited resident successfully");
       setIsGroupCall(true);
     } catch (error) {
-      logger.error("[MultiResident] Start group error:", error);
+      logger.error("[MultiResident] Invite resident error:", error);
     }
-  }, [callId, habitationId, userId, availableResidents, participants]);
+  }, [callId, habitationId, userId, participants]);
 
   // Join group call
   const joinGroupCall = useCallback(async () => {
@@ -338,7 +333,7 @@ export const useMultiResidentCall = ({
     answerCall,
     declineCall,
     transferCall,
-    startGroupCall,
+    inviteResident,
     joinGroupCall,
     updateMuteStatus,
     updateVideoStatus,

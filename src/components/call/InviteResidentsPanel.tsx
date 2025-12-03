@@ -1,4 +1,4 @@
-import { UserPlus, User, Check } from "lucide-react";
+import { UserPlus, User, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CallParticipant } from "@/hooks/useMultiResidentCall";
 
@@ -16,15 +16,15 @@ interface ResidentInfo {
 interface InviteResidentsPanelProps {
   availableResidents: ResidentInfo[];
   participants: CallParticipant[];
-  onInviteAll: () => void;
-  isInviting?: boolean;
+  onInviteResident: (userId: string) => void;
+  invitingUserId?: string | null;
 }
 
 const InviteResidentsPanel = ({
   availableResidents,
   participants,
-  onInviteAll,
-  isInviting = false,
+  onInviteResident,
+  invitingUserId,
 }: InviteResidentsPanelProps) => {
   if (availableResidents.length === 0) return null;
 
@@ -40,12 +40,9 @@ const InviteResidentsPanel = ({
   const getResidentName = (resident: ResidentInfo) => {
     const firstName = resident.profiles?.first_name || "";
     const lastName = resident.profiles?.last_name || "";
-    return `${firstName} ${lastName}`.trim() || "Résident";
+    const fullName = `${firstName} ${lastName}`.trim();
+    return fullName || `Résident ${resident.is_owner ? "(propriétaire)" : ""}`;
   };
-
-  const availableToInvite = availableResidents.filter(
-    r => getResidentStatus(r.user_id) === "available"
-  );
 
   return (
     <div className="absolute top-20 left-4 z-20 bg-background/90 backdrop-blur-sm rounded-lg border border-border p-3 min-w-56 max-w-72">
@@ -54,10 +51,11 @@ const InviteResidentsPanel = ({
         <span className="text-sm font-medium">Inviter des résidents</span>
       </div>
 
-      <div className="space-y-2 mb-3">
+      <div className="space-y-2">
         {availableResidents.map((resident) => {
           const status = getResidentStatus(resident.user_id);
           const name = getResidentName(resident);
+          const isInviting = invitingUserId === resident.user_id;
 
           return (
             <div
@@ -86,23 +84,26 @@ const InviteResidentsPanel = ({
               {status === "in_call" && (
                 <Check className="w-4 h-4 text-green-500" />
               )}
+
+              {status === "available" && (
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={() => onInviteResident(resident.user_id)}
+                  disabled={isInviting}
+                  className="h-8 w-8 flex-shrink-0"
+                >
+                  {isInviting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="w-4 h-4" />
+                  )}
+                </Button>
+              )}
             </div>
           );
         })}
       </div>
-
-      {availableToInvite.length > 0 && (
-        <Button
-          variant="default"
-          size="sm"
-          onClick={onInviteAll}
-          disabled={isInviting}
-          className="w-full"
-        >
-          <UserPlus className="w-4 h-4 mr-2" />
-          {isInviting ? "Invitation en cours..." : `Inviter tous (${availableToInvite.length})`}
-        </Button>
-      )}
     </div>
   );
 };

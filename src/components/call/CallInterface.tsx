@@ -38,7 +38,7 @@ const CallInterface = memo(({
     participants,
     activeParticipants,
     availableResidents,
-    startGroupCall,
+    inviteResident,
   } = useMultiResidentCall({
     callId,
     habitationId,
@@ -227,15 +227,15 @@ const CallInterface = memo(({
     ? new MediaStream([remoteVideoTrack, remoteAudioTrack].filter(Boolean) as MediaStreamTrack[])
     : null;
 
-  const [isInviting, setIsInviting] = useState(false);
+  const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
 
-  // Invite other residents to group call
-  const handleInviteAll = async () => {
-    setIsInviting(true);
+  // Invite a single resident to the call
+  const handleInviteResident = async (targetUserId: string) => {
+    setInvitingUserId(targetUserId);
     try {
-      await startGroupCall();
+      await inviteResident(targetUserId);
     } finally {
-      setIsInviting(false);
+      setInvitingUserId(null);
     }
   };
 
@@ -267,8 +267,8 @@ const CallInterface = memo(({
         <InviteResidentsPanel
           availableResidents={availableResidents}
           participants={participants}
-          onInviteAll={handleInviteAll}
-          isInviting={isInviting}
+          onInviteResident={handleInviteResident}
+          invitingUserId={invitingUserId}
         />
       )}
 
