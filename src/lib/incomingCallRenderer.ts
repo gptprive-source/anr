@@ -145,8 +145,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
       overflow: hidden;
       position: relative;
     ">
-      <video id="preview-video" style="width: 100%; height: 100%; object-fit: cover;" autoplay playsinline muted></video>
-      <p style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #64748b; font-size: 14px;">Chargement...</p>
+      <p id="preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #64748b; font-size: 14px;">Chargement...</p>
     </div>
 
     <div style="display: flex; gap: 32px;">
@@ -235,7 +234,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
   console.log("[CALL] Preview btn found:", !!previewBtn);
   
   // Preview functionality - fetch Daily room URL and show video
-  if (previewBtn && previewContainer && previewVideo) {
+  if (previewBtn && previewContainer) {
     previewBtn.onclick = async () => {
       console.log("[CALL] Preview clicked");
       
@@ -245,42 +244,46 @@ export const showIncomingCall = (data: IncomingCallData) => {
       previewBtn.style.pointerEvents = 'none';
       
       try {
-        // Get room URL from call_logs
-        const { data: callLog } = await supabase
-          .from("call_logs")
-          .select("id")
-          .eq("id", data.callId)
-          .single();
+        // Fetch Daily room token
+        const { data: roomData, error } = await supabase.functions.invoke("daily-room", {
+          body: { callId: data.callId, isResident: true }
+        });
         
-        if (callLog) {
-          // Fetch Daily room token
-          const { data: roomData, error } = await supabase.functions.invoke("daily-room", {
-            body: { callId: data.callId, isResident: true }
+        if (error) {
+          console.error("[CALL] Preview room error:", error);
+          return;
+        }
+        
+        if (roomData?.url) {
+          // Hide loading text
+          const loadingText = document.getElementById('preview-loading');
+          if (loadingText) loadingText.style.display = 'none';
+          
+          // Import Daily dynamically
+          const Daily = (await import("@daily-co/daily-js")).default;
+          const callFrame = Daily.createFrame(previewContainer, {
+            iframeStyle: {
+              width: "100%",
+              height: "100%",
+              border: "none",
+              position: "absolute",
+              top: "0",
+              left: "0",
+            },
+            showLeaveButton: false,
+            showFullscreenButton: false,
           });
           
-          if (roomData?.url && roomData?.token) {
-            // Import Daily dynamically
-            const Daily = (await import("@daily-co/daily-js")).default;
-            const callFrame = Daily.createFrame(previewContainer, {
-              iframeStyle: {
-                width: "100%",
-                height: "100%",
-                border: "none",
-              },
-              showLeaveButton: false,
-              showFullscreenButton: false,
-            });
-            
-            await callFrame.join({
-              url: roomData.url,
-              token: roomData.token,
-              startVideoOff: true,
-              startAudioOff: true,
-            });
-            
-            // Store callFrame for cleanup
-            (window as any).__previewCallFrame = callFrame;
-          }
+          await callFrame.join({
+            url: roomData.url,
+            token: roomData.token,
+            startVideoOff: true,
+            startAudioOff: true,
+          });
+          
+          // Store callFrame for cleanup
+          (window as any).__previewCallFrame = callFrame;
+          console.log("[CALL] Preview joined successfully");
         }
       } catch (err) {
         console.error("[CALL] Preview error:", err);
@@ -324,10 +327,17 @@ export const showIncomingCall = (data: IncomingCallData) => {
         (window as any).__previewCallFrame = null;
       }
       
+      // Update participant status
       await supabase
         .from("call_participants")
         .update({ status: "declined", left_at: new Date().toISOString() })
         .eq("id", data.participantId);
+      
+      // Update call_logs to "ended" so visitor hangs up
+      await supabase
+        .from("call_logs")
+        .update({ status: "ended", ended_at: new Date().toISOString() })
+        .eq("id", data.callId);
       
       hideIncomingCall();
     };
