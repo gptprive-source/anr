@@ -12,10 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const { targetUserId, requestingUserId, habitationId } = await req.json();
+    const { targetUserId, requestingUserId, habitationId, newOwnerId } = await req.json();
 
     console.log("[delete-user] Request to delete user:", targetUserId);
     console.log("[delete-user] Requested by:", requestingUserId);
+    console.log("[delete-user] New owner ID:", newOwnerId);
 
     if (!targetUserId || !requestingUserId) {
       return new Response(
@@ -75,6 +76,85 @@ serve(async (req) => {
       }
     }
 
+    // If self-deletion and owner, handle ownership transfer
+    if (isSelfDeletion && habitationId) {
+      const { data: currentOwnership } = await supabaseAdmin
+        .from("residents")
+        .select("is_owner")
+        .eq("user_id", targetUserId)
+        .eq("habitation_id", habitationId)
+        .eq("status", "verified")
+        .maybeSingle();
+
+      if (currentOwnership?.is_owner && newOwnerId) {
+        console.log("[delete-user] Transferring ownership to:", newOwnerId);
+        
+        // Transfer ownership to new owner
+        const { error: transferError } = await supabaseAdmin
+          .from("residents")
+          .update({ is_owner: true })
+          .eq("user_id", newOwnerId)
+          .eq("habitation_id", habitationId);
+
+        if (transferError) {
+          console.error("[delete-user] Ownership transfer error:", transferError);
+          throw new Error("Erreur lors du transfert de propriété");
+        }
+
+        // Get new owner's email to notify them
+        const { data: newOwnerAuth } = await supabaseAdmin.auth.admin.getUserById(newOwnerId);
+        const { data: newOwnerProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("id", newOwnerId)
+          .single();
+
+        const { data: habitation } = await supabaseAdmin
+          .from("habitations")
+          .select("name, anr_id, anrs(address)")
+          .eq("id", habitationId)
+          .single();
+
+        // Send notification email to new owner
+        if (newOwnerAuth?.user?.email) {
+          console.log("[delete-user] Sending ownership notification email to:", newOwnerAuth.user.email);
+          
+          // Use SMTP to send email notification
+          const smtpHost = Deno.env.get("SMTP_HOST");
+          const smtpPort = Deno.env.get("SMTP_PORT");
+          const smtpUser = Deno.env.get("SMTP_USER");
+          const smtpPass = Deno.env.get("SMTP_PASS");
+
+          if (smtpHost && smtpUser && smtpPass) {
+            try {
+              const emailContent = `
+                <h2>Vous êtes devenu propriétaire de la résidence</h2>
+                <p>Bonjour ${newOwnerProfile?.first_name || ""},</p>
+                <p>L'ancien propriétaire de votre résidence a supprimé son compte et vous a désigné comme nouveau propriétaire.</p>
+                <p><strong>Résidence :</strong> ${habitation?.name || "Votre résidence"}</p>
+                <p><strong>Adresse :</strong> ${(habitation as any)?.anrs?.address || "Non spécifiée"}</p>
+                <p>En tant que propriétaire, vous pouvez maintenant :</p>
+                <ul>
+                  <li>Inviter de nouveaux résidents</li>
+                  <li>Supprimer des résidents invités</li>
+                  <li>Mettre à jour la position GPS de l'ANR</li>
+                </ul>
+                <p>Cordialement,<br>L'équipe ANR</p>
+              `;
+
+              // Note: For production, you'd use a proper email sending service
+              // This is a placeholder for the notification
+              console.log("[delete-user] Email notification prepared for:", newOwnerAuth.user.email);
+              console.log("[delete-user] Email content:", emailContent);
+            } catch (emailError) {
+              console.error("[delete-user] Failed to send email notification:", emailError);
+              // Don't fail the whole operation if email fails
+            }
+          }
+        }
+      }
+    }
+
     // Clean up call_logs references (set answered_by to NULL to preserve history)
     const { error: callLogsError } = await supabaseAdmin
       .from("call_logs")
@@ -86,7 +166,7 @@ serve(async (req) => {
     }
 
     // Delete the resident record first (if deleting from a specific habitation)
-    if (habitationId) {
+    if (habitationId && !isSelfDeletion) {
       const { error: residentDeleteError } = await supabaseAdmin
         .from("residents")
         .delete()
@@ -129,6 +209,7 @@ serve(async (req) => {
     }
 
     // Delete from auth.users (this will cascade delete profiles)
+    // NOTE: ANR and habitations are NOT deleted - they remain permanently attached to the address
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
 
     if (authError) {
@@ -137,6 +218,7 @@ serve(async (req) => {
     }
 
     console.log("[delete-user] ✅ User deleted successfully:", targetUserId);
+    console.log("[delete-user] ℹ️ ANR and habitation preserved as per design");
 
     return new Response(
       JSON.stringify({ success: true, message: "Utilisateur supprimé" }),

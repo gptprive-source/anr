@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/layout/BottomNav";
+import DeleteAccountDialog from "@/components/account/DeleteAccountDialog";
 
 interface ProfileData {
   first_name: string | null;
@@ -16,10 +17,10 @@ interface ProfileData {
 
 const Account = () => {
   const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -78,42 +79,6 @@ const Account = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!confirm("Voulez-vous vraiment supprimer définitivement votre compte ? Cette action est irréversible.")) {
-      return;
-    }
-
-    setDeleting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("delete-user", {
-        body: {
-          targetUserId: user?.id,
-          requestingUserId: user?.id,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      toast({
-        title: "Compte supprimé",
-        description: "Votre compte a été supprimé définitivement",
-      });
-      
-      await signOut();
-      navigate("/");
-    } catch (error: any) {
-      console.error("Error deleting account:", error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer le compte",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleting(false);
-    }
   };
 
   if (loading) {
@@ -205,18 +170,19 @@ const Account = () => {
           <Button 
             variant="destructive" 
             className="w-full gap-2" 
-            onClick={handleDeleteAccount}
-            disabled={deleting}
+            onClick={() => setShowDeleteDialog(true)}
           >
-            {deleting ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Trash2 className="w-5 h-5" />
-            )}
+            <Trash2 className="w-5 h-5" />
             Supprimer mon compte
           </Button>
         </div>
       </div>
+
+      <DeleteAccountDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        profile={profile}
+      />
 
       <BottomNav />
     </div>
