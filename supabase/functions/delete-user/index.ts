@@ -75,6 +75,16 @@ serve(async (req) => {
       }
     }
 
+    // Clean up call_logs references (set answered_by to NULL to preserve history)
+    const { error: callLogsError } = await supabaseAdmin
+      .from("call_logs")
+      .update({ answered_by: null })
+      .eq("answered_by", targetUserId);
+
+    if (callLogsError) {
+      console.error("[delete-user] Call logs update error:", callLogsError);
+    }
+
     // Delete the resident record first (if deleting from a specific habitation)
     if (habitationId) {
       const { error: residentDeleteError } = await supabaseAdmin
