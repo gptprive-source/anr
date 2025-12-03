@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import CallHistorySection from "./CallHistorySection";
 import ShareANRDialog from "./ShareANRDialog";
 import BottomNav from "@/components/layout/BottomNav";
 import logoAnr from "@/assets/logo-anr.png";
@@ -41,7 +40,6 @@ const ResidentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [habitationData, setHabitationData] = useState<HabitationData | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [showCallHistory, setShowCallHistory] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [currentResidentId, setCurrentResidentId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -336,8 +334,7 @@ const ResidentDashboard = () => {
           <QuickAction
             icon={<History className="w-6 h-6" />}
             label="Historique"
-            onClick={() => setShowCallHistory(!showCallHistory)}
-            active={showCallHistory}
+            onClick={() => navigate("/call-history")}
           />
           <QuickAction
             icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />}
@@ -353,14 +350,6 @@ const ResidentDashboard = () => {
             />
           )}
         </div>
-
-        {/* Call History Section */}
-        {showCallHistory && (
-          <div className="glass-effect rounded-2xl p-6 card-shadow">
-            <h2 className="text-lg font-semibold mb-4">Historique des appels</h2>
-            <CallHistorySection habitationId={habitationData.id} />
-          </div>
-        )}
 
         {/* Test Call Button (DEV) */}
         <Button 
