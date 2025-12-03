@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useDaily } from "@/hooks/useDaily";
 import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
 import { supabase } from "@/integrations/supabase/client";
-import VideoCall from "./VideoCall";
-import GroupCallPanel from "./GroupCallPanel";
+import VideoGrid from "./VideoGrid";
 import InviteResidentsPanel from "./InviteResidentsPanel";
 import { logger } from "@/lib/logger";
 type CallState = "ringing" | "connecting" | "connected" | "ended";
@@ -54,9 +53,8 @@ const CallInterface = memo(({
     isVideoEnabled,
     videoMode,
     localVideoTrack,
-    remoteVideoTrack,
     localAudioTrack,
-    remoteAudioTrack,
+    remoteParticipants,
     joinCall,
     leaveCall,
     toggleMute,
@@ -218,13 +216,9 @@ const CallInterface = memo(({
     }
   };
 
-  // Build streams from tracks
+  // Build local stream from tracks
   const localStream = (localVideoTrack || localAudioTrack)
     ? new MediaStream([localVideoTrack, localAudioTrack].filter(Boolean) as MediaStreamTrack[])
-    : null;
-  
-  const remoteStream = (remoteVideoTrack || remoteAudioTrack)
-    ? new MediaStream([remoteVideoTrack, remoteAudioTrack].filter(Boolean) as MediaStreamTrack[])
     : null;
 
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
@@ -241,14 +235,11 @@ const CallInterface = memo(({
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <VideoCall
+      <VideoGrid
         localStream={localStream}
-        remoteStream={remoteStream}
+        remoteParticipants={remoteParticipants}
         showLocalVideo={isResident && videoMode === "double"}
-        callerName={callerName}
         isConnected={isJoined && callState === "connected"}
-        isVideoEnabled={videoMode === "simple" || videoMode === "double" || !isResident}
-        isMuted={isMuted}
       />
 
       {/* Header */}
@@ -272,13 +263,6 @@ const CallInterface = memo(({
         />
       )}
 
-      {/* Group Call Panel - show when multiple active participants */}
-      {isResident && activeParticipants.length > 1 && (
-        <GroupCallPanel 
-          participants={participants} 
-          currentUserId={userId || ""} 
-        />
-      )}
 
       {/* Error */}
       {error && (
