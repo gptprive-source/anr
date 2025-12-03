@@ -465,8 +465,16 @@ export const showIncomingCall = async (data: IncomingCallData) => {
   isShowingCall = true;
   console.log("[IncomingCallRenderer] 🔒 Lock acquired");
   
-  // Remove any existing call screen - MUST await to prevent race condition
-  await hideIncomingCall();
+  // Clean up any existing screen WITHOUT calling hideIncomingCall (which releases lock)
+  stopRingtone();
+  stopVibration();
+  unsubscribeFromCallStatus();
+  await cleanupPreview();
+  
+  const existingScreen = document.getElementById('vanilla-incoming-call');
+  if (existingScreen) {
+    existingScreen.remove();
+  }
   
   currentCallData = data;
   callScreenShownAt = Date.now(); // Track when screen was shown
