@@ -13,6 +13,13 @@ interface UseDailyProps {
 
 type VideoMode = "off" | "simple" | "double";
 
+export interface RemoteParticipant {
+  sessionId: string;
+  visitorVideo: boolean;
+  videoTrack: MediaStreamTrack | null;
+  audioTrack: MediaStreamTrack | null;
+}
+
 interface DailyState {
   isJoined: boolean;
   isLoading: boolean;
@@ -22,9 +29,8 @@ interface DailyState {
   videoMode: VideoMode; // off = no video, simple = receive only, double = send + receive
   participants: DailyParticipant[];
   localVideoTrack: MediaStreamTrack | null;
-  remoteVideoTrack: MediaStreamTrack | null;
   localAudioTrack: MediaStreamTrack | null;
-  remoteAudioTrack: MediaStreamTrack | null;
+  remoteParticipants: RemoteParticipant[];
 }
 
 const INITIAL_STATE: DailyState = {
@@ -36,9 +42,8 @@ const INITIAL_STATE: DailyState = {
   videoMode: "off",
   participants: [],
   localVideoTrack: null,
-  remoteVideoTrack: null,
   localAudioTrack: null,
-  remoteAudioTrack: null,
+  remoteParticipants: [],
 };
 
 const MAX_RETRIES = 3;
@@ -81,19 +86,28 @@ export const useDaily = ({
       const remoteVideo = remote?.tracks?.video;
       const remoteAudio = remote?.tracks?.audio;
 
-      logger.log("[useDaily] updateTracks - participants count:", Object.keys(participants).length);
-      logger.log("[useDaily] Local video:", localVideo?.state, "track:", !!localVideo?.track, "persistent:", !!localVideo?.persistentTrack);
-      logger.log("[useDaily] Remote video:", remoteVideo?.state, "track:", !!remoteVideo?.track, "persistent:", !!remoteVideo?.persistentTrack);
-      logger.log("[useDaily] Remote participant session:", remote?.session_id);
+      // Build array of all remote participants
+      const remoteParticipantsData: RemoteParticipant[] = remoteParticipants.map(p => {
+        const video = p.tracks?.video;
+        const audio = p.tracks?.audio;
+        // Visitor is the one without a user_id or with specific user_name
+        const isVisitor = !p.user_id || p.user_name === 'visitor';
+        return {
+          sessionId: p.session_id,
+          visitorVideo: isVisitor,
+          videoTrack: video?.state === 'playable' ? (video.track || video.persistentTrack) : null,
+          audioTrack: audio?.state === 'playable' ? (audio.track || audio.persistentTrack) : null,
+        };
+      });
+
+      logger.log("[useDaily] updateTracks - remote participants:", remoteParticipantsData.length);
 
       safeSetState(prev => ({
         ...prev,
         participants: Object.values(participants),
-        // Use track if playable, otherwise try persistentTrack
         localVideoTrack: localVideo?.state === 'playable' ? (localVideo.track || localVideo.persistentTrack) : null,
         localAudioTrack: localAudio?.state === 'playable' ? (localAudio.track || localAudio.persistentTrack) : null,
-        remoteVideoTrack: remoteVideo?.state === 'playable' ? (remoteVideo.track || remoteVideo.persistentTrack) : null,
-        remoteAudioTrack: remoteAudio?.state === 'playable' ? (remoteAudio.track || remoteAudio.persistentTrack) : null,
+        remoteParticipants: remoteParticipantsData,
       }));
     } catch (err) {
       logger.error("[useDaily] Error updating tracks:", err);
@@ -356,9 +370,8 @@ export const useDaily = ({
     videoMode: state.videoMode,
     participants: state.participants,
     localVideoTrack: state.localVideoTrack,
-    remoteVideoTrack: state.remoteVideoTrack,
     localAudioTrack: state.localAudioTrack,
-    remoteAudioTrack: state.remoteAudioTrack,
+    remoteParticipants: state.remoteParticipants,
     joinCall,
     leaveCall,
     toggleMute,
