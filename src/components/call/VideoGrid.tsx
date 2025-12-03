@@ -29,7 +29,7 @@ const VideoTile = memo(({
   }, [stream]);
 
   return (
-    <div className={`relative bg-muted rounded-lg overflow-hidden ${isLocal ? "border-2 border-primary" : ""}`}>
+    <div className={`relative bg-muted rounded-lg overflow-hidden aspect-square ${isLocal ? "border-2 border-primary" : ""}`}>
       {stream && hasVideo ? (
         <video
           ref={videoRef}
@@ -94,26 +94,28 @@ const VideoGrid = memo(({
   }
 
   return (
-    <div className={`flex-1 grid ${getGridClass()} gap-2 p-2`}>
-      {/* Remote participants */}
-      {participantsWithVideo.map((participant, index) => (
-        <VideoTile
-          key={participant.sessionId}
-          stream={createStream(participant)}
-          label={participant.visitorVideo ? "Visiteur" : `Résident ${index + 1}`}
-          hasVideo={!!participant.videoTrack}
-        />
-      ))}
+    <div className="flex-1 flex items-center justify-center p-2">
+      <div className={`grid ${getGridClass()} gap-2 w-full max-w-2xl`}>
+        {/* Remote participants */}
+        {participantsWithVideo.map((participant, index) => (
+          <VideoTile
+            key={participant.sessionId}
+            stream={createStream(participant)}
+            label={participant.visitorVideo ? "Visiteur" : `Résident ${index + 1}`}
+            hasVideo={!!participant.videoTrack}
+          />
+        ))}
 
-      {/* Local video (only shown in double mode) */}
-      {showLocalVideo && localStream && (
-        <VideoTile
-          stream={localStream}
-          label="Vous"
-          isLocal
-          hasVideo={true}
-        />
-      )}
+        {/* Local video (only shown in double mode) */}
+        {showLocalVideo && localStream && (
+          <VideoTile
+            stream={localStream}
+            label="Vous"
+            isLocal
+            hasVideo={true}
+          />
+        )}
+      </div>
     </div>
   );
 });
