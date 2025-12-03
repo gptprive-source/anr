@@ -76,23 +76,43 @@ export const useMultiResidentCall = ({
 
   // Fetch available residents
   const fetchAvailableResidents = useCallback(async () => {
-    if (isTestMode || !mountedRef.current) return;
+    if (!habitationId || !mountedRef.current) return;
 
     try {
-      const { data, error } = await supabase
+      // Step 1: Fetch residents
+      const { data: residents, error: resError } = await supabase
         .from("residents")
-        .select(`id, user_id, habitation_id, is_owner, profiles:user_id (first_name, last_name)`)
+        .select("id, user_id, habitation_id, is_owner")
         .eq("habitation_id", habitationId)
         .eq("status", "verified");
 
-      if (error) throw error;
-      if (!mountedRef.current) return;
+      if (resError) throw resError;
+      if (!residents || residents.length === 0 || !mountedRef.current) return;
 
-      setAvailableResidents(data?.filter(r => r.user_id !== userId) || []);
+      // Step 2: Fetch profiles separately (may fail due to RLS but that's ok)
+      const userIds = residents.map(r => r.user_id).filter(Boolean);
+      let profiles: any[] = [];
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name")
+          .in("id", userIds);
+        profiles = profilesData || [];
+      }
+
+      // Step 3: Combine data
+      const residentsWithProfiles = residents.map(r => ({
+        ...r,
+        profiles: profiles.find(p => p.id === r.user_id) || null,
+      }));
+
+      logger.log("[MultiResident] Available residents:", residentsWithProfiles.filter(r => r.user_id !== userId));
+      setAvailableResidents(residentsWithProfiles.filter(r => r.user_id !== userId));
     } catch (error) {
       logger.error("[MultiResident] Fetch residents error:", error);
     }
-  }, [habitationId, userId, isTestMode]);
+  }, [habitationId, userId]);
 
   // Join as participant
   const joinCall = useCallback(async (role: "visitor" | "resident" = "resident") => {
