@@ -134,7 +134,22 @@ export const showIncomingCall = (data: IncomingCallData) => {
     <p style="font-size: 18px; color: white; margin: 0 0 4px 0;">${data.habitationName}</p>
     <p style="font-size: 14px; color: #94a3b8; margin: 0 0 32px 0;">${data.address}</p>
 
-    <div style="display: flex; gap: 48px;">
+    <div id="preview-container" style="
+      width: 100%;
+      max-width: 400px;
+      aspect-ratio: 4/3;
+      background: #0f172a;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: none;
+      overflow: hidden;
+      position: relative;
+    ">
+      <video id="preview-video" style="width: 100%; height: 100%; object-fit: cover;" autoplay playsinline muted></video>
+      <p style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #64748b; font-size: 14px;">Chargement...</p>
+    </div>
+
+    <div style="display: flex; gap: 32px;">
       <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
         <button id="decline-call-btn" style="
           width: 72px;
@@ -153,6 +168,26 @@ export const showIncomingCall = (data: IncomingCallData) => {
           </svg>
         </button>
         <span style="font-size: 13px; color: #94a3b8;">Refuser</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <button id="preview-call-btn" style="
+          width: 72px;
+          height: 72px;
+          border-radius: 50%;
+          background: #3b82f6;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        ">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+        <span style="font-size: 13px; color: #94a3b8;">Voir</span>
       </div>
 
       <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -191,13 +226,81 @@ export const showIncomingCall = (data: IncomingCallData) => {
   // Attach handlers
   const answerBtn = document.getElementById('answer-call-btn');
   const declineBtn = document.getElementById('decline-call-btn');
+  const previewBtn = document.getElementById('preview-call-btn');
+  const previewContainer = document.getElementById('preview-container');
+  const previewVideo = document.getElementById('preview-video') as HTMLVideoElement;
   
   console.log("[CALL] Answer btn found:", !!answerBtn);
   console.log("[CALL] Decline btn found:", !!declineBtn);
+  console.log("[CALL] Preview btn found:", !!previewBtn);
+  
+  // Preview functionality - fetch Daily room URL and show video
+  if (previewBtn && previewContainer && previewVideo) {
+    previewBtn.onclick = async () => {
+      console.log("[CALL] Preview clicked");
+      
+      // Show preview container
+      previewContainer.style.display = 'block';
+      previewBtn.style.opacity = '0.5';
+      previewBtn.style.pointerEvents = 'none';
+      
+      try {
+        // Get room URL from call_logs
+        const { data: callLog } = await supabase
+          .from("call_logs")
+          .select("id")
+          .eq("id", data.callId)
+          .single();
+        
+        if (callLog) {
+          // Fetch Daily room token
+          const { data: roomData, error } = await supabase.functions.invoke("daily-room", {
+            body: { callId: data.callId, isResident: true }
+          });
+          
+          if (roomData?.url && roomData?.token) {
+            // Import Daily dynamically
+            const Daily = (await import("@daily-co/daily-js")).default;
+            const callFrame = Daily.createFrame(previewContainer, {
+              iframeStyle: {
+                width: "100%",
+                height: "100%",
+                border: "none",
+              },
+              showLeaveButton: false,
+              showFullscreenButton: false,
+            });
+            
+            await callFrame.join({
+              url: roomData.url,
+              token: roomData.token,
+              startVideoOff: true,
+              startAudioOff: true,
+            });
+            
+            // Store callFrame for cleanup
+            (window as any).__previewCallFrame = callFrame;
+          }
+        }
+      } catch (err) {
+        console.error("[CALL] Preview error:", err);
+      }
+    };
+  }
   
   if (answerBtn) {
     answerBtn.onclick = async () => {
       console.log("[CALL] Answer clicked");
+      
+      // Cleanup preview if active
+      if ((window as any).__previewCallFrame) {
+        try {
+          await (window as any).__previewCallFrame.leave();
+          await (window as any).__previewCallFrame.destroy();
+        } catch (e) {}
+        (window as any).__previewCallFrame = null;
+      }
+      
       await supabase
         .from("call_participants")
         .update({ status: "answered", joined_at: new Date().toISOString() })
@@ -211,6 +314,16 @@ export const showIncomingCall = (data: IncomingCallData) => {
   if (declineBtn) {
     declineBtn.onclick = async () => {
       console.log("[CALL] Decline clicked");
+      
+      // Cleanup preview if active
+      if ((window as any).__previewCallFrame) {
+        try {
+          await (window as any).__previewCallFrame.leave();
+          await (window as any).__previewCallFrame.destroy();
+        } catch (e) {}
+        (window as any).__previewCallFrame = null;
+      }
+      
       await supabase
         .from("call_participants")
         .update({ status: "declined", left_at: new Date().toISOString() })
@@ -227,6 +340,15 @@ export const hideIncomingCall = () => {
   console.log("[CALL] hideIncomingCall called");
   stopRingtone();
   stopVibration();
+  
+  // Cleanup preview if active
+  if ((window as any).__previewCallFrame) {
+    try {
+      (window as any).__previewCallFrame.leave();
+      (window as any).__previewCallFrame.destroy();
+    } catch (e) {}
+    (window as any).__previewCallFrame = null;
+  }
   
   const existing = document.getElementById('vanilla-incoming-call');
   if (existing) {
