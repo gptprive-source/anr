@@ -14,59 +14,27 @@ const IncomingCallContext = createContext<IncomingCallContextType>({
 export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const mountedRef = useRef(true);
-  const currentCallIdRef = useRef<string | null>(null);
 
-  // Cleanup on unmount
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      hideIncomingCall();
-    };
-  }, []);
+    if (!user?.id) return;
 
-  // Polling for incoming calls
-  useEffect(() => {
-    if (!user?.id) {
-      console.log("[IncomingCallContext] ⚠️ No userId, not polling");
-      return;
-    }
-
-    console.log("[IncomingCallContext] 🚀 Starting polling for userId:", user.id);
-
-    const checkForIncomingCalls = async () => {
-      // Skip if already have a call displayed
-      if (isCallScreenVisible()) {
-        return;
-      }
-
-      if (!mountedRef.current) {
-        return;
-      }
+    const checkForCalls = async () => {
+      // Skip if screen already showing
+      if (isCallScreenVisible()) return;
 
       try {
-        // First check if user is muted
-        const { data: residentData, error: residentError } = await supabase
+        // Check if muted
+        const { data: resident } = await supabase
           .from("residents")
-          .select("is_muted, habitation_id")
+          .select("is_muted")
           .eq("user_id", user.id)
           .eq("status", "verified")
           .maybeSingle();
 
-        if (residentError || !mountedRef.current) {
-          return;
-        }
+        if (resident?.is_muted) return;
 
-        // Skip if user is muted
-        if (residentData?.is_muted) {
-          return;
-        }
-
-        const { data, error } = await supabase
+        // Check for ringing calls
+        const { data: calls } = await supabase
           .from("call_participants")
           .select("id, call_id, habitation_id")
           .eq("user_id", user.id)
@@ -74,65 +42,42 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           .eq("role", "resident")
           .limit(1);
 
-        if (error || !mountedRef.current || isCallScreenVisible()) {
-          return;
-        }
+        if (!calls || calls.length === 0) return;
 
-        if (data && data.length > 0) {
-          const p = data[0];
-          console.log("[IncomingCallContext] 🔔 Ringing call found:", p.call_id);
+        const call = calls[0];
 
-          // Avoid showing same call twice
-          if (currentCallIdRef.current === p.call_id) {
-            return;
-          }
+        // Get habitation info
+        const { data: hab } = await supabase
+          .from("habitations")
+          .select("name, anrs(address)")
+          .eq("id", call.habitation_id)
+          .single();
 
-          const { data: hab, error: habError } = await supabase
-            .from("habitations")
-            .select("name, anrs(address)")
-            .eq("id", p.habitation_id)
-            .single();
+        if (!hab) return;
 
-          if (habError || !mountedRef.current || isCallScreenVisible()) {
-            return;
-          }
-
-          if (hab) {
-            currentCallIdRef.current = p.call_id;
-            
-            // Use vanilla JS renderer instead of React state - MUST await
-            await showIncomingCall({
-              participantId: p.id,
-              callId: p.call_id,
-              habitationName: hab.name,
-              address: (hab.anrs as any)?.address || "",
-            });
-          }
-        }
+        // Show the call screen
+        showIncomingCall({
+          participantId: call.id,
+          callId: call.call_id,
+          habitationName: hab.name,
+          address: (hab.anrs as any)?.address || "",
+        });
       } catch (err) {
-        console.error("[IncomingCallContext] ❌ Error:", err);
+        console.error("[IncomingCall] Error:", err);
       }
     };
 
-    // Initial check
-    checkForIncomingCalls();
-
-    // Setup interval
-    intervalRef.current = setInterval(checkForIncomingCalls, 2000);
+    // Check immediately then every 2 seconds
+    checkForCalls();
+    intervalRef.current = setInterval(checkForCalls, 2000);
 
     return () => {
-      console.log("[IncomingCallContext] 🛑 Stopping polling");
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [user?.id]);
 
   const clearIncomingCall = useCallback(() => {
-    console.log("[IncomingCallContext] 🧹 Clearing incoming call");
     hideIncomingCall();
-    currentCallIdRef.current = null;
   }, []);
 
   return (
@@ -142,10 +87,4 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useIncomingCall = () => {
-  const context = useContext(IncomingCallContext);
-  if (!context) {
-    throw new Error("useIncomingCall must be used within an IncomingCallProvider");
-  }
-  return context;
-};
+export const useIncomingCall = () => useContext(IncomingCallContext);
