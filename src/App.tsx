@@ -21,6 +21,7 @@ import MultiHabitat from "./pages/MultiHabitat";
 import VerifyEmail from "./pages/VerifyEmail";
 import Invitation from "./pages/Invitation";
 import ResetPassword from "./pages/ResetPassword";
+import UpdateGPS from "./pages/UpdateGPS";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,14 @@ const AppContent = () => {
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/invitation" element={<Invitation />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route
+            path="/update-gps"
+            element={
+              <ProtectedRoute>
+                <UpdateGPS />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

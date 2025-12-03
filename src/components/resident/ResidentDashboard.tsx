@@ -379,11 +379,13 @@ const ResidentDashboard = () => {
             onClick={toggleMute}
             active={isMuted}
           />
-          <QuickAction
-            icon={<MapPin className="w-6 h-6" />}
-            label="Position GPS"
-            onClick={() => {}}
-          />
+          {isOwner && (
+            <QuickAction
+              icon={<MapPin className="w-6 h-6" />}
+              label="Position GPS"
+              onClick={() => navigate("/update-gps")}
+            />
+          )}
         </div>
 
         {/* Call History Section */}
