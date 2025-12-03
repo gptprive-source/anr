@@ -168,6 +168,56 @@ export type Database = {
         }
         Relationships: []
       }
+      doming_orders: {
+        Row: {
+          anr_id: string
+          created_at: string | null
+          id: string
+          is_free: boolean | null
+          quantity: number
+          shipping_address: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          total_price: number
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          anr_id: string
+          created_at?: string | null
+          id?: string
+          is_free?: boolean | null
+          quantity?: number
+          shipping_address?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          total_price: number
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          anr_id?: string
+          created_at?: string | null
+          id?: string
+          is_free?: boolean | null
+          quantity?: number
+          shipping_address?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          total_price?: number
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doming_orders_anr_id_fkey"
+            columns: ["anr_id"]
+            isOneToOne: false
+            referencedRelation: "anrs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       habitations: {
         Row: {
           anr_id: string
@@ -380,6 +430,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "residents_habitation_id_fkey"
+            columns: ["habitation_id"]
+            isOneToOne: false
+            referencedRelation: "habitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          habitation_id: string | null
+          id: string
+          status: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          habitation_id?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          habitation_id?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_habitation_id_fkey"
             columns: ["habitation_id"]
             isOneToOne: false
             referencedRelation: "habitations"

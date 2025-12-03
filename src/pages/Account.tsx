@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
@@ -15,10 +15,18 @@ interface ProfileData {
   phone_number: string | null;
 }
 
+interface SubscriptionData {
+  status: string;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+}
+
 const Account = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const navigate = useNavigate();
@@ -27,23 +35,35 @@ const Account = () => {
 
   useEffect(() => {
     if (user) {
-      fetchProfile();
+      fetchData();
     }
   }, [user]);
 
-  const fetchProfile = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("first_name, last_name, phone_number")
         .eq("id", user?.id)
         .single();
 
-      if (error) throw error;
-      setProfile(data);
-      setPhoneNumber(data.phone_number || "");
+      if (profileError) throw profileError;
+      setProfile(profileData);
+      setPhoneNumber(profileData.phone_number || "");
+
+      // Fetch subscription
+      const { data: subData } = await supabase
+        .from("subscriptions")
+        .select("status, current_period_end, cancel_at_period_end")
+        .eq("user_id", user?.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      setSubscription(subData);
     } catch (error) {
-      console.error("Error fetching profile:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
@@ -76,6 +96,29 @@ const Account = () => {
     }
   };
 
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (error: any) {
+      console.error("Error opening portal:", error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'ouvrir le portail de gestion",
+        variant: "destructive",
+      });
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
@@ -92,6 +135,33 @@ const Account = () => {
   const fullName = profile 
     ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Utilisateur"
     : "Utilisateur";
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const getSubscriptionStatus = () => {
+    if (!subscription) return { label: "Aucun abonnement", color: "text-muted-foreground" };
+    switch (subscription.status) {
+      case "active":
+        return subscription.cancel_at_period_end 
+          ? { label: "Annulé (actif jusqu'au terme)", color: "text-warning" }
+          : { label: "Actif", color: "text-success" };
+      case "past_due":
+        return { label: "Paiement en retard", color: "text-destructive" };
+      case "canceled":
+        return { label: "Annulé", color: "text-destructive" };
+      default:
+        return { label: subscription.status, color: "text-muted-foreground" };
+    }
+  };
+
+  const statusInfo = getSubscriptionStatus();
 
   return (
     <div className="min-h-screen pb-20">
@@ -113,6 +183,47 @@ const Account = () => {
             </div>
           </div>
         </div>
+
+        {/* Subscription section */}
+        {subscription && (
+          <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">Abonnement ANR</p>
+                <p className={`text-sm ${statusInfo.color}`}>{statusInfo.label}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pl-13">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                {subscription.cancel_at_period_end ? "Fin le" : "Prochain renouvellement :"}{" "}
+                <span className="font-medium text-foreground">
+                  {formatDate(subscription.current_period_end)}
+                </span>
+              </p>
+            </div>
+
+            <Button 
+              variant="outline" 
+              className="w-full gap-2" 
+              onClick={handleManageSubscription}
+              disabled={portalLoading}
+            >
+              {portalLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <ExternalLink className="w-4 h-4" />
+                  Gérer mon abonnement
+                </>
+              )}
+            </Button>
+          </div>
+        )}
 
         {/* Info sections */}
         <div className="space-y-3">
