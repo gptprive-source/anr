@@ -11,12 +11,15 @@ interface UseDailyProps {
   onError?: (error: string) => void;
 }
 
+type VideoMode = "off" | "simple" | "double";
+
 interface DailyState {
   isJoined: boolean;
   isLoading: boolean;
   error: string | null;
   isMuted: boolean;
   isVideoEnabled: boolean;
+  videoMode: VideoMode; // off = no video, simple = receive only, double = send + receive
   participants: DailyParticipant[];
   localVideoTrack: MediaStreamTrack | null;
   remoteVideoTrack: MediaStreamTrack | null;
@@ -30,6 +33,7 @@ const INITIAL_STATE: DailyState = {
   error: null,
   isMuted: false,
   isVideoEnabled: false,
+  videoMode: "off",
   participants: [],
   localVideoTrack: null,
   remoteVideoTrack: null,
@@ -210,8 +214,8 @@ export const useDaily = ({
 
     try {
       // Request permissions BEFORE creating room or joining
-      // Visitor needs video, resident just needs audio initially
-      const needVideo = !isResident;
+      // Visitor sends video, resident only receives (never sends)
+      const needVideo = !isResident; // Only visitor needs to send video
       const permissionGranted = await requestMediaPermissions(needVideo);
       
       if (!permissionGranted) {
@@ -227,7 +231,7 @@ export const useDaily = ({
 
       const call = DailyIframe.createCallObject({
         audioSource: true,
-        // Visitor has video, resident starts without video (voice-only mode)
+        // Visitor sends video, resident NEVER sends video (one-way intercom)
         videoSource: !isResident,
       });
       callRef.current = call;
@@ -236,8 +240,8 @@ export const useDaily = ({
 
       await call.join({
         url: roomUrl,
-        // Resident: voice-only mode after answering (no video)
-        // Visitor: video enabled
+        // Resident: no video (intercom one-way)
+        // Visitor: video enabled (they are seen by resident)
         startVideoOff: isResident,
         startAudioOff: false,
       });
@@ -245,11 +249,12 @@ export const useDaily = ({
       // Ensure audio is properly enabled after join
       call.setLocalAudio(true);
       
-      logger.log("[useDaily] Joined with audio enabled, video:", !isResident);
+      logger.log("[useDaily] Joined - isResident:", isResident, "video:", !isResident);
 
       safeSetState(prev => ({
         ...prev,
         isVideoEnabled: !isResident,
+        videoMode: isResident ? "off" : "simple", // Visitor always in simple mode (sends video)
         isMuted: false,
       }));
 
@@ -288,23 +293,17 @@ export const useDaily = ({
     safeSetState(prev => ({ ...prev, isMuted: newMuted }));
   }, [state.isMuted, safeSetState]);
 
-  // Toggle video
-  const toggleVideo = useCallback(() => {
+  // Set video mode for resident: "simple" = receive only, "double" = never (resident never sends)
+  // IMPORTANT: Resident NEVER sends video - this is a one-way intercom
+  const setVideoMode = useCallback((mode: VideoMode) => {
     const call = callRef.current;
     if (!call) return;
 
-    const newEnabled = !state.isVideoEnabled;
-    call.setLocalVideo(newEnabled);
-    safeSetState(prev => ({ ...prev, isVideoEnabled: newEnabled }));
-  }, [state.isVideoEnabled, safeSetState]);
-
-  // Enable video
-  const enableVideo = useCallback(async () => {
-    const call = callRef.current;
-    if (!call) return;
-
-    await call.setLocalVideo(true);
-    safeSetState(prev => ({ ...prev, isVideoEnabled: true }));
+    logger.log("[useDaily] Setting video mode:", mode);
+    
+    // Resident never sends video regardless of mode
+    // Mode only affects whether resident SEES visitor's video
+    safeSetState(prev => ({ ...prev, videoMode: mode }));
   }, [safeSetState]);
 
   // Cleanup on unmount
@@ -327,6 +326,7 @@ export const useDaily = ({
     error: state.error,
     isMuted: state.isMuted,
     isVideoEnabled: state.isVideoEnabled,
+    videoMode: state.videoMode,
     participants: state.participants,
     localVideoTrack: state.localVideoTrack,
     remoteVideoTrack: state.remoteVideoTrack,
@@ -335,7 +335,6 @@ export const useDaily = ({
     joinCall,
     leaveCall,
     toggleMute,
-    toggleVideo,
-    enableVideo,
+    setVideoMode,
   };
 };
