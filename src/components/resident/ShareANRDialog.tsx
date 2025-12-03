@@ -37,8 +37,8 @@ const ShareANRDialog = ({
   const mapsLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
   
   // Generate the ANR URL (landing page with navigation/call options)
-  // Use production URL for QR codes so they work when scanned externally
-  const anrUrl = `https://anr.lovable.app/anr/${anrCode}`;
+  // Use preview URL for QR codes
+  const anrUrl = `https://preview--anr.lovable.app/anr/${anrCode}`;
 
   // Message content for sharing
   const shareMessage = `🏠 ANR de ${ownerName}
