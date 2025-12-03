@@ -214,8 +214,8 @@ export const useDaily = ({
 
     try {
       // Request permissions BEFORE creating room or joining
-      // Visitor sends video, resident only receives (never sends)
-      const needVideo = !isResident; // Only visitor needs to send video
+      // TOUS demandent la vidéo (résident peut activer en mode double)
+      const needVideo = true;
       const permissionGranted = await requestMediaPermissions(needVideo);
       
       if (!permissionGranted) {
@@ -231,8 +231,8 @@ export const useDaily = ({
 
       const call = DailyIframe.createCallObject({
         audioSource: true,
-        // Visitor sends video, resident NEVER sends video (one-way intercom)
-        videoSource: !isResident,
+        // TOUS ont la source vidéo activée
+        videoSource: true,
       });
       callRef.current = call;
 
@@ -293,17 +293,28 @@ export const useDaily = ({
     safeSetState(prev => ({ ...prev, isMuted: newMuted }));
   }, [state.isMuted, safeSetState]);
 
-  // Set video mode for resident: "simple" = receive only, "double" = never (resident never sends)
-  // IMPORTANT: Resident NEVER sends video - this is a one-way intercom
+  // Set video mode for resident
+  // "off" = pas de vidéo, "simple" = résident voit visiteur, "double" = les deux se voient
   const setVideoMode = useCallback((mode: VideoMode) => {
     const call = callRef.current;
     if (!call) return;
 
     logger.log("[useDaily] Setting video mode:", mode);
     
-    // Resident never sends video regardless of mode
-    // Mode only affects whether resident SEES visitor's video
-    safeSetState(prev => ({ ...prev, videoMode: mode }));
+    // Résident: contrôle sa propre vidéo selon le mode
+    if (mode === "double") {
+      // Visio double: résident active sa vidéo pour être vu
+      call.setLocalVideo(true);
+    } else {
+      // Visio simple ou off: résident n'envoie pas de vidéo
+      call.setLocalVideo(false);
+    }
+    
+    safeSetState(prev => ({ 
+      ...prev, 
+      videoMode: mode,
+      isVideoEnabled: mode !== "off"
+    }));
   }, [safeSetState]);
 
   // Cleanup on unmount
