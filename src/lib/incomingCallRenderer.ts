@@ -22,8 +22,7 @@ let callSubscription: any = null;
 let previewPeerConnection: RTCPeerConnection | null = null;
 let previewVideoElement: HTMLVideoElement | null = null;
 
-// Lock flag to prevent concurrent showIncomingCall calls
-let isShowingCall = false;
+// No lock needed - we just check if screen is visible
 
 const startRingtone = () => {
   try {
@@ -450,22 +449,17 @@ const cleanupPreview = async (): Promise<void> => {
 export const showIncomingCall = async (data: IncomingCallData) => {
   console.log("[IncomingCallRenderer] 📞 showIncomingCall called:", data.callId);
   
-  // Prevent concurrent calls - if already showing, ignore
-  if (isShowingCall) {
-    console.log("[IncomingCallRenderer] ⚠️ Already showing a call, ignoring duplicate call");
-    return;
+  // Check if screen already visible for same call - simple check, no complex locking
+  if (isCallScreenVisible()) {
+    if (currentCallData?.callId === data.callId) {
+      console.log("[IncomingCallRenderer] ⚠️ Same call already displayed");
+      return;
+    }
+    // Different call - hide the old one first
+    console.log("[IncomingCallRenderer] 🔄 Replacing existing call screen");
   }
   
-  // Check if screen already visible for same call
-  if (isCallScreenVisible() && currentCallData?.callId === data.callId) {
-    console.log("[IncomingCallRenderer] ⚠️ Same call already displayed, ignoring");
-    return;
-  }
-  
-  isShowingCall = true;
-  console.log("[IncomingCallRenderer] 🔒 Lock acquired");
-  
-  // Clean up any existing screen WITHOUT calling hideIncomingCall (which releases lock)
+  // Clean up any existing screen
   stopRingtone();
   stopVibration();
   unsubscribeFromCallStatus();
@@ -477,8 +471,8 @@ export const showIncomingCall = async (data: IncomingCallData) => {
   }
   
   currentCallData = data;
-  callScreenShownAt = Date.now(); // Track when screen was shown
-  console.log("[IncomingCallRenderer] ⏱️ Screen shown at:", callScreenShownAt);
+  callScreenShownAt = Date.now();
+  console.log("[IncomingCallRenderer] ⏱️ Creating screen at:", callScreenShownAt);
   
   // Create and append the screen
   const screen = createCallScreen(data);
@@ -597,9 +591,7 @@ export const hideIncomingCall = async () => {
   }
   
   currentCallData = null;
-  callScreenShownAt = null; // Reset timestamp
-  isShowingCall = false; // Release lock
-  console.log("[IncomingCallRenderer] 🔓 Lock released");
+  callScreenShownAt = null;
 };
 
 export const isCallScreenVisible = () => {

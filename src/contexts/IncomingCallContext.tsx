@@ -16,7 +16,6 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
   const currentCallIdRef = useRef<string | null>(null);
-  const isProcessingRef = useRef(false); // Lock to prevent concurrent executions
 
   // Cleanup on unmount
   useEffect(() => {
@@ -40,12 +39,6 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     console.log("[IncomingCallContext] 🚀 Starting polling for userId:", user.id);
 
     const checkForIncomingCalls = async () => {
-      // Prevent concurrent executions
-      if (isProcessingRef.current) {
-        console.log("[IncomingCallContext] ⏳ Already processing, skipping");
-        return;
-      }
-      
       // Skip if already have a call displayed
       if (isCallScreenVisible()) {
         return;
@@ -54,8 +47,6 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
       if (!mountedRef.current) {
         return;
       }
-      
-      isProcessingRef.current = true;
 
       try {
         // First check if user is muted
@@ -120,8 +111,6 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (err) {
         console.error("[IncomingCallContext] ❌ Error:", err);
-      } finally {
-        isProcessingRef.current = false;
       }
     };
 
