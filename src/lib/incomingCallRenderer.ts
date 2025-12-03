@@ -264,6 +264,8 @@ export const showIncomingCall = (data: IncomingCallData) => {
           return;
         }
         
+        console.log("[CALL] Preview room data:", roomData);
+        
         if (roomData?.url) {
           // Hide loading text
           const loadingText = document.getElementById('preview-loading');
@@ -271,6 +273,10 @@ export const showIncomingCall = (data: IncomingCallData) => {
           
           // Import Daily dynamically
           const Daily = (await import("@daily-co/daily-js")).default;
+          
+          // Clear container first
+          previewContainer.innerHTML = '';
+          
           const callFrame = Daily.createFrame(previewContainer, {
             iframeStyle: {
               width: "100%",
@@ -279,10 +285,14 @@ export const showIncomingCall = (data: IncomingCallData) => {
               position: "absolute",
               top: "0",
               left: "0",
+              zIndex: "1",
             },
             showLeaveButton: false,
             showFullscreenButton: false,
+            showLocalVideo: false,
           });
+          
+          console.log("[CALL] Preview callFrame created");
           
           await callFrame.join({
             url: roomData.url,
@@ -293,7 +303,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
           
           // Store callFrame for cleanup
           (window as any).__previewCallFrame = callFrame;
-          console.log("[CALL] Preview joined successfully");
+          console.log("[CALL] Preview joined successfully - participants:", callFrame.participants());
         }
       } catch (err) {
         console.error("[CALL] Preview error:", err);

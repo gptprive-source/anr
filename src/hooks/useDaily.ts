@@ -71,13 +71,22 @@ export const useDaily = ({
       const remoteParticipants = Object.values(participants).filter(p => !p.local);
       const remote = remoteParticipants[0];
 
+      // Get tracks - check state for playability
+      const localVideo = local?.tracks?.video;
+      const localAudio = local?.tracks?.audio;
+      const remoteVideo = remote?.tracks?.video;
+      const remoteAudio = remote?.tracks?.audio;
+
+      logger.log("[useDaily] Tracks update - local video state:", localVideo?.state, "remote video state:", remoteVideo?.state);
+
       safeSetState(prev => ({
         ...prev,
         participants: Object.values(participants),
-        localVideoTrack: local?.tracks?.video?.persistentTrack || null,
-        localAudioTrack: local?.tracks?.audio?.persistentTrack || null,
-        remoteVideoTrack: remote?.tracks?.video?.persistentTrack || null,
-        remoteAudioTrack: remote?.tracks?.audio?.persistentTrack || null,
+        // Use track if playable, otherwise try persistentTrack
+        localVideoTrack: localVideo?.state === 'playable' ? (localVideo.track || localVideo.persistentTrack) : null,
+        localAudioTrack: localAudio?.state === 'playable' ? (localAudio.track || localAudio.persistentTrack) : null,
+        remoteVideoTrack: remoteVideo?.state === 'playable' ? (remoteVideo.track || remoteVideo.persistentTrack) : null,
+        remoteAudioTrack: remoteAudio?.state === 'playable' ? (remoteAudio.track || remoteAudio.persistentTrack) : null,
       }));
     } catch (err) {
       logger.error("[useDaily] Error updating tracks:", err);
