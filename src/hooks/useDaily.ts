@@ -179,6 +179,28 @@ export const useDaily = ({
     });
   }, [safeSetState, updateTracks, onCallConnected, onCallEnded, onError]);
 
+  // Request camera/microphone permissions (required for native apps)
+  const requestMediaPermissions = useCallback(async (needVideo: boolean): Promise<boolean> => {
+    try {
+      logger.log("[useDaily] Requesting media permissions, video:", needVideo);
+      
+      // Request permissions via getUserMedia - this triggers the native permission dialog on Android/iOS
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: needVideo,
+      });
+      
+      // Stop all tracks immediately - we just needed to trigger the permission
+      stream.getTracks().forEach(track => track.stop());
+      
+      logger.log("[useDaily] Media permissions granted");
+      return true;
+    } catch (err: any) {
+      logger.error("[useDaily] Permission denied or error:", err.name, err.message);
+      return false;
+    }
+  }, []);
+
   // Join the call
   const joinCall = useCallback(async () => {
     if (callRef.current || state.isLoading) return;
@@ -187,6 +209,17 @@ export const useDaily = ({
     logger.log("[useDaily] Joining as", isResident ? "resident" : "visitor");
 
     try {
+      // Request permissions BEFORE creating room or joining
+      // Visitor needs video, resident just needs audio initially
+      const needVideo = !isResident;
+      const permissionGranted = await requestMediaPermissions(needVideo);
+      
+      if (!permissionGranted) {
+        throw new Error("Permissions caméra/micro refusées. Veuillez autoriser l'accès dans les paramètres.");
+      }
+      
+      if (!mountedRef.current) return;
+
       const roomUrl = await createRoom();
       if (!mountedRef.current) return;
       
@@ -226,7 +259,7 @@ export const useDaily = ({
       safeSetState(prev => ({ ...prev, error: errorMsg, isLoading: false }));
       onError?.(errorMsg);
     }
-  }, [isResident, createRoom, setupEventListeners, safeSetState, onError, state.isLoading]);
+  }, [isResident, createRoom, setupEventListeners, safeSetState, onError, state.isLoading, requestMediaPermissions]);
 
   // Leave the call
   const leaveCall = useCallback(async () => {
