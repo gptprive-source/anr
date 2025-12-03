@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,12 +11,15 @@ import BottomNav from "@/components/layout/BottomNav";
 interface ProfileData {
   first_name: string | null;
   last_name: string | null;
+  phone_number: string | null;
 }
 
 const Account = () => {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState("");
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -30,16 +34,44 @@ const Account = () => {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("first_name, last_name")
+        .select("first_name, last_name, phone_number")
         .eq("id", user?.id)
         .single();
 
       if (error) throw error;
       setProfile(data);
+      setPhoneNumber(data.phone_number || "");
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePhone = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ phone_number: phoneNumber.trim() || null })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Numéro enregistré",
+        description: "Votre numéro de téléphone a été mis à jour",
+      });
+    } catch (error: any) {
+      console.error("Error saving phone:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder le numéro",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -130,6 +162,32 @@ const Account = () => {
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </div>
+
+          {/* Phone number editable */}
+          <div className="glass-effect rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Phone className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-sm text-muted-foreground">Numéro de téléphone</p>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                type="tel"
+                placeholder="Ex: +33 6 12 34 56 78"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="flex-1"
+              />
+              <Button 
+                onClick={handleSavePhone} 
+                disabled={saving}
+                size="icon"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              </Button>
+            </div>
           </div>
         </div>
 
