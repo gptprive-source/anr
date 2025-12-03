@@ -17,6 +17,17 @@ const MAX_DISTANCE_METERS = 30;
 // Mode test pour le développement
 const DEV_MODE = true;
 
+// Fonction pour extraire le code ANR d'une URL ou retourner le code tel quel
+const extractAnrCode = (input: string): string => {
+  // Si c'est une URL ANR, extraire le code (ex: https://anr.lovable.app/anr/ANR-123456)
+  const urlMatch = input.match(/\/anr\/([A-Z0-9-]+)/i);
+  if (urlMatch) {
+    return urlMatch[1].toUpperCase();
+  }
+  // Sinon retourner le code tel quel (nettoyé)
+  return input.trim().toUpperCase();
+};
+
 const ANRScanner = () => {
   const [mode, setMode] = useState<ScanMode>("qr");
   const [anrCode, setAnrCode] = useState("");
@@ -224,8 +235,10 @@ const QRScannerContent = ({ onScan, loading }: { onScan: (code: string) => void;
         },
         (decodedText) => {
           console.log("[QR Scanner] Decoded:", decodedText);
+          const anrCode = extractAnrCode(decodedText);
+          console.log("[QR Scanner] Extracted ANR code:", anrCode);
           stopScanning();
-          onScan(decodedText);
+          onScan(anrCode);
         },
         () => {
           // Ignore continuous scan errors
