@@ -52,3 +52,6 @@ verify_jwt = false
 
 [functions.cleanup-stale-calls]
 verify_jwt = false
+
+[functions.delete-user]
+verify_jwt = false

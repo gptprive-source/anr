@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, ChevronRight, Loader2 } from "lucide-react";
+import { LogOut, User, Mail, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/layout/BottomNav";
 
 interface ProfileData {
@@ -13,9 +14,11 @@ interface ProfileData {
 
 const Account = () => {
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -43,6 +46,42 @@ const Account = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("Voulez-vous vraiment supprimer définitivement votre compte ? Cette action est irréversible.")) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: {
+          targetUserId: user?.id,
+          requestingUserId: user?.id,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Compte supprimé",
+        description: "Votre compte a été supprimé définitivement",
+      });
+      
+      await signOut();
+      navigate("/");
+    } catch (error: any) {
+      console.error("Error deleting account:", error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de supprimer le compte",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -95,14 +134,28 @@ const Account = () => {
         </div>
 
         {/* Actions */}
-        <div className="pt-4">
+        <div className="pt-4 space-y-3">
           <Button 
-            variant="destructive" 
+            variant="outline" 
             className="w-full gap-2" 
             onClick={handleSignOut}
           >
             <LogOut className="w-5 h-5" />
             Se déconnecter
+          </Button>
+
+          <Button 
+            variant="destructive" 
+            className="w-full gap-2" 
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Trash2 className="w-5 h-5" />
+            )}
+            Supprimer mon compte
           </Button>
         </div>
       </div>
