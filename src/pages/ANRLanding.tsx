@@ -4,6 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapPin, Phone, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import VisitorFooter from "@/components/layout/VisitorFooter";
 import logoAnr from "@/assets/logo-anr.png";
 
@@ -68,22 +74,30 @@ const ANRLanding = () => {
     fetchANR();
   }, [code]);
 
-  const handleNavigate = () => {
+  const openNavigation = (app: 'apple' | 'google' | 'waze' | 'default') => {
     if (!anrData) return;
     
-    // Detect iOS
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const { latitude, longitude, address } = anrData;
+    const encodedAddress = encodeURIComponent(address);
     
-    if (isIOS) {
-      // iOS: Use Apple Maps URL (will open in Maps app or offer choice)
-      const mapsUrl = `https://maps.apple.com/?daddr=${anrData.latitude},${anrData.longitude}&q=${encodeURIComponent(anrData.address)}`;
-      window.location.href = mapsUrl;
-    } else {
-      // Android: Use geo: URI scheme to trigger native app chooser (Waze, Google Maps, etc.)
-      const geoUrl = `geo:${anrData.latitude},${anrData.longitude}?q=${anrData.latitude},${anrData.longitude}(${encodeURIComponent(anrData.address)})`;
-      window.location.href = geoUrl;
+    switch (app) {
+      case 'apple':
+        window.location.href = `https://maps.apple.com/?daddr=${latitude},${longitude}&q=${encodedAddress}`;
+        break;
+      case 'google':
+        window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+        break;
+      case 'waze':
+        window.location.href = `https://waze.com/ul?ll=${latitude},${longitude}&navigate=yes`;
+        break;
+      case 'default':
+        // Use geo: URI for native app chooser (works on Android)
+        window.location.href = `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodedAddress})`;
+        break;
     }
   };
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   const handleCall = () => {
     if (!anrData) return;
@@ -153,14 +167,36 @@ const ANRLanding = () => {
 
         {/* Action Buttons */}
         <div className="w-full max-w-md space-y-4">
-          <Button
-            onClick={handleNavigate}
-            variant="outline"
-            className="w-full h-16 text-lg gap-3"
-          >
-            <MapPin className="w-6 h-6" />
-            Naviguer vers cette adresse
-          </Button>
+          {isIOS ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full h-16 text-lg gap-3">
+                  <MapPin className="w-6 h-6" />
+                  Naviguer vers cette adresse
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-72">
+                <DropdownMenuItem onClick={() => openNavigation('apple')}>
+                  Plans (Apple Maps)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openNavigation('google')}>
+                  Google Maps
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openNavigation('waze')}>
+                  Waze
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              onClick={() => openNavigation('default')}
+              variant="outline"
+              className="w-full h-16 text-lg gap-3"
+            >
+              <MapPin className="w-6 h-6" />
+              Naviguer vers cette adresse
+            </Button>
+          )}
 
           <Button
             onClick={handleCall}
