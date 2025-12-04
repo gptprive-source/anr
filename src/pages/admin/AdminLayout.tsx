@@ -12,7 +12,8 @@ import {
   BarChart3,
   Menu,
   X,
-  LogOut
+  LogOut,
+  MessageCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -31,6 +32,7 @@ const navItems = [
   { path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
   { path: '/admin/users', label: 'Utilisateurs', icon: Users },
   { path: '/admin/subscriptions', label: 'Abonnements', icon: CreditCard },
+  { path: '/admin/support', label: 'Support', icon: MessageCircle },
   { path: '/admin/team', label: 'Équipe', icon: UserCog },
   { path: '/admin/audit', label: 'Journal d\'audit', icon: ScrollText },
 ];
