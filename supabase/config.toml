@@ -64,3 +64,6 @@ verify_jwt = false
 
 [functions.customer-portal]
 verify_jwt = false
+
+[functions.send-subscription-confirmation]
+verify_jwt = false
