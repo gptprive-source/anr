@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/layout/BottomNav";
 import DeleteAccountDialog from "@/components/account/DeleteAccountDialog";
+import ChangeAddressDialog from "@/components/account/ChangeAddressDialog";
+import LeaveHabitationDialog from "@/components/account/LeaveHabitationDialog";
 
 interface ProfileData {
   first_name: string | null;
@@ -21,14 +23,24 @@ interface SubscriptionData {
   cancel_at_period_end: boolean;
 }
 
+interface HabitationData {
+  id: string;
+  name: string;
+  anr_address: string;
+  is_owner: boolean;
+}
+
 const Account = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [habitation, setHabitation] = useState<HabitationData | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showChangeAddressDialog, setShowChangeAddressDialog] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -62,6 +74,31 @@ const Account = () => {
         .maybeSingle();
 
       setSubscription(subData);
+
+      // Fetch habitation
+      const { data: residentData } = await supabase
+        .from("residents")
+        .select(`
+          is_owner,
+          habitation:habitations (
+            id,
+            name,
+            anr:anrs (address)
+          )
+        `)
+        .eq("user_id", user?.id)
+        .eq("status", "verified")
+        .maybeSingle();
+
+      if (residentData?.habitation) {
+        const hab = residentData.habitation as any;
+        setHabitation({
+          id: hab.id,
+          name: hab.name,
+          anr_address: hab.anr?.address || "",
+          is_owner: residentData.is_owner || false,
+        });
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -267,6 +304,61 @@ const Account = () => {
           </div>
         </div>
 
+        {/* Habitation section */}
+        {habitation && (
+          <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Home className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">{habitation.name}</p>
+                <p className="text-sm text-muted-foreground">{habitation.is_owner ? "Propriétaire" : "Résident invité"}</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 pl-13">
+              <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <p className="text-sm text-muted-foreground">{habitation.anr_address}</p>
+            </div>
+
+            <div className="flex gap-2">
+              {habitation.is_owner ? (
+                <Button 
+                  variant="outline" 
+                  className="flex-1 gap-2" 
+                  onClick={() => setShowChangeAddressDialog(true)}
+                >
+                  <MapPin className="w-4 h-4" />
+                  Déménager
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  className="flex-1 gap-2 text-destructive hover:text-destructive" 
+                  onClick={() => setShowLeaveDialog(true)}
+                >
+                  <LogOut className="w-4 h-4" />
+                  Quitter l'habitation
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* FAQ link */}
+        <Link to="/faq" className="block">
+          <div className="glass-effect rounded-xl p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <HelpCircle className="w-5 h-5 text-primary" />
+              </div>
+              <p className="font-medium">Questions fréquentes</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </div>
+        </Link>
+
         {/* Actions */}
         <div className="pt-4 space-y-3">
           <Button 
@@ -293,6 +385,23 @@ const Account = () => {
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         profile={profile}
+      />
+
+      <ChangeAddressDialog
+        open={showChangeAddressDialog}
+        onOpenChange={setShowChangeAddressDialog}
+        currentAddress={habitation?.anr_address}
+        onAddressChanged={fetchData}
+      />
+
+      <LeaveHabitationDialog
+        open={showLeaveDialog}
+        onOpenChange={setShowLeaveDialog}
+        habitationName={habitation?.name}
+        onLeft={() => {
+          setHabitation(null);
+          fetchData();
+        }}
       />
 
       <BottomNav />
