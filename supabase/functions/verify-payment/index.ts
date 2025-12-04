@@ -178,6 +178,66 @@ serve(async (req) => {
       if (domingError) console.error("[VERIFY-PAYMENT] Warning: Error recording doming order:", domingError);
     }
 
+    // Send confirmation email
+    try {
+      // Get user profile for name
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      // Get ANR code
+      const { data: anrData } = await supabaseAdmin
+        .from("anrs")
+        .select("code")
+        .eq("id", anrId)
+        .single();
+
+      const subscriptionAmount = 12; // 12€ annual
+      const domingUnitPrice = 7;
+      const totalDomingAmount = extraDomings * domingUnitPrice;
+      const totalAmount = subscriptionAmount + totalDomingAmount;
+
+      const emailPayload = {
+        email: user.email,
+        firstName: profile?.first_name || "Cher(e) abonné(e)",
+        lastName: profile?.last_name || "",
+        anrCode: anrData?.code || "N/A",
+        address: address,
+        habitationName: habitationName,
+        subscriptionAmount: subscriptionAmount,
+        domingQuantity: domingQuantity,
+        domingAmount: totalDomingAmount,
+        totalAmount: totalAmount,
+      };
+
+      console.log("[VERIFY-PAYMENT] Sending confirmation email:", emailPayload);
+
+      // Call the send-subscription-confirmation function
+      const emailResponse = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-subscription-confirmation`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify(emailPayload),
+        }
+      );
+
+      if (!emailResponse.ok) {
+        const emailError = await emailResponse.text();
+        console.error("[VERIFY-PAYMENT] Email send failed:", emailError);
+      } else {
+        console.log("[VERIFY-PAYMENT] Confirmation email sent successfully");
+      }
+    } catch (emailError) {
+      console.error("[VERIFY-PAYMENT] Error sending confirmation email:", emailError);
+      // Don't fail the whole process if email fails
+    }
+
     console.log("[VERIFY-PAYMENT] Payment verification complete");
 
     return new Response(JSON.stringify({ 
