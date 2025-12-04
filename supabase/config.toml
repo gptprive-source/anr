@@ -67,3 +67,9 @@ verify_jwt = false
 
 [functions.send-subscription-confirmation]
 verify_jwt = false
+
+[functions.support-chat]
+verify_jwt = false
+
+[functions.notify-support-request]
+verify_jwt = false

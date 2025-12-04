@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface Message {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "agent";
   content: string;
 }
 
@@ -20,6 +20,7 @@ const SupportChat = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [requestHuman, setRequestHuman] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -34,6 +35,35 @@ const SupportChat = () => {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  // Real-time subscription for agent replies
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const channel = supabase
+      .channel(`support-messages-${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          if (newMsg.sender_type === 'agent') {
+            setMessages(prev => [...prev, { role: 'agent', content: newMsg.content }]);
+            toast.info("Nouvelle réponse du support !");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId]);
 
   const streamChat = async (userMessage: string) => {
     const newMessages: Message[] = [...messages, { role: "user", content: userMessage }];
@@ -52,7 +82,7 @@ const SupportChat = () => {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+            messages: newMessages.map(m => ({ role: m.role === 'agent' ? 'assistant' : m.role, content: m.content })),
           }),
         }
       );
@@ -119,7 +149,31 @@ const SupportChat = () => {
     if (!input.trim() || isLoading) return;
     const message = input.trim();
     setInput("");
-    streamChat(message);
+    
+    if (requestHuman && conversationId) {
+      // Send directly to conversation (human mode)
+      sendHumanMessage(message);
+    } else {
+      streamChat(message);
+    }
+  };
+
+  const sendHumanMessage = async (content: string) => {
+    if (!conversationId || !user) return;
+    
+    setMessages(prev => [...prev, { role: "user", content }]);
+    
+    try {
+      await supabase.from('support_messages').insert({
+        conversation_id: conversationId,
+        sender_type: 'user',
+        sender_id: user.id,
+        content,
+      });
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Erreur lors de l'envoi");
+    }
   };
 
   const handleRequestHuman = async () => {
@@ -148,6 +202,20 @@ const SupportChat = () => {
           await supabase.from('support_messages').insert(messagesToInsert);
         }
 
+        // Send email notification to support team
+        try {
+          await supabase.functions.invoke('notify-support-request', {
+            body: {
+              conversationId: conv.id,
+              userId: user.id,
+              messages: messages.map(m => ({ role: m.role, content: m.content })),
+            },
+          });
+        } catch (notifyError) {
+          console.error("Error sending notification:", notifyError);
+        }
+
+        setConversationId(conv.id);
         toast.success("Demande envoyée ! Un agent vous contactera bientôt.");
       } catch (error) {
         console.error("Error creating support conversation:", error);
@@ -179,12 +247,12 @@ const SupportChat = () => {
           <div className="flex items-center justify-between p-4 border-b border-border bg-primary/5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                <Bot className="w-5 h-5 text-primary" />
+                {requestHuman ? <UserCog className="w-5 h-5 text-primary" /> : <Bot className="w-5 h-5 text-primary" />}
               </div>
               <div>
                 <h3 className="font-semibold">Support ANR</h3>
                 <p className="text-xs text-muted-foreground">
-                  {requestHuman ? "En attente d'un agent" : "Assistant virtuel"}
+                  {requestHuman ? "Chat avec un agent" : "Assistant virtuel"}
                 </p>
               </div>
             </div>
@@ -215,10 +283,14 @@ const SupportChat = () => {
                     "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
                     message.role === "user" 
                       ? "bg-primary text-primary-foreground" 
-                      : "bg-muted"
+                      : message.role === "agent"
+                        ? "bg-green-500 text-white"
+                        : "bg-muted"
                   )}>
                     {message.role === "user" ? (
                       <User className="w-4 h-4" />
+                    ) : message.role === "agent" ? (
+                      <UserCog className="w-4 h-4" />
                     ) : (
                       <Bot className="w-4 h-4" />
                     )}
@@ -227,7 +299,9 @@ const SupportChat = () => {
                     "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
                     message.role === "user"
                       ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-muted rounded-bl-sm"
+                      : message.role === "agent"
+                        ? "bg-green-500/20 text-foreground rounded-bl-sm"
+                        : "bg-muted rounded-bl-sm"
                   )}>
                     {message.content || (
                       <span className="flex items-center gap-2">
@@ -257,8 +331,8 @@ const SupportChat = () => {
           )}
 
           {requestHuman && (
-            <div className="px-4 py-3 bg-green-500/10 text-green-700 text-xs text-center">
-              ✓ Un agent prendra en charge votre demande très bientôt
+            <div className="px-4 py-2 bg-green-500/10 text-green-700 text-xs text-center">
+              ✓ Vous êtes connecté avec le support. Continuez à écrire.
             </div>
           )}
 
