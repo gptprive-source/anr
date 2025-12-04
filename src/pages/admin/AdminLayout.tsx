@@ -14,7 +14,8 @@ import {
   X,
   LogOut,
   MessageCircle,
-  FileText
+  FileText,
+  Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -32,6 +33,7 @@ const navItems = [
   { path: '/admin/config', label: 'Configuration', icon: Settings },
   { path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
   { path: '/admin/cgu', label: 'CGU', icon: FileText },
+  { path: '/admin/privacy', label: 'Confidentialité', icon: Shield },
   { path: '/admin/users', label: 'Utilisateurs', icon: Users },
   { path: '/admin/subscriptions', label: 'Abonnements', icon: CreditCard },
   { path: '/admin/support', label: 'Support', icon: MessageCircle },
