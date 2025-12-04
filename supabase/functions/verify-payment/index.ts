@@ -128,6 +128,18 @@ serve(async (req) => {
 
     // Get subscription details
     const subscription = session.subscription as Stripe.Subscription;
+    console.log("[VERIFY-PAYMENT] Subscription data:", JSON.stringify(subscription, null, 2));
+    
+    // Safely parse subscription dates
+    let periodStart: string | null = null;
+    let periodEnd: string | null = null;
+    
+    if (subscription?.current_period_start) {
+      periodStart = new Date(subscription.current_period_start * 1000).toISOString();
+    }
+    if (subscription?.current_period_end) {
+      periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+    }
     
     // Save subscription to database
     const { error: subError } = await supabaseAdmin
@@ -136,11 +148,11 @@ serve(async (req) => {
         user_id: user.id,
         habitation_id: habitation.id,
         stripe_customer_id: session.customer as string,
-        stripe_subscription_id: subscription.id,
-        status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        cancel_at_period_end: subscription.cancel_at_period_end,
+        stripe_subscription_id: subscription?.id || session.id,
+        status: subscription?.status || "active",
+        current_period_start: periodStart,
+        current_period_end: periodEnd,
+        cancel_at_period_end: subscription?.cancel_at_period_end || false,
       });
 
     if (subError) throw new Error(`Error creating subscription record: ${subError.message}`);
