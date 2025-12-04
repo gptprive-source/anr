@@ -24,6 +24,7 @@ import ResetPassword from "./pages/ResetPassword";
 import UpdateGPS from "./pages/UpdateGPS";
 import Residents from "./pages/Residents";
 import CallHistory from "./pages/CallHistory";
+import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -91,6 +92,7 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/faq" element={<FAQ />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

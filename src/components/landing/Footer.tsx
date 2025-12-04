@@ -1,4 +1,5 @@
 import { Shield } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
@@ -17,6 +18,7 @@ const Footer = () => {
           </p>
           
           <div className="flex gap-6 text-sm text-muted-foreground">
+            <Link to="/faq" className="hover:text-foreground transition-colors">FAQ</Link>
             <a href="#" className="hover:text-foreground transition-colors">Confidentialité</a>
             <a href="#" className="hover:text-foreground transition-colors">CGU</a>
             <a href="#" className="hover:text-foreground transition-colors">Contact</a>
