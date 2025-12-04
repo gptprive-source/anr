@@ -27,6 +27,7 @@ import Residents from "./pages/Residents";
 import CallHistory from "./pages/CallHistory";
 import FAQ from "./pages/FAQ";
 import CGU from "./pages/CGU";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -40,6 +41,7 @@ import AdminTeam from "./pages/admin/Team";
 import AdminAuditLog from "./pages/admin/AuditLog";
 import AdminSupport from "./pages/admin/Support";
 import AdminCGUEditor from "./pages/admin/CGUEditor";
+import AdminPrivacyEditor from "./pages/admin/PrivacyEditor";
 
 const queryClient = new QueryClient();
 
@@ -109,6 +111,7 @@ const AppContent = () => {
           />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/cgu" element={<CGU />} />
+          <Route path="/privacy" element={<Privacy />} />
           
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboard />} />
@@ -116,6 +119,7 @@ const AppContent = () => {
           <Route path="/admin/config" element={<AdminConfig />} />
           <Route path="/admin/faq" element={<AdminFAQManager />} />
           <Route path="/admin/cgu" element={<AdminCGUEditor />} />
+          <Route path="/admin/privacy" element={<AdminPrivacyEditor />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
           <Route path="/admin/team" element={<AdminTeam />} />
