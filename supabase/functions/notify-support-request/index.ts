@@ -1,5 +1,6 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,59 +56,75 @@ const handler = async (req: Request): Promise<Response> => {
       .map(m => `${m.role === 'user' ? '👤 Utilisateur' : '🤖 Bot'}: ${m.content}`)
       .join('\n\n');
 
-    // Send email using SMTP
-    const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
-    const smtpUser = Deno.env.get("SMTP_USER");
-    const smtpPass = Deno.env.get("SMTP_PASS");
+    // Create SMTP client
+    const client = new SMTPClient({
+      connection: {
+        hostname: Deno.env.get("SMTP_HOST") || "smtp.hostinger.com",
+        port: parseInt(Deno.env.get("SMTP_PORT") || "465"),
+        tls: true,
+        auth: {
+          username: Deno.env.get("SMTP_USER") || "",
+          password: Deno.env.get("SMTP_PASS") || "",
+        },
+      },
+    });
 
-    if (smtpHost && smtpUser && smtpPass) {
-      const emailContent = `
-        <h2>🆘 Nouvelle demande de support humain</h2>
-        
-        <p><strong>Utilisateur:</strong> ${userName}</p>
-        <p><strong>Email:</strong> ${userEmail}</p>
-        <p><strong>ID Conversation:</strong> ${conversationId}</p>
-        <p><strong>Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
-        
-        <h3>Historique de la conversation:</h3>
-        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; white-space: pre-wrap;">
-${conversationHistory}
-        </div>
-        
-        <p style="margin-top: 20px;">
-          <a href="https://anr.lovable.app/admin/support" style="background: #0066cc; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-            Répondre dans l'admin
-          </a>
-        </p>
-      `;
+    const emailContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+    .info { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .conversation { background: white; padding: 20px; border-radius: 8px; white-space: pre-wrap; font-size: 14px; }
+    .button { display: inline-block; background: #0ea5e9; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+    .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🆘 Demande de support humain</h1>
+    </div>
+    <div class="content">
+      <div class="info">
+        <p><strong>👤 Utilisateur:</strong> ${userName}</p>
+        <p><strong>📧 Email:</strong> ${userEmail}</p>
+        <p><strong>🔑 ID Conversation:</strong> ${conversationId}</p>
+        <p><strong>📅 Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
+      </div>
+      
+      <h3>💬 Historique de la conversation:</h3>
+      <div class="conversation">${conversationHistory}</div>
+      
+      <p style="text-align: center;">
+        <a href="https://anr.lovable.app/admin/support" class="button">Répondre dans l'admin</a>
+      </p>
+    </div>
+    <div class="footer">
+      <p>ANR - Support Client</p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
 
-      // Use Deno's built-in SMTP or a simple fetch to a mail API
-      // For now, we'll log the email content since SMTP requires external libs
-      console.log("[notify-support] Email would be sent to:", supportEmail);
-      console.log("[notify-support] Email content:", emailContent);
+    // Send email
+    await client.send({
+      from: Deno.env.get("SMTP_USER") || "contact@soqotomobil.com",
+      to: supportEmail,
+      subject: `🆘 Demande support: ${userName} - ${userEmail}`,
+      content: `Nouvelle demande de support humain\n\nUtilisateur: ${userName}\nEmail: ${userEmail}\nConversation ID: ${conversationId}\n\nHistorique:\n${conversationHistory}\n\nRépondre: https://anr.lovable.app/admin/support`,
+      html: emailContent,
+    });
 
-      // Try using Resend if available
-      const resendApiKey = Deno.env.get("RESEND_API_KEY");
-      if (resendApiKey) {
-        const resendResponse = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "ANR Support <noreply@anr.app>",
-            to: [supportEmail],
-            subject: `🆘 Demande support: ${userName}`,
-            html: emailContent,
-          }),
-        });
+    await client.close();
 
-        const resendResult = await resendResponse.json();
-        console.log("[notify-support] Resend response:", resendResult);
-      }
-    }
+    console.log("[notify-support] ✅ Email sent successfully to:", supportEmail);
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
