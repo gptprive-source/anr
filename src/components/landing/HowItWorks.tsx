@@ -1,4 +1,6 @@
-import { QrCode, Bell, Video, DoorOpen } from "lucide-react";
+import { QrCode, Bell, Video, DoorOpen, HelpCircle, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const steps = [
   {
@@ -58,6 +60,37 @@ const HowItWorks = () => {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* FAQ Section - Prominent */}
+        <div className="mt-20">
+          <Link to="/faq" className="block">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/10 via-accent/10 to-primary/5 border border-primary/20 p-8 md:p-12 hover:border-primary/40 transition-all group">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+              
+              <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 md:gap-8">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0">
+                  <HelpCircle className="w-10 h-10 md:w-12 md:h-12 text-primary-foreground" />
+                </div>
+                
+                <div className="flex-1 text-center md:text-left">
+                  <h3 className="text-2xl md:text-3xl font-bold mb-2">
+                    Des questions ?
+                  </h3>
+                  <p className="text-muted-foreground text-lg">
+                    Consultez notre FAQ complète pour tout savoir sur l'ANR, l'interphone numérique, les abonnements, le déménagement et bien plus.
+                  </p>
+                </div>
+                
+                <Button size="lg" className="gap-2 group-hover:gap-3 transition-all">
+                  Voir la FAQ
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
     </section>
