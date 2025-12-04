@@ -44,7 +44,8 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("key", "support_email")
       .single();
 
-    const supportEmail = config?.value ? JSON.parse(config.value) : "support@anr.app";
+    // config.value is already a string, no need to JSON.parse
+    const supportEmail = config?.value || "support@anr.app";
 
     const userName = profile 
       ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() 
