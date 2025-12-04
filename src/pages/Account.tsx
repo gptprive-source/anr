@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, HelpCircle } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, HelpCircle, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/layout/BottomNav";
@@ -43,6 +44,7 @@ const Account = () => {
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdminAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -344,6 +346,24 @@ const Account = () => {
               )}
             </div>
           </div>
+        )}
+
+        {/* Admin link */}
+        {isAdmin && (
+          <Link to="/admin" className="block">
+            <div className="glass-effect rounded-xl p-4 flex items-center justify-between bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-primary">Panel Admin</p>
+                  <p className="text-xs text-muted-foreground">Accéder à l'administration</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-primary" />
+            </div>
+          </Link>
         )}
 
         {/* FAQ link */}

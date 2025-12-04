@@ -8,6 +8,7 @@ import { IncomingCallProvider } from "@/contexts/IncomingCallContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallListener";
+import SupportChat from "@/components/support/SupportChat";
 import { useAudioUnlock } from "@/hooks/useAudioUnlock";
 import Index from "./pages/Index";
 import Visitor from "./pages/Visitor";
@@ -27,6 +28,17 @@ import CallHistory from "./pages/CallHistory";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 
+// Admin pages
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminAnalytics from "./pages/admin/Analytics";
+import AdminConfig from "./pages/admin/Config";
+import AdminFAQManager from "./pages/admin/FAQManager";
+import AdminUsers from "./pages/admin/Users";
+import AdminSubscriptions from "./pages/admin/Subscriptions";
+import AdminTeam from "./pages/admin/Team";
+import AdminAuditLog from "./pages/admin/AuditLog";
+import AdminSupport from "./pages/admin/Support";
+
 const queryClient = new QueryClient();
 
 const AppContent = () => {
@@ -39,6 +51,7 @@ const AppContent = () => {
       <Toaster />
       <Sonner />
       <InstallPrompt />
+      <SupportChat />
       <BrowserRouter>
         <GlobalIncomingCallListener />
         <Routes>
@@ -93,6 +106,18 @@ const AppContent = () => {
             }
           />
           <Route path="/faq" element={<FAQ />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/config" element={<AdminConfig />} />
+          <Route path="/admin/faq" element={<AdminFAQManager />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+          <Route path="/admin/team" element={<AdminTeam />} />
+          <Route path="/admin/audit" element={<AdminAuditLog />} />
+          <Route path="/admin/support" element={<AdminSupport />} />
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
