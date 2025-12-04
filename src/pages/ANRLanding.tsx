@@ -70,9 +70,19 @@ const ANRLanding = () => {
 
   const handleNavigate = () => {
     if (!anrData) return;
-    // Use geo: URI scheme to trigger native app chooser (Waze, Google Maps, etc.)
-    const geoUrl = `geo:${anrData.latitude},${anrData.longitude}?q=${anrData.latitude},${anrData.longitude}(${encodeURIComponent(anrData.address)})`;
-    window.location.href = geoUrl;
+    
+    // Detect iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
+    if (isIOS) {
+      // iOS: Use Apple Maps URL (will open in Maps app or offer choice)
+      const mapsUrl = `https://maps.apple.com/?daddr=${anrData.latitude},${anrData.longitude}&q=${encodeURIComponent(anrData.address)}`;
+      window.location.href = mapsUrl;
+    } else {
+      // Android: Use geo: URI scheme to trigger native app chooser (Waze, Google Maps, etc.)
+      const geoUrl = `geo:${anrData.latitude},${anrData.longitude}?q=${anrData.latitude},${anrData.longitude}(${encodeURIComponent(anrData.address)})`;
+      window.location.href = geoUrl;
+    }
   };
 
   const handleCall = () => {
