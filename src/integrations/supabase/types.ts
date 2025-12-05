@@ -971,7 +971,7 @@ export type Database = {
         | "collectivites"
       message_status: "new" | "read" | "in_progress" | "resolved"
       resident_status: "pending" | "verified" | "inactive"
-      sender_type: "particulier" | "societe"
+      sender_type: "particulier" | "societe" | "collectivites"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1112,7 +1112,7 @@ export const Constants = {
       ],
       message_status: ["new", "read", "in_progress", "resolved"],
       resident_status: ["pending", "verified", "inactive"],
-      sender_type: ["particulier", "societe"],
+      sender_type: ["particulier", "societe", "collectivites"],
     },
   },
 } as const

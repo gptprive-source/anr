@@ -17,6 +17,12 @@ const departmentLabels: Record<string, string> = {
   collectivites: "Collectivités territoriales",
 };
 
+const senderTypeLabels: Record<string, string> = {
+  particulier: "Particulier",
+  societe: "Société",
+  collectivites: "Collectivité",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -28,6 +34,8 @@ serve(async (req) => {
     if (!messageId) {
       throw new Error("Message ID required");
     }
+
+    console.log(`Processing contact message: ${messageId}`);
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -86,9 +94,10 @@ serve(async (req) => {
     }
 
     const departmentLabel = departmentLabels[message.department] || message.department;
-    const senderTypeLabel = message.sender_type === "particulier" ? "Particulier" : "Société";
+    const senderTypeLabel = senderTypeLabels[message.sender_type] || message.sender_type;
 
-    const emailHtml = `
+    // Admin notification email
+    const adminEmailHtml = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -128,7 +137,7 @@ serve(async (req) => {
             </div>
             ${message.company_name ? `
             <div class="info-row">
-              <span class="info-label">🏢 Entreprise</span>
+              <span class="info-label">🏢 Organisation</span>
               <span class="info-value">${message.company_name}</span>
             </div>
             ` : ''}
@@ -181,6 +190,70 @@ serve(async (req) => {
       </html>
     `;
 
+    // Confirmation email for the sender
+    const confirmationHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .card { background: white; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+          .header { text-align: center; margin-bottom: 24px; }
+          .header h1 { color: #0ea5e9; margin: 0; font-size: 24px; }
+          .checkmark { width: 60px; height: 60px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+          .message-preview { background: #f4f4f5; border-radius: 8px; padding: 16px; margin: 20px 0; }
+          .message-preview p { margin: 0; color: #71717a; font-size: 14px; line-height: 1.6; }
+          .footer { text-align: center; margin-top: 24px; color: #71717a; font-size: 12px; }
+          .signature { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e4e4e7; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="card">
+            <div class="header">
+              <div class="checkmark">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              </div>
+              <h1>Message bien reçu !</h1>
+            </div>
+            
+            <p style="color: #3f3f46; line-height: 1.7;">
+              Bonjour ${message.first_name},
+            </p>
+            
+            <p style="color: #3f3f46; line-height: 1.7;">
+              Nous avons bien reçu votre message et nous vous remercions de nous avoir contacté. Notre équipe <strong>${departmentLabel}</strong> va examiner votre demande et vous répondra dans les meilleurs délais.
+            </p>
+            
+            <div class="message-preview">
+              <p><strong>Récapitulatif de votre message :</strong></p>
+              ${message.subject ? `<p style="margin-top: 8px;"><em>Objet : ${message.subject}</em></p>` : ''}
+              <p style="margin-top: 8px; white-space: pre-wrap;">${message.message.substring(0, 300)}${message.message.length > 300 ? '...' : ''}</p>
+            </div>
+            
+            <p style="color: #3f3f46; line-height: 1.7;">
+              Si vous avez des questions urgentes, n'hésitez pas à nous recontacter.
+            </p>
+            
+            <div class="signature">
+              <p style="margin: 0; color: #3f3f46;">
+                Cordialement,<br>
+                <strong>L'équipe ANR</strong>
+              </p>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>ANR - Adresse Numérique Résidentielle</p>
+            <p style="margin-top: 8px;">Ceci est un message automatique, merci de ne pas y répondre directement.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
     // Send email using SMTP
     const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
 
@@ -196,22 +269,29 @@ serve(async (req) => {
       },
     });
 
-    // Send to unique recipients
+    // Send notification to admin team
     const uniqueRecipients = [...new Set(recipientEmails)];
-
     await client.send({
       from: SMTP_USER,
       to: uniqueRecipients,
       subject: `📬 Nouveau message - ${departmentLabel} - ${message.first_name} ${message.last_name}`,
-      html: emailHtml,
+      html: adminEmailHtml,
     });
+    console.log(`Admin notification sent to ${uniqueRecipients.length} recipients`);
+
+    // Send confirmation to the sender
+    await client.send({
+      from: SMTP_USER,
+      to: [message.email],
+      subject: `✅ ANR - Nous avons bien reçu votre message`,
+      html: confirmationHtml,
+    });
+    console.log(`Confirmation email sent to ${message.email}`);
 
     await client.close();
 
-    console.log(`Email notification sent to ${uniqueRecipients.length} recipients`);
-
     return new Response(
-      JSON.stringify({ success: true, emailSent: true, recipientCount: uniqueRecipients.length }),
+      JSON.stringify({ success: true, emailSent: true, recipientCount: uniqueRecipients.length, confirmationSent: true }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }

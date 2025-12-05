@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils";
 
 type MessageStatus = "new" | "read" | "in_progress" | "resolved";
 type Department = "administratif" | "commercial" | "partenariat" | "presse" | "investisseurs" | "communication" | "informatique" | "collectivites";
-type SenderType = "particulier" | "societe";
+type SenderType = "particulier" | "societe" | "collectivites";
 
 interface ContactMessage {
   id: string;
@@ -305,6 +305,7 @@ const Messages = () => {
                   <SelectItem value="all">Tous</SelectItem>
                   <SelectItem value="particulier">Particulier</SelectItem>
                   <SelectItem value="societe">Société</SelectItem>
+                  <SelectItem value="collectivites">Collectivité</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex-1 min-w-48">
@@ -375,6 +376,12 @@ const Messages = () => {
                                 Société
                               </Badge>
                             )}
+                            {message.sender_type === "collectivites" && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Landmark className="w-3 h-3 mr-1" />
+                                Collectivité
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-xs text-muted-foreground line-clamp-2">
                             {message.subject || message.message}
@@ -397,7 +404,7 @@ const Messages = () => {
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         {selectedMessage.first_name} {selectedMessage.last_name}
-                        {selectedMessage.sender_type === "societe" && selectedMessage.company_name && (
+                        {(selectedMessage.sender_type === "societe" || selectedMessage.sender_type === "collectivites") && selectedMessage.company_name && (
                           <span className="text-muted-foreground font-normal text-sm">
                             ({selectedMessage.company_name})
                           </span>
@@ -525,7 +532,7 @@ const Messages = () => {
                       <Separator />
 
                       <div className="text-xs text-muted-foreground space-y-2">
-                        <p>Type : {selectedMessage.sender_type === "particulier" ? "Particulier" : "Société"}</p>
+                        <p>Type : {selectedMessage.sender_type === "particulier" ? "Particulier" : selectedMessage.sender_type === "collectivites" ? "Collectivité" : "Société"}</p>
                         {selectedMessage.read_at && (
                           <p>Lu le {format(new Date(selectedMessage.read_at), "dd/MM/yyyy HH:mm")}</p>
                         )}
