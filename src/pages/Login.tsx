@@ -71,9 +71,17 @@ const Login = () => {
       });
       navigate("/dashboard");
     } catch (error: any) {
+      let errorMessage = "Impossible de se connecter";
+      
+      if (error.message === "Failed to fetch") {
+        errorMessage = "Problème de connexion réseau. Vérifiez votre connexion internet et réessayez.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Erreur de connexion",
-        description: error.message || "Impossible de se connecter",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
