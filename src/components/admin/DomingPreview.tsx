@@ -15,39 +15,10 @@ const DomingPreview = ({ anrCode }: DomingPreviewProps) => {
   // Format ANR code for display (ANR-XXXXXX)
   const formattedCode = `ANR-${anrCode.toUpperCase()}`;
 
-  // Generate QR code data URL using a simple QR code library approach
-  const generateQRCodeDataURL = (text: string, size: number): Promise<string> => {
-    return new Promise((resolve) => {
-      // Use the qrcode.react approach with a temporary canvas
-      const QRCode = (window as any).QRCode;
-      if (QRCode) {
-        const tempCanvas = document.createElement("canvas");
-        QRCode.toCanvas(tempCanvas, text, { width: size, margin: 0 }, () => {
-          resolve(tempCanvas.toDataURL());
-        });
-      } else {
-        // Fallback: generate a simple placeholder for preview
-        const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext("2d")!;
-        ctx.fillStyle = "#1E3A8A";
-        ctx.fillRect(0, 0, size, size);
-        ctx.fillStyle = "white";
-        ctx.font = `${size / 10}px Arial`;
-        ctx.textAlign = "center";
-        ctx.fillText("QR", size / 2, size / 2);
-        resolve(canvas.toDataURL());
-      }
-    });
-  };
-
   // Draw the Doming design on a canvas
   const drawDoming = async (canvas: HTMLCanvasElement, size: number) => {
     const ctx = canvas.getContext("2d")!;
-    const padding = size * 0.05;
-    const qrSize = size * 0.65;
-    const qrRadius = qrSize / 2;
+    const qrSize = size * 0.55; // QR code size (smaller to fit in circle without clipping)
     const centerX = size / 2;
     const qrCenterY = size * 0.4;
 
@@ -66,28 +37,41 @@ const DomingPreview = ({ anrCode }: DomingPreviewProps) => {
     ctx.lineWidth = size * 0.005;
     ctx.stroke();
 
-    // Generate QR code
+    // Draw circular background for QR area
+    const circleRadius = size * 0.35;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.arc(centerX, qrCenterY, circleRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw circular border around QR area
+    ctx.strokeStyle = "#1E3A8A";
+    ctx.lineWidth = size * 0.01;
+    ctx.stroke();
+
+    // Generate QR code URL
     const qrUrl = `https://anr.lovable.app/anr/${anrCode}`;
     
-    // Create QR code using qrcode library
+    // Create QR code canvas
     const qrCanvas = document.createElement("canvas");
     qrCanvas.width = qrSize;
     qrCanvas.height = qrSize;
-    const qrCtx = qrCanvas.getContext("2d")!;
 
     // Draw QR code using dynamic import
     try {
       const QRCodeLib = await import("qrcode");
       await QRCodeLib.toCanvas(qrCanvas, qrUrl, {
         width: qrSize,
-        margin: 2,
+        margin: 1,
         color: {
-          dark: "#1E3A8A", // Blue color
+          dark: "#1E3A8A",
           light: "#FFFFFF",
         },
+        errorCorrectionLevel: "H", // High error correction for logo overlay
       });
     } catch (e) {
       // Fallback: draw a placeholder
+      const qrCtx = qrCanvas.getContext("2d")!;
       qrCtx.fillStyle = "#1E3A8A";
       qrCtx.fillRect(0, 0, qrSize, qrSize);
       qrCtx.fillStyle = "white";
@@ -97,23 +81,13 @@ const DomingPreview = ({ anrCode }: DomingPreviewProps) => {
       qrCtx.fillText("QR CODE", qrSize / 2, qrSize / 2);
     }
 
-    // Draw circular mask for QR code
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(centerX, qrCenterY, qrRadius, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(qrCanvas, centerX - qrRadius, qrCenterY - qrRadius, qrSize, qrSize);
-    ctx.restore();
+    // Draw QR code SQUARE (not clipped) - centered in the circle
+    const qrX = centerX - qrSize / 2;
+    const qrY = qrCenterY - qrSize / 2;
+    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
 
-    // Draw circular border around QR
-    ctx.strokeStyle = "#1E3A8A";
-    ctx.lineWidth = size * 0.01;
-    ctx.beginPath();
-    ctx.arc(centerX, qrCenterY, qrRadius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Draw center logo circle (white background)
-    const logoRadius = qrRadius * 0.25;
+    // Draw center logo circle (white background) - smaller for high error correction
+    const logoRadius = qrSize * 0.15;
     ctx.fillStyle = "#FFFFFF";
     ctx.beginPath();
     ctx.arc(centerX, qrCenterY, logoRadius, 0, Math.PI * 2);
@@ -121,10 +95,6 @@ const DomingPreview = ({ anrCode }: DomingPreviewProps) => {
 
     // Draw logo icon (simplified phone/doorbell icon)
     ctx.fillStyle = "#1E3A8A";
-    ctx.strokeStyle = "#1E3A8A";
-    ctx.lineWidth = size * 0.008;
-    
-    // Phone icon
     const iconSize = logoRadius * 1.2;
     const iconX = centerX - iconSize / 4;
     const iconY = qrCenterY - iconSize / 3;
