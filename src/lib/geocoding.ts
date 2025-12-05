@@ -6,6 +6,37 @@ interface GeocodingResult {
   displayName: string;
 }
 
+// Reverse geocode: convert GPS coordinates to human-readable address
+export async function reverseGeocode(latitude: number, longitude: number): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+      {
+        headers: {
+          'User-Agent': 'ANR-App/1.0'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Reverse geocoding request failed:', response.status);
+      return null;
+    }
+
+    const result = await response.json();
+    
+    if (!result || result.error) {
+      console.warn('No reverse geocoding results found');
+      return null;
+    }
+
+    return result.display_name;
+  } catch (error) {
+    console.error('Reverse geocoding error:', error);
+    return null;
+  }
+}
+
 export async function geocodeAddress(address: string): Promise<GeocodingResult | null> {
   try {
     const encodedAddress = encodeURIComponent(address);

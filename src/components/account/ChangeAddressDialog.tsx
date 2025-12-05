@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Home, Loader2 } from "lucide-react";
+import { MapPin, Home, Loader2, AlertTriangle, Navigation } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { geocodeAddress } from "@/lib/geocoding";
+import { geocodeAddress, reverseGeocode, calculateDistance } from "@/lib/geocoding";
 
 interface ChangeAddressDialogProps {
   open: boolean;
@@ -21,13 +23,15 @@ interface ChangeAddressDialogProps {
   onAddressChanged: () => void;
 }
 
+const MISMATCH_THRESHOLD_METERS = 500;
+
 const ChangeAddressDialog = ({
   open,
   onOpenChange,
   currentAddress,
   onAddressChanged,
 }: ChangeAddressDialogProps) => {
-  const [step, setStep] = useState<"input" | "confirm" | "scan">("input");
+  const [step, setStep] = useState<"input" | "mismatch" | "confirm">("input");
   const [newAddress, setNewAddress] = useState("");
   const [habitationName, setHabitationName] = useState("");
   const [floor, setFloor] = useState("");
@@ -37,6 +41,12 @@ const ChangeAddressDialog = ({
     longitude: number;
     displayName: string;
   } | null>(null);
+  
+  // GPS mismatch states
+  const [gpsPosition, setGpsPosition] = useState<{ lat: number; lon: number } | null>(null);
+  const [gpsAddress, setGpsAddress] = useState<string | null>(null);
+  const [selectedSource, setSelectedSource] = useState<"entered" | "gps">("entered");
+  const [distanceMeters, setDistanceMeters] = useState<number>(0);
 
   const handleAddressSubmit = async () => {
     if (!newAddress.trim()) {
@@ -46,18 +56,76 @@ const ChangeAddressDialog = ({
 
     setIsLoading(true);
     try {
+      // 1. Geocode the entered address
       const result = await geocodeAddress(newAddress);
       if (!result) {
         toast.error("Adresse non trouvée. Veuillez vérifier et réessayer.");
+        setIsLoading(false);
         return;
       }
       setGeocodedData(result);
-      setStep("confirm");
+
+      // 2. Get current GPS position
+      if (!navigator.geolocation) {
+        // No geolocation support, skip mismatch check
+        setStep("confirm");
+        setIsLoading(false);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const currentLat = position.coords.latitude;
+          const currentLon = position.coords.longitude;
+          
+          // 3. Calculate distance between GPS and entered address
+          const distance = calculateDistance(
+            currentLat,
+            currentLon,
+            result.latitude,
+            result.longitude
+          );
+          
+          setDistanceMeters(Math.round(distance));
+
+          if (distance > MISMATCH_THRESHOLD_METERS) {
+            // 4. Reverse geocode GPS position
+            const gpsAddr = await reverseGeocode(currentLat, currentLon);
+            setGpsPosition({ lat: currentLat, lon: currentLon });
+            setGpsAddress(gpsAddr || `${currentLat.toFixed(6)}, ${currentLon.toFixed(6)}`);
+            setSelectedSource("entered"); // Default to entered address
+            setStep("mismatch");
+          } else {
+            // Positions are close enough, proceed normally
+            setStep("confirm");
+          }
+          setIsLoading(false);
+        },
+        (error) => {
+          console.warn("Geolocation error:", error);
+          // Can't get GPS, skip mismatch check
+          setStep("confirm");
+          setIsLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
     } catch (error) {
       toast.error("Erreur lors de la vérification de l'adresse");
-    } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleMismatchChoice = async () => {
+    if (selectedSource === "gps" && gpsPosition && gpsAddress) {
+      // Use GPS position instead
+      setGeocodedData({
+        latitude: gpsPosition.lat,
+        longitude: gpsPosition.lon,
+        displayName: gpsAddress,
+      });
+    }
+    // Proceed to confirmation with the selected address
+    setStep("confirm");
   };
 
   const handleConfirmAddress = async () => {
@@ -171,6 +239,10 @@ const ChangeAddressDialog = ({
     setHabitationName("");
     setFloor("");
     setGeocodedData(null);
+    setGpsPosition(null);
+    setGpsAddress(null);
+    setSelectedSource("entered");
+    setDistanceMeters(0);
   };
 
   return (
@@ -183,6 +255,7 @@ const ChangeAddressDialog = ({
           </DialogTitle>
           <DialogDescription>
             {step === "input" && "Saisissez votre nouvelle adresse postale"}
+            {step === "mismatch" && "Vérification de votre position"}
             {step === "confirm" && "Confirmez les informations de votre habitation"}
           </DialogDescription>
         </DialogHeader>
@@ -227,10 +300,95 @@ const ChangeAddressDialog = ({
           </div>
         )}
 
+        {step === "mismatch" && geocodedData && (
+          <div className="space-y-4">
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Attention !</AlertTitle>
+              <AlertDescription>
+                Votre position GPS actuelle ne correspond pas à l'adresse indiquée.
+                Distance : {distanceMeters >= 1000 
+                  ? `${(distanceMeters / 1000).toFixed(1)} km` 
+                  : `${distanceMeters} m`}
+              </AlertDescription>
+            </Alert>
+
+            <p className="text-sm text-muted-foreground">
+              Cochez l'adresse que vous souhaitez utiliser :
+            </p>
+
+            <RadioGroup
+              value={selectedSource}
+              onValueChange={(v) => setSelectedSource(v as "entered" | "gps")}
+              className="space-y-3"
+            >
+              <div 
+                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                  selectedSource === "gps" 
+                    ? "border-primary bg-primary/5" 
+                    : "border-border hover:border-muted-foreground/50"
+                }`}
+                onClick={() => setSelectedSource("gps")}
+              >
+                <div className="flex items-start gap-3">
+                  <RadioGroupItem value="gps" id="gps" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="gps" className="flex items-center gap-2 cursor-pointer font-medium">
+                      <Navigation className="h-4 w-4 text-primary" />
+                      Votre position GPS actuelle
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {gpsAddress}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                  selectedSource === "entered" 
+                    ? "border-primary bg-primary/5" 
+                    : "border-border hover:border-muted-foreground/50"
+                }`}
+                onClick={() => setSelectedSource("entered")}
+              >
+                <div className="flex items-start gap-3">
+                  <RadioGroupItem value="entered" id="entered" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="entered" className="flex items-center gap-2 cursor-pointer font-medium">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      Adresse saisie
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {geocodedData.displayName}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </RadioGroup>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setStep("input")}
+                className="flex-1"
+              >
+                Retour
+              </Button>
+              <Button
+                onClick={handleMismatchChoice}
+                className="flex-1"
+              >
+                Continuer
+              </Button>
+            </div>
+          </div>
+        )}
+
         {step === "confirm" && geocodedData && (
           <div className="space-y-4">
             <div className="p-3 bg-primary/10 rounded-lg">
-              <p className="text-xs text-muted-foreground mb-1">Adresse vérifiée</p>
+              <p className="text-xs text-muted-foreground mb-1">Adresse sélectionnée</p>
               <p className="text-sm font-medium">{geocodedData.displayName}</p>
             </div>
 
