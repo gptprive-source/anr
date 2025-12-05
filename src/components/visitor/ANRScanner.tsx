@@ -89,27 +89,13 @@ const ANRScanner = () => {
         }
       }
 
-      // Check if multi-habitat
-      const { data: habitations } = await supabase
-        .from("habitations")
-        .select("id, name")
-        .eq("anr_id", anr.id);
-
-      if (habitations && habitations.length > 1) {
-        navigate(`/multi-habitat/${targetCode}`, { 
-          state: { 
-            visitorLat: visitorPosition.latitude, 
-            visitorLon: visitorPosition.longitude 
-          } 
-        });
-      } else {
-        navigate(`/call/${targetCode}`, { 
-          state: { 
-            visitorLat: visitorPosition.latitude, 
-            visitorLon: visitorPosition.longitude 
-          } 
-        });
-      }
+      // Redirect to ANRLanding page which shows navigation/call options
+      navigate(`/anr/${targetCode}`, { 
+        state: { 
+          visitorLat: visitorPosition.latitude, 
+          visitorLon: visitorPosition.longitude 
+        } 
+      });
     } catch (error: any) {
       toast({
         title: "Erreur",
