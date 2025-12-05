@@ -20,6 +20,8 @@ const actionLabels: Record<string, string> = {
   role_update: 'Rôle modifié',
   role_remove: 'Rôle retiré',
   user_delete: 'Utilisateur supprimé',
+  security_audit_triggered: 'Audit sécurité lancé',
+  security_issue_resolved: 'Problème sécurité résolu',
 };
 
 const AuditLog = () => {

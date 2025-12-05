@@ -551,6 +551,95 @@ export type Database = {
           },
         ]
       }
+      security_audit_results: {
+        Row: {
+          check_type: string
+          created_at: string
+          description: string
+          id: string
+          is_resolved: boolean | null
+          policy_name: string | null
+          recommendation: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          run_id: string
+          severity: string
+          table_name: string | null
+        }
+        Insert: {
+          check_type: string
+          created_at?: string
+          description: string
+          id?: string
+          is_resolved?: boolean | null
+          policy_name?: string | null
+          recommendation?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id: string
+          severity: string
+          table_name?: string | null
+        }
+        Update: {
+          check_type?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_resolved?: boolean | null
+          policy_name?: string | null
+          recommendation?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id?: string
+          severity?: string
+          table_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_audit_results_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "security_audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_audit_runs: {
+        Row: {
+          completed_at: string | null
+          critical_issues: number | null
+          id: string
+          started_at: string
+          status: string
+          total_issues: number | null
+          trigger_type: string
+          triggered_by: string | null
+          warning_issues: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          critical_issues?: number | null
+          id?: string
+          started_at?: string
+          status?: string
+          total_issues?: number | null
+          trigger_type?: string
+          triggered_by?: string | null
+          warning_issues?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          critical_issues?: number | null
+          id?: string
+          started_at?: string
+          status?: string
+          total_issues?: number | null
+          trigger_type?: string
+          triggered_by?: string | null
+          warning_issues?: number | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean | null
@@ -690,6 +779,26 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_verifications: { Args: never; Returns: undefined }
+      get_permissive_policies: {
+        Args: never
+        Returns: {
+          policy_name: string
+          policy_qual: string
+          table_name: string
+        }[]
+      }
+      get_tables_without_policies: {
+        Args: never
+        Returns: {
+          table_name: string
+        }[]
+      }
+      get_tables_without_rls: {
+        Args: never
+        Returns: {
+          table_name: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
