@@ -1,9 +1,10 @@
 /**
  * Ultra-simple vanilla JS renderer for incoming call screen
+ * OPTIMISÉ: Pré-chargement Daily + Room URL pour connexion instantanée
  */
 
 import { supabase } from "@/integrations/supabase/client";
-import DailyIframe from "@daily-co/daily-js";
+import DailyIframe, { DailyCall } from "@daily-co/daily-js";
 
 interface IncomingCallData {
   participantId: string;
@@ -19,7 +20,7 @@ let gainNode: GainNode | null = null;
 let ringtoneInterval: NodeJS.Timeout | null = null;
 let vibrationInterval: NodeJS.Timeout | null = null;
 let prefetchedRoomUrl: string | null = null;
-let prefetchPromise: Promise<string | null> | null = null;
+let preCreatedCallObject: DailyCall | null = null;
 
 const startRingtone = () => {
   try {
@@ -82,11 +83,21 @@ const stopVibration = () => {
   if ("vibrate" in navigator) navigator.vibrate(0);
 };
 
+// OPTIMISÉ: Nettoyage du callObject pré-créé
+const cleanupPreCreatedCall = async () => {
+  if (preCreatedCallObject) {
+    try {
+      await preCreatedCallObject.leave();
+      await preCreatedCallObject.destroy();
+    } catch (e) {}
+    preCreatedCallObject = null;
+  }
+};
+
 export const showIncomingCall = (data: IncomingCallData) => {
   console.log("[CALL] === showIncomingCall START ===");
   console.log("[CALL] callId:", data.callId);
   
-  // Remove any existing screen first
   const existing = document.getElementById('vanilla-incoming-call');
   if (existing) {
     console.log("[CALL] Removing existing screen");
@@ -94,18 +105,31 @@ export const showIncomingCall = (data: IncomingCallData) => {
   }
   
   currentCallData = data;
-  
-  // Pre-fetch Daily room URL immediately for faster preview
   prefetchedRoomUrl = null;
-  prefetchPromise = (async () => {
+  
+  // OPTIMISÉ: Pré-fetch room URL ET pré-création du callObject en parallèle
+  const prefetchPromise = (async () => {
     try {
       console.log("[CALL] Pre-fetching room URL...");
+      const startTime = Date.now();
+      
       const { data: roomData, error } = await supabase.functions.invoke("daily-room", {
         body: { callId: data.callId, isResident: true }
       });
+      
       if (!error && roomData?.url) {
         prefetchedRoomUrl = roomData.url;
-        console.log("[CALL] Room URL pre-fetched successfully");
+        console.log("[CALL] Room URL pre-fetched in", Date.now() - startTime, "ms");
+        
+        // OPTIMISÉ: Pré-créer le callObject pour preview instantané
+        preCreatedCallObject = DailyIframe.createCallObject({
+          audioSource: false,
+          videoSource: false,
+          subscribeToTracksAutomatically: true,
+          dailyConfig: { avoidEval: true },
+        });
+        console.log("[CALL] CallObject pre-created for instant preview");
+        
         return roomData.url;
       }
     } catch (err) {
@@ -167,7 +191,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
       overflow: hidden;
       position: relative;
     ">
-      <p id="preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #64748b; font-size: 14px;">Chargement...</p>
+      <p id="preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #64748b; font-size: 14px;">Connexion...</p>
     </div>
 
     <div style="display: flex; gap: 32px; position: relative; z-index: 10;">
@@ -241,114 +265,86 @@ export const showIncomingCall = (data: IncomingCallData) => {
     </div>
   `;
   
-  // Append to body
   document.body.appendChild(container);
   
   const check = document.getElementById('vanilla-incoming-call');
-  console.log("[CALL] Element appended, exists in DOM:", !!check);
-  console.log("[CALL] Element display:", check?.style.display);
-  console.log("[CALL] Body children count:", document.body.children.length);
+  console.log("[CALL] Element appended, exists:", !!check);
   
-  // Start alerts
   startRingtone();
   startVibration();
   
-  // Attach handlers
   const answerBtn = document.getElementById('answer-call-btn');
   const declineBtn = document.getElementById('decline-call-btn');
   const previewBtn = document.getElementById('preview-call-btn');
   const previewContainer = document.getElementById('preview-container');
   
-  console.log("[CALL] Answer btn found:", !!answerBtn);
-  console.log("[CALL] Decline btn found:", !!declineBtn);
-  console.log("[CALL] Preview btn found:", !!previewBtn);
-  
-  // Preview functionality - use pre-fetched Daily room URL for faster connection
+  // OPTIMISÉ: Preview utilisant le callObject pré-créé
   if (previewBtn && previewContainer) {
     previewBtn.onclick = async (event) => {
       event.preventDefault();
       event.stopPropagation();
       console.log("[CALL] Preview clicked");
       
-      // Show preview container immediately
       previewContainer.style.display = 'block';
       previewBtn.style.opacity = '0.5';
       previewBtn.style.pointerEvents = 'none';
       
       try {
-        // Use pre-fetched URL or wait for it
-        let roomUrl = prefetchedRoomUrl;
-        if (!roomUrl && prefetchPromise) {
-          console.log("[CALL] Waiting for pre-fetch...");
-          roomUrl = await prefetchPromise;
+        // Attendre le prefetch si pas encore terminé
+        if (!prefetchedRoomUrl) {
+          await prefetchPromise;
         }
         
-        // Fallback: fetch if pre-fetch failed
-        if (!roomUrl) {
-          console.log("[CALL] Pre-fetch missed, fetching now...");
-          const { data: roomData, error } = await supabase.functions.invoke("daily-room", {
-            body: { callId: data.callId, isResident: true }
-          });
-          if (error) {
-            console.error("[CALL] Preview room error:", error);
-            return;
+        if (!prefetchedRoomUrl) {
+          console.error("[CALL] No room URL available");
+          return;
+        }
+        
+        console.log("[CALL] Using prefetched room URL");
+        
+        const loadingText = document.getElementById('preview-loading');
+        if (loadingText) loadingText.textContent = 'Connexion...';
+        
+        previewContainer.innerHTML = '';
+        
+        const videoEl = document.createElement('video');
+        videoEl.autoplay = true;
+        videoEl.playsInline = true;
+        videoEl.muted = false;
+        videoEl.style.cssText = 'width:100%;height:100%;object-fit:cover;background:#000;';
+        previewContainer.appendChild(videoEl);
+        
+        // OPTIMISÉ: Utiliser le callObject pré-créé ou en créer un nouveau
+        const callObject = preCreatedCallObject || DailyIframe.createCallObject({
+          audioSource: false,
+          videoSource: false,
+          subscribeToTracksAutomatically: true,
+        });
+        preCreatedCallObject = null; // Marquer comme utilisé
+        
+        console.log("[CALL] Preview callObject ready (pre-created:", !!preCreatedCallObject, ")");
+        
+        callObject.on('track-started', (event: any) => {
+          if (event.participant && !event.participant.local && event.track?.kind === 'video') {
+            console.log("[CALL] Preview received video track");
+            const stream = new MediaStream([event.track]);
+            videoEl.srcObject = stream;
+            videoEl.play().catch(e => console.error("[CALL] Preview play error:", e));
           }
-          roomUrl = roomData?.url;
-        }
+        });
         
-        console.log("[CALL] Preview using room URL:", roomUrl ? "available" : "none");
+        // OPTIMISÉ: Join immédiat car tout est prêt
+        const startJoin = Date.now();
+        await callObject.join({
+          url: prefetchedRoomUrl,
+          startVideoOff: true,
+          startAudioOff: true,
+          subscribeToTracksAutomatically: true,
+        });
         
-        if (roomUrl) {
-          // Hide loading text
-          const loadingText = document.getElementById('preview-loading');
-          if (loadingText) loadingText.style.display = 'none';
-          
-          // Clear container first
-          previewContainer.innerHTML = '';
-          
-          // Create video element for preview
-          const videoEl = document.createElement('video');
-          videoEl.autoplay = true;
-          videoEl.playsInline = true;
-          videoEl.muted = false;
-          videoEl.style.cssText = 'width:100%;height:100%;object-fit:cover;background:#000;';
-          previewContainer.appendChild(videoEl);
-          
-          // Create call object using pre-imported Daily (no dynamic import needed)
-          const callObject = DailyIframe.createCallObject({
-            audioSource: false,  // Résident: pas de micro en preview
-            videoSource: false,  // Résident: pas de vidéo en preview
-            subscribeToTracksAutomatically: true,
-          });
-          
-          console.log("[CALL] Preview callObject created (using pre-imported Daily)");
-          
-          // Listen for remote video tracks
-          callObject.on('track-started', (event: any) => {
-            console.log("[CALL] Preview track-started:", event.track?.kind, "local:", event.participant?.local);
-            if (event.participant && !event.participant.local && event.track?.kind === 'video') {
-              console.log("[CALL] Preview received remote video track");
-              const stream = new MediaStream([event.track]);
-              videoEl.srcObject = stream;
-              videoEl.play().catch(e => console.error("[CALL] Preview video play error:", e));
-            }
-          });
-          
-          callObject.on('participant-joined', (event: any) => {
-            console.log("[CALL] Preview participant-joined:", event.participant?.session_id, "local:", event.participant?.local);
-          });
-          
-          // Join in receive-only mode
-          await callObject.join({
-            url: roomUrl,
-            startVideoOff: true,
-            startAudioOff: true,
-          });
-          
-          // Store callObject for cleanup
-          (window as any).__previewCallFrame = callObject;
-          console.log("[CALL] Preview joined successfully - participants:", callObject.participants());
-        }
+        console.log("[CALL] Preview joined in", Date.now() - startJoin, "ms");
+        (window as any).__previewCallFrame = callObject;
+        
       } catch (err) {
         console.error("[CALL] Preview error:", err);
       }
@@ -361,7 +357,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
       event.stopPropagation();
       console.log("[CALL] Answer clicked");
       
-      // Cleanup preview if active
+      // Cleanup preview
       if ((window as any).__previewCallFrame) {
         try {
           await (window as any).__previewCallFrame.leave();
@@ -369,22 +365,21 @@ export const showIncomingCall = (data: IncomingCallData) => {
         } catch (e) {}
         (window as any).__previewCallFrame = null;
       }
+      await cleanupPreCreatedCall();
       
-      // 1. Update my participant to "answered"
-      await supabase
-        .from("call_participants")
-        .update({ status: "answered", joined_at: new Date().toISOString() })
-        .eq("id", data.participantId);
-      
-      // 2. Update ALL other ringing participants to "call_answered_by_other"
-      await supabase
-        .from("call_participants")
-        .update({ status: "call_answered_by_other", left_at: new Date().toISOString() })
-        .eq("call_id", data.callId)
-        .eq("status", "ringing")
-        .neq("id", data.participantId);
-      
-      console.log("[CALL] Updated other participants to call_answered_by_other");
+      // PARALLÈLE: Update des participants
+      await Promise.all([
+        supabase
+          .from("call_participants")
+          .update({ status: "answered", joined_at: new Date().toISOString() })
+          .eq("id", data.participantId),
+        supabase
+          .from("call_participants")
+          .update({ status: "call_answered_by_other", left_at: new Date().toISOString() })
+          .eq("call_id", data.callId)
+          .eq("status", "ringing")
+          .neq("id", data.participantId),
+      ]);
       
       hideIncomingCall();
       window.location.href = `/call/${data.callId}?resident=true`;
@@ -397,7 +392,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
       event.stopPropagation();
       console.log("[CALL] Decline clicked");
       
-      // Cleanup preview if active
+      // Cleanup
       if ((window as any).__previewCallFrame) {
         try {
           await (window as any).__previewCallFrame.leave();
@@ -405,14 +400,13 @@ export const showIncomingCall = (data: IncomingCallData) => {
         } catch (e) {}
         (window as any).__previewCallFrame = null;
       }
+      await cleanupPreCreatedCall();
       
-      // Update MY participant status to "declined"
       await supabase
         .from("call_participants")
         .update({ status: "declined", left_at: new Date().toISOString() })
         .eq("id", data.participantId);
       
-      // Check if there are other residents still ringing or in call
       const { data: activeResidents } = await supabase
         .from("call_participants")
         .select("id")
@@ -420,15 +414,12 @@ export const showIncomingCall = (data: IncomingCallData) => {
         .eq("role", "resident")
         .in("status", ["ringing", "answered", "in_group"]);
       
-      // Only end the call if NO other residents can answer
       if (!activeResidents || activeResidents.length === 0) {
-        console.log("[CALL] No other residents available, ending call");
+        console.log("[CALL] No other residents, ending call");
         await supabase
           .from("call_logs")
           .update({ status: "ended", ended_at: new Date().toISOString() })
           .eq("id", data.callId);
-      } else {
-        console.log("[CALL] Other residents can still answer:", activeResidents.length);
       }
       
       hideIncomingCall();
@@ -443,7 +434,7 @@ export const hideIncomingCall = () => {
   stopRingtone();
   stopVibration();
   
-  // Cleanup preview if active
+  // Cleanup all call objects
   if ((window as any).__previewCallFrame) {
     try {
       (window as any).__previewCallFrame.leave();
@@ -451,19 +442,20 @@ export const hideIncomingCall = () => {
     } catch (e) {}
     (window as any).__previewCallFrame = null;
   }
+  cleanupPreCreatedCall();
   
   const existing = document.getElementById('vanilla-incoming-call');
   if (existing) {
     existing.remove();
-    console.log("[CALL] Screen removed from DOM");
+    console.log("[CALL] Screen removed");
   }
   
   currentCallData = null;
+  prefetchedRoomUrl = null;
 };
 
 export const isCallScreenVisible = () => {
-  const visible = !!document.getElementById('vanilla-incoming-call');
-  return visible;
+  return !!document.getElementById('vanilla-incoming-call');
 };
 
 export const getCurrentCallData = () => currentCallData;
