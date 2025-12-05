@@ -73,3 +73,6 @@ verify_jwt = false
 
 [functions.notify-support-request]
 verify_jwt = false
+
+[functions.security-audit]
+verify_jwt = false

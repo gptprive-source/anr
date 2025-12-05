@@ -30,6 +30,8 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
+import { ShieldCheck } from "lucide-react";
+
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
@@ -43,6 +45,7 @@ const navItems = [
   { path: '/admin/support', label: 'Support', icon: MessageCircle, hasBadge: true },
   { path: '/admin/team', label: 'Équipe', icon: UserCog },
   { path: '/admin/audit', label: 'Journal d\'audit', icon: ScrollText },
+  { path: '/admin/security', label: 'Sécurité', icon: ShieldCheck },
 ];
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
