@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot, User, Loader2, UserCog } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, Loader2, UserCog, BookOpen, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,8 +9,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface Message {
-  role: "user" | "assistant" | "agent";
+  role: "user" | "assistant" | "agent" | "faq";
   content: string;
+  source?: "faq" | "ai";
 }
 
 const SupportChat = () => {
@@ -21,6 +22,7 @@ const SupportChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [requestHuman, setRequestHuman] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [lastFaqQuery, setLastFaqQuery] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,11 +67,35 @@ const SupportChat = () => {
     };
   }, [conversationId]);
 
-  const streamChat = async (userMessage: string) => {
-    const newMessages: Message[] = [...messages, { role: "user", content: userMessage }];
-    setMessages(newMessages);
-    setIsLoading(true);
+  // Search FAQ first
+  const searchFaq = async (query: string): Promise<{ found: boolean; answer?: string; question?: string }> => {
+    try {
+      const response = await fetch(
+        `https://mkzpdmyymabgsntwmmir.supabase.co/functions/v1/faq-search`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ query, threshold: 0.3 }),
+        }
+      );
 
+      if (!response.ok) {
+        console.error("FAQ search error:", response.status);
+        return { found: false };
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("FAQ search error:", error);
+      return { found: false };
+    }
+  };
+
+  const streamAiChat = async (userMessage: string, allMessages: Message[]) => {
     let assistantContent = "";
 
     try {
@@ -82,7 +108,10 @@ const SupportChat = () => {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            messages: newMessages.map(m => ({ role: m.role === 'agent' ? 'assistant' : m.role, content: m.content })),
+            messages: allMessages.map(m => ({ 
+              role: m.role === 'agent' || m.role === 'faq' ? 'assistant' : m.role, 
+              content: m.content 
+            })),
           }),
         }
       );
@@ -98,8 +127,8 @@ const SupportChat = () => {
       const decoder = new TextDecoder();
       let buffer = "";
 
-      // Add empty assistant message
-      setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+      // Add empty assistant message with AI source
+      setMessages(prev => [...prev, { role: "assistant", content: "", source: "ai" }]);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -126,7 +155,7 @@ const SupportChat = () => {
               assistantContent += content;
               setMessages(prev => {
                 const updated = [...prev];
-                updated[updated.length - 1] = { role: "assistant", content: assistantContent };
+                updated[updated.length - 1] = { role: "assistant", content: assistantContent, source: "ai" };
                 return updated;
               });
             }
@@ -136,16 +165,14 @@ const SupportChat = () => {
         }
       }
     } catch (error) {
-      console.error("Chat error:", error);
+      console.error("AI chat error:", error);
       toast.error("Erreur lors de l'envoi du message");
       // Remove the empty assistant message on error
       setMessages(prev => prev.filter((_, i) => i !== prev.length - 1));
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim() || isLoading) return;
     const message = input.trim();
     setInput("");
@@ -153,8 +180,47 @@ const SupportChat = () => {
     if (requestHuman && conversationId) {
       // Send directly to conversation (human mode)
       sendHumanMessage(message);
-    } else {
-      streamChat(message);
+      return;
+    }
+
+    // Add user message
+    const userMsg: Message = { role: "user", content: message };
+    setMessages(prev => [...prev, userMsg]);
+    setIsLoading(true);
+    setLastFaqQuery(message);
+
+    try {
+      // Step 1: Search FAQ first (free, instant)
+      const faqResult = await searchFaq(message);
+
+      if (faqResult.found && faqResult.answer) {
+        // FAQ found - display directly
+        setMessages(prev => [...prev, { 
+          role: "faq", 
+          content: faqResult.answer!,
+          source: "faq"
+        }]);
+      } else {
+        // No FAQ match - call AI
+        await streamAiChat(message, [...messages, userMsg]);
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      toast.error("Erreur lors de l'envoi du message");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRetryWithAi = async () => {
+    if (!lastFaqQuery || isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      await streamAiChat(lastFaqQuery, messages);
+    } finally {
+      setIsLoading(false);
+      setLastFaqQuery(null);
     }
   };
 
@@ -226,6 +292,29 @@ const SupportChat = () => {
     }
   };
 
+  const getMessageIcon = (message: Message) => {
+    if (message.role === "user") return <User className="w-4 h-4" />;
+    if (message.role === "agent") return <UserCog className="w-4 h-4" />;
+    if (message.source === "faq") return <BookOpen className="w-4 h-4" />;
+    return <Sparkles className="w-4 h-4" />;
+  };
+
+  const getMessageStyle = (message: Message) => {
+    if (message.role === "user") return "bg-primary text-primary-foreground rounded-br-sm";
+    if (message.role === "agent") return "bg-green-500/20 text-foreground rounded-bl-sm";
+    if (message.source === "faq") return "bg-blue-500/20 text-foreground rounded-bl-sm";
+    return "bg-muted rounded-bl-sm";
+  };
+
+  const getAvatarStyle = (message: Message) => {
+    if (message.role === "user") return "bg-primary text-primary-foreground";
+    if (message.role === "agent") return "bg-green-500 text-white";
+    if (message.source === "faq") return "bg-blue-500 text-white";
+    return "bg-muted";
+  };
+
+  const lastMessageIsFaq = messages.length > 0 && messages[messages.length - 1].source === "faq";
+
   return (
     <>
       {/* Chat Button */}
@@ -252,7 +341,7 @@ const SupportChat = () => {
               <div>
                 <h3 className="font-semibold">Support ANR</h3>
                 <p className="text-xs text-muted-foreground">
-                  {requestHuman ? "Chat avec un agent" : "Assistant virtuel"}
+                  {requestHuman ? "Chat avec un agent" : "FAQ + IA"}
                 </p>
               </div>
             </div>
@@ -267,56 +356,67 @@ const SupportChat = () => {
               <div className="text-center text-muted-foreground py-8">
                 <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p className="text-sm">Bonjour ! Comment puis-je vous aider ?</p>
-                <p className="text-xs mt-2">Posez-moi vos questions sur l'ANR</p>
+                <p className="text-xs mt-2">Je cherche d'abord dans notre FAQ, puis j'utilise l'IA si besoin.</p>
               </div>
             )}
             <div className="space-y-4">
               {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    "flex gap-3",
-                    message.role === "user" ? "flex-row-reverse" : ""
+                <div key={index}>
+                  <div
+                    className={cn(
+                      "flex gap-3",
+                      message.role === "user" ? "flex-row-reverse" : ""
+                    )}
+                  >
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                      getAvatarStyle(message)
+                    )}>
+                      {getMessageIcon(message)}
+                    </div>
+                    <div className={cn(
+                      "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
+                      getMessageStyle(message)
+                    )}>
+                      {message.source && message.role !== "user" && (
+                        <div className="text-[10px] font-medium opacity-70 mb-1 flex items-center gap-1">
+                          {message.source === "faq" ? (
+                            <><BookOpen className="w-3 h-3" /> Réponse de notre FAQ</>
+                          ) : (
+                            <><Sparkles className="w-3 h-3" /> Assistant IA</>
+                          )}
+                        </div>
+                      )}
+                      {message.content || (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Réflexion...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Show retry button after FAQ response */}
+                  {message.source === "faq" && index === messages.length - 1 && !isLoading && (
+                    <div className="mt-2 ml-11">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-7 gap-1.5 text-muted-foreground hover:text-foreground"
+                        onClick={handleRetryWithAi}
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Cette réponse ne m'aide pas
+                      </Button>
+                    </div>
                   )}
-                >
-                  <div className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                    message.role === "user" 
-                      ? "bg-primary text-primary-foreground" 
-                      : message.role === "agent"
-                        ? "bg-green-500 text-white"
-                        : "bg-muted"
-                  )}>
-                    {message.role === "user" ? (
-                      <User className="w-4 h-4" />
-                    ) : message.role === "agent" ? (
-                      <UserCog className="w-4 h-4" />
-                    ) : (
-                      <Bot className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div className={cn(
-                    "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : message.role === "agent"
-                        ? "bg-green-500/20 text-foreground rounded-bl-sm"
-                        : "bg-muted rounded-bl-sm"
-                  )}>
-                    {message.content || (
-                      <span className="flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Réflexion...
-                      </span>
-                    )}
-                  </div>
                 </div>
               ))}
             </div>
           </ScrollArea>
 
           {/* Request Human Support */}
-          {!requestHuman && messages.length > 0 && (
+          {!requestHuman && messages.length > 0 && !lastMessageIsFaq && (
             <div className="px-4 py-2 border-t border-border">
               <Button 
                 variant="outline" 
