@@ -76,3 +76,6 @@ verify_jwt = false
 
 [functions.security-audit]
 verify_jwt = false
+
+[functions.faq-search]
+verify_jwt = false
