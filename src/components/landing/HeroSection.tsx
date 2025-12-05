@@ -81,7 +81,7 @@ const HeroSection = () => {
           </Button>
           <Button variant="glass" size="xl" onClick={() => navigate("/visitor")}>
             <QrCode className="w-5 h-5" />
-            J'appelle un résident'
+            J'appelle un résident
           </Button>
         </div>
 
