@@ -40,7 +40,7 @@ const HeroSection = () => {
         animationDelay: "0.1s"
       }}>
           <Shield className="w-4 h-4 text-primary" />
-          <span className="text-sm text-muted-foreground">Adresse Numérique Résidentielle système breveté</span>
+          <span className="text-sm text-muted-foreground">L'Adresse Numérique Résidentielle</span>
         </div>
 
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 animate-fade-in" style={{
