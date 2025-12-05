@@ -84,6 +84,23 @@ const UpdateGPS = () => {
       const newLon = position.coords.longitude;
       console.log("[UpdateGPS] New position:", newLat, newLon);
 
+      // Calculate distance from current ANR position
+      const oldLat = anrData.latitude;
+      const oldLon = anrData.longitude;
+      const distance = calculateDistance(oldLat, oldLon, newLat, newLon);
+      
+      // Limit GPS update to 200 meters maximum
+      const MAX_GPS_UPDATE_DISTANCE = 200;
+      if (distance > MAX_GPS_UPDATE_DISTANCE) {
+        setErrorMessage(
+          `La nouvelle position est trop éloignée (${Math.round(distance)}m). ` +
+          `Maximum autorisé : ${MAX_GPS_UPDATE_DISTANCE}m. ` +
+          `Placez-vous à proximité de votre badge ANR.`
+        );
+        setLoading(false);
+        return;
+      }
+
       // Update ANR position
       const {
         error: updateError
@@ -93,10 +110,6 @@ const UpdateGPS = () => {
       }).eq("id", anrData.id);
       if (updateError) throw updateError;
 
-      // Calculate distance moved
-      const oldLat = anrData.latitude;
-      const oldLon = anrData.longitude;
-      const distance = calculateDistance(oldLat, oldLon, newLat, newLon);
       setSuccess(true);
       toast({
         title: "✅ Position GPS mise à jour !",
@@ -240,10 +253,13 @@ const UpdateGPS = () => {
             <div className="text-sm">
               <p className="font-medium mb-1">Instructions :</p>
               <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                <li>Placez-vous devant votre badge ANR installé à son emplacement définitive      </li>
+                <li>Placez-vous à moins de 200m de votre badge ANR</li>
                 <li>Scannez le QR code ou la puce NFC</li>
-                <li>Sa localisation exacte sera enregistrée</li>
+                <li>La nouvelle position GPS sera enregistrée</li>
               </ol>
+              <p className="text-xs text-muted-foreground mt-2 italic">
+                ⚠️ La mise à jour est limitée à 200m de distance maximum.
+              </p>
             </div>
           </div>
         </div>
