@@ -561,6 +561,7 @@ export type Database = {
           id: string
           status: string
           stripe_customer_id: string
+          stripe_session_id: string | null
           stripe_subscription_id: string
           updated_at: string | null
           user_id: string
@@ -574,6 +575,7 @@ export type Database = {
           id?: string
           status?: string
           stripe_customer_id: string
+          stripe_session_id?: string | null
           stripe_subscription_id: string
           updated_at?: string | null
           user_id: string
@@ -587,6 +589,7 @@ export type Database = {
           id?: string
           status?: string
           stripe_customer_id?: string
+          stripe_session_id?: string | null
           stripe_subscription_id?: string
           updated_at?: string | null
           user_id?: string
