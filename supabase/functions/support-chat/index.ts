@@ -1,10 +1,22 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Pricing for gpt-4o-mini (per 1M tokens)
+const PRICING = {
+  input: 0.15 / 1_000_000, // $0.15 per 1M input tokens
+  output: 0.60 / 1_000_000, // $0.60 per 1M output tokens
+};
+
+// Rough token estimation (1 token ≈ 4 chars for French)
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,12 +24,16 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, conversationId } = await req.json();
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is not configured");
     }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const systemPrompt = `Tu es l'assistant virtuel ANR (Adresse Numérique Résidentielle). Tu aides les utilisateurs avec leurs questions sur:
 
@@ -29,6 +45,10 @@ serve(async (req) => {
 - La sécurité: visiteur à moins de 30m, appels limités à 2 minutes, vidéo unidirectionnelle
 
 Réponds de manière concise, amicale et en français. Si tu ne connais pas la réponse ou si la question nécessite une assistance humaine, suggère à l'utilisateur de demander à parler à un agent humain.`;
+
+    // Estimate input tokens
+    const inputText = systemPrompt + messages.map((m: any) => m.content).join(" ");
+    const inputTokens = estimateTokens(inputText);
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -61,7 +81,66 @@ Réponds de manière concise, amicale et en français. Si tu ne connais pas la r
       });
     }
 
-    return new Response(response.body, {
+    // Create a TransformStream to intercept and log usage
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    
+    let fullResponse = "";
+    const lastUserMessage = messages[messages.length - 1]?.content || "";
+
+    // Process stream in background
+    (async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          await writer.write(value);
+          
+          // Extract content from SSE
+          const lines = chunk.split("\n");
+          for (const line of lines) {
+            if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+              try {
+                const json = JSON.parse(line.slice(6));
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) fullResponse += content;
+              } catch {}
+            }
+          }
+        }
+        
+        await writer.close();
+        
+        // Log usage after stream completes
+        const outputTokens = estimateTokens(fullResponse);
+        const estimatedCost = (inputTokens * PRICING.input) + (outputTokens * PRICING.output);
+        
+        try {
+          await supabase.from("chatbot_usage").insert({
+            source: "openai",
+            model: "gpt-4o-mini",
+            query_text: lastUserMessage.slice(0, 500),
+            response_preview: fullResponse.slice(0, 100),
+            conversation_id: conversationId || null,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            estimated_cost: estimatedCost,
+          });
+          console.log(`[support-chat] Logged usage: ${inputTokens} in, ${outputTokens} out, $${estimatedCost.toFixed(6)}`);
+        } catch (err) {
+          console.error("[support-chat] Failed to log usage:", err);
+        }
+      } catch (err) {
+        console.error("[support-chat] Stream error:", err);
+        await writer.abort(err);
+      }
+    })();
+
+    return new Response(readable, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {
