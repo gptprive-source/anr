@@ -28,6 +28,7 @@ import CallHistory from "./pages/CallHistory";
 import FAQ from "./pages/FAQ";
 import CGU from "./pages/CGU";
 import Privacy from "./pages/Privacy";
+import NoHabitation from "./pages/NoHabitation";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -113,6 +114,14 @@ const AppContent = () => {
           <Route path="/faq" element={<FAQ />} />
           <Route path="/cgu" element={<CGU />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route
+            path="/no-habitation"
+            element={
+              <ProtectedRoute>
+                <NoHabitation />
+              </ProtectedRoute>
+            }
+          />
           
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboard />} />
