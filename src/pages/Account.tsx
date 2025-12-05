@@ -11,26 +11,22 @@ import BottomNav from "@/components/layout/BottomNav";
 import DeleteAccountDialog from "@/components/account/DeleteAccountDialog";
 import ChangeAddressDialog from "@/components/account/ChangeAddressDialog";
 import LeaveHabitationDialog from "@/components/account/LeaveHabitationDialog";
-
 interface ProfileData {
   first_name: string | null;
   last_name: string | null;
   phone_number: string | null;
 }
-
 interface SubscriptionData {
   status: string;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
 }
-
 interface HabitationData {
   id: string;
   name: string;
   anr_address: string;
   is_owner: boolean;
 }
-
 const Account = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,62 +39,58 @@ const Account = () => {
   const [showChangeAddressDialog, setShowChangeAddressDialog] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  const { isAdmin } = useAdminAuth();
-  const { toast } = useToast();
-
+  const {
+    user,
+    signOut
+  } = useAuth();
+  const {
+    isAdmin
+  } = useAdminAuth();
+  const {
+    toast
+  } = useToast();
   useEffect(() => {
     if (user) {
       fetchData();
     }
   }, [user]);
-
   const fetchData = async () => {
     try {
       // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("first_name, last_name, phone_number")
-        .eq("id", user?.id)
-        .single();
-
+      const {
+        data: profileData,
+        error: profileError
+      } = await supabase.from("profiles").select("first_name, last_name, phone_number").eq("id", user?.id).single();
       if (profileError) throw profileError;
       setProfile(profileData);
       setPhoneNumber(profileData.phone_number || "");
 
       // Fetch subscription
-      const { data: subData } = await supabase
-        .from("subscriptions")
-        .select("status, current_period_end, cancel_at_period_end")
-        .eq("user_id", user?.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
+      const {
+        data: subData
+      } = await supabase.from("subscriptions").select("status, current_period_end, cancel_at_period_end").eq("user_id", user?.id).order("created_at", {
+        ascending: false
+      }).limit(1).maybeSingle();
       setSubscription(subData);
 
       // Fetch habitation
-      const { data: residentData } = await supabase
-        .from("residents")
-        .select(`
+      const {
+        data: residentData
+      } = await supabase.from("residents").select(`
           is_owner,
           habitation:habitations (
             id,
             name,
             anr:anrs (address)
           )
-        `)
-        .eq("user_id", user?.id)
-        .eq("status", "verified")
-        .maybeSingle();
-
+        `).eq("user_id", user?.id).eq("status", "verified").maybeSingle();
       if (residentData?.habitation) {
         const hab = residentData.habitation as any;
         setHabitation({
           id: hab.id,
           name: hab.name,
           anr_address: hab.anr?.address || "",
-          is_owner: residentData.is_owner || false,
+          is_owner: residentData.is_owner || false
         });
       }
     } catch (error) {
@@ -107,42 +99,40 @@ const Account = () => {
       setLoading(false);
     }
   };
-
   const handleSavePhone = async () => {
     if (!user) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ phone_number: phoneNumber.trim() || null })
-        .eq("id", user.id);
-
+      const {
+        error
+      } = await supabase.from("profiles").update({
+        phone_number: phoneNumber.trim() || null
+      }).eq("id", user.id);
       if (error) throw error;
-
       toast({
         title: "Numéro enregistré",
-        description: "Votre numéro de téléphone a été mis à jour",
+        description: "Votre numéro de téléphone a été mis à jour"
       });
     } catch (error: any) {
       console.error("Error saving phone:", error);
       toast({
         title: "Erreur",
         description: "Impossible de sauvegarder le numéro",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setSaving(false);
     }
   };
-
   const handleManageSubscription = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
-
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       if (data?.url) {
         window.open(data.url, "_blank");
       }
@@ -151,63 +141,67 @@ const Account = () => {
       toast({
         title: "Erreur",
         description: error.message || "Impossible d'ouvrir le portail de gestion",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setPortalLoading(false);
     }
   };
-
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center pb-16">
+    return <div className="min-h-screen flex items-center justify-center pb-16">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
-  const fullName = profile 
-    ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Utilisateur"
-    : "Utilisateur";
-
+  const fullName = profile ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Utilisateur" : "Utilisateur";
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "—";
     return new Date(dateString).toLocaleDateString("fr-FR", {
       day: "numeric",
       month: "long",
-      year: "numeric",
+      year: "numeric"
     });
   };
-
   const getSubscriptionStatus = () => {
-    if (!subscription) return { label: "Aucun abonnement", color: "text-muted-foreground" };
+    if (!subscription) return {
+      label: "Aucun abonnement",
+      color: "text-muted-foreground"
+    };
     switch (subscription.status) {
       case "active":
-        return subscription.cancel_at_period_end 
-          ? { label: "Annulé (actif jusqu'au terme)", color: "text-warning" }
-          : { label: "Actif", color: "text-success" };
+        return subscription.cancel_at_period_end ? {
+          label: "Annulé (actif jusqu'au terme)",
+          color: "text-warning"
+        } : {
+          label: "Actif",
+          color: "text-success"
+        };
       case "past_due":
-        return { label: "Paiement en retard", color: "text-destructive" };
+        return {
+          label: "Paiement en retard",
+          color: "text-destructive"
+        };
       case "canceled":
-        return { label: "Annulé", color: "text-destructive" };
+        return {
+          label: "Annulé",
+          color: "text-destructive"
+        };
       default:
-        return { label: subscription.status, color: "text-muted-foreground" };
+        return {
+          label: subscription.status,
+          color: "text-muted-foreground"
+        };
     }
   };
-
   const statusInfo = getSubscriptionStatus();
-
-  return (
-    <div className="min-h-screen pb-20">
+  return <div className="min-h-screen pb-20">
       <div className="max-w-lg mx-auto p-4 space-y-6">
         {/* Header */}
         <div className="pt-4">
-          <h1 className="text-2xl font-bold">Mon compte</h1>
+          <h1 className="text-2xl font-bold">Mon compte Interphone</h1>
         </div>
 
         {/* Profile card */}
@@ -224,8 +218,7 @@ const Account = () => {
         </div>
 
         {/* Subscription section */}
-        {subscription && (
-          <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4">
+        {subscription && <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <CreditCard className="w-5 h-5 text-primary" />
@@ -246,23 +239,13 @@ const Account = () => {
               </p>
             </div>
 
-            <Button 
-              variant="outline" 
-              className="w-full gap-2" 
-              onClick={handleManageSubscription}
-              disabled={portalLoading}
-            >
-              {portalLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
+            <Button variant="outline" className="w-full gap-2" onClick={handleManageSubscription} disabled={portalLoading}>
+              {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>
                   <ExternalLink className="w-4 h-4" />
                   Gérer mon abonnement
-                </>
-              )}
+                </>}
             </Button>
-          </div>
-        )}
+          </div>}
 
         {/* Info sections */}
         <div className="space-y-3">
@@ -288,18 +271,8 @@ const Account = () => {
               <p className="text-sm text-muted-foreground">Numéro de téléphone</p>
             </div>
             <div className="flex gap-2">
-              <Input
-                type="tel"
-                placeholder="Ex: +33 6 12 34 56 78"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                className="flex-1"
-              />
-              <Button 
-                onClick={handleSavePhone} 
-                disabled={saving}
-                size="icon"
-              >
+              <Input type="tel" placeholder="Ex: +33 6 12 34 56 78" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="flex-1" />
+              <Button onClick={handleSavePhone} disabled={saving} size="icon">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               </Button>
             </div>
@@ -307,8 +280,7 @@ const Account = () => {
         </div>
 
         {/* Habitation section */}
-        {habitation && (
-          <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4">
+        {habitation && <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <Home className="w-5 h-5 text-primary" />
@@ -325,32 +297,18 @@ const Account = () => {
             </div>
 
             <div className="flex gap-2">
-              {habitation.is_owner ? (
-                <Button 
-                  variant="outline" 
-                  className="flex-1 gap-2" 
-                  onClick={() => setShowChangeAddressDialog(true)}
-                >
+              {habitation.is_owner ? <Button variant="outline" className="flex-1 gap-2" onClick={() => setShowChangeAddressDialog(true)}>
                   <MapPin className="w-4 h-4" />
                   Déménager
-                </Button>
-              ) : (
-                <Button 
-                  variant="outline" 
-                  className="flex-1 gap-2 text-destructive hover:text-destructive" 
-                  onClick={() => setShowLeaveDialog(true)}
-                >
+                </Button> : <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive" onClick={() => setShowLeaveDialog(true)}>
                   <LogOut className="w-4 h-4" />
                   Quitter l'habitation
-                </Button>
-              )}
+                </Button>}
             </div>
-          </div>
-        )}
+          </div>}
 
         {/* Admin link */}
-        {isAdmin && (
-          <Link to="/admin" className="block">
+        {isAdmin && <Link to="/admin" className="block">
             <div className="glass-effect rounded-xl p-4 flex items-center justify-between bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -363,8 +321,7 @@ const Account = () => {
               </div>
               <ChevronRight className="w-5 h-5 text-primary" />
             </div>
-          </Link>
-        )}
+          </Link>}
 
         {/* FAQ link */}
         <Link to="/faq" className="block">
@@ -381,52 +338,28 @@ const Account = () => {
 
         {/* Actions */}
         <div className="pt-4 space-y-3">
-          <Button 
-            variant="outline" 
-            className="w-full gap-2" 
-            onClick={handleSignOut}
-          >
+          <Button variant="outline" className="w-full gap-2" onClick={handleSignOut}>
             <LogOut className="w-5 h-5" />
             Se déconnecter
           </Button>
 
-          <Button 
-            variant="destructive" 
-            className="w-full gap-2" 
-            onClick={() => setShowDeleteDialog(true)}
-          >
+          <Button variant="destructive" className="w-full gap-2" onClick={() => setShowDeleteDialog(true)}>
             <Trash2 className="w-5 h-5" />
             Supprimer mon compte
           </Button>
         </div>
       </div>
 
-      <DeleteAccountDialog
-        open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-        profile={profile}
-      />
+      <DeleteAccountDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} profile={profile} />
 
-      <ChangeAddressDialog
-        open={showChangeAddressDialog}
-        onOpenChange={setShowChangeAddressDialog}
-        currentAddress={habitation?.anr_address}
-        onAddressChanged={fetchData}
-      />
+      <ChangeAddressDialog open={showChangeAddressDialog} onOpenChange={setShowChangeAddressDialog} currentAddress={habitation?.anr_address} onAddressChanged={fetchData} />
 
-      <LeaveHabitationDialog
-        open={showLeaveDialog}
-        onOpenChange={setShowLeaveDialog}
-        habitationName={habitation?.name}
-        onLeft={() => {
-          setHabitation(null);
-          fetchData();
-        }}
-      />
+      <LeaveHabitationDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog} habitationName={habitation?.name} onLeft={() => {
+      setHabitation(null);
+      fetchData();
+    }} />
 
       <BottomNav />
-    </div>
-  );
+    </div>;
 };
-
 export default Account;
