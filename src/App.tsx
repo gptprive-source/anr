@@ -28,6 +28,7 @@ import CallHistory from "./pages/CallHistory";
 import FAQ from "./pages/FAQ";
 import CGU from "./pages/CGU";
 import Privacy from "./pages/Privacy";
+import Contact from "./pages/Contact";
 import NoHabitation from "./pages/NoHabitation";
 import NotFound from "./pages/NotFound";
 
@@ -47,6 +48,7 @@ import AdminCGUEditor from "./pages/admin/CGUEditor";
 import AdminPrivacyEditor from "./pages/admin/PrivacyEditor";
 import AdminSecurity from "./pages/admin/Security";
 import AdminChatbotStats from "./pages/admin/ChatbotStats";
+import AdminMessages from "./pages/admin/Messages";
 
 const queryClient = new QueryClient();
 
@@ -117,6 +119,7 @@ const AppContent = () => {
           <Route path="/faq" element={<FAQ />} />
           <Route path="/cgu" element={<CGU />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/contact" element={<Contact />} />
           <Route
             path="/no-habitation"
             element={
@@ -142,6 +145,7 @@ const AppContent = () => {
           <Route path="/admin/support" element={<AdminSupport />} />
           <Route path="/admin/chatbot" element={<AdminChatbotStats />} />
           <Route path="/admin/security" element={<AdminSecurity />} />
+          <Route path="/admin/messages" element={<AdminMessages />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>

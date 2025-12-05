@@ -290,6 +290,78 @@ export type Database = {
           },
         ]
       }
+      contact_messages: {
+        Row: {
+          address: string | null
+          anr_code: string | null
+          assigned_to: string | null
+          company_name: string | null
+          created_at: string
+          department: Database["public"]["Enums"]["contact_department"]
+          email: string
+          first_name: string
+          id: string
+          internal_notes: string | null
+          last_name: string
+          message: string
+          phone: string | null
+          read_at: string | null
+          read_by: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          sender_type: Database["public"]["Enums"]["sender_type"]
+          status: Database["public"]["Enums"]["message_status"]
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          anr_code?: string | null
+          assigned_to?: string | null
+          company_name?: string | null
+          created_at?: string
+          department: Database["public"]["Enums"]["contact_department"]
+          email: string
+          first_name: string
+          id?: string
+          internal_notes?: string | null
+          last_name: string
+          message: string
+          phone?: string | null
+          read_at?: string | null
+          read_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sender_type?: Database["public"]["Enums"]["sender_type"]
+          status?: Database["public"]["Enums"]["message_status"]
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          anr_code?: string | null
+          assigned_to?: string | null
+          company_name?: string | null
+          created_at?: string
+          department?: Database["public"]["Enums"]["contact_department"]
+          email?: string
+          first_name?: string
+          id?: string
+          internal_notes?: string | null
+          last_name?: string
+          message?: string
+          phone?: string | null
+          read_at?: string | null
+          read_by?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sender_type?: Database["public"]["Enums"]["sender_type"]
+          status?: Database["public"]["Enums"]["message_status"]
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       doming_orders: {
         Row: {
           anr_id: string
@@ -805,6 +877,27 @@ export type Database = {
           },
         ]
       }
+      user_departments: {
+        Row: {
+          created_at: string
+          department: Database["public"]["Enums"]["contact_department"]
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department: Database["public"]["Enums"]["contact_department"]
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department?: Database["public"]["Enums"]["contact_department"]
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -867,7 +960,18 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "super_admin" | "analyst"
+      contact_department:
+        | "administratif"
+        | "commercial"
+        | "partenariat"
+        | "presse"
+        | "investisseurs"
+        | "communication"
+        | "informatique"
+        | "collectivites"
+      message_status: "new" | "read" | "in_progress" | "resolved"
       resident_status: "pending" | "verified" | "inactive"
+      sender_type: "particulier" | "societe"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -996,7 +1100,19 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user", "super_admin", "analyst"],
+      contact_department: [
+        "administratif",
+        "commercial",
+        "partenariat",
+        "presse",
+        "investisseurs",
+        "communication",
+        "informatique",
+        "collectivites",
+      ],
+      message_status: ["new", "read", "in_progress", "resolved"],
       resident_status: ["pending", "verified", "inactive"],
+      sender_type: ["particulier", "societe"],
     },
   },
 } as const
