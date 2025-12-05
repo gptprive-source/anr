@@ -6,8 +6,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Html5Qrcode } from "html5-qrcode";
+import { useAppConfig } from "@/hooks/useAppConfig";
 import BottomNav from "@/components/layout/BottomNav";
+
 type ScanMode = "qr" | "nfc";
+const DEFAULT_GPS_DISTANCE = 200;
+
 const UpdateGPS = () => {
   const [mode, setMode] = useState<ScanMode>("qr");
   const [loading, setLoading] = useState(false);
@@ -16,12 +20,10 @@ const UpdateGPS = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { getConfig } = useAppConfig();
+  const supportEmail = getConfig("support_email") || "support@anr.fr";
 
   // Cleanup scanner on unmount
   useEffect(() => {
@@ -31,6 +33,7 @@ const UpdateGPS = () => {
       }
     };
   }, []);
+
   const extractAnrCode = (input: string): string => {
     // Check if it's a URL containing /anr/CODE
     const urlMatch = input.match(/\/anr\/([A-Z0-9-]+)/i);
@@ -40,6 +43,7 @@ const UpdateGPS = () => {
     // Otherwise return the raw input (assuming it's already the code)
     return input.trim().toUpperCase();
   };
+
   const handleScan = async (scannedCode: string) => {
     if (loading) return;
     setLoading(true);
@@ -48,27 +52,34 @@ const UpdateGPS = () => {
       const anrCode = extractAnrCode(scannedCode);
       console.log("[UpdateGPS] Scanned ANR code:", anrCode);
 
-      // Verify that the user is owner of this ANR
-      const {
-        data: ownership,
-        error: ownerError
-      } = await supabase.from("residents").select(`
+      // Verify that the user is owner of this ANR and get ANR data including max_gps_update_distance
+      const { data: ownership, error: ownerError } = await supabase
+        .from("residents")
+        .select(`
           is_owner,
           habitations!inner (
             anrs!inner (
               id,
               code,
               latitude,
-              longitude
+              longitude,
+              max_gps_update_distance
             )
           )
-        `).eq("user_id", user?.id).eq("is_owner", true).eq("status", "verified").eq("habitations.anrs.code", anrCode).maybeSingle();
+        `)
+        .eq("user_id", user?.id)
+        .eq("is_owner", true)
+        .eq("status", "verified")
+        .eq("habitations.anrs.code", anrCode)
+        .maybeSingle();
+
       if (ownerError) throw ownerError;
       if (!ownership) {
         setErrorMessage("Cet ANR ne vous appartient pas ou vous n'êtes pas propriétaire.");
         setLoading(false);
         return;
       }
+
       const anrData = (ownership.habitations as any).anrs;
       console.log("[UpdateGPS] ANR found:", anrData);
 
@@ -89,13 +100,15 @@ const UpdateGPS = () => {
       const oldLon = anrData.longitude;
       const distance = calculateDistance(oldLat, oldLon, newLat, newLon);
       
-      // Limit GPS update to 200 meters maximum
-      const MAX_GPS_UPDATE_DISTANCE = 200;
-      if (distance > MAX_GPS_UPDATE_DISTANCE) {
+      // Use ANR-specific distance or default
+      const maxDistance = anrData.max_gps_update_distance || DEFAULT_GPS_DISTANCE;
+      console.log("[UpdateGPS] Max distance for this ANR:", maxDistance);
+      
+      if (distance > maxDistance) {
         setErrorMessage(
           `La nouvelle position est trop éloignée (${Math.round(distance)}m). ` +
-          `Maximum autorisé : ${MAX_GPS_UPDATE_DISTANCE}m. ` +
-          `Placez-vous à proximité de votre badge ANR.`
+          `Maximum autorisé pour cette ANR : ${maxDistance}m.\n\n` +
+          `📞 Pour les grands ensembles ou cas particuliers, contactez le support : ${supportEmail}`
         );
         setLoading(false);
         return;
@@ -253,12 +266,14 @@ const UpdateGPS = () => {
             <div className="text-sm">
               <p className="font-medium mb-1">Instructions :</p>
               <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                <li>Placez-vous à moins de 200m de votre badge ANR</li>
+                <li>Placez-vous à proximité de votre badge ANR</li>
                 <li>Scannez le QR code ou la puce NFC</li>
                 <li>La nouvelle position GPS sera enregistrée</li>
               </ol>
               <p className="text-xs text-muted-foreground mt-2 italic">
-                ⚠️ La mise à jour est limitée à 200m de distance maximum.
+                ⚠️ Distance maximale par défaut : {DEFAULT_GPS_DISTANCE}m.
+                <br />
+                Pour les grands ensembles (HLM, zones industrielles), contactez le support pour augmenter cette limite.
               </p>
             </div>
           </div>
