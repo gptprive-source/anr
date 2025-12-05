@@ -33,6 +33,7 @@ const ChangeAddressDialog = ({
 }: ChangeAddressDialogProps) => {
   const [step, setStep] = useState<"input" | "mismatch" | "confirm">("input");
   const [newAddress, setNewAddress] = useState("");
+  const [originalAddress, setOriginalAddress] = useState(""); // Adresse saisie par l'utilisateur
   const [habitationName, setHabitationName] = useState("");
   const [floor, setFloor] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +55,9 @@ const ChangeAddressDialog = ({
       return;
     }
 
+    // Sauvegarder l'adresse originale saisie par l'utilisateur
+    setOriginalAddress(newAddress.trim());
+    
     setIsLoading(true);
     try {
       // 1. Geocode the entered address
@@ -156,13 +160,14 @@ const ChangeAddressDialog = ({
         anrId = existingAnrs[0].id;
         toast.info("ANR existante détectée à cette adresse");
       } else {
-        // Create new ANR
+        // Create new ANR - utiliser l'adresse saisie par l'utilisateur
         const anrCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const addressToUse = selectedSource === "gps" ? gpsAddress : originalAddress;
         const { data: newAnr, error: anrError } = await supabase
           .from("anrs")
           .insert({
             code: anrCode,
-            address: geocodedData.displayName,
+            address: addressToUse || originalAddress,
             latitude: geocodedData.latitude,
             longitude: geocodedData.longitude,
           })
@@ -205,8 +210,9 @@ const ChangeAddressDialog = ({
 
       if (resError) throw resError;
 
-      // If new ANR, create free Doming order
+      // If new ANR, create free Doming order - utiliser l'adresse saisie
       if (isNewAnr) {
+        const shippingAddress = selectedSource === "gps" ? gpsAddress : originalAddress;
         await supabase.from("doming_orders").insert({
           user_id: user.id,
           anr_id: anrId,
@@ -215,7 +221,7 @@ const ChangeAddressDialog = ({
           total_price: 0,
           is_free: true,
           status: "pending",
-          shipping_address: geocodedData.displayName,
+          shipping_address: shippingAddress || originalAddress,
         });
         toast.success("Nouvelle ANR créée ! Un Doming gratuit vous sera envoyé.");
       } else {
@@ -236,6 +242,7 @@ const ChangeAddressDialog = ({
   const resetForm = () => {
     setStep("input");
     setNewAddress("");
+    setOriginalAddress("");
     setHabitationName("");
     setFloor("");
     setGeocodedData(null);
@@ -360,7 +367,7 @@ const ChangeAddressDialog = ({
                       Adresse saisie
                     </Label>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {geocodedData.displayName}
+                      {originalAddress}
                     </p>
                   </div>
                 </div>
@@ -389,7 +396,9 @@ const ChangeAddressDialog = ({
           <div className="space-y-4">
             <div className="p-3 bg-primary/10 rounded-lg">
               <p className="text-xs text-muted-foreground mb-1">Adresse sélectionnée</p>
-              <p className="text-sm font-medium">{geocodedData.displayName}</p>
+              <p className="text-sm font-medium">
+                {selectedSource === "gps" ? gpsAddress : originalAddress}
+              </p>
             </div>
 
             <div className="space-y-2">
