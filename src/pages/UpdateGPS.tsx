@@ -229,7 +229,7 @@ const UpdateGPS = () => {
    
  
           </h1>
-            <p className="text-sm text-muted-foreground">Scan depuis l'emplacement du badge</p>
+            
           </div>
         </div>
 
@@ -240,9 +240,9 @@ const UpdateGPS = () => {
             <div className="text-sm">
               <p className="font-medium mb-1">Instructions :</p>
               <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                <li>Placez-vous devant votre badge ANR installé</li>
+                <li>Placez-vous devant votre badge ANR installé à son emplacement définitive      </li>
                 <li>Scannez le QR code ou la puce NFC</li>
-                <li>La position GPS exacte sera enregistrée</li>
+                <li>Sa localisation exacte sera enregistrée</li>
               </ol>
             </div>
           </div>
