@@ -92,7 +92,7 @@ const RGPDSubprocessors = () => {
                 Ajouter
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-xl">
+            <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingEntry ? "Modifier le sous-traitant" : "Nouveau sous-traitant"}
