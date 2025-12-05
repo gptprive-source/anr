@@ -1,4 +1,4 @@
-import { useRef, useEffect, memo } from "react";
+import { useRef, useEffect, memo, useMemo } from "react";
 import { User, VideoOff } from "lucide-react";
 import { RemoteParticipant } from "@/hooks/useDaily";
 
@@ -55,32 +55,71 @@ const VideoTile = memo(({
 
 VideoTile.displayName = "VideoTile";
 
+// OPTIMISÉ: Composant audio séparé et mémorisé
+const AudioElement = memo(({ audioTrack, sessionId }: { audioTrack: MediaStreamTrack; sessionId: string }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (audioRef.current && audioTrack) {
+      // Réutiliser le stream si possible
+      if (!streamRef.current || streamRef.current.getAudioTracks()[0]?.id !== audioTrack.id) {
+        streamRef.current = new MediaStream([audioTrack]);
+      }
+      audioRef.current.srcObject = streamRef.current;
+      audioRef.current.play().catch(e => console.warn("[AudioElement] Play error:", e));
+    }
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.srcObject = null;
+      }
+    };
+  }, [audioTrack]);
+
+  return (
+    <audio
+      ref={audioRef}
+      autoPlay
+      playsInline
+      style={{ display: 'none' }}
+      data-session={sessionId}
+    />
+  );
+});
+
+AudioElement.displayName = "AudioElement";
+
 const VideoGrid = memo(({ 
   localStream, 
   remoteParticipants, 
   showLocalVideo,
   isConnected,
 }: VideoGridProps) => {
-  // Filter participants with video
-  const participantsWithVideo = remoteParticipants.filter(p => p.videoTrack || p.audioTrack);
-  const totalTiles = participantsWithVideo.length + (showLocalVideo ? 1 : 0);
+  // OPTIMISÉ: Mémoisation des participants avec tracks
+  const participantsWithMedia = useMemo(() => 
+    remoteParticipants.filter(p => p.videoTrack || p.audioTrack),
+    [remoteParticipants]
+  );
 
-  // Determine grid layout
+  const totalTiles = participantsWithMedia.length + (showLocalVideo ? 1 : 0);
+
   const getGridClass = () => {
     if (totalTiles <= 1) return "grid-cols-1 grid-rows-1";
     if (totalTiles === 2) return "grid-cols-2 grid-rows-1";
     if (totalTiles <= 4) return "grid-cols-2 grid-rows-2";
-    return "grid-cols-3 grid-rows-2"; // Max 6
+    return "grid-cols-3 grid-rows-2";
   };
 
-  // Create stream from tracks
-  const createStream = (participant: RemoteParticipant): MediaStream | null => {
-    const tracks = [participant.videoTrack, participant.audioTrack].filter(Boolean) as MediaStreamTrack[];
-    if (tracks.length === 0) return null;
-    return new MediaStream(tracks);
-  };
+  // OPTIMISÉ: Mémoisation des streams vidéo
+  const remoteStreams = useMemo(() => {
+    return participantsWithMedia.map(p => ({
+      ...p,
+      stream: p.videoTrack ? new MediaStream([p.videoTrack]) : null,
+    }));
+  }, [participantsWithMedia]);
 
-  if (!isConnected && participantsWithVideo.length === 0) {
+  if (!isConnected && participantsWithMedia.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-secondary">
         <div className="text-center">
@@ -95,38 +134,27 @@ const VideoGrid = memo(({
 
   return (
     <div className="flex-1 flex items-center justify-center p-2">
-      {/* Hidden audio elements for remote participants */}
-      {remoteParticipants.map((participant) => {
-        if (participant.audioTrack) {
-          return (
-            <audio
-              key={`audio-${participant.sessionId}`}
-              ref={(el) => {
-                if (el && participant.audioTrack) {
-                  el.srcObject = new MediaStream([participant.audioTrack]);
-                  el.play().catch(console.error);
-                }
-              }}
-              autoPlay
-              style={{ display: 'none' }}
-            />
-          );
-        }
-        return null;
-      })}
+      {/* OPTIMISÉ: Audio éléments séparés et mémorisés pour chaque participant */}
+      {remoteParticipants.map((participant) => 
+        participant.audioTrack ? (
+          <AudioElement 
+            key={`audio-${participant.sessionId}`}
+            audioTrack={participant.audioTrack}
+            sessionId={participant.sessionId}
+          />
+        ) : null
+      )}
 
       <div className={`grid ${getGridClass()} gap-2 w-full max-w-2xl`}>
-        {/* Remote participants */}
-        {participantsWithVideo.map((participant, index) => (
+        {remoteStreams.map((participant, index) => (
           <VideoTile
             key={participant.sessionId}
-            stream={createStream(participant)}
+            stream={participant.stream}
             label={participant.visitorVideo ? "Visiteur" : `Résident ${index + 1}`}
             hasVideo={!!participant.videoTrack}
           />
         ))}
 
-        {/* Local video (only shown in double mode) */}
         {showLocalVideo && localStream && (
           <VideoTile
             stream={localStream}

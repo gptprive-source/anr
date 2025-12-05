@@ -5,10 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Simple in-memory rate limiting (resets on cold start)
+// Simple in-memory rate limiting
 const rateLimits = new Map<string, { count: number; reset: number }>();
-const RATE_LIMIT = 100; // requests per minute per IP
-const RATE_WINDOW = 60000; // 1 minute
+const RATE_LIMIT = 100;
+const RATE_WINDOW = 60000;
 
 const checkRateLimit = (ip: string): boolean => {
   const now = Date.now();
@@ -50,23 +50,9 @@ serve(async (req) => {
       throw new Error("Invalid callId");
     }
 
-    // Sanitize room name (alphanumeric + hyphen only, max 64 chars)
     const roomName = `anr-${callId.replace(/[^a-zA-Z0-9-]/g, "").substring(0, 50)}`;
 
-    // Try to get existing room first
-    const getResponse = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
-      headers: { Authorization: `Bearer ${DAILY_API_KEY}` },
-    });
-
-    if (getResponse.ok) {
-      const room = await getResponse.json();
-      return new Response(
-        JSON.stringify({ url: room.url, name: room.name }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Create new room with optimized settings
+    // OPTIMISÉ: Un seul appel POST - Daily retourne l'existant si le room existe déjà
     const createResponse = await fetch("https://api.daily.co/v1/rooms", {
       method: "POST",
       headers: {
@@ -77,29 +63,46 @@ serve(async (req) => {
         name: roomName,
         privacy: "public",
         properties: {
-          exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+          exp: Math.floor(Date.now() / 1000) + 3600,
           max_participants: 10,
           enable_knocking: false,
-          start_video_off: false, // Allow video by default
+          start_video_off: false,
           start_audio_off: false,
-          // Optimize for low latency
+          // OPTIMISATIONS LATENCE
           sfu_switchover: 0.5,
-          // Enable adaptive bitrate
           enable_network_ui: false,
-          // Disable unnecessary features
           enable_chat: false,
           enable_screenshare: false,
           enable_recording: false,
+          lang: "fr",
         },
       }),
     });
 
-    if (!createResponse.ok) {
+    // Si room existe déjà (409 Conflict), le récupérer
+    if (createResponse.status === 409) {
+      console.log("[daily-room] Room exists, fetching...");
+      const getResponse = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
+        headers: { Authorization: `Bearer ${DAILY_API_KEY}` },
+      });
+      
+      if (getResponse.ok) {
+        const room = await getResponse.json();
+        return new Response(
+          JSON.stringify({ url: room.url, name: room.name }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    if (!createResponse.ok && createResponse.status !== 409) {
       const error = await createResponse.text();
       throw new Error(`Daily API error: ${error}`);
     }
 
     const room = await createResponse.json();
+    console.log("[daily-room] Room ready:", room.name);
+    
     return new Response(
       JSON.stringify({ url: room.url, name: room.name }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

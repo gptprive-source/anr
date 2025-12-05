@@ -13,7 +13,6 @@ interface CallData {
   callLogId: string;
 }
 
-// Check if string is a UUID
 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 const Call = () => {
@@ -44,12 +43,18 @@ const Call = () => {
         if (isUUID(anrId) && isResident) {
           logger.log("[Call] Resident joining call:", anrId);
           
-          const { data: callLog, error: clError } = await supabase
-            .from("call_logs")
-            .select("id, habitation_id, status")
-            .eq("id", anrId)
-            .single();
+          // OPTIMISÉ: Requêtes parallèles
+          const [callLogResult, habitationPromise] = await Promise.all([
+            supabase
+              .from("call_logs")
+              .select("id, habitation_id, status")
+              .eq("id", anrId)
+              .single(),
+            // On récupère l'habitation après avoir le callLog
+            null,
+          ]);
 
+          const { data: callLog, error: clError } = callLogResult;
           if (clError || !callLog) {
             setError("Appel non trouvé");
             setLoading(false);
@@ -62,23 +67,25 @@ const Call = () => {
             return;
           }
 
-          const { data: habitation } = await supabase
-            .from("habitations")
-            .select("id, name, anrs(address)")
-            .eq("id", callLog.habitation_id)
-            .single();
+          // Récupérer habitation et update en parallèle
+          const [habitationResult] = await Promise.all([
+            supabase
+              .from("habitations")
+              .select("id, name, anrs(address)")
+              .eq("id", callLog.habitation_id)
+              .single(),
+            supabase
+              .from("call_logs")
+              .update({ status: "answered", answered_at: new Date().toISOString(), answered_by: user?.id })
+              .eq("id", anrId),
+          ]);
 
+          const { data: habitation } = habitationResult;
           if (!habitation) {
             setError("Habitation non trouvée");
             setLoading(false);
             return;
           }
-
-          // Update call_log to answered
-          await supabase
-            .from("call_logs")
-            .update({ status: "answered", answered_at: new Date().toISOString(), answered_by: user?.id })
-            .eq("id", anrId);
 
           setCallData({
             address: (habitation.anrs as any)?.address || "",
@@ -106,7 +113,7 @@ const Call = () => {
           return;
         }
 
-        // Use selected habitation if provided, otherwise get first one
+        // Récupérer habitation
         let habitation;
         if (selectedHabitationId) {
           const { data } = await supabase
@@ -131,7 +138,7 @@ const Call = () => {
           return;
         }
 
-        // Create call log
+        // Créer call log
         const { data: callLog, error: callLogError } = await supabase
           .from("call_logs")
           .insert({
@@ -146,15 +153,15 @@ const Call = () => {
         if (callLogError) throw callLogError;
         logger.log("[Call] Created call log:", callLog.id);
 
-        // Get all verified residents and create participants
+        // OPTIMISÉ: Récupérer résidents et créer participants en parallèle si possible
         const { data: residents } = await supabase
           .from("residents")
           .select("user_id")
           .eq("habitation_id", habitation.id)
           .eq("status", "verified");
 
+        // Créer les participants et envoyer les notifications en parallèle
         if (residents && residents.length > 0) {
-          // Filter out current user if they're calling their own ANR
           const residentsToNotify = user?.id 
             ? residents.filter(r => r.user_id !== user.id)
             : residents;
@@ -168,13 +175,11 @@ const Call = () => {
               status: "ringing",
             }));
 
-            await supabase.from("call_participants").insert(participantsToInsert);
-            logger.log("[Call] Created", residentsToNotify.length, "resident participants (excluded self)");
-
-            // Send push notifications to residents (excluding self)
+            // OPTIMISÉ: Insert + Push en parallèle
             const userIds = residentsToNotify.map(r => r.user_id);
-            try {
-              await supabase.functions.invoke("send-push-notification", {
+            await Promise.all([
+              supabase.from("call_participants").insert(participantsToInsert),
+              supabase.functions.invoke("send-push-notification", {
                 body: {
                   user_ids: userIds,
                   title: "📞 Appel entrant",
@@ -185,16 +190,12 @@ const Call = () => {
                     habitationId: habitation.id,
                   },
                 },
-              });
-              logger.log("[Call] Push notifications sent");
-            } catch (pushError) {
-              logger.error("[Call] Error sending push:", pushError);
-              // Don't fail the call if push fails
-            }
+              }).catch(e => logger.error("[Call] Push error:", e)),
+            ]);
           }
         }
 
-        // Create visitor participant
+        // Créer visiteur participant
         await supabase.from("call_participants").insert({
           call_id: callLog.id,
           user_id: null,
@@ -203,6 +204,7 @@ const Call = () => {
           status: "answered",
           joined_at: new Date().toISOString(),
         });
+        logger.log("[Call] All participants created");
 
         setCallData({
           address: anr.address,

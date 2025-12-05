@@ -26,7 +26,7 @@ interface DailyState {
   error: string | null;
   isMuted: boolean;
   isVideoEnabled: boolean;
-  videoMode: VideoMode; // off = no video, simple = receive only, double = send + receive
+  videoMode: VideoMode;
   participants: DailyParticipant[];
   localVideoTrack: MediaStreamTrack | null;
   localAudioTrack: MediaStreamTrack | null;
@@ -46,8 +46,9 @@ const INITIAL_STATE: DailyState = {
   remoteParticipants: [],
 };
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 2000;
+// OPTIMISÉ: Réduit de 2000ms à 300ms
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 300;
 
 export const useDaily = ({
   callId,
@@ -62,14 +63,13 @@ export const useDaily = ({
   const retryCountRef = useRef(0);
   const mountedRef = useRef(true);
 
-  // Safe state update (prevents updates after unmount)
   const safeSetState = useCallback((updater: (prev: DailyState) => DailyState) => {
     if (mountedRef.current) {
       setState(updater);
     }
   }, []);
 
-  // Update tracks from participants
+  // OPTIMISÉ: Update tracks immédiat sans timeout
   const updateTracks = useCallback(() => {
     const call = callRef.current;
     if (!call || !mountedRef.current) return;
@@ -78,19 +78,13 @@ export const useDaily = ({
       const participants = call.participants();
       const local = participants.local;
       const remoteParticipants = Object.values(participants).filter(p => !p.local);
-      const remote = remoteParticipants[0];
 
-      // Get tracks - check state for playability
       const localVideo = local?.tracks?.video;
       const localAudio = local?.tracks?.audio;
-      const remoteVideo = remote?.tracks?.video;
-      const remoteAudio = remote?.tracks?.audio;
 
-      // Build array of all remote participants
       const remoteParticipantsData: RemoteParticipant[] = remoteParticipants.map(p => {
         const video = p.tracks?.video;
         const audio = p.tracks?.audio;
-        // Visitor is the one without a user_id or with specific user_name
         const isVisitor = !p.user_id || p.user_name === 'visitor';
         return {
           sessionId: p.session_id,
@@ -100,7 +94,7 @@ export const useDaily = ({
         };
       });
 
-      logger.log("[useDaily] updateTracks - remote participants:", remoteParticipantsData.length);
+      logger.log("[useDaily] updateTracks - remote:", remoteParticipantsData.length);
 
       safeSetState(prev => ({
         ...prev,
@@ -114,7 +108,7 @@ export const useDaily = ({
     }
   }, [safeSetState]);
 
-  // Create or get Daily room with retry
+  // OPTIMISÉ: Retry rapide
   const createRoom = useCallback(async (): Promise<string> => {
     logger.log("[useDaily] Creating room for:", callId);
     
@@ -129,11 +123,11 @@ export const useDaily = ({
         if (error) throw new Error(error.message || "Room creation failed");
         if (!data?.url) throw new Error("No room URL returned");
 
-        logger.log("[useDaily] Room created:", data.url);
+        logger.log("[useDaily] Room ready:", data.url);
         return data.url;
       } catch (err: any) {
         lastError = err;
-        logger.warn(`[useDaily] Room creation attempt ${i + 1} failed:`, err.message);
+        logger.warn(`[useDaily] Room attempt ${i + 1} failed:`, err.message);
         if (i < MAX_RETRIES - 1) {
           await new Promise(r => setTimeout(r, RETRY_DELAY));
         }
@@ -143,19 +137,14 @@ export const useDaily = ({
     throw lastError || new Error("Failed to create room");
   }, [callId]);
 
-  // Setup event listeners
   const setupEventListeners = useCallback((call: DailyCall) => {
     call.on("joined-meeting", () => {
       logger.log("[useDaily] Joined meeting");
       retryCountRef.current = 0;
       safeSetState(prev => ({ ...prev, isJoined: true, isLoading: false, error: null }));
+      // OPTIMISÉ: Update immédiat sans setTimeout
       updateTracks();
       onCallConnected?.();
-      
-      // Rafraîchir les tracks après délai pour s'assurer qu'ils sont disponibles
-      setTimeout(() => {
-        updateTracks();
-      }, 500);
     });
 
     call.on("left-meeting", () => {
@@ -164,14 +153,10 @@ export const useDaily = ({
       onCallEnded?.();
     });
 
-    call.on("participant-joined", () => updateTracks());
+    call.on("participant-joined", updateTracks);
     call.on("participant-left", (event) => {
       logger.log("[useDaily] Participant left:", event?.participant?.user_id);
       updateTracks();
-      // NE PAS terminer l'appel automatiquement
-      // L'appel se termine uniquement quand :
-      // 1. L'utilisateur clique sur "Raccrocher" (appelle leaveCall())
-      // 2. Le statut de l'appel en base de données passe à "ended"
     });
 
     call.on("participant-updated", updateTracks);
@@ -185,7 +170,6 @@ export const useDaily = ({
       onError?.(errorMsg);
     });
 
-    // Network quality handling
     call.on("network-quality-change", (event) => {
       if (event?.threshold === "very-low") {
         logger.warn("[useDaily] Poor network quality");
@@ -193,29 +177,23 @@ export const useDaily = ({
     });
   }, [safeSetState, updateTracks, onCallConnected, onCallEnded, onError]);
 
-  // Request camera/microphone permissions (required for native apps)
   const requestMediaPermissions = useCallback(async (needVideo: boolean): Promise<boolean> => {
     try {
-      logger.log("[useDaily] Requesting media permissions, video:", needVideo);
-      
-      // Request permissions via getUserMedia - this triggers the native permission dialog on Android/iOS
+      logger.log("[useDaily] Requesting permissions, video:", needVideo);
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: needVideo,
       });
-      
-      // Stop all tracks immediately - we just needed to trigger the permission
       stream.getTracks().forEach(track => track.stop());
-      
-      logger.log("[useDaily] Media permissions granted");
+      logger.log("[useDaily] Permissions granted");
       return true;
     } catch (err: any) {
-      logger.error("[useDaily] Permission denied or error:", err.name, err.message);
+      logger.error("[useDaily] Permission denied:", err.name, err.message);
       return false;
     }
   }, []);
 
-  // Join the call
+  // OPTIMISÉ: Parallélisation des opérations
   const joinCall = useCallback(async () => {
     if (callRef.current || state.isLoading) return;
 
@@ -223,63 +201,56 @@ export const useDaily = ({
     logger.log("[useDaily] Joining as", isResident ? "resident" : "visitor");
 
     try {
-      // Request permissions BEFORE creating room or joining
-      // TOUS demandent la vidéo (résident peut activer en mode double)
-      const needVideo = true;
-      const permissionGranted = await requestMediaPermissions(needVideo);
+      // PARALLÈLE: Permissions + Room création en même temps
+      const [permissionGranted, roomUrl] = await Promise.all([
+        requestMediaPermissions(true),
+        createRoom(),
+      ]);
       
       if (!permissionGranted) {
         throw new Error("Permissions caméra/micro refusées. Veuillez autoriser l'accès dans les paramètres.");
       }
       
       if (!mountedRef.current) return;
-
-      const roomUrl = await createRoom();
-      if (!mountedRef.current) return;
       
       roomUrlRef.current = roomUrl;
 
+      // OPTIMISÉ: Configuration Daily pour latence minimale
       const call = DailyIframe.createCallObject({
         audioSource: true,
-        // TOUS ont la source vidéo activée
         videoSource: true,
+        subscribeToTracksAutomatically: true,
+        dailyConfig: {
+          avoidEval: true,
+        },
       });
       callRef.current = call;
 
       setupEventListeners(call);
 
+      // OPTIMISÉ: Join avec options optimisées
       await call.join({
         url: roomUrl,
-        // Resident: no video (intercom one-way)
-        // Visitor: video enabled (they are seen by resident)
         startVideoOff: isResident,
         startAudioOff: false,
+        subscribeToTracksAutomatically: true,
       });
 
-      // Ensure audio is properly enabled after join
+      // Audio immédiat
       call.setLocalAudio(true);
       
-      // Si visiteur, s'assurer que la vidéo est bien activée
+      // Visiteur: vidéo immédiate sans délai
       if (!isResident) {
         call.setLocalVideo(true);
-        logger.log("[useDaily] Visitor video explicitly enabled at join");
-        
-        // Force video after a delay to ensure it's properly activated
-        setTimeout(() => {
-          if (callRef.current) {
-            callRef.current.setLocalVideo(true);
-            logger.log("[useDaily] Visitor video force-enabled after delay");
-            updateTracks();
-          }
-        }, 500);
+        logger.log("[useDaily] Visitor video enabled immediately");
       }
       
-      logger.log("[useDaily] Joined - isResident:", isResident, "video:", !isResident);
+      logger.log("[useDaily] Joined - isResident:", isResident);
 
       safeSetState(prev => ({
         ...prev,
         isVideoEnabled: !isResident,
-        videoMode: isResident ? "off" : "simple", // Visitor always in simple mode (sends video)
+        videoMode: isResident ? "off" : "simple",
         isMuted: false,
       }));
 
@@ -291,7 +262,6 @@ export const useDaily = ({
     }
   }, [isResident, createRoom, setupEventListeners, safeSetState, onError, state.isLoading, requestMediaPermissions]);
 
-  // Leave the call
   const leaveCall = useCallback(async () => {
     const call = callRef.current;
     if (!call) return;
@@ -308,7 +278,6 @@ export const useDaily = ({
     }
   }, [safeSetState]);
 
-  // Toggle mute
   const toggleMute = useCallback(() => {
     const call = callRef.current;
     if (!call) return;
@@ -318,20 +287,16 @@ export const useDaily = ({
     safeSetState(prev => ({ ...prev, isMuted: newMuted }));
   }, [state.isMuted, safeSetState]);
 
-  // Set video mode for resident
-  // "off" = pas de vidéo, "simple" = résident voit visiteur, "double" = les deux se voient
+  // OPTIMISÉ: Changement de mode sans délai
   const setVideoMode = useCallback((mode: VideoMode) => {
     const call = callRef.current;
     if (!call) return;
 
     logger.log("[useDaily] Setting video mode:", mode);
     
-    // Résident: contrôle sa propre vidéo selon le mode
     if (mode === "double") {
-      // Visio double: résident active sa vidéo pour être vu
       call.setLocalVideo(true);
     } else {
-      // Visio simple ou off: résident n'envoie pas de vidéo
       call.setLocalVideo(false);
     }
     
@@ -341,13 +306,10 @@ export const useDaily = ({
       isVideoEnabled: mode !== "off"
     }));
     
-    // IMPORTANT: Rafraîchir les tracks après changement de mode
-    setTimeout(() => {
-      updateTracks();
-    }, 200);
+    // OPTIMISÉ: Update immédiat
+    updateTracks();
   }, [safeSetState, updateTracks]);
 
-  // Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true;
     return () => {
