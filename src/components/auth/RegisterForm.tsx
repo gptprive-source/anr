@@ -10,9 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { geocodeAddress } from "@/lib/geocoding";
 import { useAuth } from "@/hooks/useAuth";
-
 type Step = "credentials" | "email-sent" | "profile" | "address" | "payment" | "success";
-
 interface AddressData {
   address: string;
   latitude: number;
@@ -21,10 +19,8 @@ interface AddressData {
   existingAnrId?: string;
   habitationName: string;
 }
-
 const emailSchema = z.string().email("Email invalide");
 const passwordSchema = z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères");
-
 const RegisterForm = () => {
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
@@ -36,10 +32,15 @@ const RegisterForm = () => {
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [addressData, setAddressData] = useState<AddressData | null>(null);
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    user,
+    loading: authLoading
+  } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   // Lock to prevent multiple verify calls
   const isVerifyingRef = useRef(false);
   const hasProcessedSessionRef = useRef<string | null>(null);
@@ -54,12 +55,10 @@ const RegisterForm = () => {
       console.log("[RegisterForm] Already verifying, skipping");
       return;
     }
-    
     if (sessionId && hasProcessedSessionRef.current === sessionId) {
       console.log("[RegisterForm] Session already processed locally, skipping");
       return;
     }
-
     if (paymentStatus === "success" && sessionId) {
       // Mark as processing immediately
       hasProcessedSessionRef.current = sessionId;
@@ -71,33 +70,36 @@ const RegisterForm = () => {
       toast({
         title: "Paiement annulé",
         description: "Vous pouvez réessayer quand vous le souhaitez",
-        variant: "destructive",
+        variant: "destructive"
       });
       setStep("payment");
     }
   }, [searchParams]);
-
   const verifyPaymentAndFinalize = async (sessionId: string, retryCount = 0) => {
     // Prevent multiple simultaneous calls
     if (isVerifyingRef.current) {
       console.log("[RegisterForm] Already verifying, skipping duplicate call");
       return;
     }
-    
     isVerifyingRef.current = true;
     setLoading(true);
-    
     try {
       // Try to get session, but don't fail if not available
       // The verify-payment function can work without auth using Stripe metadata
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: {
+          session
+        }
+      } = await supabase.auth.getSession();
       console.log("[RegisterForm] Verifying payment, session available:", !!session);
-
-      const { data, error } = await supabase.functions.invoke("verify-payment", {
-        body: { sessionId },
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke("verify-payment", {
+        body: {
+          sessionId
+        }
       });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
@@ -105,18 +107,14 @@ const RegisterForm = () => {
       localStorage.removeItem("anr_register_address_data");
       localStorage.removeItem("anr_register_step");
       localStorage.removeItem("anr_pending_session_id");
-
       toast({
-        title: data.alreadyProcessed 
-          ? "Inscription déjà finalisée" 
-          : (data.isNewAnr ? "ANR créé avec succès !" : "Habitation ajoutée !"),
-        description: "Votre paiement a été validé",
+        title: data.alreadyProcessed ? "Inscription déjà finalisée" : data.isNewAnr ? "ANR créé avec succès !" : "Habitation ajoutée !",
+        description: "Votre paiement a été validé"
       });
-
       setStep("success");
     } catch (error: any) {
       console.error("Payment verification error:", error);
-      
+
       // If it's a session/auth error and we haven't retried, try to refresh auth
       if (retryCount === 0 && (error.message?.includes("Session") || error.message?.includes("Auth"))) {
         console.log("[RegisterForm] Auth error, attempting refresh...");
@@ -129,13 +127,12 @@ const RegisterForm = () => {
           console.error("Session refresh failed:", refreshError);
         }
       }
-      
       toast({
         title: "Erreur de vérification",
         description: error.message || "Impossible de vérifier le paiement. Contactez le support avec votre numéro de session.",
-        variant: "destructive",
+        variant: "destructive"
       });
-      
+
       // Store session ID for manual recovery if needed
       localStorage.setItem("anr_pending_session_id", sessionId);
       setStep("payment");
@@ -153,7 +150,6 @@ const RegisterForm = () => {
     const checkUserState = async () => {
       const savedStep = localStorage.getItem("anr_register_step") as Step | null;
       const savedAddressData = localStorage.getItem("anr_register_address_data");
-      
       if (user && savedStep) {
         localStorage.removeItem("anr_register_step");
         if (savedAddressData) {
@@ -164,77 +160,67 @@ const RegisterForm = () => {
         setInitialCheckDone(true);
         return;
       }
-
       if (user) {
         try {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("first_name, last_name")
-            .eq("id", user.id)
-            .single();
-
-          const { data: resident } = await supabase
-            .from("residents")
-            .select("id")
-            .eq("user_id", user.id)
-            .maybeSingle();
-
+          const {
+            data: profile
+          } = await supabase.from("profiles").select("first_name, last_name").eq("id", user.id).single();
+          const {
+            data: resident
+          } = await supabase.from("residents").select("id").eq("user_id", user.id).maybeSingle();
           if (!profile?.first_name || !profile?.last_name) {
             setStep("profile");
           } else if (!resident) {
             setStep("address");
           } else {
-            navigate("/dashboard", { replace: true });
+            navigate("/dashboard", {
+              replace: true
+            });
             return;
           }
         } catch (error) {
           console.error("Error checking user state:", error);
         }
       }
-      
       setInitialCheckDone(true);
     };
-
     checkUserState();
   }, [user, authLoading, initialCheckDone, navigate, searchParams]);
-
   const handleCredentialsSubmit = async () => {
     const emailValidation = emailSchema.safeParse(email);
     const passwordValidation = passwordSchema.safeParse(password);
-
     if (!emailValidation.success) {
       toast({
         title: "Erreur",
         description: emailValidation.error.errors[0].message,
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     if (!passwordValidation.success) {
       toast({
         title: "Erreur",
         description: passwordValidation.error.errors[0].message,
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setLoading(true);
-    
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const {
+        data,
+        error
+      } = await supabase.auth.signUp({
         email,
-        password,
+        password
       });
-
       if (error) throw error;
       setStep("email-sent");
     } catch (error: any) {
       if (error.message?.includes("already registered") || error.message?.includes("User already registered")) {
         toast({
           title: "Compte existant",
-          description: "Cet email est déjà associé à un compte. Redirection vers la connexion...",
+          description: "Cet email est déjà associé à un compte. Redirection vers la connexion..."
         });
         setTimeout(() => {
           navigate("/login");
@@ -243,138 +229,131 @@ const RegisterForm = () => {
         toast({
           title: "Erreur",
           description: error.message || "Erreur lors de la création du compte",
-          variant: "destructive",
+          variant: "destructive"
         });
       }
     } finally {
       setLoading(false);
     }
   };
-
   const handleResendEmail = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resend({
+      const {
+        error
+      } = await supabase.auth.resend({
         type: 'signup',
-        email,
+        email
       });
       if (error) throw error;
       toast({
         title: "Email renvoyé",
-        description: "Vérifiez votre boîte mail",
+        description: "Vérifiez votre boîte mail"
       });
     } catch (error: any) {
       toast({
         title: "Erreur",
         description: error.message || "Impossible de renvoyer l'email",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-
   const handleProfileSubmit = async () => {
     if (!firstName.trim() || !lastName.trim()) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setLoading(true);
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
+      const {
+        data: {
+          user: currentUser
+        }
+      } = await supabase.auth.getUser();
       if (!currentUser) {
         throw new Error("Utilisateur non connecté");
       }
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-        })
-        .eq("id", currentUser.id);
-
+      const {
+        error
+      } = await supabase.from("profiles").update({
+        first_name: firstName.trim(),
+        last_name: lastName.trim()
+      }).eq("id", currentUser.id);
       if (error) throw error;
-
       setStep("address");
     } catch (error: any) {
       toast({
         title: "Erreur",
         description: error.message || "Impossible de sauvegarder le profil",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-
   const handleAddressSubmit = async () => {
     if (!address.trim()) {
       toast({
         title: "Erreur",
         description: "Veuillez entrer une adresse",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setLoading(true);
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
+      const {
+        data: {
+          user: currentUser
+        }
+      } = await supabase.auth.getUser();
       if (!currentUser) {
         throw new Error("Utilisateur non connecté");
       }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("first_name, last_name")
-        .eq("id", currentUser.id)
-        .single();
-
+      const {
+        data: profile
+      } = await supabase.from("profiles").select("first_name, last_name").eq("id", currentUser.id).single();
       const userFirstName = profile?.first_name || firstName;
       const userLastName = profile?.last_name || lastName;
-
       const geoResult = await geocodeAddress(address.trim());
-      
       if (!geoResult) {
         toast({
           title: "Adresse non trouvée",
           description: "Impossible de localiser cette adresse. Vérifiez et réessayez.",
-          variant: "destructive",
+          variant: "destructive"
         });
         setLoading(false);
         return;
       }
-
-      const { latitude, longitude } = geoResult;
+      const {
+        latitude,
+        longitude
+      } = geoResult;
 
       // Check if ANR already exists for this address
-      const { data: existingAnr } = await supabase
-        .from("anrs")
-        .select("id")
-        .eq("address", address.trim())
-        .maybeSingle();
-
+      const {
+        data: existingAnr
+      } = await supabase.from("anrs").select("id").eq("address", address.trim()).maybeSingle();
       let isNewAnr = !existingAnr;
       let existingAnrId = existingAnr?.id;
 
       // Count existing habitations for this ANR to determine residence number
       let residenceNumber = 1;
       if (existingAnrId) {
-        const { count } = await supabase
-          .from("habitations")
-          .select("*", { count: "exact", head: true })
-          .eq("anr_id", existingAnrId);
+        const {
+          count
+        } = await supabase.from("habitations").select("*", {
+          count: "exact",
+          head: true
+        }).eq("anr_id", existingAnrId);
         residenceNumber = (count || 0) + 1;
       }
-
       const habitationName = `Résidence ${residenceNumber} - ${userFirstName} ${userLastName}`;
 
       // Store address data for payment step (don't create anything in DB yet)
@@ -384,20 +363,17 @@ const RegisterForm = () => {
         longitude,
         isNewAnr,
         existingAnrId,
-        habitationName,
+        habitationName
       };
-
       setAddressData(newAddressData);
       // Save to localStorage in case user refreshes
       localStorage.setItem("anr_register_address_data", JSON.stringify(newAddressData));
-
       setStep("payment");
-
     } catch (error: any) {
       toast({
         title: "Erreur",
         description: error.message || "Impossible de vérifier l'adresse",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -406,111 +382,50 @@ const RegisterForm = () => {
 
   // Show loading while checking user state
   if (!initialCheckDone && authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
+    return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
 
   // Show loading while verifying payment
   if (loading && searchParams.get("payment") === "success") {
-    return (
-      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
+    return <div className="min-h-screen flex items-center justify-center flex-col gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
         <p className="text-muted-foreground">Vérification du paiement...</p>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+  return <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex justify-center gap-2 mb-8">
-          {["credentials", "email-sent", "profile", "address", "payment", "success"].map((s, i) => (
-            <div
-              key={s}
-              className={`h-1 w-8 rounded-full transition-colors ${
-                ["credentials", "email-sent", "profile", "address", "payment", "success"].indexOf(step) >= i
-                  ? "bg-primary"
-                  : "bg-secondary"
-              }`}
-            />
-          ))}
+          {["credentials", "email-sent", "profile", "address", "payment", "success"].map((s, i) => <div key={s} className={`h-1 w-8 rounded-full transition-colors ${["credentials", "email-sent", "profile", "address", "payment", "success"].indexOf(step) >= i ? "bg-primary" : "bg-secondary"}`} />)}
         </div>
 
         <div className="glass-effect rounded-3xl p-8 card-shadow">
-          {step === "credentials" && (
-            <CredentialsStep
-              email={email}
-              password={password}
-              setEmail={setEmail}
-              setPassword={setPassword}
-              onSubmit={handleCredentialsSubmit}
-              loading={loading}
-            />
-          )}
-          {step === "email-sent" && (
-            <EmailSentStep 
-              email={email} 
-              onResend={handleResendEmail}
-              onBack={() => setStep("credentials")}
-              loading={loading}
-            />
-          )}
-          {step === "profile" && (
-            <ProfileStep
-              firstName={firstName}
-              lastName={lastName}
-              setFirstName={setFirstName}
-              setLastName={setLastName}
-              onSubmit={handleProfileSubmit}
-              loading={loading}
-            />
-          )}
-          {step === "address" && (
-            <AddressStep
-              address={address}
-              setAddress={setAddress}
-              onSubmit={handleAddressSubmit}
-              onBack={() => setStep("profile")}
-              loading={loading}
-            />
-          )}
-          {step === "payment" && addressData && (
-            <PaymentStep
-              addressData={addressData}
-              onBack={() => setStep("address")}
-              loading={loading}
-              setLoading={setLoading}
-            />
-          )}
-          {step === "success" && (
-            <SuccessStep onGoToDashboard={() => navigate("/dashboard")} />
-          )}
+          {step === "credentials" && <CredentialsStep email={email} password={password} setEmail={setEmail} setPassword={setPassword} onSubmit={handleCredentialsSubmit} loading={loading} />}
+          {step === "email-sent" && <EmailSentStep email={email} onResend={handleResendEmail} onBack={() => setStep("credentials")} loading={loading} />}
+          {step === "profile" && <ProfileStep firstName={firstName} lastName={lastName} setFirstName={setFirstName} setLastName={setLastName} onSubmit={handleProfileSubmit} loading={loading} />}
+          {step === "address" && <AddressStep address={address} setAddress={setAddress} onSubmit={handleAddressSubmit} onBack={() => setStep("profile")} loading={loading} />}
+          {step === "payment" && addressData && <PaymentStep addressData={addressData} onBack={() => setStep("address")} loading={loading} setLoading={setLoading} />}
+          {step === "success" && <SuccessStep onGoToDashboard={() => navigate("/dashboard")} />}
         </div>
 
-        {step === "credentials" && (
-          <p className="text-center text-sm text-muted-foreground mt-6">
+        {step === "credentials" && <p className="text-center text-sm text-muted-foreground mt-6">
             Déjà inscrit ?{" "}
             <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/login")}>
               Se connecter
             </Button>
-          </p>
-        )}
+          </p>}
       </div>
-    </div>
-  );
+    </div>;
 };
-
 const CredentialsStep = ({
   email,
   password,
   setEmail,
   setPassword,
   onSubmit,
-  loading,
+  loading
 }: {
   email: string;
   password: string;
@@ -518,8 +433,7 @@ const CredentialsStep = ({
   setPassword: (v: string) => void;
   onSubmit: () => void;
   loading: boolean;
-}) => (
-  <div className="space-y-6">
+}) => <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
         <Mail className="w-8 h-8 text-primary" />
@@ -533,47 +447,34 @@ const CredentialsStep = ({
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="votre@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={loading}
-        />
+        <Input id="email" type="email" placeholder="votre@email.com" value={email} onChange={e => setEmail(e.target.value)} disabled={loading} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="password">Mot de passe</Label>
         <div className="relative">
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            id="password"
-            type="password"
-            placeholder="Minimum 6 caractères"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="pl-10"
-            disabled={loading}
-          />
+          <Input id="password" type="password" placeholder="Minimum 6 caractères" value={password} onChange={e => setPassword(e.target.value)} className="pl-10" disabled={loading} />
         </div>
       </div>
 
-      <Button
-        variant="hero"
-        className="w-full"
-        onClick={onSubmit}
-        disabled={!email.trim() || !password.trim() || loading}
-      >
+      <Button variant="hero" className="w-full" onClick={onSubmit} disabled={!email.trim() || !password.trim() || loading}>
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
         {!loading && <ArrowRight className="w-4 h-4" />}
       </Button>
     </div>
-  </div>
-);
-
-const EmailSentStep = ({ email, onResend, onBack, loading }: { email: string; onResend: () => void; onBack: () => void; loading: boolean }) => (
-  <div className="space-y-6">
+  </div>;
+const EmailSentStep = ({
+  email,
+  onResend,
+  onBack,
+  loading
+}: {
+  email: string;
+  onResend: () => void;
+  onBack: () => void;
+  loading: boolean;
+}) => <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto mb-4">
         <CheckCircle className="w-8 h-8 text-success" />
@@ -613,16 +514,14 @@ const EmailSentStep = ({ email, onResend, onBack, loading }: { email: string; on
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Renvoyer l'email"}
       </Button>
     </div>
-  </div>
-);
-
+  </div>;
 const ProfileStep = ({
   firstName,
   lastName,
   setFirstName,
   setLastName,
   onSubmit,
-  loading,
+  loading
 }: {
   firstName: string;
   lastName: string;
@@ -630,8 +529,7 @@ const ProfileStep = ({
   setLastName: (v: string) => void;
   onSubmit: () => void;
   loading: boolean;
-}) => (
-  <div className="space-y-6">
+}) => <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
         <User className="w-8 h-8 text-primary" />
@@ -645,51 +543,31 @@ const ProfileStep = ({
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="firstName">Prénom</Label>
-        <Input
-          id="firstName"
-          placeholder="Prénom"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          disabled={loading}
-        />
+        <Input id="firstName" placeholder="Prénom" value={firstName} onChange={e => setFirstName(e.target.value)} disabled={loading} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="lastName">Nom</Label>
-        <Input
-          id="lastName"
-          placeholder="Nom"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          disabled={loading}
-        />
+        <Input id="lastName" placeholder="Nom" value={lastName} onChange={e => setLastName(e.target.value)} disabled={loading} />
       </div>
-      <Button
-        variant="hero"
-        className="w-full"
-        onClick={onSubmit}
-        disabled={!firstName.trim() || !lastName.trim() || loading}
-      >
+      <Button variant="hero" className="w-full" onClick={onSubmit} disabled={!firstName.trim() || !lastName.trim() || loading}>
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
         {!loading && <ArrowRight className="w-4 h-4" />}
       </Button>
     </div>
-  </div>
-);
-
+  </div>;
 const AddressStep = ({
   address,
   setAddress,
   onSubmit,
   onBack,
-  loading,
+  loading
 }: {
   address: string;
   setAddress: (v: string) => void;
   onSubmit: () => void;
   onBack: () => void;
   loading: boolean;
-}) => (
-  <div className="space-y-6">
+}) => <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
         <MapPin className="w-8 h-8 text-primary" />
@@ -701,12 +579,7 @@ const AddressStep = ({
     </div>
 
     <div className="space-y-4">
-      <Input
-        placeholder="12 Rue des Lilas, 75011 Paris"
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-        disabled={loading}
-      />
+      <Input placeholder="12 Rue des Lilas, 75011 Paris" value={address} onChange={e => setAddress(e.target.value)} disabled={loading} />
       <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 text-sm">
         <p className="text-warning font-medium">
           Si cette adresse existe déjà, vous serez ajouté comme second habitat (multi-logement)
@@ -717,25 +590,18 @@ const AddressStep = ({
           <ArrowLeft className="w-4 h-4 mr-2" />
           Retour
         </Button>
-        <Button
-          variant="hero"
-          className="flex-1"
-          onClick={onSubmit}
-          disabled={!address.trim() || loading}
-        >
+        <Button variant="hero" className="flex-1" onClick={onSubmit} disabled={!address.trim() || loading}>
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
           {!loading && <ArrowRight className="w-4 h-4" />}
         </Button>
       </div>
     </div>
-  </div>
-);
-
+  </div>;
 const PaymentStep = ({
   addressData,
   onBack,
   loading,
-  setLoading,
+  setLoading
 }: {
   addressData: AddressData;
   onBack: () => void;
@@ -744,42 +610,42 @@ const PaymentStep = ({
 }) => {
   const [extraDomings, setExtraDomings] = useState(0);
   const [acceptedCGU, setAcceptedCGU] = useState(false);
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   const subscriptionPrice = 12; // 12€
   const domingPrice = 7; // 7€
   const extraDomingsTotal = extraDomings * domingPrice;
   const total = subscriptionPrice + extraDomingsTotal;
-
   const handlePayment = async () => {
     if (!acceptedCGU) {
       toast({
         title: "Conditions requises",
         description: "Veuillez accepter les conditions générales d'utilisation",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke("create-checkout-session", {
         body: {
           extraDomings,
           isNewAnr: addressData.isNewAnr,
           addressData: {
             address: addressData.address,
             latitude: addressData.latitude,
-            longitude: addressData.longitude,
+            longitude: addressData.longitude
           },
           habitationName: addressData.habitationName,
-          existingAnrId: addressData.existingAnrId,
-        },
+          existingAnrId: addressData.existingAnrId
+        }
       });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       if (data?.url) {
         // Redirect to Stripe Checkout in new tab
         window.open(data.url, "_blank");
@@ -789,15 +655,13 @@ const PaymentStep = ({
       toast({
         title: "Erreur",
         description: error.message || "Impossible de créer la session de paiement",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div className="text-center">
         <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <CreditCard className="w-8 h-8 text-primary" />
@@ -821,15 +685,13 @@ const PaymentStep = ({
           </div>
 
           {/* Free Doming */}
-          {addressData.isNewAnr && (
-            <div className="flex justify-between items-center text-success">
+          {addressData.isNewAnr && <div className="flex justify-between items-center text-success">
               <div>
                 <p className="font-medium">Doming QR/NFC</p>
                 <p className="text-xs opacity-80">Inclus pour nouvelle ANR</p>
               </div>
               <p className="font-semibold">OFFERT</p>
-            </div>
-          )}
+            </div>}
 
           <div className="border-t border-border my-2" />
 
@@ -843,22 +705,11 @@ const PaymentStep = ({
               <p className="font-semibold">{extraDomingsTotal},00 €</p>
             </div>
             <div className="flex items-center justify-center gap-4">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-10 w-10"
-                onClick={() => setExtraDomings(Math.max(0, extraDomings - 1))}
-                disabled={extraDomings === 0}
-              >
+              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setExtraDomings(Math.max(0, extraDomings - 1))} disabled={extraDomings === 0}>
                 <Minus className="w-4 h-4" />
               </Button>
               <span className="w-12 text-center font-semibold text-lg">{extraDomings}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-10 w-10"
-                onClick={() => setExtraDomings(extraDomings + 1)}
-              >
+              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setExtraDomings(extraDomings + 1)}>
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -877,11 +728,7 @@ const PaymentStep = ({
       {/* CGU Checkbox */}
       <div className="space-y-3">
         <div className="flex items-start gap-3">
-          <Checkbox
-            id="cgu"
-            checked={acceptedCGU}
-            onCheckedChange={(checked) => setAcceptedCGU(checked === true)}
-          />
+          <Checkbox id="cgu" checked={acceptedCGU} onCheckedChange={checked => setAcceptedCGU(checked === true)} />
           <label htmlFor="cgu" className="text-sm leading-relaxed cursor-pointer">
             J'accepte les{" "}
             <a href="/cgu" target="_blank" className="text-primary underline">
@@ -903,37 +750,25 @@ const PaymentStep = ({
       </div>
 
       {/* Buttons */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 mb-[29px]">
         <Button variant="outline" className="flex-1" onClick={onBack} disabled={loading}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Retour
         </Button>
-        <Button
-          variant="hero"
-          className="flex-1"
-          onClick={handlePayment}
-          disabled={!acceptedCGU || loading}
-        >
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <>
+        <Button variant="hero" className="flex-1" onClick={handlePayment} disabled={!acceptedCGU || loading}>
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>
               Payer {total},00 €
               <ArrowRight className="w-4 h-4" />
-            </>
-          )}
+            </>}
         </Button>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 const SuccessStep = ({
-  onGoToDashboard,
+  onGoToDashboard
 }: {
   onGoToDashboard: () => void;
-}) => (
-  <div className="space-y-6">
+}) => <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center mx-auto mb-4">
         <CheckCircle className="w-8 h-8 text-success" />
@@ -944,15 +779,9 @@ const SuccessStep = ({
       </p>
     </div>
 
-    <Button
-      variant="hero"
-      className="w-full"
-      onClick={onGoToDashboard}
-    >
+    <Button variant="hero" className="w-full" onClick={onGoToDashboard}>
       Accéder à mon tableau de bord
       <ArrowRight className="w-4 h-4" />
     </Button>
-  </div>
-);
-
+  </div>;
 export default RegisterForm;
