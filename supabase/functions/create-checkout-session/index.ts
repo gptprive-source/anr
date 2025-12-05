@@ -93,6 +93,7 @@ serve(async (req) => {
     }
 
     const origin = req.headers.get("origin") || "https://anr.lovable.app";
+    console.log("[CREATE-CHECKOUT] Origin URL:", origin);
 
     // Create checkout session with subscription mode
     const session = await stripe.checkout.sessions.create({
@@ -102,6 +103,7 @@ serve(async (req) => {
       mode: "subscription",
       metadata: {
         user_id: user.id,
+        user_email: user.email,
         address: addressData.address,
         latitude: addressData.latitude.toString(),
         longitude: addressData.longitude.toString(),
@@ -109,6 +111,7 @@ serve(async (req) => {
         is_new_anr: isNewAnr.toString(),
         extra_domings: extraDomings.toString(),
         existing_anr_id: existingAnrId || "",
+        checkout_origin: origin, // Store origin for debugging
       },
       success_url: `${origin}/register?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/register?payment=cancelled`,

@@ -57,11 +57,14 @@ const RegisterForm = () => {
     }
   }, [searchParams]);
 
-  const verifyPaymentAndFinalize = async (sessionId: string) => {
+  const verifyPaymentAndFinalize = async (sessionId: string, retryCount = 0) => {
     setLoading(true);
     try {
+      // Try to get session, but don't fail if not available
+      // The verify-payment function can work without auth using Stripe metadata
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Session expirée, veuillez vous reconnecter");
+      
+      console.log("[RegisterForm] Verifying payment, session available:", !!session);
 
       const { data, error } = await supabase.functions.invoke("verify-payment", {
         body: { sessionId },
@@ -70,8 +73,14 @@ const RegisterForm = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      // Clear localStorage data
+      localStorage.removeItem("anr_register_address_data");
+      localStorage.removeItem("anr_register_step");
+
       toast({
-        title: data.isNewAnr ? "ANR créé avec succès !" : "Habitation ajoutée !",
+        title: data.alreadyProcessed 
+          ? "Inscription déjà finalisée" 
+          : (data.isNewAnr ? "ANR créé avec succès !" : "Habitation ajoutée !"),
         description: "Votre paiement a été validé",
       });
 
@@ -80,11 +89,27 @@ const RegisterForm = () => {
       setStep("success");
     } catch (error: any) {
       console.error("Payment verification error:", error);
+      
+      // If it's a session/auth error and we haven't retried, try to refresh auth
+      if (retryCount === 0 && (error.message?.includes("Session") || error.message?.includes("Auth"))) {
+        console.log("[RegisterForm] Auth error, attempting refresh...");
+        try {
+          await supabase.auth.refreshSession();
+          // Retry once after refresh
+          return verifyPaymentAndFinalize(sessionId, 1);
+        } catch (refreshError) {
+          console.error("Session refresh failed:", refreshError);
+        }
+      }
+      
       toast({
         title: "Erreur de vérification",
-        description: error.message || "Impossible de vérifier le paiement",
+        description: error.message || "Impossible de vérifier le paiement. Contactez le support avec votre numéro de session.",
         variant: "destructive",
       });
+      
+      // Store session ID for manual recovery if needed
+      localStorage.setItem("anr_pending_session_id", sessionId);
       setStep("payment");
     } finally {
       setLoading(false);

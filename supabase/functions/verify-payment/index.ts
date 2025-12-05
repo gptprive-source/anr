@@ -27,18 +27,6 @@ serve(async (req) => {
   try {
     console.log("[VERIFY-PAYMENT] Starting payment verification");
 
-    // Authenticate user
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-    console.log("[VERIFY-PAYMENT] User authenticated:", user.id);
-
     const { sessionId } = await req.json();
     if (!sessionId) throw new Error("Session ID is required");
     console.log("[VERIFY-PAYMENT] Session ID:", sessionId);
@@ -48,7 +36,7 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Retrieve session
+    // Retrieve session FIRST to get user_id from metadata
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["subscription"],
     });
@@ -58,9 +46,83 @@ serve(async (req) => {
       throw new Error("Payment not completed");
     }
 
-    // Check if user matches
-    if (session.metadata?.user_id !== user.id) {
+    // Get user_id from Stripe metadata (this is the source of truth)
+    const stripeUserId = session.metadata?.user_id;
+    if (!stripeUserId) {
+      throw new Error("User ID not found in session metadata");
+    }
+    console.log("[VERIFY-PAYMENT] User ID from Stripe metadata:", stripeUserId);
+
+    // Try to authenticate user if auth header provided
+    let authenticatedUserId: string | null = null;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
+      try {
+        const token = authHeader.replace("Bearer ", "");
+        const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+        if (!userError && userData.user) {
+          authenticatedUserId = userData.user.id;
+          console.log("[VERIFY-PAYMENT] Authenticated user:", authenticatedUserId);
+        }
+      } catch (authError) {
+        console.log("[VERIFY-PAYMENT] Auth check failed, continuing with Stripe metadata:", authError);
+      }
+    }
+
+    // If authenticated, verify it matches Stripe metadata
+    if (authenticatedUserId && authenticatedUserId !== stripeUserId) {
+      console.warn("[VERIFY-PAYMENT] User mismatch - authenticated:", authenticatedUserId, "vs stripe:", stripeUserId);
       throw new Error("User mismatch");
+    }
+
+    // Use the user_id from Stripe metadata as the authoritative source
+    const userId = stripeUserId;
+
+    // Verify the user exists in our database
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profileError || !userProfile) {
+      throw new Error("User not found in database");
+    }
+    console.log("[VERIFY-PAYMENT] User verified in database:", userId);
+
+    // Check if this session was already processed (idempotency)
+    const { data: existingSubscription } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id")
+      .eq("stripe_subscription_id", (session.subscription as Stripe.Subscription)?.id || session.id)
+      .maybeSingle();
+
+    if (existingSubscription) {
+      console.log("[VERIFY-PAYMENT] Session already processed, returning existing data");
+      
+      // Get existing habitation
+      const { data: existingSub } = await supabaseAdmin
+        .from("subscriptions")
+        .select("habitation_id")
+        .eq("stripe_subscription_id", (session.subscription as Stripe.Subscription)?.id || session.id)
+        .single();
+      
+      const { data: existingHab } = await supabaseAdmin
+        .from("habitations")
+        .select("id, anr_id")
+        .eq("id", existingSub?.habitation_id)
+        .single();
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        habitationId: existingHab?.id,
+        anrId: existingHab?.anr_id,
+        isNewAnr: false,
+        alreadyProcessed: true
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     // Extract metadata
@@ -118,7 +180,7 @@ serve(async (req) => {
       .from("residents")
       .insert({
         habitation_id: habitation.id,
-        user_id: user.id,
+        user_id: userId,
         is_owner: true,
         status: "verified",
       });
@@ -145,7 +207,7 @@ serve(async (req) => {
     const { error: subError } = await supabaseAdmin
       .from("subscriptions")
       .insert({
-        user_id: user.id,
+        user_id: userId,
         habitation_id: habitation.id,
         stripe_customer_id: session.customer as string,
         stripe_subscription_id: subscription?.id || session.id,
@@ -164,7 +226,7 @@ serve(async (req) => {
       const { error: domingError } = await supabaseAdmin
         .from("doming_orders")
         .insert({
-          user_id: user.id,
+          user_id: userId,
           anr_id: anrId,
           quantity: domingQuantity,
           unit_price: 700,
@@ -178,64 +240,70 @@ serve(async (req) => {
       if (domingError) console.error("[VERIFY-PAYMENT] Warning: Error recording doming order:", domingError);
     }
 
+    // Get user email for confirmation
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const userEmail = authUser?.user?.email;
+
     // Send confirmation email
-    try {
-      // Get user profile for name
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("first_name, last_name")
-        .eq("id", user.id)
-        .maybeSingle();
+    if (userEmail) {
+      try {
+        // Get user profile for name
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("id", userId)
+          .maybeSingle();
 
-      // Get ANR code
-      const { data: anrData } = await supabaseAdmin
-        .from("anrs")
-        .select("code")
-        .eq("id", anrId)
-        .single();
+        // Get ANR code
+        const { data: anrData } = await supabaseAdmin
+          .from("anrs")
+          .select("code")
+          .eq("id", anrId)
+          .single();
 
-      const subscriptionAmount = 12; // 12€ annual
-      const domingUnitPrice = 7;
-      const totalDomingAmount = extraDomings * domingUnitPrice;
-      const totalAmount = subscriptionAmount + totalDomingAmount;
+        const subscriptionAmount = 12; // 12€ annual
+        const domingUnitPrice = 7;
+        const totalDomingAmount = extraDomings * domingUnitPrice;
+        const totalAmount = subscriptionAmount + totalDomingAmount;
 
-      const emailPayload = {
-        email: user.email,
-        firstName: profile?.first_name || "Cher(e) abonné(e)",
-        lastName: profile?.last_name || "",
-        anrCode: anrData?.code || "N/A",
-        address: address,
-        habitationName: habitationName,
-        subscriptionAmount: subscriptionAmount,
-        domingQuantity: domingQuantity,
-        domingAmount: totalDomingAmount,
-        totalAmount: totalAmount,
-      };
+        const emailPayload = {
+          email: userEmail,
+          firstName: profile?.first_name || "Cher(e) abonné(e)",
+          lastName: profile?.last_name || "",
+          anrCode: anrData?.code || "N/A",
+          address: address,
+          habitationName: habitationName,
+          subscriptionAmount: subscriptionAmount,
+          domingQuantity: domingQuantity,
+          domingAmount: totalDomingAmount,
+          totalAmount: totalAmount,
+        };
 
-      console.log("[VERIFY-PAYMENT] Sending confirmation email:", emailPayload);
+        console.log("[VERIFY-PAYMENT] Sending confirmation email:", emailPayload);
 
-      // Call the send-subscription-confirmation function
-      const emailResponse = await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-subscription-confirmation`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          },
-          body: JSON.stringify(emailPayload),
+        // Call the send-subscription-confirmation function
+        const emailResponse = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-subscription-confirmation`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify(emailPayload),
+          }
+        );
+
+        if (!emailResponse.ok) {
+          const emailError = await emailResponse.text();
+          console.error("[VERIFY-PAYMENT] Email send failed:", emailError);
+        } else {
+          console.log("[VERIFY-PAYMENT] Confirmation email sent successfully");
         }
-      );
-
-      if (!emailResponse.ok) {
-        const emailError = await emailResponse.text();
-        console.error("[VERIFY-PAYMENT] Email send failed:", emailError);
-      } else {
-        console.log("[VERIFY-PAYMENT] Confirmation email sent successfully");
+      } catch (emailError) {
+        console.error("[VERIFY-PAYMENT] Error sending confirmation email:", emailError);
+        // Don't fail the whole process if email fails
       }
-    } catch (emailError) {
-      console.error("[VERIFY-PAYMENT] Error sending confirmation email:", emailError);
-      // Don't fail the whole process if email fails
     }
 
     console.log("[VERIFY-PAYMENT] Payment verification complete");
