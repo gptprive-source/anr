@@ -16,7 +16,8 @@ import {
   LogOut,
   MessageCircle,
   FileText,
-  Shield
+  Shield,
+  Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -32,6 +33,7 @@ interface AdminLayoutProps {
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+  { path: '/admin/orders', label: 'Commandes', icon: Package },
   { path: '/admin/config', label: 'Configuration', icon: Settings },
   { path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
   { path: '/admin/cgu', label: 'CGU', icon: FileText },

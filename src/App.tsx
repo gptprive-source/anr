@@ -33,6 +33,7 @@ import NotFound from "./pages/NotFound";
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminAnalytics from "./pages/admin/Analytics";
+import AdminOrders from "./pages/admin/Orders";
 import AdminConfig from "./pages/admin/Config";
 import AdminFAQManager from "./pages/admin/FAQManager";
 import AdminUsers from "./pages/admin/Users";
@@ -116,6 +117,7 @@ const AppContent = () => {
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/orders" element={<AdminOrders />} />
           <Route path="/admin/config" element={<AdminConfig />} />
           <Route path="/admin/faq" element={<AdminFAQManager />} />
           <Route path="/admin/cgu" element={<AdminCGUEditor />} />
