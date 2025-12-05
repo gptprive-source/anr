@@ -13,7 +13,7 @@ const BottomNav = () => {
   const location = useLocation();
 
   const navItems: NavItem[] = [
-    { icon: <Home className="w-6 h-6" />, label: "Appels", path: "/dashboard" },
+    { icon: <Home className="w-6 h-6" />, label: "Habitant", path: "/dashboard" },
     { icon: <QrCode className="w-6 h-6" />, label: "Visiteur", path: "/visitor" },
     { icon: <User className="w-6 h-6" />, label: "Compte", path: "/account" },
   ];
