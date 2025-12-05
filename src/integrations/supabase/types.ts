@@ -673,6 +673,234 @@ export type Database = {
           },
         ]
       }
+      rgpd_data_processing_registry: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          data_categories: string[]
+          id: string
+          is_active: boolean | null
+          legal_basis: string
+          name: string
+          purpose: string
+          recipients: string[]
+          retention_period: string
+          third_country_transfer: boolean | null
+          transfer_safeguards: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          data_categories: string[]
+          id?: string
+          is_active?: boolean | null
+          legal_basis: string
+          name: string
+          purpose: string
+          recipients: string[]
+          retention_period: string
+          third_country_transfer?: boolean | null
+          transfer_safeguards?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          data_categories?: string[]
+          id?: string
+          is_active?: boolean | null
+          legal_basis?: string
+          name?: string
+          purpose?: string
+          recipients?: string[]
+          retention_period?: string
+          third_country_transfer?: boolean | null
+          transfer_safeguards?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rgpd_incidents: {
+        Row: {
+          cnil_notification_date: string | null
+          cnil_notified: boolean | null
+          containment_actions: string | null
+          created_at: string | null
+          data_affected: string[] | null
+          description: string
+          discovered_date: string
+          id: string
+          incident_date: string
+          lessons_learned: string | null
+          remediation_actions: string | null
+          reported_by: string | null
+          severity: string
+          status: string | null
+          updated_at: string | null
+          users_affected_count: number | null
+          users_notification_date: string | null
+          users_notified: boolean | null
+        }
+        Insert: {
+          cnil_notification_date?: string | null
+          cnil_notified?: boolean | null
+          containment_actions?: string | null
+          created_at?: string | null
+          data_affected?: string[] | null
+          description: string
+          discovered_date: string
+          id?: string
+          incident_date: string
+          lessons_learned?: string | null
+          remediation_actions?: string | null
+          reported_by?: string | null
+          severity: string
+          status?: string | null
+          updated_at?: string | null
+          users_affected_count?: number | null
+          users_notification_date?: string | null
+          users_notified?: boolean | null
+        }
+        Update: {
+          cnil_notification_date?: string | null
+          cnil_notified?: boolean | null
+          containment_actions?: string | null
+          created_at?: string | null
+          data_affected?: string[] | null
+          description?: string
+          discovered_date?: string
+          id?: string
+          incident_date?: string
+          lessons_learned?: string | null
+          remediation_actions?: string | null
+          reported_by?: string | null
+          severity?: string
+          status?: string | null
+          updated_at?: string | null
+          users_affected_count?: number | null
+          users_notification_date?: string | null
+          users_notified?: boolean | null
+        }
+        Relationships: []
+      }
+      rgpd_purge_logs: {
+        Row: {
+          details: Json | null
+          executed_at: string | null
+          id: string
+          purge_type: string
+          records_anonymized: number | null
+          records_deleted: number | null
+        }
+        Insert: {
+          details?: Json | null
+          executed_at?: string | null
+          id?: string
+          purge_type: string
+          records_anonymized?: number | null
+          records_deleted?: number | null
+        }
+        Update: {
+          details?: Json | null
+          executed_at?: string | null
+          id?: string
+          purge_type?: string
+          records_anonymized?: number | null
+          records_deleted?: number | null
+        }
+        Relationships: []
+      }
+      rgpd_rights_requests: {
+        Row: {
+          completed_at: string | null
+          deadline_at: string | null
+          handled_by: string | null
+          id: string
+          request_details: string | null
+          request_type: string
+          requested_at: string | null
+          response_details: string | null
+          status: string | null
+          user_email: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          deadline_at?: string | null
+          handled_by?: string | null
+          id?: string
+          request_details?: string | null
+          request_type: string
+          requested_at?: string | null
+          response_details?: string | null
+          status?: string | null
+          user_email: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          deadline_at?: string | null
+          handled_by?: string | null
+          id?: string
+          request_details?: string | null
+          request_type?: string
+          requested_at?: string | null
+          response_details?: string | null
+          status?: string | null
+          user_email?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      rgpd_subprocessors: {
+        Row: {
+          created_at: string | null
+          data_processed: string[] | null
+          dpa_signed_date: string | null
+          dpa_url: string | null
+          id: string
+          is_active: boolean | null
+          is_eu: boolean | null
+          location: string
+          name: string
+          notes: string | null
+          service_description: string
+          transfer_safeguards: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_processed?: string[] | null
+          dpa_signed_date?: string | null
+          dpa_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_eu?: boolean | null
+          location: string
+          name: string
+          notes?: string | null
+          service_description: string
+          transfer_safeguards?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_processed?: string[] | null
+          dpa_signed_date?: string | null
+          dpa_url?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_eu?: boolean | null
+          location?: string
+          name?: string
+          notes?: string | null
+          service_description?: string
+          transfer_safeguards?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       security_audit_results: {
         Row: {
           check_type: string
@@ -876,6 +1104,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_consents: {
+        Row: {
+          consent_type: string
+          consented: boolean
+          consented_at: string | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+          version: string
+        }
+        Insert: {
+          consent_type: string
+          consented: boolean
+          consented_at?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          version: string
+        }
+        Update: {
+          consent_type?: string
+          consented?: boolean
+          consented_at?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          version?: string
+        }
+        Relationships: []
       }
       user_departments: {
         Row: {
