@@ -45,6 +45,7 @@ import AdminSupport from "./pages/admin/Support";
 import AdminCGUEditor from "./pages/admin/CGUEditor";
 import AdminPrivacyEditor from "./pages/admin/PrivacyEditor";
 import AdminSecurity from "./pages/admin/Security";
+import AdminChatbotStats from "./pages/admin/ChatbotStats";
 
 const queryClient = new QueryClient();
 
@@ -137,6 +138,7 @@ const AppContent = () => {
           <Route path="/admin/team" element={<AdminTeam />} />
           <Route path="/admin/audit" element={<AdminAuditLog />} />
           <Route path="/admin/support" element={<AdminSupport />} />
+          <Route path="/admin/chatbot" element={<AdminChatbotStats />} />
           <Route path="/admin/security" element={<AdminSecurity />} />
           
           <Route path="*" element={<NotFound />} />

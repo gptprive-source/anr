@@ -93,13 +93,29 @@ function calculateScore(query: string, question: string, answer: string): number
   return normalizedScore * 0.7 + matchRatio * 0.3;
 }
 
+async function logUsage(supabase: any, query: string, response: string | null, conversationId?: string) {
+  try {
+    await supabase.from("chatbot_usage").insert({
+      source: "faq",
+      query_text: query.slice(0, 500),
+      response_preview: response?.slice(0, 100) || null,
+      conversation_id: conversationId || null,
+      input_tokens: 0,
+      output_tokens: 0,
+      estimated_cost: 0, // FAQ is free
+    });
+  } catch (err) {
+    console.error("[faq-search] Failed to log usage:", err);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { query, threshold = 0.3 } = await req.json();
+    const { query, threshold = 0.3, conversationId } = await req.json();
     
     if (!query || typeof query !== "string") {
       return new Response(
@@ -144,6 +160,9 @@ serve(async (req) => {
     console.log(`[faq-search] Query: "${query}" | Best match score: ${bestMatch.score.toFixed(3)} | Threshold: ${threshold}`);
 
     if (bestMatch.score >= threshold) {
+      // Log successful FAQ match
+      await logUsage(supabase, query, bestMatch.answer, conversationId);
+      
       return new Response(
         JSON.stringify({
           found: true,

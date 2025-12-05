@@ -240,6 +240,53 @@ export type Database = {
         }
         Relationships: []
       }
+      chatbot_usage: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          estimated_cost: number | null
+          id: string
+          input_tokens: number | null
+          model: string | null
+          output_tokens: number | null
+          query_text: string | null
+          response_preview: string | null
+          source: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          estimated_cost?: number | null
+          id?: string
+          input_tokens?: number | null
+          model?: string | null
+          output_tokens?: number | null
+          query_text?: string | null
+          response_preview?: string | null
+          source: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          estimated_cost?: number | null
+          id?: string
+          input_tokens?: number | null
+          model?: string | null
+          output_tokens?: number | null
+          query_text?: string | null
+          response_preview?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatbot_usage_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doming_orders: {
         Row: {
           anr_id: string
