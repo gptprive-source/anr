@@ -254,8 +254,8 @@ const ResidentDashboard = () => {
       <div className="max-w-lg mx-auto p-4 space-y-6">
         {/* Header */}
         <div className="pt-4">
-          <h1 className="font-bold text-center text-lg">Mon Adresse Numérique Résidentielle</h1>
-          <p className="text-muted-foreground text-center pt-[10px]">{habitationData.anr.address}</p>
+          <h1 className="font-bold text-lg text-left">Mon ANR</h1>
+          <p className="text-muted-foreground pt-[10px] text-left">{habitationData.anr.address}</p>
         </div>
 
         {/* ANR Card */}
