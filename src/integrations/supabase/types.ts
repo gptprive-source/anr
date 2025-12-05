@@ -61,6 +61,7 @@ export type Database = {
           id: string
           latitude: number
           longitude: number
+          max_gps_update_distance: number | null
           updated_at: string | null
         }
         Insert: {
@@ -70,6 +71,7 @@ export type Database = {
           id?: string
           latitude: number
           longitude: number
+          max_gps_update_distance?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -79,6 +81,7 @@ export type Database = {
           id?: string
           latitude?: number
           longitude?: number
+          max_gps_update_distance?: number | null
           updated_at?: string | null
         }
         Relationships: []
