@@ -32,7 +32,7 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
-import { ShieldCheck, Bot, Mail } from "lucide-react";
+import { ShieldCheck, Bot, Mail, Scale, BookOpen, Building2, UserCheck, AlertTriangle, ClipboardList } from "lucide-react";
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -51,6 +51,13 @@ const navItems = [
   { path: '/admin/team', label: 'Équipe', icon: UserCog },
   { path: '/admin/audit', label: 'Journal d\'audit', icon: ScrollText },
   { path: '/admin/security', label: 'Sécurité', icon: ShieldCheck },
+  // RGPD Section
+  { path: '/admin/rgpd', label: 'RGPD', icon: Scale },
+  { path: '/admin/rgpd/registry', label: 'Registre', icon: BookOpen },
+  { path: '/admin/rgpd/subprocessors', label: 'Sous-traitants', icon: Building2 },
+  { path: '/admin/rgpd/requests', label: 'Demandes droits', icon: UserCheck },
+  { path: '/admin/rgpd/consents', label: 'Consentements', icon: ClipboardList },
+  { path: '/admin/rgpd/incidents', label: 'Incidents', icon: AlertTriangle },
 ];
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
