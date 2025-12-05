@@ -2,6 +2,7 @@ import { ReactNode, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { usePendingSupport } from "@/hooks/usePendingSupport";
+import { usePendingMessages } from "@/hooks/usePendingMessages";
 import { 
   LayoutDashboard, 
   Settings, 
@@ -31,7 +32,7 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
-import { ShieldCheck, Bot } from "lucide-react";
+import { ShieldCheck, Bot, Mail } from "lucide-react";
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,7 +45,8 @@ const navItems = [
   { path: '/admin/privacy', label: 'Confidentialité', icon: Shield },
   { path: '/admin/users', label: 'Utilisateurs', icon: Users },
   { path: '/admin/subscriptions', label: 'Abonnements', icon: CreditCard },
-  { path: '/admin/support', label: 'Support', icon: MessageCircle, hasBadge: true },
+  { path: '/admin/messages', label: 'Messages', icon: Mail, badgeKey: 'messages' },
+  { path: '/admin/support', label: 'Support', icon: MessageCircle, badgeKey: 'support' },
   { path: '/admin/chatbot', label: 'Chatbot', icon: Bot },
   { path: '/admin/team', label: 'Équipe', icon: UserCog },
   { path: '/admin/audit', label: 'Journal d\'audit', icon: ScrollText },
@@ -54,10 +56,13 @@ const navItems = [
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { isAdmin, isSuperAdmin, role, loading } = useAdminAuth();
   const { signOut } = useAuth();
-  const { pendingCount } = usePendingSupport();
+  const { pendingCount: supportCount } = usePendingSupport();
+  const { pendingCount: messagesCount } = usePendingMessages();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  const totalBadgeCount = supportCount + messagesCount;
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -91,7 +96,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
-          const showBadge = item.hasBadge && pendingCount > 0;
+          const badgeCount = item.badgeKey === 'support' ? supportCount : item.badgeKey === 'messages' ? messagesCount : 0;
+          const showBadge = badgeCount > 0;
           
           return (
             <Link
@@ -112,7 +118,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   variant="destructive" 
                   className="h-5 min-w-5 flex items-center justify-center p-0 text-xs animate-pulse"
                 >
-                  {pendingCount}
+                  {badgeCount}
                 </Badge>
               )}
             </Link>
@@ -153,9 +159,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <header className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold text-primary">ANR Admin</h1>
-            {pendingCount > 0 && (
+            {totalBadgeCount > 0 && (
               <Badge variant="destructive" className="h-5 min-w-5 flex items-center justify-center p-0 text-xs animate-pulse">
-                {pendingCount}
+                {totalBadgeCount}
               </Badge>
             )}
           </div>

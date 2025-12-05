@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { UserPlus, Shield, Trash2, User } from "lucide-react";
+import { UserPlus, Shield, Trash2, User, ChevronDown, Briefcase } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { format } from "date-fns";
@@ -30,6 +32,19 @@ const roleDescriptions: Record<AppRole, string> = {
   admin: 'Configuration, FAQ, modération',
   moderator: 'Lecture seule, support utilisateurs',
   analyst: 'Analytics uniquement',
+};
+
+type Department = 'administratif' | 'commercial' | 'partenariat' | 'presse' | 'investisseurs' | 'communication' | 'informatique' | 'collectivites';
+
+const departmentLabels: Record<Department, string> = {
+  administratif: 'Administratif',
+  commercial: 'Commercial',
+  partenariat: 'Partenariat',
+  presse: 'Presse',
+  investisseurs: 'Investisseurs',
+  communication: 'Communication',
+  informatique: 'Informatique',
+  collectivites: 'Collectivités',
 };
 
 const Team = () => {
@@ -55,9 +70,16 @@ const Team = () => {
         .select('id, first_name, last_name, created_at')
         .in('id', userIds);
 
+      // Get departments for these users
+      const { data: departments } = await supabase
+        .from('user_departments')
+        .select('user_id, department')
+        .in('user_id', userIds);
+
       return (roles || []).map(role => ({
         ...role,
         profile: profiles?.find(p => p.id === role.user_id),
+        departments: departments?.filter(d => d.user_id === role.user_id).map(d => d.department) || [],
       }));
     },
   });
@@ -124,6 +146,38 @@ const Team = () => {
       toast.success('Membre retiré');
     },
     onError: () => toast.error('Erreur lors de la suppression'),
+  });
+
+  const toggleDepartmentMutation = useMutation({
+    mutationFn: async ({ userId, department, add }: { userId: string; department: Department; add: boolean }) => {
+      if (add) {
+        const { error } = await supabase
+          .from('user_departments')
+          .insert({ user_id: userId, department });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('user_departments')
+          .delete()
+          .eq('user_id', userId)
+          .eq('department', department);
+        if (error) throw error;
+      }
+
+      // Log audit
+      await supabase.from('admin_audit_logs').insert({
+        user_id: user?.id,
+        action: add ? 'department_add' : 'department_remove',
+        entity_type: 'user_department',
+        entity_id: userId,
+        new_value: { department },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin_team'] });
+      toast.success('Départements mis à jour');
+    },
+    onError: () => toast.error('Erreur lors de la mise à jour'),
   });
 
   const getRoleBadgeVariant = (role: string) => {
@@ -245,64 +299,116 @@ const Team = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {teamMembers?.map(member => (
-              <div 
-                key={member.id}
-                className="flex items-center justify-between p-4 border rounded-lg"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium">
-                      {member.profile?.first_name} {member.profile?.last_name}
-                    </p>
-                    {member.profile?.created_at && (
-                      <p className="text-sm text-muted-foreground">
-                        Inscrit le {format(new Date(member.profile.created_at), 'dd MMM yyyy', { locale: fr })}
-                      </p>
-                    )}
-                  </div>
-                </div>
+              <Collapsible key={member.id}>
+                <div className="border rounded-lg">
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">
+                          {member.profile?.first_name} {member.profile?.last_name}
+                        </p>
+                        {member.profile?.created_at && (
+                          <p className="text-sm text-muted-foreground">
+                            Inscrit le {format(new Date(member.profile.created_at), 'dd MMM yyyy', { locale: fr })}
+                          </p>
+                        )}
+                        {member.departments && member.departments.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {member.departments.map((dept: Department) => (
+                              <Badge key={dept} variant="outline" className="text-xs">
+                                {departmentLabels[dept]}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                <div className="flex items-center gap-4">
-                  {isSuperAdmin && member.user_id !== user?.id ? (
-                    <>
-                      <Select
-                        value={member.role}
-                        onValueChange={(value: AppRole) => 
-                          updateRoleMutation.mutate({ userId: member.user_id, role: value })
-                        }
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(roleLabels).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                    <div className="flex items-center gap-4">
+                      {isSuperAdmin && member.user_id !== user?.id ? (
+                        <>
+                          <Select
+                            value={member.role}
+                            onValueChange={(value: AppRole) => 
+                              updateRoleMutation.mutate({ userId: member.user_id, role: value })
+                            }
+                          >
+                            <SelectTrigger className="w-40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(roleLabels).map(([value, label]) => (
+                                <SelectItem key={value} value={value}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="outline" size="icon">
+                              <ChevronDown className="w-4 h-4" />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => {
+                              if (confirm('Retirer cet administrateur ?')) {
+                                removeMemberMutation.mutate(member.user_id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Badge variant={getRoleBadgeVariant(member.role) as any}>
+                          {roleLabels[member.role as AppRole]}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {isSuperAdmin && member.user_id !== user?.id && (
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 pt-2 border-t border-border">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Briefcase className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">Départements assignés</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          Ce membre recevra les notifications des messages de contact pour les départements sélectionnés.
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {Object.entries(departmentLabels).map(([dept, label]) => (
+                            <div key={dept} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`${member.user_id}-${dept}`}
+                                checked={member.departments?.includes(dept as Department)}
+                                onCheckedChange={(checked) => 
+                                  toggleDepartmentMutation.mutate({ 
+                                    userId: member.user_id, 
+                                    department: dept as Department, 
+                                    add: !!checked 
+                                  })
+                                }
+                              />
+                              <Label 
+                                htmlFor={`${member.user_id}-${dept}`}
+                                className="text-sm cursor-pointer"
+                              >
+                                {label}
+                              </Label>
+                            </div>
                           ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => {
-                          if (confirm('Retirer cet administrateur ?')) {
-                            removeMemberMutation.mutate(member.user_id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <Badge variant={getRoleBadgeVariant(member.role) as any}>
-                      {roleLabels[member.role as AppRole]}
-                    </Badge>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
                   )}
                 </div>
-              </div>
+              </Collapsible>
             ))}
 
             {teamMembers?.length === 0 && (
