@@ -73,8 +73,21 @@ const ResidentDashboard = () => {
       if (residentError) throw residentError;
 
       if (!residentData) {
-        // User has no habitation, redirect to register
-        navigate("/register");
+        // Check if user has an active subscription
+        const { data: subscription } = await supabase
+          .from("subscriptions")
+          .select("id, status")
+          .eq("user_id", user?.id)
+          .eq("status", "active")
+          .maybeSingle();
+        
+        if (subscription) {
+          // User has subscription but no habitation - redirect to rejoin page
+          navigate("/no-habitation");
+        } else {
+          // No subscription, redirect to register
+          navigate("/register");
+        }
         return;
       }
 
