@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle, CreditCard, Plus, Minus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,16 +38,36 @@ const RegisterForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Lock to prevent multiple verify calls
+  const isVerifyingRef = useRef(false);
+  const hasProcessedSessionRef = useRef<string | null>(null);
 
   // Handle Stripe return
   useEffect(() => {
     const paymentStatus = searchParams.get("payment");
     const sessionId = searchParams.get("session_id");
 
+    // Skip if already processing or already processed this session
+    if (isVerifyingRef.current) {
+      console.log("[RegisterForm] Already verifying, skipping");
+      return;
+    }
+    
+    if (sessionId && hasProcessedSessionRef.current === sessionId) {
+      console.log("[RegisterForm] Session already processed locally, skipping");
+      return;
+    }
+
     if (paymentStatus === "success" && sessionId) {
+      // Mark as processing immediately
+      hasProcessedSessionRef.current = sessionId;
+      // Clear URL params immediately to prevent re-triggers on refresh
+      window.history.replaceState({}, "", "/register");
       verifyPaymentAndFinalize(sessionId);
     } else if (paymentStatus === "cancelled") {
+      window.history.replaceState({}, "", "/register");
       toast({
         title: "Paiement annulé",
         description: "Vous pouvez réessayer quand vous le souhaitez",
@@ -58,7 +78,15 @@ const RegisterForm = () => {
   }, [searchParams]);
 
   const verifyPaymentAndFinalize = async (sessionId: string, retryCount = 0) => {
+    // Prevent multiple simultaneous calls
+    if (isVerifyingRef.current) {
+      console.log("[RegisterForm] Already verifying, skipping duplicate call");
+      return;
+    }
+    
+    isVerifyingRef.current = true;
     setLoading(true);
+    
     try {
       // Try to get session, but don't fail if not available
       // The verify-payment function can work without auth using Stripe metadata
@@ -76,6 +104,7 @@ const RegisterForm = () => {
       // Clear localStorage data
       localStorage.removeItem("anr_register_address_data");
       localStorage.removeItem("anr_register_step");
+      localStorage.removeItem("anr_pending_session_id");
 
       toast({
         title: data.alreadyProcessed 
@@ -84,8 +113,6 @@ const RegisterForm = () => {
         description: "Votre paiement a été validé",
       });
 
-      // Clear URL params and go to success
-      window.history.replaceState({}, "", "/register");
       setStep("success");
     } catch (error: any) {
       console.error("Payment verification error:", error);
@@ -95,6 +122,7 @@ const RegisterForm = () => {
         console.log("[RegisterForm] Auth error, attempting refresh...");
         try {
           await supabase.auth.refreshSession();
+          isVerifyingRef.current = false; // Reset to allow retry
           // Retry once after refresh
           return verifyPaymentAndFinalize(sessionId, 1);
         } catch (refreshError) {
@@ -113,6 +141,7 @@ const RegisterForm = () => {
       setStep("payment");
     } finally {
       setLoading(false);
+      isVerifyingRef.current = false;
     }
   };
 

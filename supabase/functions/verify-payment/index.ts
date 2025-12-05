@@ -31,6 +31,36 @@ serve(async (req) => {
     if (!sessionId) throw new Error("Session ID is required");
     console.log("[VERIFY-PAYMENT] Session ID:", sessionId);
 
+    // ============================================
+    // IDEMPOTENCY CHECK FIRST - Before anything else
+    // ============================================
+    const { data: existingBySessionId } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id, habitation_id")
+      .eq("stripe_session_id", sessionId)
+      .maybeSingle();
+
+    if (existingBySessionId) {
+      console.log("[VERIFY-PAYMENT] Session already processed (by stripe_session_id), returning existing data");
+      
+      const { data: existingHab } = await supabaseAdmin
+        .from("habitations")
+        .select("id, anr_id")
+        .eq("id", existingBySessionId.habitation_id)
+        .single();
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        habitationId: existingHab?.id,
+        anrId: existingHab?.anr_id,
+        isNewAnr: false,
+        alreadyProcessed: true
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -90,27 +120,21 @@ serve(async (req) => {
     }
     console.log("[VERIFY-PAYMENT] User verified in database:", userId);
 
-    // Check if this session was already processed (idempotency)
-    const { data: existingSubscription } = await supabaseAdmin
+    // Secondary idempotency check on stripe_subscription_id (backup)
+    const subscriptionId = (session.subscription as Stripe.Subscription)?.id || session.id;
+    const { data: existingBySubId } = await supabaseAdmin
       .from("subscriptions")
-      .select("id")
-      .eq("stripe_subscription_id", (session.subscription as Stripe.Subscription)?.id || session.id)
+      .select("id, habitation_id")
+      .eq("stripe_subscription_id", subscriptionId)
       .maybeSingle();
 
-    if (existingSubscription) {
-      console.log("[VERIFY-PAYMENT] Session already processed, returning existing data");
-      
-      // Get existing habitation
-      const { data: existingSub } = await supabaseAdmin
-        .from("subscriptions")
-        .select("habitation_id")
-        .eq("stripe_subscription_id", (session.subscription as Stripe.Subscription)?.id || session.id)
-        .single();
+    if (existingBySubId) {
+      console.log("[VERIFY-PAYMENT] Session already processed (by subscription_id), returning existing data");
       
       const { data: existingHab } = await supabaseAdmin
         .from("habitations")
         .select("id, anr_id")
-        .eq("id", existingSub?.habitation_id)
+        .eq("id", existingBySubId.habitation_id)
         .single();
 
       return new Response(JSON.stringify({ 
@@ -203,7 +227,7 @@ serve(async (req) => {
       periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
     }
     
-    // Save subscription to database
+    // Save subscription to database WITH stripe_session_id for idempotency
     const { error: subError } = await supabaseAdmin
       .from("subscriptions")
       .insert({
@@ -211,6 +235,7 @@ serve(async (req) => {
         habitation_id: habitation.id,
         stripe_customer_id: session.customer as string,
         stripe_subscription_id: subscription?.id || session.id,
+        stripe_session_id: sessionId, // NEW: for idempotency
         status: subscription?.status || "active",
         current_period_start: periodStart,
         current_period_end: periodEnd,
@@ -218,7 +243,7 @@ serve(async (req) => {
       });
 
     if (subError) throw new Error(`Error creating subscription record: ${subError.message}`);
-    console.log("[VERIFY-PAYMENT] Subscription saved");
+    console.log("[VERIFY-PAYMENT] Subscription saved with session_id for idempotency");
 
     // Record doming orders
     const domingQuantity = (isNewAnr ? 1 : 0) + extraDomings; // 1 free if new ANR + extras
