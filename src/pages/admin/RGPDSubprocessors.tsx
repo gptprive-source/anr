@@ -76,7 +76,7 @@ const RGPDSubprocessors = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-4rem)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Building2 className="w-8 h-8 text-primary" />
