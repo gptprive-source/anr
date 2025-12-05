@@ -834,32 +834,34 @@ const PaymentStep = ({
           <div className="border-t border-border my-2" />
 
           {/* Extra Domings */}
-          <div className="flex justify-between items-center">
-            <div className="flex-1">
-              <p className="font-medium">Domings supplémentaires</p>
-              <p className="text-xs text-muted-foreground">{domingPrice}€ / pièce</p>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="font-medium">Domings supplémentaires</p>
+                <p className="text-xs text-muted-foreground">{domingPrice}€ / pièce</p>
+              </div>
+              <p className="font-semibold">{extraDomingsTotal},00 €</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-4">
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-10 w-10"
                 onClick={() => setExtraDomings(Math.max(0, extraDomings - 1))}
                 disabled={extraDomings === 0}
               >
                 <Minus className="w-4 h-4" />
               </Button>
-              <span className="w-8 text-center font-semibold">{extraDomings}</span>
+              <span className="w-12 text-center font-semibold text-lg">{extraDomings}</span>
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-10 w-10"
                 onClick={() => setExtraDomings(extraDomings + 1)}
               >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
-            <p className="font-semibold w-20 text-right">{extraDomingsTotal},00 €</p>
           </div>
         </div>
 

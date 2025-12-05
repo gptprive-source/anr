@@ -3,6 +3,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import DailyIframe from "@daily-co/daily-js";
 
 interface IncomingCallData {
   participantId: string;
@@ -17,6 +18,8 @@ let oscillator: OscillatorNode | null = null;
 let gainNode: GainNode | null = null;
 let ringtoneInterval: NodeJS.Timeout | null = null;
 let vibrationInterval: NodeJS.Timeout | null = null;
+let prefetchedRoomUrl: string | null = null;
+let prefetchPromise: Promise<string | null> | null = null;
 
 const startRingtone = () => {
   try {
@@ -91,6 +94,25 @@ export const showIncomingCall = (data: IncomingCallData) => {
   }
   
   currentCallData = data;
+  
+  // Pre-fetch Daily room URL immediately for faster preview
+  prefetchedRoomUrl = null;
+  prefetchPromise = (async () => {
+    try {
+      console.log("[CALL] Pre-fetching room URL...");
+      const { data: roomData, error } = await supabase.functions.invoke("daily-room", {
+        body: { callId: data.callId, isResident: true }
+      });
+      if (!error && roomData?.url) {
+        prefetchedRoomUrl = roomData.url;
+        console.log("[CALL] Room URL pre-fetched successfully");
+        return roomData.url;
+      }
+    } catch (err) {
+      console.error("[CALL] Pre-fetch error:", err);
+    }
+    return null;
+  })();
   
   // Create container
   const container = document.createElement('div');
@@ -241,38 +263,45 @@ export const showIncomingCall = (data: IncomingCallData) => {
   console.log("[CALL] Decline btn found:", !!declineBtn);
   console.log("[CALL] Preview btn found:", !!previewBtn);
   
-  // Preview functionality - fetch Daily room URL and show video
+  // Preview functionality - use pre-fetched Daily room URL for faster connection
   if (previewBtn && previewContainer) {
     previewBtn.onclick = async (event) => {
       event.preventDefault();
       event.stopPropagation();
       console.log("[CALL] Preview clicked");
       
-      // Show preview container
+      // Show preview container immediately
       previewContainer.style.display = 'block';
       previewBtn.style.opacity = '0.5';
       previewBtn.style.pointerEvents = 'none';
       
       try {
-        // Fetch Daily room token
-        const { data: roomData, error } = await supabase.functions.invoke("daily-room", {
-          body: { callId: data.callId, isResident: true }
-        });
-        
-        if (error) {
-          console.error("[CALL] Preview room error:", error);
-          return;
+        // Use pre-fetched URL or wait for it
+        let roomUrl = prefetchedRoomUrl;
+        if (!roomUrl && prefetchPromise) {
+          console.log("[CALL] Waiting for pre-fetch...");
+          roomUrl = await prefetchPromise;
         }
         
-        console.log("[CALL] Preview room data:", roomData);
+        // Fallback: fetch if pre-fetch failed
+        if (!roomUrl) {
+          console.log("[CALL] Pre-fetch missed, fetching now...");
+          const { data: roomData, error } = await supabase.functions.invoke("daily-room", {
+            body: { callId: data.callId, isResident: true }
+          });
+          if (error) {
+            console.error("[CALL] Preview room error:", error);
+            return;
+          }
+          roomUrl = roomData?.url;
+        }
         
-        if (roomData?.url) {
+        console.log("[CALL] Preview using room URL:", roomUrl ? "available" : "none");
+        
+        if (roomUrl) {
           // Hide loading text
           const loadingText = document.getElementById('preview-loading');
           if (loadingText) loadingText.style.display = 'none';
-          
-          // Import Daily dynamically
-          const Daily = (await import("@daily-co/daily-js")).default;
           
           // Clear container first
           previewContainer.innerHTML = '';
@@ -285,14 +314,14 @@ export const showIncomingCall = (data: IncomingCallData) => {
           videoEl.style.cssText = 'width:100%;height:100%;object-fit:cover;background:#000;';
           previewContainer.appendChild(videoEl);
           
-          // Create call object (not frame) for better track control
-          const callObject = Daily.createCallObject({
+          // Create call object using pre-imported Daily (no dynamic import needed)
+          const callObject = DailyIframe.createCallObject({
             audioSource: false,  // Résident: pas de micro en preview
             videoSource: false,  // Résident: pas de vidéo en preview
             subscribeToTracksAutomatically: true,
           });
           
-          console.log("[CALL] Preview callObject created");
+          console.log("[CALL] Preview callObject created (using pre-imported Daily)");
           
           // Listen for remote video tracks
           callObject.on('track-started', (event: any) => {
@@ -311,7 +340,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
           
           // Join in receive-only mode
           await callObject.join({
-            url: roomData.url,
+            url: roomUrl,
             startVideoOff: true,
             startAudioOff: true,
           });

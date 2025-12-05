@@ -45,7 +45,7 @@ const InviteResidentsPanel = ({
   };
 
   return (
-    <div className="absolute top-20 left-4 z-20 bg-background/90 backdrop-blur-sm rounded-lg border border-border p-3 min-w-56 max-w-72">
+    <div className="absolute bottom-24 left-4 right-4 z-20 bg-background/90 backdrop-blur-sm rounded-lg border border-border p-3 max-h-48 overflow-y-auto">
       <div className="flex items-center gap-2 mb-3">
         <UserPlus className="w-4 h-4 text-primary" />
         <span className="text-sm font-medium">Inviter des résidents</span>

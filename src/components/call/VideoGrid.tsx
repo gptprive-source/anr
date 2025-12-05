@@ -95,6 +95,26 @@ const VideoGrid = memo(({
 
   return (
     <div className="flex-1 flex items-center justify-center p-2">
+      {/* Hidden audio elements for remote participants */}
+      {remoteParticipants.map((participant) => {
+        if (participant.audioTrack) {
+          return (
+            <audio
+              key={`audio-${participant.sessionId}`}
+              ref={(el) => {
+                if (el && participant.audioTrack) {
+                  el.srcObject = new MediaStream([participant.audioTrack]);
+                  el.play().catch(console.error);
+                }
+              }}
+              autoPlay
+              style={{ display: 'none' }}
+            />
+          );
+        }
+        return null;
+      })}
+
       <div className={`grid ${getGridClass()} gap-2 w-full max-w-2xl`}>
         {/* Remote participants */}
         {participantsWithVideo.map((participant, index) => (
