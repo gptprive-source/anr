@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, HelpCircle, Shield } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, HelpCircle, Shield, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate, Link } from "react-router-dom";
@@ -31,6 +31,7 @@ const Account = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [habitation, setHabitation] = useState<HabitationData | null>(null);
@@ -150,6 +151,41 @@ const Account = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const handleExportData = async () => {
+    setExportLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("export-user-data");
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      // Create and download JSON file
+      const blob = new Blob([JSON.stringify(data.userData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mes-donnees-anr-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Export réussi",
+        description: "Vos données ont été téléchargées"
+      });
+    } catch (error: any) {
+      console.error("Error exporting data:", error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'exporter vos données",
+        variant: "destructive"
+      });
+    } finally {
+      setExportLoading(false);
+    }
   };
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center pb-16">
@@ -335,6 +371,34 @@ const Account = () => {
             <ChevronRight className="w-5 h-5 text-muted-foreground" />
           </div>
         </Link>
+
+        {/* RGPD - Export data */}
+        <div className="glass-effect rounded-xl p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Download className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium">Mes données personnelles</p>
+              <p className="text-xs text-muted-foreground">Droit à la portabilité (RGPD)</p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            className="w-full gap-2" 
+            onClick={handleExportData}
+            disabled={exportLoading}
+          >
+            {exportLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Télécharger mes données
+              </>
+            )}
+          </Button>
+        </div>
 
         {/* Actions */}
         <div className="pt-4 space-y-3">

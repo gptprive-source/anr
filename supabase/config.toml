@@ -82,3 +82,12 @@ verify_jwt = false
 
 [functions.invite-admin-member]
 verify_jwt = false
+
+[functions.export-user-data]
+verify_jwt = true
+
+[functions.data-retention-cleanup]
+verify_jwt = false
+
+[functions.notify-contact-message]
+verify_jwt = false

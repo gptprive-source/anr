@@ -49,6 +49,15 @@ import AdminPrivacyEditor from "./pages/admin/PrivacyEditor";
 import AdminSecurity from "./pages/admin/Security";
 import AdminChatbotStats from "./pages/admin/ChatbotStats";
 import AdminMessages from "./pages/admin/Messages";
+import MentionsLegales from "./pages/MentionsLegales";
+
+// RGPD Admin pages
+import AdminRGPD from "./pages/admin/RGPD";
+import AdminRGPDRegistry from "./pages/admin/RGPDRegistry";
+import AdminRGPDSubprocessors from "./pages/admin/RGPDSubprocessors";
+import AdminRGPDRequests from "./pages/admin/RGPDRequests";
+import AdminRGPDConsents from "./pages/admin/RGPDConsents";
+import AdminRGPDIncidents from "./pages/admin/RGPDIncidents";
 
 const queryClient = new QueryClient();
 
@@ -129,6 +138,9 @@ const AppContent = () => {
             }
           />
           
+          {/* Public legal pages */}
+          <Route path="/mentions-legales" element={<MentionsLegales />} />
+
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
@@ -146,6 +158,14 @@ const AppContent = () => {
           <Route path="/admin/chatbot" element={<AdminChatbotStats />} />
           <Route path="/admin/security" element={<AdminSecurity />} />
           <Route path="/admin/messages" element={<AdminMessages />} />
+          
+          {/* RGPD Admin Routes */}
+          <Route path="/admin/rgpd" element={<AdminRGPD />} />
+          <Route path="/admin/rgpd/registry" element={<AdminRGPDRegistry />} />
+          <Route path="/admin/rgpd/subprocessors" element={<AdminRGPDSubprocessors />} />
+          <Route path="/admin/rgpd/requests" element={<AdminRGPDRequests />} />
+          <Route path="/admin/rgpd/consents" element={<AdminRGPDConsents />} />
+          <Route path="/admin/rgpd/incidents" element={<AdminRGPDIncidents />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>
