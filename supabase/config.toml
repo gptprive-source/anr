@@ -79,3 +79,6 @@ verify_jwt = false
 
 [functions.faq-search]
 verify_jwt = false
+
+[functions.invite-admin-member]
+verify_jwt = false

@@ -22,11 +22,22 @@ const Login = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Redirect if already logged in
+  // Redirect if already logged in - admin-only users go to /admin
   useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
+    const checkAndRedirect = async () => {
+      if (user) {
+        // Check if user is admin-only (has admin role but no habitation)
+        const isAdminOnly = user.user_metadata?.is_admin_only === true;
+        
+        if (isAdminOnly) {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard");
+        }
+      }
+    };
+    
+    checkAndRedirect();
   }, [user, navigate]);
 
   const handleLogin = async () => {
@@ -69,7 +80,16 @@ const Login = () => {
         title: "Connecté",
         description: "Bienvenue !",
       });
-      navigate("/dashboard");
+      
+      // Get the updated user to check metadata
+      const { data: { user: loggedInUser } } = await supabase.auth.getUser();
+      const isAdminOnly = loggedInUser?.user_metadata?.is_admin_only === true;
+      
+      if (isAdminOnly) {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error: any) {
       let errorMessage = "Impossible de se connecter";
       

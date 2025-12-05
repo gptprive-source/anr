@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { UserPlus, Shield, Trash2, User, ChevronDown, Briefcase } from "lucide-react";
+import { UserPlus, Shield, Trash2, User, ChevronDown, Briefcase, Mail, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { format } from "date-fns";
@@ -47,12 +47,31 @@ const departmentLabels: Record<Department, string> = {
   collectivites: 'Collectivités',
 };
 
+const allDepartments: Department[] = [
+  'administratif', 'commercial', 'partenariat', 'presse', 
+  'investisseurs', 'communication', 'informatique', 'collectivites'
+];
+
+interface NewMemberForm {
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: AppRole;
+  departments: Department[];
+}
+
 const Team = () => {
   const { user } = useAuth();
   const { isSuperAdmin } = useAdminAuth();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newMember, setNewMember] = useState({ email: '', role: 'analyst' as AppRole });
+  const [newMember, setNewMember] = useState<NewMemberForm>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    role: 'moderator',
+    departments: [],
+  });
 
   const { data: teamMembers, isLoading } = useQuery({
     queryKey: ['admin_team'],
@@ -85,17 +104,44 @@ const Team = () => {
   });
 
   const addMemberMutation = useMutation({
-    mutationFn: async ({ email, role }: { email: string; role: AppRole }) => {
-      // Note: In a real app, you'd need to look up user by email or invite them
-      // For now, this is a simplified version
-      toast.error('Fonctionnalité en cours de développement');
-      throw new Error('Not implemented');
+    mutationFn: async (data: NewMemberForm) => {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        throw new Error("Non authentifié");
+      }
+
+      const response = await supabase.functions.invoke('invite-admin-member', {
+        body: data,
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Erreur lors de l'invitation");
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin_team'] });
-      toast.success('Membre ajouté');
+      if (data.isExisting) {
+        toast.success('Rôle administrateur ajouté à l\'utilisateur existant');
+      } else {
+        toast.success('Invitation envoyée avec succès');
+      }
       setIsDialogOpen(false);
-      setNewMember({ email: '', role: 'analyst' });
+      setNewMember({
+        firstName: '',
+        lastName: '',
+        email: '',
+        role: 'moderator',
+        departments: [],
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Erreur lors de l'invitation");
     },
   });
 
@@ -193,6 +239,17 @@ const Team = () => {
     }
   };
 
+  const toggleNewMemberDepartment = (dept: Department) => {
+    setNewMember(prev => ({
+      ...prev,
+      departments: prev.departments.includes(dept)
+        ? prev.departments.filter(d => d !== dept)
+        : [...prev.departments, dept],
+    }));
+  };
+
+  const isFormValid = newMember.firstName.trim() && newMember.lastName.trim() && newMember.email.trim();
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -217,25 +274,55 @@ const Team = () => {
               <DialogTrigger asChild>
                 <Button>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Ajouter un membre
+                  Inviter un collaborateur
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Ajouter un administrateur</DialogTitle>
+                  <DialogTitle>Inviter un collaborateur</DialogTitle>
+                  <DialogDescription>
+                    Le collaborateur recevra un email avec un lien pour créer son mot de passe.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Email de l'utilisateur</Label>
-                    <Input
-                      type="email"
-                      value={newMember.email}
-                      onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                      placeholder="admin@example.com"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">Prénom *</Label>
+                      <Input
+                        id="firstName"
+                        value={newMember.firstName}
+                        onChange={(e) => setNewMember({ ...newMember, firstName: e.target.value })}
+                        placeholder="Marie"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Nom *</Label>
+                      <Input
+                        id="lastName"
+                        value={newMember.lastName}
+                        onChange={(e) => setNewMember({ ...newMember, lastName: e.target.value })}
+                        placeholder="Dupont"
+                      />
+                    </div>
                   </div>
+
                   <div className="space-y-2">
-                    <Label>Rôle</Label>
+                    <Label htmlFor="email">Email professionnel *</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={newMember.email}
+                        onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                        placeholder="marie.dupont@entreprise.com"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Rôle *</Label>
                     <Select
                       value={newMember.role}
                       onValueChange={(value: AppRole) => setNewMember({ ...newMember, role: value })}
@@ -246,23 +333,58 @@ const Team = () => {
                       <SelectContent>
                         {Object.entries(roleLabels).map(([value, label]) => (
                           <SelectItem key={value} value={value}>
-                            <div>
-                              <p>{label}</p>
-                              <p className="text-xs text-muted-foreground">
+                            <div className="flex flex-col">
+                              <span>{label}</span>
+                              <span className="text-xs text-muted-foreground">
                                 {roleDescriptions[value as AppRole]}
-                              </p>
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Départements</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Le collaborateur recevra les notifications des messages de contact pour ces départements.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {allDepartments.map((dept) => (
+                        <div key={dept} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`new-${dept}`}
+                            checked={newMember.departments.includes(dept)}
+                            onCheckedChange={() => toggleNewMemberDepartment(dept)}
+                          />
+                          <Label 
+                            htmlFor={`new-${dept}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {departmentLabels[dept]}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <Button 
                     onClick={() => addMemberMutation.mutate(newMember)}
-                    disabled={!newMember.email || addMemberMutation.isPending}
+                    disabled={!isFormValid || addMemberMutation.isPending}
                     className="w-full"
                   >
-                    Ajouter
+                    {addMemberMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Envoi en cours...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4 mr-2" />
+                        Envoyer l'invitation
+                      </>
+                    )}
                   </Button>
                 </div>
               </DialogContent>
