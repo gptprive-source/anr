@@ -24,7 +24,8 @@ import {
   Monitor, 
   Landmark,
   FileText,
-  Shield
+  Shield,
+  Users
 } from "lucide-react";
 import VisitorFooter from "@/components/layout/VisitorFooter";
 
@@ -40,7 +41,7 @@ const departmentLabels = {
 };
 
 const contactSchema = z.object({
-  sender_type: z.enum(["particulier", "societe"]),
+  sender_type: z.enum(["particulier", "societe", "collectivites"]),
   company_name: z.string().optional(),
   first_name: z.string().min(1, "Prénom requis"),
   last_name: z.string().min(1, "Nom requis"),
@@ -200,17 +201,26 @@ const Contact = () => {
                         Société / Organisation
                       </Label>
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="collectivites" id="collectivites" />
+                      <Label htmlFor="collectivites" className="flex items-center gap-2 cursor-pointer">
+                        <Landmark className="w-4 h-4" />
+                        Collectivité
+                      </Label>
+                    </div>
                   </RadioGroup>
                 </div>
 
-                {/* Company Name (if société) */}
-                {senderType === "societe" && (
+                {/* Company/Entity Name (if société or collectivité) */}
+                {(senderType === "societe" || senderType === "collectivites") && (
                   <div className="space-y-2">
-                    <Label htmlFor="company_name">Nom de l'entreprise</Label>
+                    <Label htmlFor="company_name">
+                      {senderType === "collectivites" ? "Nom de la collectivité" : "Nom de l'entreprise"}
+                    </Label>
                     <Input
                       id="company_name"
                       {...register("company_name")}
-                      placeholder="Nom de votre entreprise"
+                      placeholder={senderType === "collectivites" ? "Nom de votre collectivité" : "Nom de votre entreprise"}
                     />
                   </div>
                 )}
