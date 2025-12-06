@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { MapPin, Phone, Loader2, MessageSquare } from "lucide-react";
-import VisitorMessageDialog from "@/components/visitor/VisitorMessageDialog";
+import { MapPin, Phone, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -29,8 +28,6 @@ const ANRLanding = () => {
   const [loading, setLoading] = useState(true);
   const [anrData, setAnrData] = useState<ANRData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
-  const [firstHabitationId, setFirstHabitationId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchANR = async () => {
@@ -56,16 +53,11 @@ const ANRLanding = () => {
           return;
         }
 
-        // Count habitations and get first one for messages
-        const { data: habitations, count } = await supabase
+        // Count habitations
+        const { count } = await supabase
           .from("habitations")
-          .select("id", { count: "exact" })
-          .eq("anr_id", anr.id)
-          .limit(1);
-
-        if (habitations && habitations.length > 0) {
-          setFirstHabitationId(habitations[0].id);
-        }
+          .select("id", { count: "exact", head: true })
+          .eq("anr_id", anr.id);
 
         setAnrData({
           ...anr,
@@ -215,17 +207,6 @@ const ANRLanding = () => {
             Appeler cet interphone
           </Button>
 
-          {/* Message button */}
-          {firstHabitationId && (
-            <Button
-              onClick={() => setMessageDialogOpen(true)}
-              variant="outline"
-              className="w-full h-14 text-base gap-3"
-            >
-              <MessageSquare className="w-5 h-5" />
-              Laisser un message
-            </Button>
-          )}
         </div>
 
         {/* Info text */}
@@ -236,15 +217,6 @@ const ANRLanding = () => {
           }
         </p>
       </div>
-
-      {/* Message Dialog */}
-      {firstHabitationId && (
-        <VisitorMessageDialog
-          open={messageDialogOpen}
-          onOpenChange={setMessageDialogOpen}
-          habitationId={firstHabitationId}
-        />
-      )}
 
       <VisitorFooter />
     </div>
