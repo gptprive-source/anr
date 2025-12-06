@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot, User, Loader2, UserCog, BookOpen, Sparkles, RefreshCw, FileText } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, Loader2, UserCog, BookOpen, Sparkles, RefreshCw, FileText, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,18 +15,61 @@ interface Message {
   source?: "faq" | "ai" | "rgpd";
 }
 
+const STORAGE_KEY = "anr_support_chat";
+
 const SupportChat = () => {
   const { user } = useAuth();
   const { isOpen, setIsOpen, rgpdRequest, clearRGPDRequest } = useSupportChat();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Load messages from localStorage on init
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.messages || [];
+      }
+    } catch (e) {
+      console.error("Error loading chat history:", e);
+    }
+    return [];
+  });
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [requestHuman, setRequestHuman] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [requestHuman, setRequestHuman] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved).requestHuman || false;
+      }
+    } catch {}
+    return false;
+  });
+  const [conversationId, setConversationId] = useState<string | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved).conversationId || null;
+      }
+    } catch {}
+    return null;
+  });
   const [lastFaqQuery, setLastFaqQuery] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const rgpdProcessedRef = useRef<string | null>(null);
+
+  // Save to localStorage whenever messages, requestHuman or conversationId change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        messages,
+        requestHuman,
+        conversationId
+      }));
+    } catch (e) {
+      console.error("Error saving chat history:", e);
+    }
+  }, [messages, requestHuman, conversationId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -459,9 +502,27 @@ const SupportChat = () => {
                 <h3 className="font-semibold">Support Clients</h3>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
-              <X className="w-5 h-5" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setMessages([]);
+                    setRequestHuman(false);
+                    setConversationId(null);
+                    rgpdProcessedRef.current = null;
+                    localStorage.removeItem(STORAGE_KEY);
+                  }}
+                  title="Nouvelle conversation"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
 
           {/* Messages */}
