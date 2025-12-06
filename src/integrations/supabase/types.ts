@@ -1265,6 +1265,138 @@ export type Database = {
         }
         Relationships: []
       }
+      visitor_business_cards: {
+        Row: {
+          card_type: string
+          company_name: string | null
+          created_at: string | null
+          device_id: string
+          email: string | null
+          expires_at: string | null
+          first_name: string | null
+          id: string
+          job_title: string | null
+          last_name: string | null
+          phone: string | null
+          updated_at: string | null
+          visitor_anr_code: string | null
+        }
+        Insert: {
+          card_type?: string
+          company_name?: string | null
+          created_at?: string | null
+          device_id: string
+          email?: string | null
+          expires_at?: string | null
+          first_name?: string | null
+          id?: string
+          job_title?: string | null
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string | null
+          visitor_anr_code?: string | null
+        }
+        Update: {
+          card_type?: string
+          company_name?: string | null
+          created_at?: string | null
+          device_id?: string
+          email?: string | null
+          expires_at?: string | null
+          first_name?: string | null
+          id?: string
+          job_title?: string | null
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string | null
+          visitor_anr_code?: string | null
+        }
+        Relationships: []
+      }
+      visitor_message_templates: {
+        Row: {
+          content: string
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
+      visitor_messages: {
+        Row: {
+          business_card_id: string | null
+          created_at: string | null
+          habitation_id: string
+          id: string
+          is_read: boolean | null
+          message: string
+          read_at: string | null
+          visitor_latitude: number | null
+          visitor_longitude: number | null
+          visitor_phone: string | null
+        }
+        Insert: {
+          business_card_id?: string | null
+          created_at?: string | null
+          habitation_id: string
+          id?: string
+          is_read?: boolean | null
+          message: string
+          read_at?: string | null
+          visitor_latitude?: number | null
+          visitor_longitude?: number | null
+          visitor_phone?: string | null
+        }
+        Update: {
+          business_card_id?: string | null
+          created_at?: string | null
+          habitation_id?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          read_at?: string | null
+          visitor_latitude?: number | null
+          visitor_longitude?: number | null
+          visitor_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitor_messages_business_card_id_fkey"
+            columns: ["business_card_id"]
+            isOneToOne: false
+            referencedRelation: "visitor_business_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitor_messages_habitation_id_fkey"
+            columns: ["habitation_id"]
+            isOneToOne: false
+            referencedRelation: "habitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
