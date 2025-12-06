@@ -270,6 +270,27 @@ const FAQManager = () => {
           </Dialog>
         </div>
 
+        {/* Variables dynamiques info card */}
+        <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-blue-800 dark:text-blue-200 flex items-center gap-2">
+              💡 Variables dynamiques
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-blue-700 dark:text-blue-300">
+            <p className="mb-2">Utilisez ces variables dans vos questions/réponses. Elles seront remplacées automatiquement par les valeurs de configuration :</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 font-mono text-xs">
+              <div><code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{"{{max_distance_meters}}"}</code> → Distance max (mètres)</div>
+              <div><code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{"{{max_call_duration_minutes}}"}</code> → Durée max appel (minutes)</div>
+              <div><code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{"{{max_residents_per_habitation}}"}</code> → Résidents max par habitation</div>
+              <div><code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{"{{subscription_price}}"}</code> → Prix abonnement (€)</div>
+              <div><code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{"{{doming_price}}"}</code> → Prix Doming (€)</div>
+              <div><code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{"{{invitation_validity_hours}}"}</code> → Validité invitation (heures)</div>
+              <div><code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{"{{support_email}}"}</code> → Email support</div>
+            </div>
+          </CardContent>
+        </Card>
+
         {Object.entries(groupedFAQ || {}).map(([section, items]) => (
           <Card key={section}>
             <CardHeader>

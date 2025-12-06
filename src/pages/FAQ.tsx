@@ -20,6 +20,11 @@ interface FAQItem {
   sort_order: number;
 }
 
+interface AppConfig {
+  key: string;
+  value: any;
+}
+
 const iconMap: Record<string, string> = {
   'Smartphone': '📱',
   'CreditCard': '💳',
@@ -29,7 +34,57 @@ const iconMap: Record<string, string> = {
   'Phone': '📞',
 };
 
+// Replace template variables in FAQ content with actual config values
+const replaceConfigVariables = (text: string, configMap: Record<string, string>): string => {
+  let result = text;
+  Object.entries(configMap).forEach(([key, value]) => {
+    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    result = result.replace(regex, value);
+  });
+  return result;
+};
+
 const FAQ = () => {
+  // Fetch all app config for dynamic values
+  const { data: appConfigs } = useQuery({
+    queryKey: ['app_config_for_faq'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('app_config')
+        .select('key, value');
+      
+      if (error) throw error;
+      return data as AppConfig[];
+    },
+  });
+
+  // Build config map for template replacement
+  const configMap: Record<string, string> = {};
+  appConfigs?.forEach(config => {
+    try {
+      const value = typeof config.value === 'string' ? JSON.parse(config.value) : config.value;
+      // Format specific values for display
+      if (config.key === 'max_call_duration_seconds') {
+        configMap[config.key] = String(Math.floor(value / 60)); // Convert to minutes
+        configMap['max_call_duration_minutes'] = String(Math.floor(value / 60));
+      } else if (config.key === 'max_distance_meters') {
+        configMap[config.key] = String(value);
+      } else if (config.key === 'max_residents_per_habitation') {
+        configMap[config.key] = String(value);
+      } else if (config.key === 'subscription_price') {
+        configMap[config.key] = String(value);
+      } else if (config.key === 'doming_price') {
+        configMap[config.key] = String(value);
+      } else if (config.key === 'invitation_validity_hours') {
+        configMap[config.key] = String(value);
+      } else {
+        configMap[config.key] = String(value);
+      }
+    } catch {
+      configMap[config.key] = String(config.value);
+    }
+  });
+
   // Fetch FAQ from database
   const { data: faqItems, isLoading: faqLoading } = useQuery({
     queryKey: ['public_faq_items'],
@@ -65,7 +120,7 @@ const FAQ = () => {
     },
   });
 
-  // Group FAQ by section
+  // Group FAQ by section with dynamic values replaced
   const groupedFAQ = faqItems?.reduce((acc, item) => {
     if (!acc[item.section]) {
       acc[item.section] = {
@@ -75,8 +130,8 @@ const FAQ = () => {
       };
     }
     acc[item.section].questions.push({
-      q: item.question,
-      a: item.answer,
+      q: replaceConfigVariables(item.question, configMap),
+      a: replaceConfigVariables(item.answer, configMap),
     });
     return acc;
   }, {} as Record<string, { title: string; icon: string; questions: { q: string; a: string }[] }>);
