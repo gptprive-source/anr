@@ -214,7 +214,6 @@ Après chaque action, confirme clairement à l'utilisateur ce qui a été fait.`
                 // Handle regular content
                 if (delta?.content) {
                   fullResponse += delta.content;
-                  await writer.write(value);
                 }
                 
                 // Handle tool calls
