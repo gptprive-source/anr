@@ -16,22 +16,22 @@ interface BusinessCard {
 interface VisitorMessage {
   id: string;
   habitation_id: string;
-  call_id: string | null;
   message: string;
   visitor_phone: string | null;
+  visitor_latitude: number | null;
+  visitor_longitude: number | null;
   is_read: boolean;
   read_at: string | null;
   created_at: string;
-  expires_at: string;
   business_card_id: string | null;
   business_card?: BusinessCard | null;
 }
 
 interface MessageTemplate {
   id: string;
-  label: string;
-  message: string;
-  icon: string;
+  name: string;
+  content: string;
+  icon: string | null;
 }
 
 export const useVisitorMessages = (habitationId?: string) => {
@@ -74,7 +74,8 @@ export const useVisitorMessages = (habitationId?: string) => {
       const { data, error } = await (supabase
         .from("visitor_message_templates" as any)
         .select("*")
-        .order("usage_count", { ascending: false }) as any);
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }) as any);
       
       if (error) throw error;
       setTemplates((data || []) as MessageTemplate[]);
@@ -105,8 +106,7 @@ export const useVisitorMessages = (habitationId?: string) => {
     targetHabitationId: string,
     message: string,
     visitorPhone?: string,
-    callId?: string,
-    templateId?: string,
+    _templateId?: string,
     businessCardId?: string
   ) => {
     try {
@@ -116,19 +116,10 @@ export const useVisitorMessages = (habitationId?: string) => {
           habitation_id: targetHabitationId,
           message,
           visitor_phone: visitorPhone || null,
-          call_id: callId || null,
           business_card_id: businessCardId || null,
         }) as any);
       
       if (error) throw error;
-
-      // Increment template usage if used (ignore errors)
-      if (templateId) {
-        await (supabase
-          .from("visitor_message_templates" as any)
-          .update({ usage_count: supabase.rpc as any })
-          .eq("id", templateId) as any).catch(() => {});
-      }
 
       return { success: true };
     } catch (error: any) {

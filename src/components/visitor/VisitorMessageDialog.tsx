@@ -61,8 +61,8 @@ const VisitorMessageDialog = ({
     }
   }, [card]);
 
-  const handleTemplateClick = (template: { id: string; message: string }) => {
-    setMessage(template.message);
+  const handleTemplateClick = (template: { id: string; content: string }) => {
+    setMessage(template.content);
     setSelectedTemplateId(template.id);
   };
 
@@ -81,7 +81,6 @@ const VisitorMessageDialog = ({
       habitationId,
       message.trim(),
       phone.trim() || undefined,
-      callId,
       selectedTemplateId || undefined,
       attachCard && card ? card.id : undefined
     );
@@ -217,8 +216,8 @@ const VisitorMessageDialog = ({
                     className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3"
                     onClick={() => handleTemplateClick(template)}
                   >
-                    <span className="mr-1">{template.icon}</span>
-                    {template.label}
+                    {template.icon && <span className="mr-1">{template.icon}</span>}
+                    {template.name}
                   </Badge>
                 ))}
               </div>
