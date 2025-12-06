@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +17,42 @@ const PRICING = {
 // Rough token estimation (1 token ≈ 4 chars for French)
 function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
+}
+
+// Helper function to format export data as HTML email
+function formatExportEmail(exportData: any): string {
+  const formatSection = (title: string, data: any) => {
+    if (!data || (Array.isArray(data) && data.length === 0)) return "";
+    return `<h3 style="color:#1E3A8A;margin-top:20px;">${title}</h3><pre style="background:#f5f5f5;padding:10px;border-radius:5px;overflow-x:auto;font-size:12px;">${JSON.stringify(data, null, 2)}</pre>`;
+  };
+  
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:20px;">
+      <h1 style="color:#1E3A8A;">🔐 Export de vos données personnelles</h1>
+      <p>Bonjour ${exportData.profile?.first_name || ""},</p>
+      <p>Suite à votre demande d'accès à vos données personnelles (Article 15 du RGPD), veuillez trouver ci-dessous l'ensemble des informations que nous détenons vous concernant.</p>
+      
+      <hr style="margin:20px 0;border:1px solid #eee;">
+      
+      ${formatSection("📋 Profil", exportData.profile)}
+      ${formatSection("🏠 Habitations", exportData.habitations)}
+      ${formatSection("💳 Abonnements", exportData.subscriptions)}
+      ${formatSection("📞 Historique d'appels (100 derniers)", exportData.call_history)}
+      ${formatSection("✅ Consentements", exportData.consents)}
+      ${formatSection("📱 Appareils enregistrés", exportData.devices)}
+      ${formatSection("📊 Politique de conservation", exportData.data_retention_info)}
+      
+      <hr style="margin:20px 0;border:1px solid #eee;">
+      
+      <p style="font-size:12px;color:#666;">
+        <strong>Date d'export :</strong> ${new Date().toLocaleString('fr-FR')}<br>
+        <strong>ID utilisateur :</strong> ${exportData.user_id}<br>
+        Ce document constitue la réponse officielle à votre demande d'accès aux données conformément au RGPD.
+      </p>
+      
+      <p style="margin-top:20px;">Cordialement,<br>L'équipe ANR</p>
+    </div>
+  `;
 }
 
 serve(async (req) => {
@@ -225,15 +262,50 @@ Après chaque action, confirme clairement à l'utilisateur ce qui a été fait.`
                         });
                         
                         if (exportResponse.ok) {
+                          const exportData = await exportResponse.json();
+                          const userEmail = rgpdContext.userEmail || exportData.email;
+                          
+                          let emailSent = false;
+                          if (userEmail) {
+                            // Send email with exported data using Resend
+                            const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+                            
+                            if (RESEND_API_KEY) {
+                              const resend = new Resend(RESEND_API_KEY);
+                              const htmlContent = formatExportEmail(exportData);
+                              
+                              try {
+                                await resend.emails.send({
+                                  from: "ANR <onboarding@resend.dev>",
+                                  to: [userEmail],
+                                  subject: "🔐 Export de vos données personnelles - ANR",
+                                  html: htmlContent,
+                                });
+                                console.log(`[support-chat] RGPD export email sent to ${userEmail}`);
+                                emailSent = true;
+                              } catch (emailErr) {
+                                console.error("[support-chat] Email send error:", emailErr);
+                              }
+                            } else {
+                              console.warn("[support-chat] RESEND_API_KEY not configured");
+                            }
+                          }
+                          
                           // Update request status to completed
                           await supabase.from("rgpd_rights_requests").update({
                             status: "completed",
                             completed_at: new Date().toISOString(),
-                            response_details: "Export automatique des données effectué et envoyé par email."
+                            response_details: emailSent 
+                              ? `Export automatique des données effectué et envoyé par email à ${userEmail}.`
+                              : "Export des données effectué. Email non envoyé (clé API manquante)."
                           }).eq("id", rgpdContext.requestId);
                           
-                          resultMessage = "✅ Vos données personnelles ont été exportées et envoyées à votre adresse email. Votre demande est maintenant complétée.";
+                          resultMessage = emailSent
+                            ? "✅ Vos données personnelles ont été exportées et envoyées à votre adresse email. Votre demande est maintenant complétée."
+                            : "✅ Vos données ont été exportées. Cependant, l'envoi par email a échoué. Veuillez contacter le support.";
                         } else {
+                          const errorText = await exportResponse.text();
+                          console.error("[support-chat] Export failed:", errorText);
                           resultMessage = "❌ Une erreur s'est produite lors de l'export. Notre équipe a été notifiée et traitera votre demande manuellement.";
                         }
                       } catch (err) {
