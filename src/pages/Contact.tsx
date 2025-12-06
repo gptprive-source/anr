@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -64,6 +64,10 @@ const contactSchema = z.object({
 type ContactFormData = z.infer<typeof contactSchema>;
 const Contact = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const {
     register,
