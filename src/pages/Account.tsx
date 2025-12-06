@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, HelpCircle, Shield, Download, FileText } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate, Link } from "react-router-dom";
@@ -361,19 +361,6 @@ const Account = () => {
               <ChevronRight className="w-5 h-5 text-primary" />
             </div>
           </Link>}
-
-        {/* FAQ link */}
-        <Link to="/faq" className="block">
-          <div className="glass-effect rounded-xl p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <HelpCircle className="w-5 h-5 text-primary" />
-              </div>
-              <p className="font-medium">Questions fréquentes</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-          </div>
-        </Link>
 
         {/* Visitor Mode Section */}
         <VisitorModeSection 
