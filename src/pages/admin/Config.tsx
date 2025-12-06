@@ -188,6 +188,34 @@ const Config = () => {
                     FAQ mis à jour automatiquement avec cette valeur
                   </p>
                 </div>
+
+                <div className="space-y-4">
+                  <Label>Temps minimum avant messagerie (secondes)</Label>
+                  <div className="space-y-4">
+                    <Slider
+                      value={[getValue('min_call_duration_for_message_seconds') || 5]}
+                      onValueChange={([value]) => setLocalValue('min_call_duration_for_message_seconds', value)}
+                      min={3}
+                      max={30}
+                      step={1}
+                      className="w-full"
+                    />
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-bold">
+                        {getValue('min_call_duration_for_message_seconds') || 5}s
+                      </span>
+                      {hasChanges('min_call_duration_for_message_seconds') && (
+                        <Button size="sm" onClick={() => saveConfig('min_call_duration_for_message_seconds')} disabled={isUpdating}>
+                          <Save className="w-4 h-4 mr-2" />
+                          Enregistrer
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Durée d'appel sans réponse avant de proposer au visiteur de laisser un message
+                  </p>
+                </div>
               </CardContent>
             </Card>
 

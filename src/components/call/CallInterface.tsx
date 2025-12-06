@@ -4,6 +4,7 @@ import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle, MessageSquare } from "
 import { Button } from "@/components/ui/button";
 import { useDaily } from "@/hooks/useDaily";
 import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
+import { useAppConfig } from "@/hooks/useAppConfig";
 import { supabase } from "@/integrations/supabase/client";
 import VideoGrid from "./VideoGrid";
 import InviteResidentsPanel from "./InviteResidentsPanel";
@@ -35,6 +36,10 @@ const CallInterface = memo(({
   const hasJoinedRef = useRef(false);
   const channelRef = useRef<any>(null);
   const callStartTimeRef = useRef<number>(Date.now());
+  
+  // Get configurable min call duration for message
+  const { getConfig } = useAppConfig();
+  const minCallDurationForMessage = (getConfig('min_call_duration_for_message_seconds') || 5) * 1000;
 
   // Multi-resident call management
   const {
@@ -144,8 +149,8 @@ const CallInterface = memo(({
     if (callState === "ended") {
       // If visitor and call was not answered, offer to leave a message
       const callDuration = Date.now() - callStartTimeRef.current;
-      if (!isResident && !callWasAnswered && habitationId && callDuration > 5000) {
-        // Call lasted more than 5 seconds without being answered - show message dialog
+      if (!isResident && !callWasAnswered && habitationId && callDuration > minCallDurationForMessage) {
+        // Call lasted more than configured duration without being answered - show message dialog
         setShowMessageDialog(true);
         return;
       }
