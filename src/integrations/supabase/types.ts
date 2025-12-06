@@ -1313,6 +1313,39 @@ export type Database = {
         }
         Relationships: []
       }
+      visitor_custom_templates: {
+        Row: {
+          content: string
+          created_at: string | null
+          device_id: string
+          icon: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          device_id: string
+          icon?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          device_id?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       visitor_message_templates: {
         Row: {
           content: string

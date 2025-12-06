@@ -1,0 +1,123 @@
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Save, Loader2 } from "lucide-react";
+
+const ICON_OPTIONS = ["📝", "📦", "📬", "🚚", "🔔", "✉️", "🏠", "👋", "⏰", "📋"];
+
+interface SaveCustomTemplateDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  messageContent: string;
+  onSave: (name: string, content: string, icon: string) => Promise<void>;
+}
+
+export default function SaveCustomTemplateDialog({
+  open,
+  onOpenChange,
+  messageContent,
+  onSave,
+}: SaveCustomTemplateDialogProps) {
+  const [name, setName] = useState("");
+  const [selectedIcon, setSelectedIcon] = useState("📝");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    
+    setSaving(true);
+    try {
+      await onSave(name.trim(), messageContent, selectedIcon);
+      setName("");
+      setSelectedIcon("📝");
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error saving template:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Save className="w-5 h-5" />
+            Sauvegarder comme template
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Template name */}
+          <div className="space-y-2">
+            <Label htmlFor="template-name">Nom du template</Label>
+            <Input
+              id="template-name"
+              placeholder="Ex: Colis Amazon, Retour dépôt..."
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={50}
+            />
+          </div>
+
+          {/* Icon selection */}
+          <div className="space-y-2">
+            <Label>Icône</Label>
+            <div className="flex flex-wrap gap-2">
+              {ICON_OPTIONS.map((icon) => (
+                <button
+                  key={icon}
+                  type="button"
+                  onClick={() => setSelectedIcon(icon)}
+                  className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all ${
+                    selectedIcon === icon
+                      ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
+                      : "bg-muted hover:bg-muted/80"
+                  }`}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="space-y-2">
+            <Label>Aperçu du message</Label>
+            <div className="p-3 rounded-lg bg-muted text-sm text-muted-foreground max-h-24 overflow-y-auto">
+              {messageContent}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Annuler
+          </Button>
+          <Button onClick={handleSave} disabled={!name.trim() || saving}>
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Sauvegarde...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Sauvegarder
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
