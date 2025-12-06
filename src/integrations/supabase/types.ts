@@ -901,6 +901,94 @@ export type Database = {
         }
         Relationships: []
       }
+      security_anomalies: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          anomaly_type: string
+          anr_id: string | null
+          anr_latitude: number | null
+          anr_longitude: number | null
+          call_duration_seconds: number | null
+          call_id: string | null
+          created_at: string | null
+          details: Json | null
+          distance_meters: number | null
+          habitation_id: string | null
+          id: string
+          is_acknowledged: boolean | null
+          max_allowed_distance_meters: number | null
+          max_allowed_duration_seconds: number | null
+          severity: string
+          visitor_latitude: number | null
+          visitor_longitude: number | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          anomaly_type: string
+          anr_id?: string | null
+          anr_latitude?: number | null
+          anr_longitude?: number | null
+          call_duration_seconds?: number | null
+          call_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          distance_meters?: number | null
+          habitation_id?: string | null
+          id?: string
+          is_acknowledged?: boolean | null
+          max_allowed_distance_meters?: number | null
+          max_allowed_duration_seconds?: number | null
+          severity?: string
+          visitor_latitude?: number | null
+          visitor_longitude?: number | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          anomaly_type?: string
+          anr_id?: string | null
+          anr_latitude?: number | null
+          anr_longitude?: number | null
+          call_duration_seconds?: number | null
+          call_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          distance_meters?: number | null
+          habitation_id?: string | null
+          id?: string
+          is_acknowledged?: boolean | null
+          max_allowed_distance_meters?: number | null
+          max_allowed_duration_seconds?: number | null
+          severity?: string
+          visitor_latitude?: number | null
+          visitor_longitude?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_anomalies_anr_id_fkey"
+            columns: ["anr_id"]
+            isOneToOne: false
+            referencedRelation: "anrs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_anomalies_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_anomalies_habitation_id_fkey"
+            columns: ["habitation_id"]
+            isOneToOne: false
+            referencedRelation: "habitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_audit_results: {
         Row: {
           check_type: string
@@ -1183,6 +1271,32 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_verifications: { Args: never; Returns: undefined }
+      detect_call_duration_anomalies: {
+        Args: never
+        Returns: {
+          call_ended_at: string
+          call_id: string
+          call_started_at: string
+          duration_seconds: number
+          habitation_id: string
+          max_duration_seconds: number
+        }[]
+      }
+      detect_gps_distance_anomalies: {
+        Args: never
+        Returns: {
+          anr_id: string
+          anr_lat: number
+          anr_lon: number
+          call_id: string
+          call_started_at: string
+          distance_m: number
+          habitation_id: string
+          max_distance_m: number
+          visitor_lat: number
+          visitor_lon: number
+        }[]
+      }
       get_permissive_policies: {
         Args: never
         Returns: {

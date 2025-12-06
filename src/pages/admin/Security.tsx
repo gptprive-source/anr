@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Shield, ShieldAlert, ShieldCheck, RefreshCw, Download, CheckCircle, AlertTriangle, Info, Clock, User, ArrowLeft } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, RefreshCw, Download, CheckCircle, AlertTriangle, Info, Clock, User, ArrowLeft, MapPin, Timer, Radio, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useSecurityAudit } from "@/hooks/useSecurityAudit";
+import { useSecurityAnomalies } from "@/hooks/useSecurityAnomalies";
 import { toast } from "sonner";
 import { useAuditLog } from "@/hooks/useAuditLog";
 
@@ -30,7 +31,57 @@ const Security = () => {
     criticalCount
   } = useSecurityAudit();
 
+  const {
+    anomalies,
+    stats: anomalyStats,
+    isLoading: isLoadingAnomalies,
+    scanForAnomalies,
+    isScanning,
+    acknowledgeAnomaly,
+    isAcknowledging
+  } = useSecurityAnomalies();
+
   const { logAction } = useAuditLog();
+
+  const handleScanAnomalies = () => {
+    scanForAnomalies();
+    logAction({
+      action: 'security_anomaly_scan_triggered',
+      entity_type: 'security',
+    });
+    toast.success("Scan des anomalies lancé");
+  };
+
+  const handleAcknowledgeAnomaly = (anomalyId: string, type: string) => {
+    acknowledgeAnomaly(anomalyId);
+    logAction({
+      action: 'security_anomaly_acknowledged',
+      entity_type: 'security',
+      entity_id: anomalyId,
+      new_value: { type }
+    });
+    toast.success("Anomalie acquittée");
+  };
+
+  const getAnomalyTypeLabel = (type: string) => {
+    switch (type) {
+      case 'gps_distance_exceeded':
+        return { label: 'Distance GPS dépassée', icon: MapPin, color: 'text-orange-500' };
+      case 'call_duration_exceeded':
+        return { label: 'Durée d\'appel dépassée', icon: Timer, color: 'text-yellow-500' };
+      case 'nfc_outside_perimeter':
+        return { label: 'NFC hors périmètre', icon: Radio, color: 'text-red-500' };
+      default:
+        return { label: type, icon: AlertTriangle, color: 'text-muted-foreground' };
+    }
+  };
+
+  const getAnomalySeverityBadge = (severity: string) => {
+    if (severity === 'critical') {
+      return <Badge variant="destructive" className="gap-1"><ShieldAlert className="h-3 w-3" />Critique</Badge>;
+    }
+    return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 gap-1"><AlertTriangle className="h-3 w-3" />Attention</Badge>;
+  };
 
   const handleTriggerAudit = () => {
     triggerAudit();
@@ -203,11 +254,64 @@ const Security = () => {
           </Card>
         </div>
 
+        {/* Anomalies KPI Cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Anomalies Non Acquittées</CardTitle>
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-orange-500">{anomalyStats.unacknowledged}</div>
+              <p className="text-xs text-muted-foreground">sur {anomalyStats.total} total</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Distance GPS Dépassée</CardTitle>
+              <MapPin className="h-5 w-5 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{anomalyStats.gpsDistanceCount}</div>
+              <p className="text-xs text-muted-foreground">appels hors périmètre</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Durée Appel Dépassée</CardTitle>
+              <Timer className="h-5 w-5 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{anomalyStats.callDurationCount}</div>
+              <p className="text-xs text-muted-foreground">appels trop longs</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Dernières 24h</CardTitle>
+              <Clock className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{anomalyStats.last24Hours}</div>
+              <p className="text-xs text-muted-foreground">nouvelles anomalies</p>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Main Content Tabs */}
-        <Tabs defaultValue="issues" className="space-y-4">
+        <Tabs defaultValue="anomalies" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="anomalies">
+              Anomalies Opérationnelles
+              {anomalyStats.unacknowledged > 0 && (
+                <Badge variant="destructive" className="ml-2">{anomalyStats.unacknowledged}</Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="issues">
-              Problèmes Détectés
+              Problèmes RLS
               {unresolvedCount > 0 && (
                 <Badge variant="destructive" className="ml-2">{unresolvedCount}</Badge>
               )}
@@ -215,10 +319,118 @@ const Security = () => {
             <TabsTrigger value="history">Historique des Audits</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="anomalies">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Anomalies de Sécurité Opérationnelles</CardTitle>
+                  <CardDescription>
+                    Détection des comportements suspects : distance GPS, durée d'appel, NFC hors périmètre
+                  </CardDescription>
+                </div>
+                <Button onClick={handleScanAnomalies} disabled={isScanning}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+                  {isScanning ? 'Scan en cours...' : 'Scanner maintenant'}
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {anomalies && anomalies.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Sévérité</TableHead>
+                        <TableHead>Détails</TableHead>
+                        <TableHead>ANR / Habitation</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {anomalies.map((anomaly) => {
+                        const typeInfo = getAnomalyTypeLabel(anomaly.anomaly_type);
+                        const TypeIcon = typeInfo.icon;
+                        return (
+                          <TableRow key={anomaly.id} className={anomaly.is_acknowledged ? 'opacity-50' : ''}>
+                            <TableCell className="text-sm">
+                              {format(new Date(anomaly.created_at), 'dd/MM HH:mm', { locale: fr })}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <TypeIcon className={`h-4 w-4 ${typeInfo.color}`} />
+                                <span className="text-sm">{typeInfo.label}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getAnomalySeverityBadge(anomaly.severity)}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {anomaly.anomaly_type === 'gps_distance_exceeded' && (
+                                <span>
+                                  {Math.round(anomaly.distance_meters || 0)}m / {anomaly.max_allowed_distance_meters}m max
+                                </span>
+                              )}
+                              {anomaly.anomaly_type === 'call_duration_exceeded' && (
+                                <span>
+                                  {Math.round((anomaly.call_duration_seconds || 0) / 60)}min / {Math.round((anomaly.max_allowed_duration_seconds || 0) / 60)}min max
+                                </span>
+                              )}
+                              {anomaly.anomaly_type === 'nfc_outside_perimeter' && (
+                                <span>Scan NFC hors zone</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {anomaly.anr?.code && (
+                                <span className="font-mono">{anomaly.anr.code}</span>
+                              )}
+                              {anomaly.habitation?.name && (
+                                <span className="text-muted-foreground ml-1">({anomaly.habitation.name})</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {anomaly.is_acknowledged ? (
+                                <Badge variant="outline" className="text-green-600 gap-1">
+                                  <Eye className="h-3 w-3" />
+                                  Acquitté
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary">Non traité</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {!anomaly.is_acknowledged && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleAcknowledgeAnomaly(anomaly.id, anomaly.anomaly_type)}
+                                  disabled={isAcknowledging}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Acquitter
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <ShieldCheck className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                    <p>Aucune anomalie détectée</p>
+                    <p className="text-sm">Cliquez sur "Scanner maintenant" pour vérifier</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="issues">
             <Card>
               <CardHeader>
-                <CardTitle>Résultats du Dernier Audit</CardTitle>
+                <CardTitle>Résultats du Dernier Audit RLS</CardTitle>
                 <CardDescription>
                   {currentIssues?.length || 0} problème(s) détecté(s)
                 </CardDescription>
