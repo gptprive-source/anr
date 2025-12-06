@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2 } from "lucide-react";
+import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ShareANRDialog from "./ShareANRDialog";
 import BottomNav from "@/components/layout/BottomNav";
+import VisitorMessagesSection from "./VisitorMessagesSection";
+import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import logoAnr from "@/assets/logo-anr.png";
 interface Resident {
   id: string;
@@ -292,6 +294,9 @@ const ResidentDashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Visitor Messages Section */}
+        <VisitorMessagesSection habitationId={habitationData.id} />
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

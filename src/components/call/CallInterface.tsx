@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
-import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDaily } from "@/hooks/useDaily";
 import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
 import { supabase } from "@/integrations/supabase/client";
 import VideoGrid from "./VideoGrid";
 import InviteResidentsPanel from "./InviteResidentsPanel";
+import VisitorMessageDialog from "@/components/visitor/VisitorMessageDialog";
 import { logger } from "@/lib/logger";
 type CallState = "ringing" | "connecting" | "connected" | "ended";
 
@@ -29,8 +30,11 @@ const CallInterface = memo(({
 }: CallInterfaceProps) => {
   const navigate = useNavigate();
   const [callState, setCallState] = useState<CallState>(isResident ? "ringing" : "connecting");
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
+  const [callWasAnswered, setCallWasAnswered] = useState(false);
   const hasJoinedRef = useRef(false);
   const channelRef = useRef<any>(null);
+  const callStartTimeRef = useRef<number>(Date.now());
 
   // Multi-resident call management
   const {
@@ -126,20 +130,32 @@ const CallInterface = memo(({
   useEffect(() => {
     if (isJoined && callState !== "ended") {
       setCallState("connected");
+      // Track if call was ever connected (answered)
+      if (remoteParticipants.length > 0) {
+        setCallWasAnswered(true);
+      }
     } else if (isLoading && callState !== "ended") {
       setCallState("connecting");
     }
-  }, [isJoined, isLoading, callState]);
+  }, [isJoined, isLoading, callState, remoteParticipants.length]);
 
-  // Auto-navigate back when call ends
+  // Auto-navigate back when call ends (with message prompt for visitors)
   useEffect(() => {
     if (callState === "ended") {
+      // If visitor and call was not answered, offer to leave a message
+      const callDuration = Date.now() - callStartTimeRef.current;
+      if (!isResident && !callWasAnswered && habitationId && callDuration > 5000) {
+        // Call lasted more than 5 seconds without being answered - show message dialog
+        setShowMessageDialog(true);
+        return;
+      }
+      
       const timeout = setTimeout(() => {
         navigate(-1);
       }, 1500);
       return () => clearTimeout(timeout);
     }
-  }, [callState, navigate]);
+  }, [callState, navigate, isResident, callWasAnswered, habitationId]);
 
   // Individual hangup - only ends call if no other residents are active
   const handleHangup = async () => {
@@ -344,6 +360,20 @@ const CallInterface = memo(({
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Visitor Message Dialog - shown when call ends without answer */}
+      {habitationId && (
+        <VisitorMessageDialog
+          open={showMessageDialog}
+          onOpenChange={(open) => {
+            setShowMessageDialog(open);
+            if (!open) navigate(-1);
+          }}
+          habitationId={habitationId}
+          callId={callId}
+          onMessageSent={() => navigate(-1)}
+        />
       )}
     </div>
   );

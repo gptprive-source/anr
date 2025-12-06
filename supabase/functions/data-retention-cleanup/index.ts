@@ -26,7 +26,8 @@ serve(async (req) => {
         'retention_call_logs_days',
         'retention_visitor_gps_days',
         'retention_chatbot_days',
-        'retention_contact_messages_days'
+        'retention_contact_messages_days',
+        'visitor_messages_retention_days'
       ]);
 
     const config: Record<string, number> = {};
@@ -39,12 +40,14 @@ serve(async (req) => {
     const visitorGpsDays = config['retention_visitor_gps_days'] || 30;
     const chatbotDays = config['retention_chatbot_days'] || 180;
     const contactMessagesDays = config['retention_contact_messages_days'] || 1095; // 3 years
+    const visitorMessagesDays = config['visitor_messages_retention_days'] || 30;
 
     const results = {
       call_logs_deleted: 0,
       visitor_gps_anonymized: 0,
       chatbot_anonymized: 0,
-      contact_messages_deleted: 0
+      contact_messages_deleted: 0,
+      visitor_messages_deleted: 0
     };
 
     // 1. Delete old call_logs (> X days)
@@ -124,19 +127,34 @@ serve(async (req) => {
       console.log(`[data-retention-cleanup] Deleted ${results.contact_messages_deleted} old contact_messages`);
     }
 
+    // 5. Delete expired visitor messages
+    const { data: deletedVisitorMessages, error: visitorMsgError } = await supabase
+      .from('visitor_messages')
+      .delete()
+      .lt('expires_at', new Date().toISOString())
+      .select('id');
+    
+    if (visitorMsgError) {
+      console.error('[data-retention-cleanup] Error deleting visitor_messages:', visitorMsgError);
+    } else {
+      results.visitor_messages_deleted = deletedVisitorMessages?.length || 0;
+      console.log(`[data-retention-cleanup] Deleted ${results.visitor_messages_deleted} expired visitor_messages`);
+    }
+
     // Log the purge operation
     await supabase
       .from('rgpd_purge_logs')
       .insert({
         purge_type: 'scheduled',
-        records_deleted: results.call_logs_deleted + results.contact_messages_deleted,
+        records_deleted: results.call_logs_deleted + results.contact_messages_deleted + results.visitor_messages_deleted,
         records_anonymized: results.visitor_gps_anonymized + results.chatbot_anonymized,
         details: {
           config: {
             call_logs_days: callLogsDays,
             visitor_gps_days: visitorGpsDays,
             chatbot_days: chatbotDays,
-            contact_messages_days: contactMessagesDays
+            contact_messages_days: contactMessagesDays,
+            visitor_messages_days: visitorMessagesDays
           },
           results
         }
