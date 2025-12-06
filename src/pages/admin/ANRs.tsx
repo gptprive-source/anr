@@ -66,8 +66,9 @@ const AdminANRs = () => {
       
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-anrs"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-anrs"] });
+      await queryClient.refetchQueries({ queryKey: ["admin-anrs"] });
       toast({
         title: "✅ ANR mise à jour",
         description: "La distance GPS maximale a été modifiée.",
