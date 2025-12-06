@@ -211,9 +211,11 @@ Après chaque action, confirme clairement à l'utilisateur ce qui a été fait.`
                 const json = JSON.parse(line.slice(6));
                 const delta = json.choices?.[0]?.delta;
                 
-                // Handle regular content
+                // Handle regular content - forward only this specific line
                 if (delta?.content) {
                   fullResponse += delta.content;
+                  // Forward only this SSE line, not the entire chunk
+                  await writer.write(encoder.encode(line + "\n\n"));
                 }
                 
                 // Handle tool calls
@@ -350,13 +352,11 @@ Après chaque action, confirme clairement à l'utilisateur ce qui a été fait.`
                       fullResponse += "\n\n" + resultMessage;
                     }
                   }
-                } else if (!delta?.tool_calls) {
-                  // Normal content, forward it
-                  await writer.write(value);
                 }
+                // Note: No else clause here - we only forward lines with content
               } catch {}
             } else if (line.includes("[DONE]")) {
-              await writer.write(value);
+              await writer.write(encoder.encode("data: [DONE]\n\n"));
             }
           }
         }
