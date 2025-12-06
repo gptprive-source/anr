@@ -33,8 +33,10 @@ import {
   Landmark,
   MessageSquare,
   Filter,
-  StickyNote
+  StickyNote,
+  ArrowLeft
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -88,6 +90,7 @@ const Messages = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [senderTypeFilter, setSenderTypeFilter] = useState<string>("all");
@@ -205,6 +208,9 @@ const Messages = () => {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <MessageSquare className="w-8 h-8 text-primary" />
             Centre de Messages
           </h1>

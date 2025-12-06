@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Clock, CheckCircle2, AlertTriangle, Eye, Download, Loader2 } from "lucide-react";
+import { Users, Clock, CheckCircle2, AlertTriangle, Eye, Download, Loader2, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { format, differenceInDays } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -51,6 +52,7 @@ const RGPDRequests = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: requests, isLoading } = useQuery({
     queryKey: ['rgpd_requests'],
@@ -135,6 +137,9 @@ const RGPDRequests = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <Users className="w-8 h-8 text-primary" />
             <div>
               <h1 className="text-2xl font-bold">Demandes d'exercice de droits</h1>

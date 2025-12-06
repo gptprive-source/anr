@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Package, Clock, Truck, CheckCircle, Eye, Search, RefreshCw } from "lucide-react";
+import { Package, Clock, Truck, CheckCircle, Eye, Search, RefreshCw, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -63,6 +64,7 @@ const Orders = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ["admin-orders", statusFilter],
@@ -138,9 +140,14 @@ const Orders = () => {
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Commandes de Domings</h1>
-            <p className="text-muted-foreground">Gérer les commandes et générer les fichiers d'impression</p>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">Commandes de Domings</h1>
+              <p className="text-muted-foreground">Gérer les commandes et générer les fichiers d'impression</p>
+            </div>
           </div>
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4 mr-2" />

@@ -9,10 +9,12 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   BarChart, Bar, AreaChart, Area, ComposedChart
 } from "recharts";
-import { Download, TrendingUp, Users, Phone, CreditCard, MapPin } from "lucide-react";
+import { Download, TrendingUp, Users, Phone, CreditCard, MapPin, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const Analytics = () => {
+  const navigate = useNavigate();
   const { data: analyticsData, isLoading } = useQuery({
     queryKey: ['admin_analytics'],
     queryFn: async () => {
@@ -184,9 +186,14 @@ const Analytics = () => {
     <AdminLayout>
       <div className="space-y-8">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Analytics</h1>
-            <p className="text-muted-foreground">Analyses détaillées pour vos présentations</p>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Analytics</h1>
+              <p className="text-muted-foreground">Analyses détaillées pour vos présentations</p>
+            </div>
           </div>
           <Button onClick={() => exportToCSV(analyticsData?.monthlyGrowth || [], 'growth_data')}>
             <Download className="w-4 h-4 mr-2" />

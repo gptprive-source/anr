@@ -11,7 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 interface FAQItem {
@@ -37,6 +38,7 @@ const FAQManager = () => {
   const queryClient = useQueryClient();
   const [editingItem, setEditingItem] = useState<FAQItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const [newItem, setNewItem] = useState<Partial<FAQItem>>({
     section: sections[0].value,
     section_icon: sections[0].icon,
@@ -189,9 +191,14 @@ const FAQManager = () => {
     <AdminLayout>
       <div className="space-y-8">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Gestion FAQ</h1>
-            <p className="text-muted-foreground">Ajoutez et modifiez les questions fréquentes</p>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Gestion FAQ</h1>
+              <p className="text-muted-foreground">Ajoutez et modifiez les questions fréquentes</p>
+            </div>
           </div>
           
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

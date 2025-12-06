@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MapPin, Search, Settings2, RotateCcw } from "lucide-react";
+import { MapPin, Search, Settings2, RotateCcw, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAppConfig } from "@/hooks/useAppConfig";
@@ -39,6 +40,7 @@ const AdminANRs = () => {
   const queryClient = useQueryClient();
   const { getConfig } = useAppConfig();
   const supportEmail = getConfig("support_email") || "support@anr.fr";
+  const navigate = useNavigate();
 
   // Fetch all ANRs
   const { data: anrs, isLoading } = useQuery({
@@ -113,6 +115,9 @@ const AdminANRs = () => {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <MapPin className="w-6 h-6 text-primary" />
             Gestion des ANRs
           </h1>

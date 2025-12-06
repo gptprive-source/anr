@@ -2,12 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "./AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, MapPin, CreditCard, Phone, TrendingUp, TrendingDown } from "lucide-react";
+import { Users, MapPin, CreditCard, Phone, TrendingUp, TrendingDown, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { format, subDays, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   // Fetch all stats in parallel
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin_stats'],
@@ -158,9 +161,14 @@ const Dashboard = () => {
   return (
     <AdminLayout>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Vue d'ensemble de votre application</p>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">Vue d'ensemble de votre application</p>
+          </div>
         </div>
 
         {/* KPI Cards */}
