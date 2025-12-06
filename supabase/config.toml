@@ -91,3 +91,6 @@ verify_jwt = false
 
 [functions.notify-contact-message]
 verify_jwt = false
+
+[functions.sync-daily-usage]
+verify_jwt = false

@@ -19,7 +19,8 @@ import {
   FileText,
   Shield,
   Package,
-  MapPin
+  MapPin,
+  Phone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -37,6 +38,7 @@ import { ShieldCheck, Bot, Mail, Scale, BookOpen, Building2, UserCheck, AlertTri
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+  { path: '/admin/daily-usage', label: 'Coûts Daily', icon: Phone },
   { path: '/admin/orders', label: 'Commandes', icon: Package },
   { path: '/admin/anrs', label: 'ANRs', icon: MapPin },
   { path: '/admin/config', label: 'Configuration', icon: Settings },
