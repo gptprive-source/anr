@@ -59,6 +59,7 @@ import AdminRGPDSubprocessors from "./pages/admin/RGPDSubprocessors";
 import AdminRGPDRequests from "./pages/admin/RGPDRequests";
 import AdminRGPDConsents from "./pages/admin/RGPDConsents";
 import AdminRGPDIncidents from "./pages/admin/RGPDIncidents";
+import AdminDailyUsage from "./pages/admin/DailyUsage";
 
 const queryClient = new QueryClient();
 
@@ -159,7 +160,7 @@ const AppContent = () => {
           <Route path="/admin/chatbot" element={<AdminChatbotStats />} />
           <Route path="/admin/security" element={<AdminSecurity />} />
           <Route path="/admin/messages" element={<AdminMessages />} />
-          
+          <Route path="/admin/daily-usage" element={<AdminDailyUsage />} />
           {/* RGPD Admin Routes */}
           <Route path="/admin/rgpd" element={<AdminRGPD />} />
           <Route path="/admin/rgpd/registry" element={<AdminRGPDRegistry />} />
