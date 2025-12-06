@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { IncomingCallProvider } from "@/contexts/IncomingCallContext";
+import { SupportChatProvider } from "@/contexts/SupportChatContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallListener";
@@ -179,7 +180,9 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <IncomingCallProvider>
-          <AppContent />
+          <SupportChatProvider>
+            <AppContent />
+          </SupportChatProvider>
         </IncomingCallProvider>
       </AuthProvider>
     </TooltipProvider>
