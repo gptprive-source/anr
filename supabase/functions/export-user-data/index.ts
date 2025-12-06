@@ -15,27 +15,49 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Non autorisé' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Get user from token
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Non autorisé' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    // Check if called with userId in body (from support-chat) or via JWT
+    const body = await req.json().catch(() => ({}));
+    let userId: string | null = null;
+    
+    if (body.userId) {
+      // Called from support-chat with service role - trust the userId
+      const authHeader = req.headers.get('Authorization');
+      const token = authHeader?.replace('Bearer ', '');
+      
+      // Only allow if called with service role key
+      if (token === supabaseServiceKey) {
+        userId = body.userId;
+      } else {
+        return new Response(JSON.stringify({ error: 'Non autorisé' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    } else {
+      // Called directly by user with JWT
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: 'Non autorisé' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+      
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Non autorisé' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      userId = user.id;
     }
 
-    console.log(`[export-user-data] Exporting data for user: ${user.id}`);
+    console.log(`[export-user-data] Exporting data for user: ${userId}`);
 
     // Fetch all user data
     const [
@@ -44,13 +66,14 @@ serve(async (req) => {
       subscriptionsResult,
       callLogsResult,
       consentsResult,
-      pushTokensResult
+      pushTokensResult,
+      userResult
     ] = await Promise.all([
       // Profile
       supabaseClient
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single(),
       
       // Residents (habitations)
@@ -72,19 +95,19 @@ serve(async (req) => {
             )
           )
         `)
-        .eq('user_id', user.id),
+        .eq('user_id', userId),
       
       // Subscriptions
       supabaseClient
         .from('subscriptions')
         .select('id, status, current_period_start, current_period_end, cancel_at_period_end, created_at')
-        .eq('user_id', user.id),
+        .eq('user_id', userId),
       
       // Call logs (where user answered)
       supabaseClient
         .from('call_logs')
         .select('id, status, started_at, answered_at, ended_at')
-        .eq('answered_by', user.id)
+        .eq('answered_by', userId)
         .order('started_at', { ascending: false })
         .limit(100),
       
@@ -92,20 +115,24 @@ serve(async (req) => {
       supabaseClient
         .from('user_consents')
         .select('consent_type, version, consented, consented_at')
-        .eq('user_id', user.id),
+        .eq('user_id', userId),
       
       // Push tokens (without actual token for security)
       supabaseClient
         .from('push_tokens')
         .select('platform, created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', userId),
+      
+      // Get user email from auth
+      supabaseClient.auth.admin.getUserById(userId!)
     ]);
 
     // Build export data
+    const userEmail = userResult.data?.user?.email || '';
     const exportData = {
       export_date: new Date().toISOString(),
-      user_id: user.id,
-      email: user.email,
+      user_id: userId,
+      email: userEmail,
       
       profile: profileResult.data ? {
         first_name: profileResult.data.first_name,
@@ -160,14 +187,14 @@ serve(async (req) => {
     await supabaseClient
       .from('admin_audit_logs')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         action: 'user_data_export',
         entity_type: 'user',
-        entity_id: user.id,
+        entity_id: userId,
         new_value: { exported_at: new Date().toISOString() }
       });
 
-    console.log(`[export-user-data] Export completed for user: ${user.id}`);
+    console.log(`[export-user-data] Export completed for user: ${userId}`);
 
     return new Response(JSON.stringify(exportData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
