@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, HelpCircle, Shield, Download } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, HelpCircle, Shield, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate, Link } from "react-router-dom";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/layout/BottomNav";
 import DeleteAccountDialog from "@/components/account/DeleteAccountDialog";
 import ChangeAddressDialog from "@/components/account/ChangeAddressDialog";
+import RGPDRequestDialog from "@/components/account/RGPDRequestDialog";
 import LeaveHabitationDialog from "@/components/account/LeaveHabitationDialog";
 interface ProfileData {
   first_name: string | null;
@@ -39,6 +40,7 @@ const Account = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showChangeAddressDialog, setShowChangeAddressDialog] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [showRGPDDialog, setShowRGPDDialog] = useState(false);
   const navigate = useNavigate();
   const {
     user,
@@ -372,32 +374,44 @@ const Account = () => {
           </div>
         </Link>
 
-        {/* RGPD - Export data */}
-        <div className="glass-effect rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-3">
+        {/* RGPD section */}
+        <div className="glass-effect rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Download className="w-5 h-5 text-primary" />
+              <Shield className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1">
-              <p className="font-medium">Mes données personnelles</p>
-              <p className="text-xs text-muted-foreground">Droit à la portabilité (RGPD)</p>
+              <p className="font-medium">Mes droits RGPD</p>
+              <p className="text-xs text-muted-foreground">Protection de vos données personnelles</p>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            className="w-full gap-2" 
-            onClick={handleExportData}
-            disabled={exportLoading}
-          >
-            {exportLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                Télécharger mes données
-              </>
-            )}
-          </Button>
+          
+          <div className="grid grid-cols-2 gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2" 
+              onClick={handleExportData}
+              disabled={exportLoading}
+            >
+              {exportLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Exporter
+                </>
+              )}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => setShowRGPDDialog(true)}
+            >
+              <FileText className="w-4 h-4" />
+              Demande RGPD
+            </Button>
+          </div>
         </div>
 
         {/* Actions */}
@@ -422,6 +436,8 @@ const Account = () => {
       setHabitation(null);
       fetchData();
     }} />
+
+      <RGPDRequestDialog open={showRGPDDialog} onOpenChange={setShowRGPDDialog} />
 
       <BottomNav />
     </div>;
