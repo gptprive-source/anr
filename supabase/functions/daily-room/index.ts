@@ -52,7 +52,7 @@ serve(async (req) => {
 
     const roomName = `anr-${callId.replace(/[^a-zA-Z0-9-]/g, "").substring(0, 50)}`;
 
-    // OPTIMISÉ: Un seul appel POST - Daily retourne l'existant si le room existe déjà
+    // Essayer de créer le room
     const createResponse = await fetch("https://api.daily.co/v1/rooms", {
       method: "POST",
       headers: {
@@ -68,7 +68,6 @@ serve(async (req) => {
           enable_knocking: false,
           start_video_off: false,
           start_audio_off: false,
-          // OPTIMISATIONS LATENCE
           sfu_switchover: 0.5,
           enable_network_ui: false,
           enable_chat: false,
@@ -79,15 +78,29 @@ serve(async (req) => {
       }),
     });
 
-    // Si room existe déjà (409 Conflict), le récupérer
-    if (createResponse.status === 409) {
-      console.log("[daily-room] Room exists, fetching...");
+    // Si création réussie
+    if (createResponse.ok) {
+      const room = await createResponse.json();
+      console.log("[daily-room] Room created:", room.name);
+      return new Response(
+        JSON.stringify({ url: room.url, name: room.name }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Si le room existe déjà (vérifier le message d'erreur ou code 409)
+    const errorText = await createResponse.text();
+    const roomExists = createResponse.status === 409 || errorText.includes("already exists");
+    
+    if (roomExists) {
+      console.log("[daily-room] Room exists, fetching existing...");
       const getResponse = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
         headers: { Authorization: `Bearer ${DAILY_API_KEY}` },
       });
       
       if (getResponse.ok) {
         const room = await getResponse.json();
+        console.log("[daily-room] Retrieved existing room:", room.name);
         return new Response(
           JSON.stringify({ url: room.url, name: room.name }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -95,18 +108,8 @@ serve(async (req) => {
       }
     }
 
-    if (!createResponse.ok && createResponse.status !== 409) {
-      const error = await createResponse.text();
-      throw new Error(`Daily API error: ${error}`);
-    }
-
-    const room = await createResponse.json();
-    console.log("[daily-room] Room ready:", room.name);
-    
-    return new Response(
-      JSON.stringify({ url: room.url, name: room.name }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // Autre erreur
+    throw new Error(`Daily API error: ${errorText}`);
 
   } catch (error: any) {
     console.error("[daily-room] Error:", error.message);
