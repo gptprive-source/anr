@@ -11,6 +11,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import DeleteAccountDialog from "@/components/account/DeleteAccountDialog";
 import ChangeAddressDialog from "@/components/account/ChangeAddressDialog";
 import RGPDRequestDialog from "@/components/account/RGPDRequestDialog";
+import VisitorModeSection from "@/components/account/VisitorModeSection";
 import LeaveHabitationDialog from "@/components/account/LeaveHabitationDialog";
 interface ProfileData {
   first_name: string | null;
@@ -373,6 +374,12 @@ const Account = () => {
             <ChevronRight className="w-5 h-5 text-muted-foreground" />
           </div>
         </Link>
+
+        {/* Visitor Mode Section */}
+        <VisitorModeSection 
+          userProfile={profile}
+          userEmail={user?.email}
+        />
 
         {/* RGPD section */}
         <div className="glass-effect rounded-xl p-4 space-y-3">
