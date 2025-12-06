@@ -178,24 +178,24 @@ const Contact = () => {
                 {/* Sender Type */}
                 <div className="space-y-3">
                   <Label>Vous êtes *</Label>
-                  <RadioGroup defaultValue="particulier" onValueChange={value => setValue("sender_type", value as "particulier" | "societe")} className="flex gap-4">
+                  <RadioGroup defaultValue="particulier" onValueChange={value => setValue("sender_type", value as "particulier" | "societe")} className="flex flex-wrap gap-3 sm:gap-4">
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="particulier" id="particulier" />
-                      <Label htmlFor="particulier" className="flex items-center gap-2 cursor-pointer">
+                      <Label htmlFor="particulier" className="flex items-center gap-2 cursor-pointer text-sm sm:text-base">
                         <User className="w-4 h-4" />
                         Particulier
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="societe" id="societe" />
-                      <Label htmlFor="societe" className="flex items-center gap-2 cursor-pointer">
+                      <Label htmlFor="societe" className="flex items-center gap-2 cursor-pointer text-sm sm:text-base">
                         <Building2 className="w-4 h-4" />
-                        Société / Organisation
+                        Société
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="collectivites" id="collectivites" />
-                      <Label htmlFor="collectivites" className="flex items-center gap-2 cursor-pointer">
+                      <Label htmlFor="collectivites" className="flex items-center gap-2 cursor-pointer text-sm sm:text-base">
                         <Landmark className="w-4 h-4" />
                         Collectivité
                       </Label>
@@ -212,7 +212,7 @@ const Contact = () => {
                   </div>}
 
                 {/* Name */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="first_name">Prénom *</Label>
                     <Input id="first_name" {...register("first_name")} placeholder="Votre prénom" className={errors.first_name ? "border-destructive" : ""} />
@@ -226,7 +226,7 @@ const Contact = () => {
                 </div>
 
                 {/* Contact Info */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email *</Label>
                     <Input id="email" type="email" {...register("email")} placeholder="votre@email.com" className={errors.email ? "border-destructive" : ""} />
