@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Loader2, Send } from "lucide-react";
+import { FileText, Loader2, Send, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useSupportChat } from "@/contexts/SupportChatContext";
 
 interface RGPDRequestDialogProps {
   open: boolean;
@@ -51,23 +52,36 @@ const RGPDRequestDialog = ({ open, onOpenChange }: RGPDRequestDialogProps) => {
   const [requestType, setRequestType] = useState<string>("");
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submittingAI, setSubmittingAI] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { openWithRGPDRequest } = useSupportChat();
+
+  const getTypeLabel = (value: string) => {
+    return REQUEST_TYPES.find(t => t.value === value)?.label || value;
+  };
+
+  const insertRequest = async () => {
+    if (!user) throw new Error("Utilisateur non connecté");
+    
+    const { data, error } = await supabase.from("rgpd_rights_requests").insert({
+      user_id: user.id,
+      user_email: user.email || "",
+      request_type: requestType,
+      request_details: details.trim() || null,
+      status: "pending"
+    }).select().single();
+
+    if (error) throw error;
+    return data;
+  };
 
   const handleSubmit = async () => {
     if (!requestType || !user) return;
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("rgpd_rights_requests").insert({
-        user_id: user.id,
-        user_email: user.email || "",
-        request_type: requestType,
-        request_details: details.trim() || null,
-        status: "pending"
-      });
-
-      if (error) throw error;
+      await insertRequest();
 
       toast({
         title: "Demande envoyée",
@@ -90,6 +104,44 @@ const RGPDRequestDialog = ({ open, onOpenChange }: RGPDRequestDialogProps) => {
     }
   };
 
+  const handleProcessWithAI = async () => {
+    if (!requestType || !user) return;
+
+    setSubmittingAI(true);
+    try {
+      const request = await insertRequest();
+
+      toast({
+        title: "Demande enregistrée",
+        description: "Ouverture de l'assistant IA pour traiter votre demande..."
+      });
+
+      // Reset form and close dialog
+      setRequestType("");
+      setDetails("");
+      onOpenChange(false);
+
+      // Open chat with RGPD context
+      openWithRGPDRequest({
+        requestId: request.id,
+        type: requestType,
+        typeLabel: getTypeLabel(requestType),
+        details: details.trim()
+      });
+    } catch (error: any) {
+      console.error("Error submitting RGPD request:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer votre demande. Veuillez réessayer.",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmittingAI(false);
+    }
+  };
+
+  const isSubmitting = submitting || submittingAI;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
@@ -100,7 +152,6 @@ const RGPDRequestDialog = ({ open, onOpenChange }: RGPDRequestDialogProps) => {
           </DialogTitle>
           <DialogDescription>
             Conformément au RGPD, vous pouvez exercer vos droits sur vos données personnelles.
-            Nous traiterons votre demande dans un délai maximum de 30 jours.
           </DialogDescription>
         </DialogHeader>
 
@@ -151,25 +202,44 @@ const RGPDRequestDialog = ({ open, onOpenChange }: RGPDRequestDialogProps) => {
 
           <div className="bg-muted/50 rounded-lg p-3">
             <p className="text-xs text-muted-foreground">
-              <strong>Information :</strong> Votre demande sera envoyée à notre délégué à la protection des données.
+              <strong>Information :</strong> Votre demande sera enregistrée et traitée conformément au RGPD.
               Vous recevrez une confirmation par email à l'adresse {user?.email}.
             </p>
           </div>
 
-          <Button
-            onClick={handleSubmit}
-            disabled={!requestType || submitting}
-            className="w-full gap-2"
-          >
-            {submitting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                Envoyer ma demande
-              </>
-            )}
-          </Button>
+          <div className="space-y-2">
+            <Button
+              onClick={handleProcessWithAI}
+              disabled={!requestType || isSubmitting}
+              className="w-full gap-2"
+              variant="default"
+            >
+              {submittingAI ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Bot className="w-4 h-4" />
+                  Traiter immédiatement avec l'IA
+                </>
+              )}
+            </Button>
+            
+            <Button
+              onClick={handleSubmit}
+              disabled={!requestType || isSubmitting}
+              variant="outline"
+              className="w-full gap-2"
+            >
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Envoyer ma demande (traitement sous 30 jours)
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
