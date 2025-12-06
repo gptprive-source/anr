@@ -15,8 +15,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { useVisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
-import { Send, Loader2, MessageSquare, Info, User, Building2, CreditCard, Phone, Mail, MapPin } from "lucide-react";
+import { useVisitorCustomTemplates } from "@/hooks/useVisitorCustomTemplates";
+import { Send, Loader2, MessageSquare, Info, User, Building2, CreditCard, Plus, X, Save } from "lucide-react";
 import VisitorBusinessCardManager from "./VisitorBusinessCardManager";
+import SaveCustomTemplateDialog from "./SaveCustomTemplateDialog";
 
 interface VisitorMessageDialogProps {
   open: boolean;
@@ -33,8 +35,9 @@ const VisitorMessageDialog = ({
   callId,
   onMessageSent,
 }: VisitorMessageDialogProps) => {
-  const { templates, retentionDays, sendMessage } = useVisitorMessages();
+  const { templates: adminTemplates, retentionDays, sendMessage } = useVisitorMessages();
   const { card, loading: cardLoading } = useVisitorBusinessCard();
+  const { templates: customTemplates, saveTemplate, deleteTemplate, incrementUsage } = useVisitorCustomTemplates();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [phone, setPhone] = useState("");
@@ -42,6 +45,8 @@ const VisitorMessageDialog = ({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [attachCard, setAttachCard] = useState(false);
   const [showCardManager, setShowCardManager] = useState(false);
+  const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
+  const [isCustomMessage, setIsCustomMessage] = useState(false);
 
   // Reset on open
   useEffect(() => {
@@ -51,6 +56,8 @@ const VisitorMessageDialog = ({
       setSelectedTemplateId(null);
       setAttachCard(false);
       setShowCardManager(false);
+      setShowSaveTemplateDialog(false);
+      setIsCustomMessage(false);
     }
   }, [open]);
 
@@ -61,9 +68,57 @@ const VisitorMessageDialog = ({
     }
   }, [card]);
 
-  const handleTemplateClick = (template: { id: string; content: string }) => {
+  const handleCustomTemplateClick = (template: { id: string; content: string }) => {
     setMessage(template.content);
     setSelectedTemplateId(template.id);
+    setIsCustomMessage(false);
+    incrementUsage(template.id);
+  };
+
+  const handleAdminTemplateClick = (template: { id: string; content: string }) => {
+    setMessage(template.content);
+    setSelectedTemplateId(template.id);
+    setIsCustomMessage(false);
+  };
+
+  const handleMessageChange = (value: string) => {
+    setMessage(value);
+    setSelectedTemplateId(null);
+    setIsCustomMessage(value.trim().length > 0);
+  };
+
+  const handleDeleteCustomTemplate = async (e: React.MouseEvent, templateId: string) => {
+    e.stopPropagation();
+    try {
+      await deleteTemplate(templateId);
+      toast({
+        title: "Template supprimé",
+        description: "Votre template a été supprimé",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le template",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveTemplate = async (name: string, content: string, icon: string) => {
+    try {
+      await saveTemplate(name, content, icon);
+      toast({
+        title: "Template sauvegardé",
+        description: "Votre template est prêt à l'emploi",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder le template",
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   const handleSubmit = async () => {
@@ -152,136 +207,198 @@ const VisitorMessageDialog = ({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-primary" />
-            Laisser un message
-          </DialogTitle>
-          <DialogDescription>
-            Le résident recevra votre message sur son application
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              Laisser un message
+            </DialogTitle>
+            <DialogDescription>
+              Le résident recevra votre message sur son application
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Business Card Section */}
-          <div className="space-y-2">
-            <Label className="text-sm flex items-center gap-2">
-              <CreditCard className="w-4 h-4" />
-              Ma carte de visite
-            </Label>
-            
-            {cardLoading ? (
-              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm text-muted-foreground">Chargement...</span>
+          <div className="space-y-4">
+            {/* Business Card Section */}
+            <div className="space-y-2">
+              <Label className="text-sm flex items-center gap-2">
+                <CreditCard className="w-4 h-4" />
+                Ma carte de visite
+              </Label>
+              
+              {cardLoading ? (
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Chargement...</span>
+                </div>
+              ) : card ? (
+                <div className="space-y-2">
+                  {renderCardPreview()}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="attachCard"
+                      checked={attachCard}
+                      onCheckedChange={(checked) => setAttachCard(checked === true)}
+                    />
+                    <Label htmlFor="attachCard" className="text-sm cursor-pointer">
+                      Joindre ma carte de visite à ce message
+                    </Label>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCardManager(true)}
+                  className="w-full"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Créer ma carte de visite
+                </Button>
+              )}
+            </div>
+
+            {/* Custom templates section */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm text-muted-foreground">Mes templates</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSaveTemplateDialog(true)}
+                  disabled={!message.trim()}
+                  className="h-7 text-xs"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Créer
+                </Button>
               </div>
-            ) : card ? (
+              {customTemplates.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {customTemplates.map((template) => (
+                    <Badge
+                      key={template.id}
+                      variant={selectedTemplateId === template.id ? "default" : "outline"}
+                      className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3 pr-1.5 gap-1"
+                      onClick={() => handleCustomTemplateClick(template)}
+                    >
+                      <span>{template.icon}</span>
+                      <span>{template.name}</span>
+                      <button
+                        onClick={(e) => handleDeleteCustomTemplate(e, template.id)}
+                        className="ml-1 p-0.5 rounded-full hover:bg-destructive/20 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  Aucun template personnalisé. Tapez un message et cliquez sur "Créer" pour en ajouter.
+                </p>
+              )}
+            </div>
+
+            {/* Admin templates (suggestions) */}
+            {adminTemplates.length > 0 && (
               <div className="space-y-2">
-                {renderCardPreview()}
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="attachCard"
-                    checked={attachCard}
-                    onCheckedChange={(checked) => setAttachCard(checked === true)}
-                  />
-                  <Label htmlFor="attachCard" className="text-sm cursor-pointer">
-                    Joindre ma carte de visite à ce message
-                  </Label>
+                <Label className="text-sm text-muted-foreground">Suggestions</Label>
+                <div className="flex flex-wrap gap-2">
+                  {adminTemplates.map((template) => (
+                    <Badge
+                      key={template.id}
+                      variant={selectedTemplateId === template.id ? "default" : "secondary"}
+                      className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3"
+                      onClick={() => handleAdminTemplateClick(template)}
+                    >
+                      {template.icon && <span className="mr-1">{template.icon}</span>}
+                      {template.name}
+                    </Badge>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCardManager(true)}
-                className="w-full"
-              >
-                <CreditCard className="w-4 h-4 mr-2" />
-                Créer ma carte de visite
-              </Button>
             )}
-          </div>
 
-          {/* Quick templates */}
-          {templates.length > 0 && (
+            {/* Message textarea */}
             <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Messages rapides</Label>
-              <div className="flex flex-wrap gap-2">
-                {templates.map((template) => (
-                  <Badge
-                    key={template.id}
-                    variant={selectedTemplateId === template.id ? "default" : "outline"}
-                    className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3"
-                    onClick={() => handleTemplateClick(template)}
+              <Label htmlFor="message">Votre message</Label>
+              <Textarea
+                id="message"
+                value={message}
+                onChange={(e) => handleMessageChange(e.target.value)}
+                placeholder="Bonjour, je suis passé pour..."
+                rows={4}
+                maxLength={500}
+              />
+              <div className="flex items-center justify-between">
+                {isCustomMessage && message.trim().length >= 10 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSaveTemplateDialog(true)}
+                    className="h-7 text-xs"
                   >
-                    {template.icon && <span className="mr-1">{template.icon}</span>}
-                    {template.name}
-                  </Badge>
-                ))}
+                    <Save className="w-3 h-3 mr-1" />
+                    Sauvegarder comme template
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground ml-auto">
+                  {message.length}/500
+                </p>
               </div>
             </div>
-          )}
 
-          {/* Message textarea */}
-          <div className="space-y-2">
-            <Label htmlFor="message">Votre message</Label>
-            <Textarea
-              id="message"
-              value={message}
-              onChange={(e) => {
-                setMessage(e.target.value);
-                setSelectedTemplateId(null);
-              }}
-              placeholder="Bonjour, je suis passé pour..."
-              rows={4}
-              maxLength={500}
-            />
-            <p className="text-xs text-muted-foreground text-right">
-              {message.length}/500
-            </p>
-          </div>
-
-          {/* Optional phone (only if no card attached) */}
-          {!attachCard && (
-            <div className="space-y-2">
-              <Label htmlFor="phone">Téléphone (optionnel)</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="06 12 34 56 78"
-                maxLength={20}
-              />
-            </div>
-          )}
-
-          {/* RGPD notice */}
-          <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
-            <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground">
-              Ce message sera conservé {retentionDays} jours puis automatiquement supprimé conformément au RGPD.
-            </p>
-          </div>
-
-          {/* Submit button */}
-          <Button
-            onClick={handleSubmit}
-            disabled={sending || !message.trim()}
-            className="w-full"
-          >
-            {sending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 mr-2" />
+            {/* Optional phone (only if no card attached) */}
+            {!attachCard && (
+              <div className="space-y-2">
+                <Label htmlFor="phone">Téléphone (optionnel)</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="06 12 34 56 78"
+                  maxLength={20}
+                />
+              </div>
             )}
-            Envoyer le message
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+            {/* RGPD notice */}
+            <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
+              <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground">
+                Ce message sera conservé {retentionDays} jours puis automatiquement supprimé conformément au RGPD.
+              </p>
+            </div>
+
+            {/* Submit button */}
+            <Button
+              onClick={handleSubmit}
+              disabled={sending || !message.trim()}
+              className="w-full"
+            >
+              {sending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 mr-2" />
+              )}
+              Envoyer le message
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save Template Dialog */}
+      <SaveCustomTemplateDialog
+        open={showSaveTemplateDialog}
+        onOpenChange={setShowSaveTemplateDialog}
+        messageContent={message}
+        onSave={handleSaveTemplate}
+      />
+    </>
   );
 };
 
