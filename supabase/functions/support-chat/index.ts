@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -267,27 +267,34 @@ Après chaque action, confirme clairement à l'utilisateur ce qui a été fait.`
                           
                           let emailSent = false;
                           if (userEmail) {
-                            // Send email with exported data using Resend
-                            const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-                            
-                            if (RESEND_API_KEY) {
-                              const resend = new Resend(RESEND_API_KEY);
+                            // Send email with exported data using SMTP
+                            try {
+                              const smtpClient = new SMTPClient({
+                                connection: {
+                                  hostname: Deno.env.get("SMTP_HOST") || "smtp.hostinger.com",
+                                  port: parseInt(Deno.env.get("SMTP_PORT") || "465"),
+                                  tls: true,
+                                  auth: {
+                                    username: Deno.env.get("SMTP_USER") || "",
+                                    password: Deno.env.get("SMTP_PASS") || "",
+                                  },
+                                },
+                              });
+                              
                               const htmlContent = formatExportEmail(exportData);
                               
-                              try {
-                                await resend.emails.send({
-                                  from: "ANR <onboarding@resend.dev>",
-                                  to: [userEmail],
-                                  subject: "🔐 Export de vos données personnelles - ANR",
-                                  html: htmlContent,
-                                });
-                                console.log(`[support-chat] RGPD export email sent to ${userEmail}`);
-                                emailSent = true;
-                              } catch (emailErr) {
-                                console.error("[support-chat] Email send error:", emailErr);
-                              }
-                            } else {
-                              console.warn("[support-chat] RESEND_API_KEY not configured");
+                              await smtpClient.send({
+                                from: Deno.env.get("SMTP_USER") || "contact@soqotomobil.com",
+                                to: userEmail,
+                                subject: "🔐 Export de vos données personnelles - ANR",
+                                html: htmlContent,
+                              });
+                              
+                              await smtpClient.close();
+                              console.log(`[support-chat] RGPD export email sent to ${userEmail}`);
+                              emailSent = true;
+                            } catch (emailErr) {
+                              console.error("[support-chat] SMTP email send error:", emailErr);
                             }
                           }
                           
