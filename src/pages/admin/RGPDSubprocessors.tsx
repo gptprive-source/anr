@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, Plus, Edit, ExternalLink, Globe, Shield, Loader2, CheckCircle2 } from "lucide-react";
+import { Building2, Plus, Edit, ExternalLink, Globe, Shield, Loader2, CheckCircle2, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -34,6 +35,7 @@ const RGPDSubprocessors = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: subprocessors, isLoading } = useQuery({
     queryKey: ['rgpd_subprocessors'],
@@ -79,6 +81,9 @@ const RGPDSubprocessors = () => {
       <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-4rem)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <Building2 className="w-8 h-8 text-primary" />
             <div>
               <h1 className="text-2xl font-bold">Sous-traitants (DPA)</h1>

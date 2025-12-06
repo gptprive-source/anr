@@ -21,13 +21,16 @@ import {
   Trash2,
   History,
   ExternalLink,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 const RGPD = () => {
   const [exportingPdf, setExportingPdf] = useState(false);
+  const navigate = useNavigate();
 
   // Fetch registry count
   const { data: registryData } = useQuery({
@@ -193,6 +196,9 @@ const RGPD = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <Scale className="w-8 h-8 text-primary" />
             <div>
               <h1 className="text-2xl font-bold">Conformité RGPD</h1>

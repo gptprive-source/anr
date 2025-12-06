@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertTriangle, Plus, CheckCircle2, Clock, ExternalLink, Loader2, Shield } from "lucide-react";
+import { AlertTriangle, Plus, CheckCircle2, Clock, ExternalLink, Loader2, Shield, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { format, differenceInHours } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -57,6 +58,7 @@ const RGPDIncidents = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: incidents, isLoading } = useQuery({
     queryKey: ['rgpd_incidents'],
@@ -109,6 +111,9 @@ const RGPDIncidents = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <AlertTriangle className="w-8 h-8 text-destructive" />
             <div>
               <h1 className="text-2xl font-bold">Gestion des incidents</h1>

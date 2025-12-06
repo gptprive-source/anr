@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Euro, Clock, MapPin, Users, Mail } from "lucide-react";
+import { Save, Euro, Clock, MapPin, Users, Mail, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Config = () => {
   const { configs, isLoading, updateConfig, isUpdating } = useAppConfig();
   const [localChanges, setLocalChanges] = useState<Record<string, any>>({});
+  const navigate = useNavigate();
 
   const getValue = (key: string) => {
     if (key in localChanges) return localChanges[key];
@@ -61,9 +63,14 @@ const Config = () => {
   return (
     <AdminLayout>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Configuration</h1>
-          <p className="text-muted-foreground">Paramètres système de l'application</p>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Configuration</h1>
+            <p className="text-muted-foreground">Paramètres système de l'application</p>
+          </div>
         </div>
 
         <Tabs defaultValue="pricing" className="space-y-6">

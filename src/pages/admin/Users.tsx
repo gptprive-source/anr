@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Search, User, Home, CreditCard, Phone } from "lucide-react";
+import { Search, User, Home, CreditCard, Phone, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface UserDetails {
@@ -42,6 +43,7 @@ interface UserDetails {
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserDetails | null>(null);
+  const navigate = useNavigate();
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin_users'],
@@ -117,9 +119,14 @@ const Users = () => {
   return (
     <AdminLayout>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Utilisateurs</h1>
-          <p className="text-muted-foreground">{users?.length || 0} utilisateurs inscrits</p>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Utilisateurs</h1>
+            <p className="text-muted-foreground">{users?.length || 0} utilisateurs inscrits</p>
+          </div>
         </div>
 
         <Card>

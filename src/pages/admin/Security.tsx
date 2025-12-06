@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Shield, ShieldAlert, ShieldCheck, RefreshCw, Download, CheckCircle, AlertTriangle, Info, Clock, User } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, RefreshCw, Download, CheckCircle, AlertTriangle, Info, Clock, User, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { toast } from "sonner";
 import { useAuditLog } from "@/hooks/useAuditLog";
 
 const Security = () => {
+  const navigate = useNavigate();
   const {
     latestRun,
     auditHistory,
@@ -117,6 +119,9 @@ const Security = () => {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
               <Shield className="h-8 w-8" />
               Audit de Sécurité
             </h1>
