@@ -1,6 +1,18 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+interface BusinessCard {
+  id: string;
+  card_type: string;
+  first_name: string | null;
+  last_name: string | null;
+  company_name: string | null;
+  job_title: string | null;
+  phone: string | null;
+  email: string | null;
+  visitor_anr_code: string | null;
+}
+
 interface VisitorMessage {
   id: string;
   habitation_id: string;
@@ -11,6 +23,8 @@ interface VisitorMessage {
   read_at: string | null;
   created_at: string;
   expires_at: string;
+  business_card_id: string | null;
+  business_card?: BusinessCard | null;
 }
 
 interface MessageTemplate {
@@ -27,21 +41,26 @@ export const useVisitorMessages = (habitationId?: string) => {
   const [loading, setLoading] = useState(true);
   const [retentionDays, setRetentionDays] = useState(30);
 
-  // Fetch messages for residents
+  // Fetch messages for residents (with business card join)
   const fetchMessages = async () => {
     if (!habitationId) return;
     
     try {
       const { data, error } = await (supabase
         .from("visitor_messages" as any)
-        .select("*")
+        .select("*, business_card:visitor_business_cards(*)")
         .eq("habitation_id", habitationId)
         .order("created_at", { ascending: false }) as any);
       
       if (error) throw error;
       
-      setMessages((data || []) as VisitorMessage[]);
-      setUnreadCount(((data || []) as VisitorMessage[]).filter(m => !m.is_read).length);
+      const messagesWithCards = (data || []).map((m: any) => ({
+        ...m,
+        business_card: m.business_card || null,
+      })) as VisitorMessage[];
+      
+      setMessages(messagesWithCards);
+      setUnreadCount(messagesWithCards.filter(m => !m.is_read).length);
     } catch (error) {
       console.error("[useVisitorMessages] Error fetching messages:", error);
     } finally {
@@ -87,7 +106,8 @@ export const useVisitorMessages = (habitationId?: string) => {
     message: string,
     visitorPhone?: string,
     callId?: string,
-    templateId?: string
+    templateId?: string,
+    businessCardId?: string
   ) => {
     try {
       const { error } = await (supabase
@@ -97,6 +117,7 @@ export const useVisitorMessages = (habitationId?: string) => {
           message,
           visitor_phone: visitorPhone || null,
           call_id: callId || null,
+          business_card_id: businessCardId || null,
         }) as any);
       
       if (error) throw error;
