@@ -119,6 +119,60 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_guides: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          difficulty: string | null
+          estimated_duration_seconds: number | null
+          guide_key: string
+          id: string
+          is_active: boolean | null
+          name: string
+          required_plan: string[] | null
+          sort_order: number | null
+          steps: Json
+          trigger_actions: string[] | null
+          trigger_paths: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          estimated_duration_seconds?: number | null
+          guide_key: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          required_plan?: string[] | null
+          sort_order?: number | null
+          steps?: Json
+          trigger_actions?: string[] | null
+          trigger_paths?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          estimated_duration_seconds?: number | null
+          guide_key?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          required_plan?: string[] | null
+          sort_order?: number | null
+          steps?: Json
+          trigger_actions?: string[] | null
+          trigger_paths?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       call_logs: {
         Row: {
           answered_at: string | null
@@ -377,6 +431,127 @@ export type Database = {
         }
         Relationships: []
       }
+      copilot_sessions: {
+        Row: {
+          active_guide_id: string | null
+          company_id: string | null
+          created_at: string | null
+          current_action: string | null
+          current_path: string | null
+          current_section: string | null
+          current_step: number | null
+          ended_at: string | null
+          form_state: Json | null
+          guide_completed_at: string | null
+          guide_started_at: string | null
+          id: string
+          last_activity_at: string | null
+          messages: Json | null
+          started_at: string | null
+          status: string | null
+          user_id: string
+          visible_elements: Json | null
+        }
+        Insert: {
+          active_guide_id?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          current_action?: string | null
+          current_path?: string | null
+          current_section?: string | null
+          current_step?: number | null
+          ended_at?: string | null
+          form_state?: Json | null
+          guide_completed_at?: string | null
+          guide_started_at?: string | null
+          id?: string
+          last_activity_at?: string | null
+          messages?: Json | null
+          started_at?: string | null
+          status?: string | null
+          user_id: string
+          visible_elements?: Json | null
+        }
+        Update: {
+          active_guide_id?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          current_action?: string | null
+          current_path?: string | null
+          current_section?: string | null
+          current_step?: number | null
+          ended_at?: string | null
+          form_state?: Json | null
+          guide_completed_at?: string | null
+          guide_started_at?: string | null
+          id?: string
+          last_activity_at?: string | null
+          messages?: Json | null
+          started_at?: string | null
+          status?: string | null
+          user_id?: string
+          visible_elements?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copilot_sessions_active_guide_id_fkey"
+            columns: ["active_guide_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_guides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copilot_usage: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          estimated_cost: number | null
+          guides_completed: number | null
+          id: string
+          input_tokens: number | null
+          messages_count: number | null
+          output_tokens: number | null
+          session_id: string | null
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          estimated_cost?: number | null
+          guides_completed?: number | null
+          id?: string
+          input_tokens?: number | null
+          messages_count?: number | null
+          output_tokens?: number | null
+          session_id?: string | null
+          usage_date?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          estimated_cost?: number | null
+          guides_completed?: number | null
+          id?: string
+          input_tokens?: number | null
+          messages_count?: number | null
+          output_tokens?: number | null
+          session_id?: string | null
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copilot_usage_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "copilot_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doming_orders: {
         Row: {
           anr_id: string
@@ -426,6 +601,551 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      door_access_logs: {
+        Row: {
+          action: string
+          anr_id: string | null
+          company_id: string | null
+          created_at: string | null
+          details: Json | null
+          device_firmware: string | null
+          device_id: string | null
+          door_module_id: string | null
+          duration_seconds: number | null
+          employee_id: string | null
+          error_code: string | null
+          error_details: string | null
+          face_confidence: number | null
+          face_required: boolean | null
+          face_verified: boolean | null
+          gps_distance_meters: number | null
+          gps_latitude: number | null
+          gps_longitude: number | null
+          id: string
+          ip_address: string | null
+          method: string | null
+          resident_id: string | null
+          result: string
+          rssi: number | null
+          schedule_id: string | null
+          session_id: string | null
+          timestamp_device: string | null
+          timestamp_server: string | null
+          token_id: string | null
+          user_agent: string | null
+          visitor_device_id: string | null
+          visitor_user_id: string | null
+        }
+        Insert: {
+          action: string
+          anr_id?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          device_firmware?: string | null
+          device_id?: string | null
+          door_module_id?: string | null
+          duration_seconds?: number | null
+          employee_id?: string | null
+          error_code?: string | null
+          error_details?: string | null
+          face_confidence?: number | null
+          face_required?: boolean | null
+          face_verified?: boolean | null
+          gps_distance_meters?: number | null
+          gps_latitude?: number | null
+          gps_longitude?: number | null
+          id?: string
+          ip_address?: string | null
+          method?: string | null
+          resident_id?: string | null
+          result: string
+          rssi?: number | null
+          schedule_id?: string | null
+          session_id?: string | null
+          timestamp_device?: string | null
+          timestamp_server?: string | null
+          token_id?: string | null
+          user_agent?: string | null
+          visitor_device_id?: string | null
+          visitor_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          anr_id?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          device_firmware?: string | null
+          device_id?: string | null
+          door_module_id?: string | null
+          duration_seconds?: number | null
+          employee_id?: string | null
+          error_code?: string | null
+          error_details?: string | null
+          face_confidence?: number | null
+          face_required?: boolean | null
+          face_verified?: boolean | null
+          gps_distance_meters?: number | null
+          gps_latitude?: number | null
+          gps_longitude?: number | null
+          id?: string
+          ip_address?: string | null
+          method?: string | null
+          resident_id?: string | null
+          result?: string
+          rssi?: number | null
+          schedule_id?: string | null
+          session_id?: string | null
+          timestamp_device?: string | null
+          timestamp_server?: string | null
+          token_id?: string | null
+          user_agent?: string | null
+          visitor_device_id?: string | null
+          visitor_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "door_access_logs_anr_id_fkey"
+            columns: ["anr_id"]
+            isOneToOne: false
+            referencedRelation: "anrs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      door_access_sessions: {
+        Row: {
+          anr_id: string
+          assignment_id: string | null
+          company_id: string | null
+          created_at: string | null
+          device_id: string | null
+          duration_seconds: number | null
+          employee_id: string | null
+          entry_at: string
+          entry_gps_distance_meters: number | null
+          entry_gps_lat: number | null
+          entry_gps_lon: number | null
+          exit_at: string | null
+          exit_gps_distance_meters: number | null
+          exit_gps_lat: number | null
+          exit_gps_lon: number | null
+          face_confidence_entry: number | null
+          face_confidence_exit: number | null
+          face_verified_entry: boolean | null
+          face_verified_exit: boolean | null
+          id: string
+          notes: string | null
+          schedule_id: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          anr_id: string
+          assignment_id?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          duration_seconds?: number | null
+          employee_id?: string | null
+          entry_at: string
+          entry_gps_distance_meters?: number | null
+          entry_gps_lat?: number | null
+          entry_gps_lon?: number | null
+          exit_at?: string | null
+          exit_gps_distance_meters?: number | null
+          exit_gps_lat?: number | null
+          exit_gps_lon?: number | null
+          face_confidence_entry?: number | null
+          face_confidence_exit?: number | null
+          face_verified_entry?: boolean | null
+          face_verified_exit?: boolean | null
+          id?: string
+          notes?: string | null
+          schedule_id?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          anr_id?: string
+          assignment_id?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          duration_seconds?: number | null
+          employee_id?: string | null
+          entry_at?: string
+          entry_gps_distance_meters?: number | null
+          entry_gps_lat?: number | null
+          entry_gps_lon?: number | null
+          exit_at?: string | null
+          exit_gps_distance_meters?: number | null
+          exit_gps_lat?: number | null
+          exit_gps_lon?: number | null
+          face_confidence_entry?: number | null
+          face_confidence_exit?: number | null
+          face_verified_entry?: boolean | null
+          face_verified_exit?: boolean | null
+          id?: string
+          notes?: string | null
+          schedule_id?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "door_access_sessions_anr_id_fkey"
+            columns: ["anr_id"]
+            isOneToOne: false
+            referencedRelation: "anrs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      door_access_tokens: {
+        Row: {
+          anr_id: string
+          call_id: string | null
+          consumed_at: string | null
+          consumed_by_module: string | null
+          consumed_result: string | null
+          created_at: string | null
+          granted_by: string
+          granted_to_company: string | null
+          granted_to_employee: string | null
+          granted_to_user: string | null
+          id: string
+          issued_at: string | null
+          mode: string | null
+          nonce: string
+          schedule_id: string | null
+          scope: string | null
+          session_id: string | null
+          token_hash: string
+          token_id: string
+          valid_from: string
+          valid_until: string
+          visitor_device_id: string | null
+        }
+        Insert: {
+          anr_id: string
+          call_id?: string | null
+          consumed_at?: string | null
+          consumed_by_module?: string | null
+          consumed_result?: string | null
+          created_at?: string | null
+          granted_by: string
+          granted_to_company?: string | null
+          granted_to_employee?: string | null
+          granted_to_user?: string | null
+          id?: string
+          issued_at?: string | null
+          mode?: string | null
+          nonce: string
+          schedule_id?: string | null
+          scope?: string | null
+          session_id?: string | null
+          token_hash: string
+          token_id: string
+          valid_from: string
+          valid_until: string
+          visitor_device_id?: string | null
+        }
+        Update: {
+          anr_id?: string
+          call_id?: string | null
+          consumed_at?: string | null
+          consumed_by_module?: string | null
+          consumed_result?: string | null
+          created_at?: string | null
+          granted_by?: string
+          granted_to_company?: string | null
+          granted_to_employee?: string | null
+          granted_to_user?: string | null
+          id?: string
+          issued_at?: string | null
+          mode?: string | null
+          nonce?: string
+          schedule_id?: string | null
+          scope?: string | null
+          session_id?: string | null
+          token_hash?: string
+          token_id?: string
+          valid_from?: string
+          valid_until?: string
+          visitor_device_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "door_access_tokens_anr_id_fkey"
+            columns: ["anr_id"]
+            isOneToOne: false
+            referencedRelation: "anrs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "door_access_tokens_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      door_modules: {
+        Row: {
+          anr_id: string
+          created_at: string | null
+          device_id: string
+          firmware_version: string | null
+          id: string
+          is_active: boolean | null
+          last_sync_at: string | null
+          module_type: string | null
+          relay_duration_ms: number | null
+          rssi_threshold: number | null
+          secret_key: string
+          updated_at: string | null
+        }
+        Insert: {
+          anr_id: string
+          created_at?: string | null
+          device_id: string
+          firmware_version?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          module_type?: string | null
+          relay_duration_ms?: number | null
+          rssi_threshold?: number | null
+          secret_key: string
+          updated_at?: string | null
+        }
+        Update: {
+          anr_id?: string
+          created_at?: string | null
+          device_id?: string
+          firmware_version?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          module_type?: string | null
+          relay_duration_ms?: number | null
+          rssi_threshold?: number | null
+          secret_key?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "door_modules_anr_id_fkey"
+            columns: ["anr_id"]
+            isOneToOne: false
+            referencedRelation: "anrs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      door_scheduled_access: {
+        Row: {
+          anr_id: string
+          auto_clockout_minutes: number | null
+          created_at: string | null
+          days_of_week: number[] | null
+          description: string | null
+          granted_by: string
+          granted_to_company: string | null
+          granted_to_user: string | null
+          id: string
+          instructions_for_visitor: string | null
+          is_active: boolean | null
+          max_entries_per_day: number | null
+          name: string
+          notes: string | null
+          recurrence: string | null
+          require_face_recognition_entry: boolean | null
+          require_face_recognition_exit: boolean | null
+          time_from: string
+          time_to: string
+          updated_at: string | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          anr_id: string
+          auto_clockout_minutes?: number | null
+          created_at?: string | null
+          days_of_week?: number[] | null
+          description?: string | null
+          granted_by: string
+          granted_to_company?: string | null
+          granted_to_user?: string | null
+          id?: string
+          instructions_for_visitor?: string | null
+          is_active?: boolean | null
+          max_entries_per_day?: number | null
+          name: string
+          notes?: string | null
+          recurrence?: string | null
+          require_face_recognition_entry?: boolean | null
+          require_face_recognition_exit?: boolean | null
+          time_from: string
+          time_to: string
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          anr_id?: string
+          auto_clockout_minutes?: number | null
+          created_at?: string | null
+          days_of_week?: number[] | null
+          description?: string | null
+          granted_by?: string
+          granted_to_company?: string | null
+          granted_to_user?: string | null
+          id?: string
+          instructions_for_visitor?: string | null
+          is_active?: boolean | null
+          max_entries_per_day?: number | null
+          name?: string
+          notes?: string | null
+          recurrence?: string | null
+          require_face_recognition_entry?: boolean | null
+          require_face_recognition_exit?: boolean | null
+          time_from?: string
+          time_to?: string
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "door_scheduled_access_anr_id_fkey"
+            columns: ["anr_id"]
+            isOneToOne: false
+            referencedRelation: "anrs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emergency_services: {
+        Row: {
+          contact_email: string | null
+          contact_phone: string | null
+          coverage_zone: string | null
+          created_at: string | null
+          department_code: string | null
+          id: string
+          is_active: boolean | null
+          is_verified: boolean | null
+          name: string
+          organization_type: string
+          siret: string | null
+          updated_at: string | null
+          verification_document_url: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          coverage_zone?: string | null
+          created_at?: string | null
+          department_code?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          name: string
+          organization_type: string
+          siret?: string | null
+          updated_at?: string | null
+          verification_document_url?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          coverage_zone?: string | null
+          created_at?: string | null
+          department_code?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          name?: string
+          organization_type?: string
+          siret?: string | null
+          updated_at?: string | null
+          verification_document_url?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
+      face_embeddings: {
+        Row: {
+          consent_given: boolean
+          consent_ip_address: string | null
+          consent_method: string | null
+          consent_timestamp: string | null
+          consent_user_agent: string | null
+          created_at: string | null
+          deleted_at: string | null
+          deleted_reason: string | null
+          embedding: Json
+          embedding_version: string | null
+          employee_id: string | null
+          id: string
+          last_verified_at: string | null
+          quality_score: number | null
+          registered_at: string | null
+          updated_at: string | null
+          user_id: string | null
+          verification_count: number | null
+        }
+        Insert: {
+          consent_given?: boolean
+          consent_ip_address?: string | null
+          consent_method?: string | null
+          consent_timestamp?: string | null
+          consent_user_agent?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_reason?: string | null
+          embedding: Json
+          embedding_version?: string | null
+          employee_id?: string | null
+          id?: string
+          last_verified_at?: string | null
+          quality_score?: number | null
+          registered_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          verification_count?: number | null
+        }
+        Update: {
+          consent_given?: boolean
+          consent_ip_address?: string | null
+          consent_method?: string | null
+          consent_timestamp?: string | null
+          consent_user_agent?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_reason?: string | null
+          embedding?: Json
+          embedding_version?: string | null
+          employee_id?: string | null
+          id?: string
+          last_verified_at?: string | null
+          quality_score?: number | null
+          registered_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          verification_count?: number | null
+        }
+        Relationships: []
       }
       faq_items: {
         Row: {
@@ -576,8 +1296,393 @@ export type Database = {
         }
         Relationships: []
       }
+      pro_activity_logs: {
+        Row: {
+          action: string
+          company_id: string
+          created_at: string | null
+          employee_id: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          new_value: Json | null
+          old_value: Json | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          company_id: string
+          created_at?: string | null
+          employee_id?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          company_id?: string
+          created_at?: string | null
+          employee_id?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pro_activity_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "pro_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pro_companies: {
+        Row: {
+          address: string | null
+          auto_clockout_minutes: number | null
+          city: string | null
+          company_type: string | null
+          contact_email: string
+          contact_name: string | null
+          contact_phone: string | null
+          copilot_addon_price: number | null
+          copilot_enabled: boolean | null
+          country: string | null
+          created_at: string | null
+          enable_client_signature: boolean | null
+          enable_geofencing: boolean | null
+          enable_gps_tracking: boolean | null
+          enable_webhook: boolean | null
+          geofencing_radius_meters: number | null
+          id: string
+          is_active: boolean | null
+          is_verified: boolean | null
+          legal_name: string | null
+          logo_url: string | null
+          max_active_authorizations: number | null
+          max_employees: number | null
+          name: string
+          plan_type: string | null
+          postal_code: string | null
+          require_face_recognition_default: boolean | null
+          sector: string | null
+          siren: string | null
+          siret: string | null
+          subscription_id: string | null
+          updated_at: string | null
+          verified_at: string | null
+          verified_by: string | null
+          webhook_events: string[] | null
+          webhook_secret: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          address?: string | null
+          auto_clockout_minutes?: number | null
+          city?: string | null
+          company_type?: string | null
+          contact_email: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          copilot_addon_price?: number | null
+          copilot_enabled?: boolean | null
+          country?: string | null
+          created_at?: string | null
+          enable_client_signature?: boolean | null
+          enable_geofencing?: boolean | null
+          enable_gps_tracking?: boolean | null
+          enable_webhook?: boolean | null
+          geofencing_radius_meters?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          legal_name?: string | null
+          logo_url?: string | null
+          max_active_authorizations?: number | null
+          max_employees?: number | null
+          name: string
+          plan_type?: string | null
+          postal_code?: string | null
+          require_face_recognition_default?: boolean | null
+          sector?: string | null
+          siren?: string | null
+          siret?: string | null
+          subscription_id?: string | null
+          updated_at?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          webhook_events?: string[] | null
+          webhook_secret?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          address?: string | null
+          auto_clockout_minutes?: number | null
+          city?: string | null
+          company_type?: string | null
+          contact_email?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          copilot_addon_price?: number | null
+          copilot_enabled?: boolean | null
+          country?: string | null
+          created_at?: string | null
+          enable_client_signature?: boolean | null
+          enable_geofencing?: boolean | null
+          enable_gps_tracking?: boolean | null
+          enable_webhook?: boolean | null
+          geofencing_radius_meters?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          legal_name?: string | null
+          logo_url?: string | null
+          max_active_authorizations?: number | null
+          max_employees?: number | null
+          name?: string
+          plan_type?: string | null
+          postal_code?: string | null
+          require_face_recognition_default?: boolean | null
+          sector?: string | null
+          siren?: string | null
+          siret?: string | null
+          subscription_id?: string | null
+          updated_at?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          webhook_events?: string[] | null
+          webhook_secret?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      pro_company_roles: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          permissions: Json | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          permissions?: Json | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          permissions?: Json | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pro_company_roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "pro_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pro_employee_assignments: {
+        Row: {
+          assigned_date: string
+          client_notes: string | null
+          client_signature: string | null
+          client_signature_at: string | null
+          client_signature_name: string | null
+          company_id: string
+          created_at: string | null
+          duration_minutes: number | null
+          employee_id: string
+          employee_report: string | null
+          entry_at: string | null
+          exit_at: string | null
+          geofencing_alerts: number | null
+          id: string
+          mission_notes: string | null
+          mission_type: string | null
+          priority: string | null
+          resident_comment: string | null
+          resident_rating: number | null
+          schedule_id: string
+          session_id: string | null
+          status: string | null
+          time_from: string | null
+          time_to: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_date: string
+          client_notes?: string | null
+          client_signature?: string | null
+          client_signature_at?: string | null
+          client_signature_name?: string | null
+          company_id: string
+          created_at?: string | null
+          duration_minutes?: number | null
+          employee_id: string
+          employee_report?: string | null
+          entry_at?: string | null
+          exit_at?: string | null
+          geofencing_alerts?: number | null
+          id?: string
+          mission_notes?: string | null
+          mission_type?: string | null
+          priority?: string | null
+          resident_comment?: string | null
+          resident_rating?: number | null
+          schedule_id: string
+          session_id?: string | null
+          status?: string | null
+          time_from?: string | null
+          time_to?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_date?: string
+          client_notes?: string | null
+          client_signature?: string | null
+          client_signature_at?: string | null
+          client_signature_name?: string | null
+          company_id?: string
+          created_at?: string | null
+          duration_minutes?: number | null
+          employee_id?: string
+          employee_report?: string | null
+          entry_at?: string | null
+          exit_at?: string | null
+          geofencing_alerts?: number | null
+          id?: string
+          mission_notes?: string | null
+          mission_type?: string | null
+          priority?: string | null
+          resident_comment?: string | null
+          resident_rating?: number | null
+          schedule_id?: string
+          session_id?: string | null
+          status?: string | null
+          time_from?: string | null
+          time_to?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pro_employee_assignments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "pro_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pro_employee_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pro_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pro_employees: {
+        Row: {
+          can_manage_employees: boolean | null
+          can_self_assign: boolean | null
+          company_id: string
+          created_at: string | null
+          department: string | null
+          email: string | null
+          employee_number: string | null
+          first_name: string
+          id: string
+          invited_at: string | null
+          is_active: boolean | null
+          joined_at: string | null
+          last_activity_at: string | null
+          last_name: string
+          max_hours_per_day: number | null
+          phone: string | null
+          photo_url: string | null
+          role: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          can_manage_employees?: boolean | null
+          can_self_assign?: boolean | null
+          company_id: string
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          employee_number?: string | null
+          first_name: string
+          id?: string
+          invited_at?: string | null
+          is_active?: boolean | null
+          joined_at?: string | null
+          last_activity_at?: string | null
+          last_name: string
+          max_hours_per_day?: number | null
+          phone?: string | null
+          photo_url?: string | null
+          role?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          can_manage_employees?: boolean | null
+          can_self_assign?: boolean | null
+          company_id?: string
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          employee_number?: string | null
+          first_name?: string
+          id?: string
+          invited_at?: string | null
+          is_active?: boolean | null
+          joined_at?: string | null
+          last_activity_at?: string | null
+          last_name?: string
+          max_hours_per_day?: number | null
+          phone?: string | null
+          photo_url?: string | null
+          role?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pro_employees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "pro_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          allow_emergency_access: boolean | null
           created_at: string | null
           first_name: string | null
           id: string
@@ -587,6 +1692,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          allow_emergency_access?: boolean | null
           created_at?: string | null
           first_name?: string | null
           id: string
@@ -596,6 +1702,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          allow_emergency_access?: boolean | null
           created_at?: string | null
           first_name?: string | null
           id?: string

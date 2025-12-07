@@ -97,3 +97,21 @@ verify_jwt = false
 
 [functions.chatbot-feedback]
 verify_jwt = false
+
+[functions.generate-door-token]
+verify_jwt = true
+
+[functions.validate-door-token]
+verify_jwt = false
+
+[functions.check-door-session]
+verify_jwt = false
+
+[functions.verify-face]
+verify_jwt = false
+
+[functions.register-face]
+verify_jwt = true
+
+[functions.copilot-chat]
+verify_jwt = true
