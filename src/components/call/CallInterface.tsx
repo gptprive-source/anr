@@ -33,13 +33,13 @@ const CallInterface = memo(({
   const [callState, setCallState] = useState<CallState>(isResident ? "ringing" : "connecting");
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [callWasAnswered, setCallWasAnswered] = useState(false);
+  const [callWasDeclined, setCallWasDeclined] = useState(false);
   const hasJoinedRef = useRef(false);
   const channelRef = useRef<any>(null);
   const callStartTimeRef = useRef<number>(Date.now());
   
-  // Get configurable min call duration for message
-  const { getConfig } = useAppConfig();
-  const minCallDurationForMessage = (getConfig('min_call_duration_for_message_seconds') || 5) * 1000;
+  // Ringing timeout: 30 seconds before showing message dialog
+  const RINGING_TIMEOUT_MS = 30000;
 
   // Multi-resident call management
   const {
@@ -117,6 +117,14 @@ const CallInterface = memo(({
           const callLog = payload.new as any;
           if (callLog.status === "ended") {
             logger.log("[CallInterface] Call ended by other party");
+            
+            // If visitor and call ended without being answered - resident declined
+            if (!isResident && !callLog.answered_by && !callWasAnswered) {
+              logger.log("[CallInterface] Call was declined by resident(s)");
+              setCallWasDeclined(true);
+              setShowMessageDialog(true);
+            }
+            
             setCallState("ended");
             leaveCall();
           }
@@ -129,7 +137,21 @@ const CallInterface = memo(({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [callId, leaveCall]);
+  }, [callId, leaveCall, isResident, callWasAnswered]);
+
+  // Ringing timeout - show message dialog after 30 seconds without answer
+  useEffect(() => {
+    if (isResident || callWasAnswered || callState === "ended") return;
+
+    const timeout = setTimeout(() => {
+      if (!callWasAnswered && habitationId) {
+        logger.log("[CallInterface] 30s timeout - showing message dialog");
+        setShowMessageDialog(true);
+      }
+    }, RINGING_TIMEOUT_MS);
+
+    return () => clearTimeout(timeout);
+  }, [isResident, callWasAnswered, callState, habitationId]);
 
   // Update call state based on Daily connection
   useEffect(() => {
@@ -147,11 +169,8 @@ const CallInterface = memo(({
   // Auto-navigate back when call ends (with message prompt for visitors)
   useEffect(() => {
     if (callState === "ended") {
-      // If visitor and call was not answered, offer to leave a message
-      const callDuration = Date.now() - callStartTimeRef.current;
-      if (!isResident && !callWasAnswered && habitationId && callDuration > minCallDurationForMessage) {
-        // Call lasted more than configured duration without being answered - show message dialog
-        setShowMessageDialog(true);
+      // If visitor and message dialog is showing (declined or timeout), don't auto-navigate
+      if (!isResident && showMessageDialog) {
         return;
       }
       
@@ -160,7 +179,7 @@ const CallInterface = memo(({
       }, 1500);
       return () => clearTimeout(timeout);
     }
-  }, [callState, navigate, isResident, callWasAnswered, habitationId]);
+  }, [callState, navigate, isResident, showMessageDialog]);
 
   // Individual hangup - only ends call if no other residents are active
   const handleHangup = async () => {
