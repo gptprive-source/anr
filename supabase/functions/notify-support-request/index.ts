@@ -44,8 +44,19 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("key", "support_email")
       .single();
 
-    // config.value is already a string, no need to JSON.parse
-    const supportEmail = config?.value || "support@anr.app";
+    // Parse JSON value (it's stored as a JSON string with quotes)
+    let supportEmail = "support@anr.app";
+    if (config?.value) {
+      try {
+        // If it's a JSON string like "\"email@example.com\"", parse it
+        const parsed = typeof config.value === 'string' ? JSON.parse(config.value) : config.value;
+        supportEmail = String(parsed).trim();
+      } catch {
+        // If parsing fails, try to use it directly (removing any surrounding quotes)
+        supportEmail = String(config.value).replace(/^["']|["']$/g, '').trim();
+      }
+    }
+    console.log("[notify-support] Sending to support email:", supportEmail);
 
     const userName = profile 
       ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() 
