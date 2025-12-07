@@ -26,6 +26,7 @@ import ResetPassword from "./pages/ResetPassword";
 import UpdateGPS from "./pages/UpdateGPS";
 import Residents from "./pages/Residents";
 import CallHistory from "./pages/CallHistory";
+import Messages from "./pages/Messages";
 import FAQ from "./pages/FAQ";
 import CGU from "./pages/CGU";
 import Privacy from "./pages/Privacy";
@@ -124,6 +125,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <CallHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/messages"
+            element={
+              <ProtectedRoute>
+                <Messages />
               </ProtectedRoute>
             }
           />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, HelpCircle } from "lucide-react";
+import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, HelpCircle, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
@@ -45,12 +45,11 @@ const ResidentDashboard = () => {
   const [togglingMute, setTogglingMute] = useState(false);
   const [currentUserName, setCurrentUserName] = useState("");
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  // Get unread messages count for the badge
+  const { unreadCount: unreadMessagesCount } = useVisitorMessages(habitationData?.id || "");
   useEffect(() => {
     if (user) {
       fetchHabitationData();
@@ -301,6 +300,7 @@ const ResidentDashboard = () => {
         {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <QuickAction icon={<Users className="w-6 h-6" />} label="Résidents" count={habitationData.residents.length} onClick={() => navigate("/residents")} />
+          <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" badge={unreadMessagesCount} onClick={() => navigate("/messages")} />
           <QuickAction icon={<History className="w-6 h-6" />} label="Historique" onClick={() => navigate("/call-history")} />
           <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Notifications"} onClick={toggleMute} active={isMuted} />
           <QuickAction icon={<HelpCircle className="w-6 h-6" />} label="FAQ" onClick={() => navigate("/faq")} />
@@ -325,17 +325,24 @@ const QuickAction = ({
   icon,
   label,
   count,
+  badge,
   onClick,
   active
 }: {
   icon: React.ReactNode;
   label: string;
   count?: number;
+  badge?: number;
   onClick: () => void;
   active?: boolean;
-}) => <button onClick={onClick} className={`glass-effect rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors ${active ? "border-primary bg-primary/5" : "hover:border-primary/30"}`}>
-    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${active ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"}`}>
+}) => <button onClick={onClick} className={`glass-effect rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors relative ${active ? "border-primary bg-primary/5" : "hover:border-primary/30"}`}>
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center relative ${active ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"}`}>
       {icon}
+      {badge !== undefined && badge > 0 && (
+        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center px-1">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </div>
     <span className="text-sm font-medium">{label}</span>
     {count !== undefined && <span className="text-xs text-muted-foreground">{count}</span>}
