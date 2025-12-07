@@ -50,6 +50,7 @@ import AdminCGUEditor from "./pages/admin/CGUEditor";
 import AdminPrivacyEditor from "./pages/admin/PrivacyEditor";
 import AdminSecurity from "./pages/admin/Security";
 import AdminChatbotStats from "./pages/admin/ChatbotStats";
+import AdminChatbotCorrections from "./pages/admin/ChatbotCorrections";
 import AdminMessages from "./pages/admin/Messages";
 import MentionsLegales from "./pages/MentionsLegales";
 
@@ -167,6 +168,7 @@ const AppContent = () => {
           <Route path="/admin/audit" element={<AdminAuditLog />} />
           <Route path="/admin/support" element={<AdminSupport />} />
           <Route path="/admin/chatbot" element={<AdminChatbotStats />} />
+          <Route path="/admin/chatbot-corrections" element={<AdminChatbotCorrections />} />
           <Route path="/admin/security" element={<AdminSecurity />} />
           <Route path="/admin/messages" element={<AdminMessages />} />
           <Route path="/admin/daily-usage" element={<AdminDailyUsage />} />
