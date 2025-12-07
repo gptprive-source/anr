@@ -261,11 +261,11 @@ const ChatbotCorrections = () => {
         </Card>
 
         {/* List */}
-        <Card>
-          <CardHeader>
+        <Card className="flex flex-col max-h-[60vh]">
+          <CardHeader className="flex-shrink-0">
             <CardTitle>Échanges ({usages?.length || 0})</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Chargement...</div>
             ) : usages?.length === 0 ? (
@@ -282,7 +282,7 @@ const ChatbotCorrections = () => {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
                           {getRatingBadge(usage.user_rating)}
                           {usage.is_reviewed && (
                             <Badge variant="outline" className="text-green-600">
@@ -302,10 +302,10 @@ const ChatbotCorrections = () => {
                             )}
                           </Badge>
                         </div>
-                        <p className="font-medium truncate">{usage.query_text || "Question non enregistrée"}</p>
-                        <p className="text-sm text-muted-foreground truncate">{usage.response_preview}</p>
+                        <p className="font-medium mb-1">{usage.query_text || "Question non enregistrée"}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-3">{usage.response_preview}</p>
                       </div>
-                      <div className="text-xs text-muted-foreground whitespace-nowrap">
+                      <div className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
                         {format(new Date(usage.created_at), "dd MMM HH:mm", { locale: fr })}
                       </div>
                     </div>
@@ -318,21 +318,21 @@ const ChatbotCorrections = () => {
 
         {/* Correction Dialog */}
         <Dialog open={!!selectedUsage} onOpenChange={(open) => !open && setSelectedUsage(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
+          <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle>Corriger la réponse</DialogTitle>
             </DialogHeader>
             
             {selectedUsage && (
-              <div className="space-y-4">
+              <div className="flex-1 overflow-y-auto space-y-4 pr-2">
                 <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm font-medium mb-1">Question de l'utilisateur :</p>
-                  <p>{selectedUsage.query_text}</p>
+                  <p className="text-sm font-medium mb-2">Question de l'utilisateur :</p>
+                  <p className="whitespace-pre-wrap">{selectedUsage.query_text}</p>
                 </div>
 
                 <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm font-medium mb-1">Réponse originale :</p>
-                  <p className="text-sm">{selectedUsage.response_preview}</p>
+                  <p className="text-sm font-medium mb-2">Réponse originale :</p>
+                  <p className="text-sm whitespace-pre-wrap">{selectedUsage.response_preview}</p>
                 </div>
 
                 <div>
@@ -341,7 +341,7 @@ const ChatbotCorrections = () => {
                     value={correction}
                     onChange={(e) => setCorrection(e.target.value)}
                     placeholder="Entrez la réponse corrigée..."
-                    className="mt-2 min-h-[120px]"
+                    className="mt-2 min-h-[120px] resize-y"
                   />
                 </div>
 
@@ -378,7 +378,7 @@ const ChatbotCorrections = () => {
               </div>
             )}
 
-            <DialogFooter className="flex-col sm:flex-row gap-2">
+            <DialogFooter className="flex-shrink-0 flex-col sm:flex-row gap-2 pt-4 border-t">
               <Button
                 variant="outline"
                 onClick={() => {
