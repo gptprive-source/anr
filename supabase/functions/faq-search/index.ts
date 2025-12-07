@@ -49,6 +49,29 @@ function expandWithSynonyms(words: string[]): string[] {
   return Array.from(expanded);
 }
 
+// Common greetings and small talk that should NOT trigger FAQ search
+const greetings = new Set([
+  "bonjour", "bonsoir", "salut", "hello", "hi", "coucou", "hey",
+  "ca va", "comment ca va", "comment allez vous", "vous allez bien",
+  "comment vas tu", "tu vas bien", "quoi de neuf", "bien", "merci",
+  "au revoir", "bye", "a bientot", "bonne journee", "ok", "oui", "non",
+  "d'accord", "super", "genial", "cool", "nickel", "parfait"
+]);
+
+function isGreetingOrSmallTalk(query: string): boolean {
+  const normalized = normalize(query);
+  // Check exact match
+  if (greetings.has(normalized)) return true;
+  // Check if query is too short (less than 3 meaningful words)
+  const words = normalized.split(" ").filter(w => w.length > 2);
+  if (words.length < 2) return true;
+  // Check if starts with greeting
+  for (const greeting of greetings) {
+    if (normalized.startsWith(greeting + " ") && normalized.length < 30) return true;
+  }
+  return false;
+}
+
 function calculateScore(query: string, question: string, answer: string): number {
   const queryWords = expandWithSynonyms(normalize(query).split(" ").filter(w => w.length > 2));
   const questionNorm = normalize(question);
@@ -115,12 +138,21 @@ serve(async (req) => {
   }
 
   try {
-    const { query, threshold = 0.3, conversationId } = await req.json();
+    const { query, threshold = 0.4, conversationId } = await req.json();
     
     if (!query || typeof query !== "string") {
       return new Response(
         JSON.stringify({ error: "Query is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check for greetings/small talk - don't return FAQ for these
+    if (isGreetingOrSmallTalk(query)) {
+      console.log(`[faq-search] Query "${query}" detected as greeting/small talk, skipping FAQ`);
+      return new Response(
+        JSON.stringify({ found: false, reason: "greeting" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

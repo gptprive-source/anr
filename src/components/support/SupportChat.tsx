@@ -17,6 +17,16 @@ interface Message {
 
 const STORAGE_KEY = "anr_support_chat";
 
+// Replace template variables in FAQ content with actual config values
+const replaceConfigVariables = (text: string, configMap: Record<string, string>): string => {
+  let result = text;
+  Object.entries(configMap).forEach(([key, value]) => {
+    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    result = result.replace(regex, value);
+  });
+  return result;
+};
+
 const SupportChat = () => {
   const { user } = useAuth();
   const { isOpen, setIsOpen, rgpdRequest, clearRGPDRequest } = useSupportChat();
@@ -54,9 +64,39 @@ const SupportChat = () => {
     return null;
   });
   const [lastFaqQuery, setLastFaqQuery] = useState<string | null>(null);
+  const [configMap, setConfigMap] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const rgpdProcessedRef = useRef<string | null>(null);
+
+  // Load app config for template variable replacement
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const { data } = await supabase.from('app_config').select('key, value');
+        if (data) {
+          const map: Record<string, string> = {};
+          data.forEach(config => {
+            try {
+              const value = typeof config.value === 'string' ? JSON.parse(config.value) : config.value;
+              if (config.key === 'max_call_duration_seconds') {
+                map[config.key] = String(Math.floor(value / 60));
+                map['max_call_duration_minutes'] = String(Math.floor(value / 60));
+              } else {
+                map[config.key] = String(value);
+              }
+            } catch {
+              map[config.key] = String(config.value);
+            }
+          });
+          setConfigMap(map);
+        }
+      } catch (error) {
+        console.error("Error loading config for FAQ:", error);
+      }
+    };
+    loadConfig();
+  }, []);
 
   // Save to localStorage whenever messages, requestHuman or conversationId change
   useEffect(() => {
@@ -352,10 +392,11 @@ const SupportChat = () => {
       // Step 1: Search FAQ first (free, instant)
       const faqResult = await searchFaq(message);
       if (faqResult.found && faqResult.answer) {
-        // FAQ found - display directly
+        // FAQ found - display with variables replaced
+        const processedAnswer = replaceConfigVariables(faqResult.answer!, configMap);
         setMessages(prev => [...prev, {
           role: "faq",
-          content: faqResult.answer!,
+          content: processedAnswer,
           source: "faq"
         }]);
       } else {
