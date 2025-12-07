@@ -6,10 +6,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { IncomingCallProvider } from "@/contexts/IncomingCallContext";
 import { SupportChatProvider } from "@/contexts/SupportChatContext";
+import { SupportAlertProvider } from "@/contexts/SupportAlertContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallListener";
 import SupportChat from "@/components/support/SupportChat";
+import { SupportAlertOverlay } from "@/components/admin/SupportAlertOverlay";
 import { useAudioUnlock } from "@/hooks/useAudioUnlock";
 import Index from "./pages/Index";
 import Visitor from "./pages/Visitor";
@@ -75,6 +77,7 @@ const AppContent = () => {
       <Toaster />
       <Sonner />
       <InstallPrompt />
+      <SupportAlertOverlay />
       <SupportChat />
       <BrowserRouter>
         <GlobalIncomingCallListener />
@@ -193,7 +196,9 @@ const App = () => (
       <AuthProvider>
         <IncomingCallProvider>
           <SupportChatProvider>
-            <AppContent />
+            <SupportAlertProvider>
+              <AppContent />
+            </SupportAlertProvider>
           </SupportChatProvider>
         </IncomingCallProvider>
       </AuthProvider>
