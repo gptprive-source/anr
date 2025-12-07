@@ -6,7 +6,64 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// HMAC-SHA256 pour signature du token
+// Base64URL encoding (sans padding)
+function base64url(data: Uint8Array): string {
+  const base64 = btoa(String.fromCharCode(...data));
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function base64urlEncode(str: string): string {
+  const encoder = new TextEncoder();
+  return base64url(encoder.encode(str));
+}
+
+// Générer un nonce hexadécimal de 32 caractères
+function generateNonce(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Générer un UUID v4
+function generateUUID(): string {
+  return crypto.randomUUID();
+}
+
+// Signer avec ECDSA P-256 (ES256)
+async function signES256(privateKeyPem: string, data: string): Promise<string> {
+  // Extraire la clé privée du PEM
+  const pemContents = privateKeyPem
+    .replace('-----BEGIN EC PRIVATE KEY-----', '')
+    .replace('-----END EC PRIVATE KEY-----', '')
+    .replace('-----BEGIN PRIVATE KEY-----', '')
+    .replace('-----END PRIVATE KEY-----', '')
+    .replace(/\s/g, '');
+  
+  const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+  
+  // Importer la clé
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryKey,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign']
+  );
+  
+  // Signer les données
+  const encoder = new TextEncoder();
+  const signature = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    cryptoKey,
+    encoder.encode(data)
+  );
+  
+  // Convertir la signature DER en format r||s raw (64 bytes)
+  const sigArray = new Uint8Array(signature);
+  return base64url(sigArray);
+}
+
+// Générer le token HMAC pour validation backend (fallback si pas de clé ECDSA)
 async function generateHMAC(secret: string, data: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(secret);
@@ -26,12 +83,6 @@ async function generateHMAC(secret: string, data: string): Promise<string> {
     .join('');
 }
 
-function generateNonce(): string {
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
-  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -42,6 +93,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Vérifier l'authentification
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Non autorisé' }), {
@@ -121,26 +173,83 @@ serve(async (req) => {
     const defaultTtl = config?.value ? Number(config.value) : 60;
     const actualTtl = ttl_seconds || defaultTtl;
 
-    // Générer le token
+    // Générer les identifiants du token
+    const tokenId = generateUUID();
     const nonce = generateNonce();
-    const tokenId = `ANR-${Date.now()}-${nonce.substring(0, 8)}`;
-    const now = new Date();
+    const now = Math.floor(Date.now() / 1000); // Unix timestamp
     const validFrom = now;
-    const validUntil = new Date(now.getTime() + actualTtl * 1000);
+    const validUntil = now + actualTtl;
 
     // Récupérer la clé secrète du module de porte
     const { data: doorModule } = await supabase
       .from('door_modules')
-      .select('secret_key')
+      .select('secret_key, device_id')
       .eq('anr_id', anr_id)
       .eq('is_active', true)
       .single();
 
-    const secretKey = doorModule?.secret_key || Deno.env.get('DOOR_TOKEN_SECRET') || 'default-secret-key';
+    // Récupérer l'ANR code pour le device_id
+    const { data: anr } = await supabase
+      .from('anrs')
+      .select('code')
+      .eq('id', anr_id)
+      .single();
 
-    // Créer la signature HMAC
-    const payload = `${tokenId}:${anr_id}:${validFrom.toISOString()}:${validUntil.toISOString()}:${nonce}`;
-    const tokenHash = await generateHMAC(secretKey, payload);
+    const deviceAnrId = anr?.code || `ANR_${anr_id.substring(0, 6).toUpperCase()}`;
+
+    // Construire le payload JWT selon les specs ChatGPT
+    const jwtHeader = {
+      alg: "ES256",
+      typ: "JWT"
+    };
+
+    const jwtPayload = {
+      anr_id: deviceAnrId,
+      token_id: tokenId,
+      res_id: user.id,
+      issued_at: now,
+      valid_from: validFrom,
+      valid_until: validUntil,
+      mode: mode,
+      scope: scope,
+      nonce: nonce,
+      // Métadonnées additionnelles
+      granted_to_user: granted_to_user || null,
+      granted_to_company: granted_to_company || null,
+      granted_to_employee: granted_to_employee || null,
+    };
+
+    // Encoder header et payload en base64url
+    const headerB64 = base64urlEncode(JSON.stringify(jwtHeader));
+    const payloadB64 = base64urlEncode(JSON.stringify(jwtPayload));
+    const signingInput = `${headerB64}.${payloadB64}`;
+
+    // Récupérer la clé privée ECDSA pour signer
+    const ecdsaPrivateKey = Deno.env.get('DOOR_ECDSA_PRIVATE_KEY');
+    
+    let jwsToken: string;
+    let tokenHash: string;
+
+    if (ecdsaPrivateKey) {
+      // Production: Signature ES256 (ECDSA P-256)
+      try {
+        const signature = await signES256(ecdsaPrivateKey, signingInput);
+        jwsToken = `${signingInput}.${signature}`;
+        tokenHash = signature;
+      } catch (signError) {
+        console.error('Erreur signature ECDSA:', signError);
+        // Fallback HMAC
+        const secretKey = doorModule?.secret_key || Deno.env.get('DOOR_TOKEN_SECRET') || 'default-secret-key';
+        tokenHash = await generateHMAC(secretKey, signingInput);
+        jwsToken = `${signingInput}.${base64urlEncode(tokenHash)}`;
+      }
+    } else {
+      // Fallback: HMAC-SHA256 pour développement
+      const secretKey = doorModule?.secret_key || Deno.env.get('DOOR_TOKEN_SECRET') || 'default-secret-key';
+      tokenHash = await generateHMAC(secretKey, signingInput);
+      jwsToken = `${signingInput}.${base64urlEncode(tokenHash)}`;
+      console.warn('DOOR_ECDSA_PRIVATE_KEY non configuré, utilisation HMAC fallback');
+    }
 
     // Sauvegarder le token en base
     const { data: token, error: tokenError } = await supabase
@@ -159,8 +268,8 @@ serve(async (req) => {
         mode,
         scope,
         nonce,
-        valid_from: validFrom.toISOString(),
-        valid_until: validUntil.toISOString(),
+        valid_from: new Date(validFrom * 1000).toISOString(),
+        valid_until: new Date(validUntil * 1000).toISOString(),
       })
       .select()
       .single();
@@ -173,18 +282,28 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Token généré: ${tokenId} pour ANR ${anr_id}, valide ${actualTtl}s`);
+    console.log(`Token JWS généré: ${tokenId} pour ANR ${deviceAnrId}, valide ${actualTtl}s`);
 
     return new Response(JSON.stringify({
       success: true,
+      // Token JWS compact pour BLE (format ChatGPT)
+      jws_token: jwsToken,
+      // Métadonnées pour l'app
       token: {
         id: tokenId,
-        hash: tokenHash,
-        valid_from: validFrom.toISOString(),
-        valid_until: validUntil.toISOString(),
+        anr_id: deviceAnrId,
+        valid_from: new Date(validFrom * 1000).toISOString(),
+        valid_until: new Date(validUntil * 1000).toISOString(),
         ttl_seconds: actualTtl,
         mode,
         scope,
+      },
+      // UUIDs BLE pour connexion
+      ble: {
+        service_uuid: '0000a0a0-0000-1000-8000-00805f9b34fb',
+        token_char_uuid: '0000a0a1-0000-1000-8000-00805f9b34fb',
+        result_char_uuid: '0000a0a2-0000-1000-8000-00805f9b34fb',
+        time_sync_char_uuid: '0000a0a3-0000-1000-8000-00805f9b34fb',
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
