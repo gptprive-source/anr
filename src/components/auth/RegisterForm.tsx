@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle, CreditCard, Plus, Minus, FileText } from "lucide-react";
+import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle, CreditCard, Plus, Minus, FileText, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,9 +37,24 @@ const RegisterForm = () => {
   } = useToast();
   const {
     user,
-    loading: authLoading
+    loading: authLoading,
+    signOut
   } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const handleFinishLater = async () => {
+    // Save current step to localStorage for resume
+    localStorage.setItem("anr_register_step", step);
+    if (addressData) {
+      localStorage.setItem("anr_register_address_data", JSON.stringify(addressData));
+    }
+    await signOut();
+    toast({
+      title: "À bientôt !",
+      description: "Vous pourrez reprendre votre inscription en vous reconnectant."
+    });
+    navigate("/");
+  };
 
   // Lock to prevent multiple verify calls
   const isVerifyingRef = useRef(false);
@@ -404,9 +419,9 @@ const RegisterForm = () => {
         <div className="glass-effect rounded-3xl p-8 card-shadow">
           {step === "credentials" && <CredentialsStep email={email} password={password} setEmail={setEmail} setPassword={setPassword} onSubmit={handleCredentialsSubmit} loading={loading} />}
           {step === "email-sent" && <EmailSentStep email={email} onResend={handleResendEmail} onBack={() => setStep("credentials")} loading={loading} />}
-          {step === "profile" && <ProfileStep firstName={firstName} lastName={lastName} setFirstName={setFirstName} setLastName={setLastName} onSubmit={handleProfileSubmit} loading={loading} />}
-          {step === "address" && <AddressStep address={address} setAddress={setAddress} onSubmit={handleAddressSubmit} onBack={() => setStep("profile")} loading={loading} />}
-          {step === "payment" && addressData && <PaymentStep addressData={addressData} onBack={() => setStep("address")} loading={loading} setLoading={setLoading} />}
+          {step === "profile" && <ProfileStep firstName={firstName} lastName={lastName} setFirstName={setFirstName} setLastName={setLastName} onSubmit={handleProfileSubmit} loading={loading} onFinishLater={handleFinishLater} />}
+          {step === "address" && <AddressStep address={address} setAddress={setAddress} onSubmit={handleAddressSubmit} onBack={() => setStep("profile")} loading={loading} onFinishLater={handleFinishLater} />}
+          {step === "payment" && addressData && <PaymentStep addressData={addressData} onBack={() => setStep("address")} loading={loading} setLoading={setLoading} onFinishLater={handleFinishLater} />}
           {step === "success" && <SuccessStep onGoToDashboard={() => navigate("/dashboard")} />}
         </div>
 
@@ -521,7 +536,8 @@ const ProfileStep = ({
   setFirstName,
   setLastName,
   onSubmit,
-  loading
+  loading,
+  onFinishLater
 }: {
   firstName: string;
   lastName: string;
@@ -529,6 +545,7 @@ const ProfileStep = ({
   setLastName: (v: string) => void;
   onSubmit: () => void;
   loading: boolean;
+  onFinishLater: () => void;
 }) => <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -553,6 +570,10 @@ const ProfileStep = ({
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
         {!loading && <ArrowRight className="w-4 h-4" />}
       </Button>
+      <Button variant="ghost" className="w-full text-muted-foreground" onClick={onFinishLater}>
+        <LogOut className="w-4 h-4 mr-2" />
+        Terminer plus tard
+      </Button>
     </div>
   </div>;
 const AddressStep = ({
@@ -560,13 +581,15 @@ const AddressStep = ({
   setAddress,
   onSubmit,
   onBack,
-  loading
+  loading,
+  onFinishLater
 }: {
   address: string;
   setAddress: (v: string) => void;
   onSubmit: () => void;
   onBack: () => void;
   loading: boolean;
+  onFinishLater: () => void;
 }) => <div className="space-y-6">
     <div className="text-center">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -595,18 +618,24 @@ const AddressStep = ({
           {!loading && <ArrowRight className="w-4 h-4" />}
         </Button>
       </div>
+      <Button variant="ghost" className="w-full text-muted-foreground" onClick={onFinishLater}>
+        <LogOut className="w-4 h-4 mr-2" />
+        Terminer plus tard
+      </Button>
     </div>
   </div>;
 const PaymentStep = ({
   addressData,
   onBack,
   loading,
-  setLoading
+  setLoading,
+  onFinishLater
 }: {
   addressData: AddressData;
   onBack: () => void;
   loading: boolean;
   setLoading: (v: boolean) => void;
+  onFinishLater: () => void;
 }) => {
   const [extraDomings, setExtraDomings] = useState(0);
   const [acceptedCGU, setAcceptedCGU] = useState(false);
@@ -750,16 +779,22 @@ const PaymentStep = ({
       </div>
 
       {/* Buttons */}
-      <div className="flex gap-3 mb-[29px]">
-        <Button variant="outline" className="flex-1" onClick={onBack} disabled={loading}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Retour
-        </Button>
-        <Button variant="hero" className="flex-1" onClick={handlePayment} disabled={!acceptedCGU || loading}>
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>
-              Payer {total},00 €
-              <ArrowRight className="w-4 h-4" />
-            </>}
+      <div className="space-y-3 mb-[29px]">
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={onBack} disabled={loading}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
+          <Button variant="hero" className="flex-1" onClick={handlePayment} disabled={!acceptedCGU || loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>
+                Payer {total},00 €
+                <ArrowRight className="w-4 h-4" />
+              </>}
+          </Button>
+        </div>
+        <Button variant="ghost" className="w-full text-muted-foreground" onClick={onFinishLater}>
+          <LogOut className="w-4 h-4 mr-2" />
+          Terminer plus tard
         </Button>
       </div>
     </div>;
