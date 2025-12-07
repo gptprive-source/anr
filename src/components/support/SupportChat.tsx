@@ -8,11 +8,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSupportChat } from "@/contexts/SupportChatContext";
+import { ThumbsUp, ThumbsDown } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant" | "agent" | "faq" | "system";
   content: string;
   source?: "faq" | "ai" | "rgpd";
+  usageId?: string;
+  rated?: boolean;
 }
 
 const STORAGE_KEY = "anr_support_chat";
@@ -251,11 +254,15 @@ const SupportChat = () => {
     let buffer = "";
     let assistantContent = "";
 
+    // Generate a temporary usage ID for tracking
+    const tempUsageId = `temp_${Date.now()}`;
+    
     // Add empty assistant message with AI source
     setMessages(prev => [...prev, {
       role: "assistant",
       content: "",
-      source: "ai"
+      source: "ai",
+      usageId: tempUsageId
     }]);
 
     while (true) {
@@ -275,6 +282,7 @@ const SupportChat = () => {
         try {
           const parsed = JSON.parse(jsonStr);
           const content = parsed.choices?.[0]?.delta?.content;
+          const usageId = parsed.usage_id;
           if (content) {
             assistantContent += content;
             setMessages(prev => {
@@ -282,7 +290,8 @@ const SupportChat = () => {
               updated[updated.length - 1] = {
                 role: "assistant",
                 content: assistantContent,
-                source: "ai"
+                source: "ai",
+                usageId: usageId || tempUsageId
               };
               return updated;
             });
@@ -320,12 +329,14 @@ const SupportChat = () => {
       if (!reader) throw new Error("No reader");
       const decoder = new TextDecoder();
       let buffer = "";
+      const tempUsageId = `temp_${Date.now()}`;
 
       // Add empty assistant message with AI source
       setMessages(prev => [...prev, {
         role: "assistant",
         content: "",
-        source: "ai"
+        source: "ai",
+        usageId: tempUsageId
       }]);
 
       while (true) {
@@ -344,6 +355,7 @@ const SupportChat = () => {
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content;
+            const usageId = parsed.usage_id;
             if (content) {
               assistantContent += content;
               setMessages(prev => {
@@ -351,7 +363,8 @@ const SupportChat = () => {
                 updated[updated.length - 1] = {
                   role: "assistant",
                   content: assistantContent,
-                  source: "ai"
+                  source: "ai",
+                  usageId: usageId || tempUsageId
                 };
                 return updated;
               });
@@ -516,6 +529,35 @@ const SupportChat = () => {
 
   const lastMessageIsFaq = messages.length > 0 && messages[messages.length - 1].source === "faq";
 
+  // Rate a message
+  const rateMessage = async (messageIndex: number, rating: "positive" | "negative") => {
+    const message = messages[messageIndex];
+    if (!message.usageId || message.rated) return;
+    
+    try {
+      // Update in database - we'll need an edge function or direct update
+      await supabase.functions.invoke("chatbot-feedback", {
+        body: { 
+          queryText: messages[messageIndex - 1]?.content || "",
+          responsePreview: message.content.slice(0, 100),
+          rating,
+          source: message.source || "ai"
+        }
+      });
+      
+      // Mark as rated locally
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[messageIndex] = { ...updated[messageIndex], rated: true };
+        return updated;
+      });
+      
+      toast.success(rating === "positive" ? "Merci pour votre feedback !" : "Merci, nous améliorerons cette réponse");
+    } catch (error) {
+      console.error("Error rating message:", error);
+    }
+  };
+
   return (
     <>
       {/* Chat Button */}
@@ -604,18 +646,48 @@ const SupportChat = () => {
                     </div>
                   </div>
 
-                  {/* Show retry button after FAQ response */}
-                  {message.source === "faq" && index === messages.length - 1 && !isLoading && (
-                    <div className="mt-2 ml-11">
+                  {/* Feedback buttons for AI/FAQ responses */}
+                  {(message.source === "ai" || message.source === "faq") && message.content && !message.rated && (
+                    <div className="mt-2 ml-11 flex gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-xs h-7 gap-1.5 text-muted-foreground hover:text-foreground"
-                        onClick={handleRetryWithAi}
+                        className="text-xs h-7 px-2 text-muted-foreground hover:text-green-600 hover:bg-green-500/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          rateMessage(index, "positive");
+                        }}
                       >
-                        <RefreshCw className="w-3 h-3" />
-                        Cette réponse ne m'aide pas
+                        <ThumbsUp className="w-3 h-3" />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-7 px-2 text-muted-foreground hover:text-red-600 hover:bg-red-500/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          rateMessage(index, "negative");
+                        }}
+                      >
+                        <ThumbsDown className="w-3 h-3" />
+                      </Button>
+                      {message.source === "faq" && index === messages.length - 1 && !isLoading && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-7 gap-1.5 text-muted-foreground hover:text-foreground ml-1"
+                          onClick={handleRetryWithAi}
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Réponse IA
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  
+                  {message.rated && (
+                    <div className="mt-1 ml-11 text-xs text-muted-foreground">
+                      ✓ Merci pour votre feedback
                     </div>
                   )}
                 </div>

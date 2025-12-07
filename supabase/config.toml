@@ -94,3 +94,6 @@ verify_jwt = false
 
 [functions.sync-daily-usage]
 verify_jwt = false
+
+[functions.chatbot-feedback]
+verify_jwt = false

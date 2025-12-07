@@ -72,6 +72,26 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Fetch recent corrections to inject into prompt
+    let correctionsContext = "";
+    try {
+      const { data: corrections } = await supabase
+        .from("chatbot_usage")
+        .select("query_text, admin_correction")
+        .not("admin_correction", "is", null)
+        .order("corrected_at", { ascending: false })
+        .limit(10);
+      
+      if (corrections && corrections.length > 0) {
+        correctionsContext = "\n\nCORRECTIONS RÉCENTES À APPLIQUER (utilise ces réponses si la question est similaire):\n";
+        corrections.forEach((c, i) => {
+          correctionsContext += `${i + 1}. Q: "${c.query_text}" → R: "${c.admin_correction}"\n`;
+        });
+      }
+    } catch (err) {
+      console.error("[support-chat] Error fetching corrections:", err);
+    }
+
     // Build system prompt based on context
     let systemPrompt = `Tu es l'assistant virtuel ANR (Adresse Numérique Résidentielle). Tu aides les utilisateurs avec leurs questions sur:
 
@@ -82,7 +102,7 @@ serve(async (req) => {
 - Le déménagement: l'abonnement suit l'utilisateur, pas l'adresse
 - La sécurité: visiteur à moins de 30m, appels limités à 2 minutes, vidéo unidirectionnelle
 
-Réponds de manière concise, amicale et en français. Si tu ne connais pas la réponse ou si la question nécessite une assistance humaine, suggère à l'utilisateur de demander à parler à un agent humain.`;
+Réponds de manière concise, amicale et en français. Si tu ne connais pas la réponse ou si la question nécessite une assistance humaine, suggère à l'utilisateur de demander à parler à un agent humain.${correctionsContext}`;
 
     // Add RGPD context if present
     if (rgpdContext) {

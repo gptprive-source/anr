@@ -245,40 +245,55 @@ export type Database = {
       }
       chatbot_usage: {
         Row: {
+          admin_correction: string | null
           conversation_id: string | null
+          corrected_at: string | null
+          corrected_by: string | null
           created_at: string
           estimated_cost: number | null
           id: string
           input_tokens: number | null
+          is_reviewed: boolean | null
           model: string | null
           output_tokens: number | null
           query_text: string | null
           response_preview: string | null
           source: string
+          user_rating: string | null
         }
         Insert: {
+          admin_correction?: string | null
           conversation_id?: string | null
+          corrected_at?: string | null
+          corrected_by?: string | null
           created_at?: string
           estimated_cost?: number | null
           id?: string
           input_tokens?: number | null
+          is_reviewed?: boolean | null
           model?: string | null
           output_tokens?: number | null
           query_text?: string | null
           response_preview?: string | null
           source: string
+          user_rating?: string | null
         }
         Update: {
+          admin_correction?: string | null
           conversation_id?: string | null
+          corrected_at?: string | null
+          corrected_by?: string | null
           created_at?: string
           estimated_cost?: number | null
           id?: string
           input_tokens?: number | null
+          is_reviewed?: boolean | null
           model?: string | null
           output_tokens?: number | null
           query_text?: string | null
           response_preview?: string | null
           source?: string
+          user_rating?: string | null
         }
         Relationships: [
           {
