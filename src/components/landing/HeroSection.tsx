@@ -64,7 +64,7 @@ const HeroSection = () => {
             <Smartphone className="w-5 h-5" />
             J'active mon ANR
           </Button>
-          <Button variant="glass" size="xl" onClick={() => navigate("/visitor")} className="!border-2 !border-emerald-400 ring-4 ring-emerald-400/40 shadow-[0_0_20px_rgba(52,211,153,0.4)]">
+          <Button variant="glass" size="xl" onClick={() => navigate("/visitor")} className="!border-2 !border-blue-400 ring-4 ring-blue-400/40 shadow-[0_0_20px_rgba(96,165,250,0.4)]">
             <QrCode className="w-5 h-5" />
             J'appelle un résident
           </Button>
