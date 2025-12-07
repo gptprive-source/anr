@@ -30,6 +30,7 @@ import Residents from "./pages/Residents";
 import CallHistory from "./pages/CallHistory";
 import Messages from "./pages/Messages";
 import DoorAccess from "./pages/DoorAccess";
+import EmployeeScan from "./pages/EmployeeScan";
 import FAQ from "./pages/FAQ";
 import CGU from "./pages/CGU";
 import Privacy from "./pages/Privacy";
@@ -141,6 +142,15 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/door-access"
+            element={
+              <ProtectedRoute>
+                <DoorAccess />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/employee-scan" element={<EmployeeScan />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/cgu" element={<CGU />} />
           <Route path="/privacy" element={<Privacy />} />
