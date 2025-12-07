@@ -27,7 +27,16 @@ const RegisterForm = () => {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [address, setAddress] = useState("");
+  const [addressFields, setAddressFields] = useState({
+    streetNumber: "",
+    streetNumberComplement: "",
+    streetType: "",
+    streetName: "",
+    addressComplement: "",
+    apartment: "",
+    postalCode: "",
+    city: ""
+  });
   const [loading, setLoading] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [addressData, setAddressData] = useState<AddressData | null>(null);
@@ -313,10 +322,28 @@ const RegisterForm = () => {
     }
   };
   const handleAddressSubmit = async () => {
-    if (!address.trim()) {
+    // Build full address from fields
+    const addressParts = [
+      `${addressFields.streetNumber}${addressFields.streetNumberComplement ? ' ' + addressFields.streetNumberComplement : ''}`,
+      addressFields.streetType,
+      addressFields.streetName
+    ];
+    
+    if (addressFields.addressComplement) {
+      addressParts.push(addressFields.addressComplement);
+    }
+    if (addressFields.apartment) {
+      addressParts.push(addressFields.apartment);
+    }
+    
+    const fullAddress = `${addressParts.join(' ')}, ${addressFields.postalCode} ${addressFields.city}`;
+    
+    if (!addressFields.streetNumber.trim() || !addressFields.streetType.trim() || 
+        !addressFields.streetName.trim() || !addressFields.postalCode.trim() || 
+        !addressFields.city.trim()) {
       toast({
         title: "Erreur",
-        description: "Veuillez entrer une adresse",
+        description: "Veuillez remplir les champs obligatoires",
         variant: "destructive"
       });
       return;
@@ -336,7 +363,7 @@ const RegisterForm = () => {
       } = await supabase.from("profiles").select("first_name, last_name").eq("id", currentUser.id).single();
       const userFirstName = profile?.first_name || firstName;
       const userLastName = profile?.last_name || lastName;
-      const geoResult = await geocodeAddress(address.trim());
+      const geoResult = await geocodeAddress(fullAddress);
       if (!geoResult) {
         toast({
           title: "Adresse non trouvée",
@@ -354,7 +381,7 @@ const RegisterForm = () => {
       // Check if ANR already exists for this address
       const {
         data: existingAnr
-      } = await supabase.from("anrs").select("id").eq("address", address.trim()).maybeSingle();
+      } = await supabase.from("anrs").select("id").eq("address", fullAddress).maybeSingle();
       let isNewAnr = !existingAnr;
       let existingAnrId = existingAnr?.id;
 
@@ -373,7 +400,7 @@ const RegisterForm = () => {
 
       // Store address data for payment step (don't create anything in DB yet)
       const newAddressData: AddressData = {
-        address: address.trim(),
+        address: fullAddress,
         latitude,
         longitude,
         isNewAnr,
@@ -420,7 +447,7 @@ const RegisterForm = () => {
           {step === "credentials" && <CredentialsStep email={email} password={password} setEmail={setEmail} setPassword={setPassword} onSubmit={handleCredentialsSubmit} loading={loading} />}
           {step === "email-sent" && <EmailSentStep email={email} onResend={handleResendEmail} onBack={() => setStep("credentials")} loading={loading} />}
           {step === "profile" && <ProfileStep firstName={firstName} lastName={lastName} setFirstName={setFirstName} setLastName={setLastName} onSubmit={handleProfileSubmit} loading={loading} onFinishLater={handleFinishLater} />}
-          {step === "address" && <AddressStep address={address} setAddress={setAddress} onSubmit={handleAddressSubmit} onBack={() => setStep("profile")} loading={loading} onFinishLater={handleFinishLater} />}
+          {step === "address" && <AddressStep addressFields={addressFields} setAddressFields={setAddressFields} onSubmit={handleAddressSubmit} onBack={() => setStep("profile")} loading={loading} onFinishLater={handleFinishLater} />}
           {step === "payment" && addressData && <PaymentStep addressData={addressData} onBack={() => setStep("address")} loading={loading} setLoading={setLoading} onFinishLater={handleFinishLater} />}
           {step === "success" && <SuccessStep onGoToDashboard={() => navigate("/dashboard")} />}
         </div>
@@ -576,54 +603,185 @@ const ProfileStep = ({
       </Button>
     </div>
   </div>;
+interface AddressFields {
+  streetNumber: string;
+  streetNumberComplement: string;
+  streetType: string;
+  streetName: string;
+  addressComplement: string;
+  apartment: string;
+  postalCode: string;
+  city: string;
+}
+
+const STREET_TYPES = [
+  "Rue", "Avenue", "Boulevard", "Allée", "Chemin", "Impasse", "Passage", 
+  "Place", "Cours", "Voie", "Route", "Square", "Résidence", "Lotissement"
+];
+
 const AddressStep = ({
-  address,
-  setAddress,
+  addressFields,
+  setAddressFields,
   onSubmit,
   onBack,
   loading,
   onFinishLater
 }: {
-  address: string;
-  setAddress: (v: string) => void;
+  addressFields: AddressFields;
+  setAddressFields: (v: AddressFields) => void;
   onSubmit: () => void;
   onBack: () => void;
   loading: boolean;
   onFinishLater: () => void;
-}) => <div className="space-y-6">
-    <div className="text-center">
-      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-        <MapPin className="w-8 h-8 text-primary" />
-      </div>
-      <h2 className="text-2xl font-bold mb-2">Votre adresse</h2>
-      <p className="text-muted-foreground">
-        L'adresse postale où sera installé votre ANR
-      </p>
-    </div>
+}) => {
+  const updateField = (field: keyof AddressFields, value: string) => {
+    setAddressFields({ ...addressFields, [field]: value });
+  };
 
-    <div className="space-y-4">
-      <Input placeholder="12 Rue des Lilas, 75011 Paris" value={address} onChange={e => setAddress(e.target.value)} disabled={loading} />
-      <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 text-sm">
-        <p className="text-warning font-medium">
-          Si cette adresse existe déjà, vous serez ajouté comme second habitat (multi-logement)
+  const isValid = addressFields.streetNumber.trim() && 
+                  addressFields.streetType.trim() && 
+                  addressFields.streetName.trim() && 
+                  addressFields.postalCode.trim() && 
+                  addressFields.city.trim();
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+          <MapPin className="w-8 h-8 text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Votre adresse</h2>
+        <p className="text-muted-foreground">
+          L'adresse postale où sera installé votre ANR
         </p>
       </div>
-      <div className="flex gap-3">
-        <Button variant="outline" className="flex-1" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Retour
-        </Button>
-        <Button variant="hero" className="flex-1" onClick={onSubmit} disabled={!address.trim() || loading}>
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
-          {!loading && <ArrowRight className="w-4 h-4" />}
+
+      <div className="space-y-3">
+        {/* Numéro et complément */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="streetNumber" className="text-xs">Numéro de voie *</Label>
+            <Input 
+              id="streetNumber"
+              placeholder="12" 
+              value={addressFields.streetNumber} 
+              onChange={e => updateField('streetNumber', e.target.value)} 
+              disabled={loading} 
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="streetNumberComplement" className="text-xs">Complément</Label>
+            <Input 
+              id="streetNumberComplement"
+              placeholder="bis, ter..." 
+              value={addressFields.streetNumberComplement} 
+              onChange={e => updateField('streetNumberComplement', e.target.value)} 
+              disabled={loading} 
+            />
+          </div>
+        </div>
+
+        {/* Type de voie */}
+        <div className="space-y-1">
+          <Label htmlFor="streetType" className="text-xs">Type de voie *</Label>
+          <select
+            id="streetType"
+            value={addressFields.streetType}
+            onChange={e => updateField('streetType', e.target.value)}
+            disabled={loading}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="">Sélectionner...</option>
+            {STREET_TYPES.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Nom de la voie */}
+        <div className="space-y-1">
+          <Label htmlFor="streetName" className="text-xs">Nom de la voie *</Label>
+          <Input 
+            id="streetName"
+            placeholder="des Lilas" 
+            value={addressFields.streetName} 
+            onChange={e => updateField('streetName', e.target.value)} 
+            disabled={loading} 
+          />
+        </div>
+
+        {/* Complément d'adresse */}
+        <div className="space-y-1">
+          <Label htmlFor="addressComplement" className="text-xs">Complément d'adresse</Label>
+          <Input 
+            id="addressComplement"
+            placeholder="Bâtiment A, Entrée 2..." 
+            value={addressFields.addressComplement} 
+            onChange={e => updateField('addressComplement', e.target.value)} 
+            disabled={loading} 
+          />
+        </div>
+
+        {/* Appartement / étage */}
+        <div className="space-y-1">
+          <Label htmlFor="apartment" className="text-xs">Appartement / étage / porte</Label>
+          <Input 
+            id="apartment"
+            placeholder="Apt 12, 3ème étage..." 
+            value={addressFields.apartment} 
+            onChange={e => updateField('apartment', e.target.value)} 
+            disabled={loading} 
+          />
+        </div>
+
+        {/* Code postal et Commune */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="postalCode" className="text-xs">Code postal *</Label>
+            <Input 
+              id="postalCode"
+              placeholder="75011" 
+              value={addressFields.postalCode} 
+              onChange={e => updateField('postalCode', e.target.value)} 
+              disabled={loading} 
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="city" className="text-xs">Commune *</Label>
+            <Input 
+              id="city"
+              placeholder="Paris" 
+              value={addressFields.city} 
+              onChange={e => updateField('city', e.target.value)} 
+              disabled={loading} 
+            />
+          </div>
+        </div>
+
+        <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 text-sm">
+          <p className="text-warning font-medium">
+            Si cette adresse existe déjà, vous serez ajouté comme second habitat (multi-logement)
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={onBack}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
+          <Button variant="hero" className="flex-1" onClick={onSubmit} disabled={!isValid || loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
+            {!loading && <ArrowRight className="w-4 h-4" />}
+          </Button>
+        </div>
+        <Button variant="ghost" className="w-full text-muted-foreground" onClick={onFinishLater}>
+          <LogOut className="w-4 h-4 mr-2" />
+          Terminer plus tard
         </Button>
       </div>
-      <Button variant="ghost" className="w-full text-muted-foreground" onClick={onFinishLater}>
-        <LogOut className="w-4 h-4 mr-2" />
-        Terminer plus tard
-      </Button>
     </div>
-  </div>;
+  );
+};
 const PaymentStep = ({
   addressData,
   onBack,
