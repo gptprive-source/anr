@@ -20,6 +20,14 @@ interface FAQItem {
   sort_order: number;
 }
 
+interface FAQSection {
+  id: string;
+  name: string;
+  icon: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
 interface AppConfig {
   key: string;
   value: any;
@@ -85,6 +93,21 @@ const FAQ = () => {
     }
   });
 
+  // Fetch FAQ sections from database (for ordering)
+  const { data: faqSectionsData } = useQuery({
+    queryKey: ['public_faq_sections'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('faq_sections')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+      
+      if (error) throw error;
+      return data as FAQSection[];
+    },
+  });
+
   // Fetch FAQ from database
   const { data: faqItems, isLoading: faqLoading } = useQuery({
     queryKey: ['public_faq_items'],
@@ -93,7 +116,6 @@ const FAQ = () => {
         .from('faq_items')
         .select('*')
         .eq('is_active', true)
-        .order('section')
         .order('sort_order');
       
       if (error) throw error;
@@ -120,23 +142,18 @@ const FAQ = () => {
     },
   });
 
-  // Group FAQ by section with dynamic values replaced
-  const groupedFAQ = faqItems?.reduce((acc, item) => {
-    if (!acc[item.section]) {
-      acc[item.section] = {
-        title: item.section,
-        icon: iconMap[item.section_icon || ''] || '❓',
-        questions: [],
-      };
-    }
-    acc[item.section].questions.push({
-      q: replaceConfigVariables(item.question, configMap),
-      a: replaceConfigVariables(item.answer, configMap),
-    });
-    return acc;
-  }, {} as Record<string, { title: string; icon: string; questions: { q: string; a: string }[] }>);
-
-  const faqSections = groupedFAQ ? Object.values(groupedFAQ) : [];
+  // Group FAQ by section with dynamic values replaced, ordered by section sort_order
+  const faqSections = faqSectionsData?.map(section => {
+    const sectionItems = faqItems?.filter(item => item.section === section.name) || [];
+    return {
+      title: section.name,
+      icon: iconMap[section.icon] || '❓',
+      questions: sectionItems.map(item => ({
+        q: replaceConfigVariables(item.question, configMap),
+        a: replaceConfigVariables(item.answer, configMap),
+      })),
+    };
+  }).filter(section => section.questions.length > 0) || [];
 
   if (faqLoading) {
     return (
