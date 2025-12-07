@@ -31,6 +31,7 @@ import CallHistory from "./pages/CallHistory";
 import Messages from "./pages/Messages";
 import DoorAccess from "./pages/DoorAccess";
 import EmployeeScan from "./pages/EmployeeScan";
+import ProDashboard from "./pages/pro/ProDashboard";
 import FAQ from "./pages/FAQ";
 import CGU from "./pages/CGU";
 import Privacy from "./pages/Privacy";
@@ -151,6 +152,14 @@ const AppContent = () => {
             }
           />
           <Route path="/employee-scan" element={<EmployeeScan />} />
+          <Route
+            path="/pro"
+            element={
+              <ProtectedRoute>
+                <ProDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/cgu" element={<CGU />} />
           <Route path="/privacy" element={<Privacy />} />
