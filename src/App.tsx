@@ -77,9 +77,9 @@ const AppContent = () => {
       <Toaster />
       <Sonner />
       <InstallPrompt />
-      <SupportAlertOverlay />
       <SupportChat />
       <BrowserRouter>
+        <SupportAlertOverlay />
         <GlobalIncomingCallListener />
         <Routes>
           <Route path="/" element={<Index />} />
