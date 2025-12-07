@@ -3,17 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, Clock, CheckCircle, PlayCircle, Building2, Plus } from "lucide-react";
+import { Users, Calendar, Clock, CheckCircle, PlayCircle, Building2, Plus, CalendarPlus } from "lucide-react";
 import { ProEmployeeList } from "@/components/pro/ProEmployeeList";
 import { ProScheduleList } from "@/components/pro/ProScheduleList";
 import { ProTodayAssignments } from "@/components/pro/ProTodayAssignments";
 import { ProActivityLog } from "@/components/pro/ProActivityLog";
 import { AddEmployeeDialog } from "@/components/pro/AddEmployeeDialog";
+import { AssignEmployeeDialog } from "@/components/pro/AssignEmployeeDialog";
 import { useState } from "react";
 
 const ProDashboard = () => {
   const { company, stats, isLoading, isAdmin } = useProCompany();
   const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [showAssignEmployee, setShowAssignEmployee] = useState(false);
 
   if (isLoading) {
     return (
@@ -143,10 +145,16 @@ const ProDashboard = () => {
             </TabsList>
 
             {isAdmin && (
-              <Button onClick={() => setShowAddEmployee(true)} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter employé
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowAssignEmployee(true)} size="sm" variant="outline">
+                  <CalendarPlus className="h-4 w-4 mr-2" />
+                  Planifier mission
+                </Button>
+                <Button onClick={() => setShowAddEmployee(true)} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter employé
+                </Button>
+              </div>
             )}
           </div>
 
@@ -171,6 +179,11 @@ const ProDashboard = () => {
       <AddEmployeeDialog 
         open={showAddEmployee} 
         onOpenChange={setShowAddEmployee} 
+      />
+      
+      <AssignEmployeeDialog
+        open={showAssignEmployee}
+        onOpenChange={setShowAssignEmployee}
       />
     </div>
   );
