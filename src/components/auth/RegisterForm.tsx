@@ -684,18 +684,13 @@ const AddressStep = ({
         {/* Type de voie */}
         <div className="space-y-1">
           <Label htmlFor="streetType" className="text-xs">Type de voie *</Label>
-          <select
+          <Input 
             id="streetType"
-            value={addressFields.streetType}
-            onChange={e => updateField('streetType', e.target.value)}
-            disabled={loading}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <option value="">Sélectionner...</option>
-            {STREET_TYPES.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
+            placeholder="Rue, Avenue, Boulevard..." 
+            value={addressFields.streetType} 
+            onChange={e => updateField('streetType', e.target.value)} 
+            disabled={loading} 
+          />
         </div>
 
         {/* Nom de la voie */}
