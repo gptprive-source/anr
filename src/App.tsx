@@ -29,6 +29,7 @@ import UpdateGPS from "./pages/UpdateGPS";
 import Residents from "./pages/Residents";
 import CallHistory from "./pages/CallHistory";
 import Messages from "./pages/Messages";
+import DoorAccess from "./pages/DoorAccess";
 import FAQ from "./pages/FAQ";
 import CGU from "./pages/CGU";
 import Privacy from "./pages/Privacy";
