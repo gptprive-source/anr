@@ -11,6 +11,8 @@ interface CallData {
   habitationId: string;
   habitationName: string;
   callLogId: string;
+  anrId: string;
+  anrCode: string;
 }
 
 const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
@@ -71,7 +73,7 @@ const Call = () => {
           const [habitationResult] = await Promise.all([
             supabase
               .from("habitations")
-              .select("id, name, anrs(address)")
+              .select("id, name, anr_id, anrs(id, code, address)")
               .eq("id", callLog.habitation_id)
               .single(),
             supabase
@@ -87,11 +89,14 @@ const Call = () => {
             return;
           }
 
+          const anrData = habitation.anrs as any;
           setCallData({
-            address: (habitation.anrs as any)?.address || "",
+            address: anrData?.address || "",
             habitationId: habitation.id,
             habitationName: habitation.name,
             callLogId: callLog.id,
+            anrId: anrData?.id || habitation.anr_id || "",
+            anrCode: anrData?.code || "",
           });
           setLoading(false);
           return;
@@ -211,6 +216,8 @@ const Call = () => {
           habitationId: habitation.id,
           habitationName: habitation.name,
           callLogId: callLog.id,
+          anrId: anr.id,
+          anrCode: anr.code,
         });
 
       } catch (err: any) {
@@ -254,6 +261,8 @@ const Call = () => {
       callId={callData.callLogId}
       habitationId={callData.habitationId}
       userId={user?.id}
+      anrId={callData.anrId}
+      anrCode={callData.anrCode}
     />
   );
 };

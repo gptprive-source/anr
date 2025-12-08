@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
-import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle, MessageSquare } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDaily } from "@/hooks/useDaily";
 import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
-import { useAppConfig } from "@/hooks/useAppConfig";
 import { supabase } from "@/integrations/supabase/client";
 import VideoGrid from "./VideoGrid";
 import InviteResidentsPanel from "./InviteResidentsPanel";
 import VisitorMessageDialog from "@/components/visitor/VisitorMessageDialog";
+import { BleOpenDoorButton } from "@/components/door/BleOpenDoorButton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 type CallState = "ringing" | "connecting" | "connected" | "ended";
 
@@ -19,6 +21,8 @@ interface CallInterfaceProps {
   callId?: string;
   habitationId?: string;
   userId?: string;
+  anrId?: string;
+  anrCode?: string;
 }
 
 const CallInterface = memo(({ 
@@ -28,12 +32,15 @@ const CallInterface = memo(({
   callId = `call-${Date.now()}`,
   habitationId = "",
   userId,
+  anrId = "",
+  anrCode = "",
 }: CallInterfaceProps) => {
   const navigate = useNavigate();
   const [callState, setCallState] = useState<CallState>(isResident ? "ringing" : "connecting");
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [callWasAnswered, setCallWasAnswered] = useState(false);
   const [callWasDeclined, setCallWasDeclined] = useState(false);
+  const [showDoorDialog, setShowDoorDialog] = useState(false);
   const hasJoinedRef = useRef(false);
   const channelRef = useRef<any>(null);
   const callStartTimeRef = useRef<number>(Date.now());
@@ -341,6 +348,16 @@ const CallInterface = memo(({
             {/* RESIDENT CONTROLS */}
             {isResident && (
               <>
+                {/* Ouvrir la porte */}
+                <Button 
+                  variant="default"
+                  size="sm"
+                  onClick={() => setShowDoorDialog(true)}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                >
+                  <DoorOpen className="w-5 h-5" />
+                  <span>Ouvrir</span>
+                </Button>
 
                 {/* Visio Simple: voir le visiteur */}
                 <Button 
@@ -350,7 +367,7 @@ const CallInterface = memo(({
                   className="flex items-center gap-2"
                 >
                   <Eye className="w-5 h-5" />
-                  <span>Visio simple</span>
+                  <span>Visio</span>
                 </Button>
 
                 {/* Visio Double: résident et visiteur se voient */}
@@ -361,7 +378,7 @@ const CallInterface = memo(({
                   className="flex items-center gap-2"
                 >
                   <Users2 className="w-5 h-5" />
-                  <span>Visio double</span>
+                  <span>Visio 2</span>
                 </Button>
 
                 {/* Mute */}
@@ -399,6 +416,35 @@ const CallInterface = memo(({
           onMessageSent={() => navigate(-1)}
         />
       )}
+
+      {/* Door Open Dialog for Residents */}
+      <Dialog open={showDoorDialog} onOpenChange={setShowDoorDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DoorOpen className="w-5 h-5" />
+              Ouvrir la porte
+            </DialogTitle>
+          </DialogHeader>
+          {anrId && anrCode ? (
+            <BleOpenDoorButton
+              anrId={anrId}
+              anrCode={anrCode}
+              onSuccess={() => {
+                toast.success("Porte ouverte !");
+                setShowDoorDialog(false);
+              }}
+              onError={(error) => {
+                toast.error(`Erreur: ${error}`);
+              }}
+            />
+          ) : (
+            <p className="text-muted-foreground text-center py-4">
+              Information ANR non disponible
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });
