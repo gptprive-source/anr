@@ -218,18 +218,7 @@ const VisitorMessageDialog = ({
     );
   };
 
-  // Show card manager dialog
-  if (showCardManager) {
-    return (
-      <VisitorBusinessCardManager
-        open={showCardManager}
-        onOpenChange={(open) => {
-          setShowCardManager(open);
-        }}
-        onCardSaved={() => setShowCardManager(false)}
-      />
-    );
-  }
+  // Card manager is now rendered alongside main dialog to preserve state
 
   return (
     <>
@@ -432,6 +421,12 @@ const VisitorMessageDialog = ({
         onOpenChange={setShowSaveTemplateDialog}
         messageContent={message}
         onSave={handleSaveTemplate}
+      />
+
+      <VisitorBusinessCardManager
+        open={showCardManager}
+        onOpenChange={setShowCardManager}
+        onCardSaved={() => setShowCardManager(false)}
       />
     </>
   );
