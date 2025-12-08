@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Euro, Clock, MapPin, Users, Mail, ArrowLeft } from "lucide-react";
+import { Save, Euro, Clock, MapPin, Users, Mail, ArrowLeft, Bot } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -352,6 +352,27 @@ const Config = () => {
                         Enregistrer
                       </Button>
                     )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+                  <div className="space-y-1">
+                    <Label className="flex items-center gap-2">
+                      <Bot className="w-4 h-4" />
+                      Mode IA du chatbot
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Activer le mode IA pour tous les utilisateurs (désactive la recherche FAQ)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Switch
+                      checked={getValue('chatbot_ai_mode_enabled') === true || getValue('chatbot_ai_mode_enabled') === 'true'}
+                      onCheckedChange={(checked) => {
+                        setLocalValue('chatbot_ai_mode_enabled', checked);
+                        setTimeout(() => saveConfig('chatbot_ai_mode_enabled'), 100);
+                      }}
+                    />
                   </div>
                 </div>
               </CardContent>

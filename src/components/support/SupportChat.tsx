@@ -68,11 +68,12 @@ const SupportChat = () => {
   });
   const [lastFaqQuery, setLastFaqQuery] = useState<string | null>(null);
   const [configMap, setConfigMap] = useState<Record<string, string>>({});
+  const [aiModeEnabled, setAiModeEnabled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const rgpdProcessedRef = useRef<string | null>(null);
 
-  // Load app config for template variable replacement
+  // Load app config for template variable replacement and AI mode
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -85,6 +86,8 @@ const SupportChat = () => {
               if (config.key === 'max_call_duration_seconds') {
                 map[config.key] = String(Math.floor(value / 60));
                 map['max_call_duration_minutes'] = String(Math.floor(value / 60));
+              } else if (config.key === 'chatbot_ai_mode_enabled') {
+                setAiModeEnabled(value === true || value === 'true');
               } else {
                 map[config.key] = String(value);
               }
@@ -402,19 +405,24 @@ const SupportChat = () => {
     setLastFaqQuery(message);
 
     try {
-      // Step 1: Search FAQ first (free, instant)
-      const faqResult = await searchFaq(message);
-      if (faqResult.found && faqResult.answer) {
-        // FAQ found - display with variables replaced
-        const processedAnswer = replaceConfigVariables(faqResult.answer!, configMap);
-        setMessages(prev => [...prev, {
-          role: "faq",
-          content: processedAnswer,
-          source: "faq"
-        }]);
-      } else {
-        // No FAQ match - call AI
+      // If AI mode is enabled globally, skip FAQ and go directly to AI
+      if (aiModeEnabled) {
         await streamAiChat(message, [...messages, userMsg]);
+      } else {
+        // Step 1: Search FAQ first (free, instant)
+        const faqResult = await searchFaq(message);
+        if (faqResult.found && faqResult.answer) {
+          // FAQ found - display with variables replaced
+          const processedAnswer = replaceConfigVariables(faqResult.answer!, configMap);
+          setMessages(prev => [...prev, {
+            role: "faq",
+            content: processedAnswer,
+            source: "faq"
+          }]);
+        } else {
+          // No FAQ match - call AI
+          await streamAiChat(message, [...messages, userMsg]);
+        }
       }
     } catch (error) {
       console.error("Chat error:", error);
