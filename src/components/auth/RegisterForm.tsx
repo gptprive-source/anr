@@ -21,7 +21,12 @@ interface AddressData {
 }
 const emailSchema = z.string().email("Email invalide");
 const passwordSchema = z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères");
-const RegisterForm = () => {
+
+interface RegisterFormProps {
+  onBack?: () => void;
+}
+
+const RegisterForm = ({ onBack }: RegisterFormProps) => {
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -455,7 +460,7 @@ const RegisterForm = () => {
         </div>
 
         <div className="glass-effect rounded-3xl p-8 card-shadow">
-          {step === "credentials" && <CredentialsStep email={email} password={password} confirmPassword={confirmPassword} setEmail={setEmail} setPassword={setPassword} setConfirmPassword={setConfirmPassword} onSubmit={handleCredentialsSubmit} loading={loading} />}
+          {step === "credentials" && <CredentialsStep email={email} password={password} confirmPassword={confirmPassword} setEmail={setEmail} setPassword={setPassword} setConfirmPassword={setConfirmPassword} onSubmit={handleCredentialsSubmit} loading={loading} onBack={onBack} />}
           {step === "email-sent" && <EmailSentStep email={email} onResend={handleResendEmail} onBack={() => setStep("credentials")} loading={loading} />}
           {step === "profile" && <ProfileStep firstName={firstName} lastName={lastName} setFirstName={setFirstName} setLastName={setLastName} onSubmit={handleProfileSubmit} loading={loading} onFinishLater={handleFinishLater} />}
           {step === "address" && <AddressStep addressFields={addressFields} setAddressFields={setAddressFields} onSubmit={handleAddressSubmit} onBack={() => setStep("profile")} loading={loading} onFinishLater={handleFinishLater} />}
@@ -480,7 +485,8 @@ const CredentialsStep = ({
   setPassword,
   setConfirmPassword,
   onSubmit,
-  loading
+  loading,
+  onBack
 }: {
   email: string;
   password: string;
@@ -490,6 +496,7 @@ const CredentialsStep = ({
   setConfirmPassword: (v: string) => void;
   onSubmit: () => void;
   loading: boolean;
+  onBack?: () => void;
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -562,6 +569,13 @@ const CredentialsStep = ({
             <p className="text-xs text-destructive">Les mots de passe ne correspondent pas</p>
           )}
         </div>
+
+        {onBack && (
+          <Button variant="outline" className="w-full" onClick={onBack} disabled={loading}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
+        )}
 
         <Button variant="hero" className="w-full" onClick={onSubmit} disabled={!email.trim() || !password.trim() || !confirmPassword.trim() || password !== confirmPassword || loading}>
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
