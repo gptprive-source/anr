@@ -62,14 +62,8 @@ const Register = () => {
 
   const getPrice = (planId: string) => {
     const annualPrice = getConfig(`${planId}_annual_price`);
-    const plan = PLAN_CONFIGS.find(p => p.id === planId);
-    
-    if (plan?.priceFormat === 'annual') {
-      return { value: annualPrice || 12, suffix: '€/an' };
-    } else {
-      const monthlyPrice = annualPrice ? Math.round(annualPrice / 12 * 100) / 100 : 29;
-      return { value: monthlyPrice, suffix: '€/mois' };
-    }
+    const monthlyPrice = annualPrice ? Math.round(annualPrice / 12 * 100) / 100 : 1;
+    return { value: monthlyPrice };
   };
 
   const getDescription = (planId: string) => {
@@ -203,7 +197,7 @@ const Register = () => {
                       )}
                       
                       <div className={`text-sm font-medium ${plan.color}`}>
-                        À partir de {price.value}{price.suffix}
+                        {price.value}€/mois
                       </div>
                     </div>
                   </div>
