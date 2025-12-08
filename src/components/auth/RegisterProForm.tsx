@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, ArrowRight, Building2, User, MapPin, CreditCard, CheckCircle, Loader2, Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { useAppConfig } from "@/hooks/useAppConfig";
 
 type Step = "company" | "contact" | "plan" | "credentials" | "payment";
 
@@ -35,12 +36,11 @@ const SECTORS = [
   "Autre"
 ];
 
-const PLANS = [
-  {
+// Plan features (static, prices are loaded dynamically)
+const PLAN_FEATURES = {
+  pro: {
     id: "pro",
     name: "PRO",
-    price: "29€/mois",
-    priceValue: 29,
     maxEmployees: 30,
     features: [
       "Jusqu'à 30 employés",
@@ -50,11 +50,9 @@ const PLANS = [
       "Support email"
     ]
   },
-  {
+  entreprise: {
     id: "entreprise",
     name: "ENTREPRISE",
-    price: "99€/mois",
-    priceValue: 99,
     maxEmployees: 200,
     popular: true,
     features: [
@@ -67,11 +65,9 @@ const PLANS = [
       "Support prioritaire"
     ]
   },
-  {
+  collectivite: {
     id: "collectivite",
     name: "COLLECTIVITÉS",
-    price: "199€/mois",
-    priceValue: 199,
     maxEmployees: 1000,
     features: [
       "Jusqu'à 1000 employés",
@@ -82,13 +78,41 @@ const PLANS = [
       "Account manager dédié"
     ]
   }
-];
+};
 
 const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
   const [step, setStep] = useState<Step>("company");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { getConfig, isLoading: configLoading } = useAppConfig();
+
+  // Load dynamic pricing from config
+  const proPlanPrice = getConfig('pro_plan_price') || 29;
+  const entreprisePlanPrice = getConfig('entreprise_plan_price') || 99;
+  const collectivitesPlanPrice = getConfig('collectivites_plan_price') || 199;
+  const copilotAddonPrice = getConfig('copilot_addon_price') || 9.99;
+  const geofencingAddonPrice = getConfig('geofencing_addon_price') || 4.99;
+  const facialRecognitionAddonPrice = getConfig('facial_recognition_addon_price') || 7.99;
+
+  // Build dynamic PLANS array with prices from config
+  const PLANS = [
+    {
+      ...PLAN_FEATURES.pro,
+      price: `${proPlanPrice}€/mois`,
+      priceValue: proPlanPrice
+    },
+    {
+      ...PLAN_FEATURES.entreprise,
+      price: `${entreprisePlanPrice}€/mois`,
+      priceValue: entreprisePlanPrice
+    },
+    {
+      ...PLAN_FEATURES.collectivite,
+      price: `${collectivitesPlanPrice}€/mois`,
+      priceValue: collectivitesPlanPrice
+    }
+  ];
 
   // Company info
   const [companyName, setCompanyName] = useState("");
@@ -173,12 +197,12 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
 
   const calculateTotalPrice = () => {
     const plan = PLANS.find(p => p.id === selectedPlan);
-    let total = plan?.priceValue || 29;
+    let total = plan?.priceValue || proPlanPrice;
     
     if (selectedPlan === "pro") {
-      if (wantsCopilot) total += 9.99;
-      if (wantsGeofencing) total += 5;
-      if (wantsFaceRecognition) total += 10;
+      if (wantsCopilot) total += copilotAddonPrice;
+      if (wantsGeofencing) total += geofencingAddonPrice;
+      if (wantsFaceRecognition) total += facialRecognitionAddonPrice;
     }
     
     return total.toFixed(2);
@@ -519,7 +543,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{plan.name}</span>
-                        {plan.popular && (
+                        {'popular' in plan && plan.popular && (
                           <span className="px-2 py-0.5 text-xs bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-full">
                             Populaire
                           </span>
@@ -567,7 +591,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
                         onCheckedChange={(c) => setWantsCopilot(c === true)}
                       />
                       <label htmlFor="copilot" className="text-sm">
-                        Co-Pilot IA (+9,99€/mois)
+                        Co-Pilot IA (+{copilotAddonPrice}€/mois)
                       </label>
                     </div>
                     <div className="flex items-center gap-2">
@@ -577,7 +601,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
                         onCheckedChange={(c) => setWantsGeofencing(c === true)}
                       />
                       <label htmlFor="geofencing" className="text-sm">
-                        Géofencing avancé (+5€/mois)
+                        Géofencing avancé (+{geofencingAddonPrice}€/mois)
                       </label>
                     </div>
                     <div className="flex items-center gap-2">
@@ -587,7 +611,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
                         onCheckedChange={(c) => setWantsFaceRecognition(c === true)}
                       />
                       <label htmlFor="faceRecog" className="text-sm">
-                        Reconnaissance faciale (+10€/mois)
+                        Reconnaissance faciale (+{facialRecognitionAddonPrice}€/mois)
                       </label>
                     </div>
                   </div>
