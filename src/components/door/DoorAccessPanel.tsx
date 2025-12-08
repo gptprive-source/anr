@@ -22,6 +22,7 @@ import { CreateScheduledAccessDialog } from './CreateScheduledAccessDialog';
 import { DoorAccessHistory } from './DoorAccessHistory';
 import { BleConnectionStatus } from './BleConnectionStatus';
 import { BleOpenDoorButton } from './BleOpenDoorButton';
+import { BleSimulatorPanel } from './BleSimulatorPanel';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -214,6 +215,11 @@ export function DoorAccessPanel({ anrId, anrCode }: DoorAccessPanelProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Simulation Panel - Development Mode */}
+          {import.meta.env.DEV && (
+            <BleSimulatorPanel />
+          )}
         </TabsContent>
 
         {/* Accès programmés */}
