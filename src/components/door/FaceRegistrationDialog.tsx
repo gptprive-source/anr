@@ -86,11 +86,14 @@ export function FaceRegistrationDialog({
       setStep('processing');
 
       try {
+        // Use the best quality image (last one captured)
+        const bestImage = newImages[newImages.length - 1];
         const response = await supabase.functions.invoke('register-face', {
           body: {
-            images: newImages.map(img => img.split(',')[1]),
+            image_base64: bestImage.split(',')[1],
             employee_id: employeeId,
             consent_given: true,
+            consent_method: 'dialog_checkbox',
           },
         });
 
