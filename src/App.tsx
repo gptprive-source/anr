@@ -67,6 +67,7 @@ import AdminRGPDRequests from "./pages/admin/RGPDRequests";
 import AdminRGPDConsents from "./pages/admin/RGPDConsents";
 import AdminRGPDIncidents from "./pages/admin/RGPDIncidents";
 import AdminDailyUsage from "./pages/admin/DailyUsage";
+import AdminDoorModules from "./pages/admin/DoorModules";
 
 const queryClient = new QueryClient();
 
@@ -195,6 +196,7 @@ const AppContent = () => {
           <Route path="/admin/security" element={<AdminSecurity />} />
           <Route path="/admin/messages" element={<AdminMessages />} />
           <Route path="/admin/daily-usage" element={<AdminDailyUsage />} />
+          <Route path="/admin/door-modules" element={<AdminDoorModules />} />
           {/* RGPD Admin Routes */}
           <Route path="/admin/rgpd" element={<AdminRGPD />} />
           <Route path="/admin/rgpd/registry" element={<AdminRGPDRegistry />} />

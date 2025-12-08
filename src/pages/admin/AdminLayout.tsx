@@ -33,7 +33,7 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
-import { ShieldCheck, Bot, Mail, Scale, BookOpen, Building2, UserCheck, AlertTriangle, ClipboardList } from "lucide-react";
+import { ShieldCheck, Bot, Mail, Scale, BookOpen, Building2, UserCheck, AlertTriangle, ClipboardList, DoorOpen } from "lucide-react";
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -41,6 +41,7 @@ const navItems = [
   { path: '/admin/daily-usage', label: 'Coûts Daily', icon: Phone },
   { path: '/admin/orders', label: 'Commandes', icon: Package },
   { path: '/admin/anrs', label: 'ANRs', icon: MapPin },
+  { path: '/admin/door-modules', label: 'Modules porte', icon: DoorOpen },
   { path: '/admin/config', label: 'Configuration', icon: Settings },
   { path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
   { path: '/admin/cgu', label: 'CGU', icon: FileText },

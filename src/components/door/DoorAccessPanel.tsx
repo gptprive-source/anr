@@ -12,15 +12,16 @@ import {
   Bluetooth,
   CheckCircle,
   XCircle,
-  AlertTriangle,
   Loader2,
   Copy,
   QrCode
 } from 'lucide-react';
 import { useDoorAccess } from '@/hooks/useDoorAccess';
+import { useRealtimeDoorLogs } from '@/hooks/useRealtimeDoorLogs';
 import { CreateScheduledAccessDialog } from './CreateScheduledAccessDialog';
 import { DoorAccessHistory } from './DoorAccessHistory';
 import { BleConnectionStatus } from './BleConnectionStatus';
+import { BleOpenDoorButton } from './BleOpenDoorButton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -38,19 +39,23 @@ export function DoorAccessPanel({ anrId, anrCode }: DoorAccessPanelProps) {
   const {
     loading,
     generatedToken,
-    accessLogs,
     scheduledAccess,
     generateToken,
-    fetchAccessLogs,
     fetchScheduledAccess,
     deleteScheduledAccess,
     toggleScheduledAccess,
   } = useDoorAccess(anrId);
 
+  // Use realtime logs hook
+  const { logs: accessLogs, loading: logsLoading, refresh: refreshLogs, newLogCount } = useRealtimeDoorLogs({
+    anrId,
+    limit: 50,
+    showNotifications: true,
+  });
+
   useEffect(() => {
-    fetchAccessLogs();
     fetchScheduledAccess();
-  }, [fetchAccessLogs, fetchScheduledAccess]);
+  }, [fetchScheduledAccess]);
 
   const handleGenerateToken = async () => {
     await generateToken({
@@ -119,81 +124,94 @@ export function DoorAccessPanel({ anrId, anrCode }: DoorAccessPanelProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                Générer un token d'accès
+                <DoorOpen className="h-5 w-5" />
+                Ouverture de porte
               </CardTitle>
               <CardDescription>
-                Créez un token temporaire pour ouvrir la porte immédiatement
+                Ouvrez la porte via Bluetooth Low Energy
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button 
-                onClick={handleGenerateToken} 
-                disabled={loading}
-                className="w-full"
-                size="lg"
-              >
-                {loading ? (
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                ) : (
-                  <DoorOpen className="h-5 w-5 mr-2" />
+              {/* BLE Open Door Button */}
+              <BleOpenDoorButton
+                anrId={anrId}
+                anrCode={anrCode}
+                onSuccess={() => {
+                  // Refresh logs after successful open
+                  setTimeout(() => refreshLogs(), 1000);
+                }}
+              />
+
+              {/* Manual token generation section */}
+              <div className="pt-4 border-t">
+                <div className="flex items-center gap-2 mb-4">
+                  <Key className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Ou générer un token manuel
+                  </span>
+                </div>
+                
+                <Button 
+                  onClick={handleGenerateToken} 
+                  disabled={loading}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Key className="h-4 w-4 mr-2" />
+                  )}
+                  Générer token JWS
+                </Button>
+
+                {/* Token généré */}
+                {generatedToken && (
+                  <Card className="bg-muted/50 mt-4">
+                    <CardContent className="pt-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <span className="font-medium">Token généré</span>
+                        </div>
+                        <Badge>
+                          {generatedToken.token.ttl_seconds}s
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="text-sm text-muted-foreground">
+                          <strong>ID:</strong> {generatedToken.token.id.substring(0, 8)}...
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          <strong>Valide jusqu'à:</strong>{' '}
+                          {format(new Date(generatedToken.token.valid_until), 'HH:mm:ss', { locale: fr })}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleCopyToken}
+                          className="flex-1"
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copier
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="flex-1"
+                        >
+                          <QrCode className="h-4 w-4 mr-2" />
+                          QR Code
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
-                Générer un token d'ouverture
-              </Button>
-
-              {/* Token généré */}
-              {generatedToken && (
-                <Card className="bg-muted/50">
-                  <CardContent className="pt-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <span className="font-medium">Token généré</span>
-                      </div>
-                      <Badge>
-                        {generatedToken.token.ttl_seconds}s
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">
-                        <strong>ID:</strong> {generatedToken.token.id.substring(0, 8)}...
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        <strong>Valide jusqu'à:</strong>{' '}
-                        {format(new Date(generatedToken.token.valid_until), 'HH:mm:ss', { locale: fr })}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleCopyToken}
-                        className="flex-1"
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copier token JWS
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="flex-1"
-                      >
-                        <QrCode className="h-4 w-4 mr-2" />
-                        Afficher QR
-                      </Button>
-                    </div>
-
-                    {/* Info BLE */}
-                    <div className="text-xs text-muted-foreground bg-background p-3 rounded-lg">
-                      <div className="font-medium mb-1">Configuration BLE:</div>
-                      <div>Service: {generatedToken.ble.service_uuid.substring(0, 8)}...</div>
-                      <div>Token Char: {generatedToken.ble.token_char_uuid.substring(0, 8)}...</div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -292,8 +310,8 @@ export function DoorAccessPanel({ anrId, anrCode }: DoorAccessPanelProps) {
         <TabsContent value="history">
           <DoorAccessHistory 
             logs={accessLogs} 
-            loading={loading}
-            onRefresh={fetchAccessLogs}
+            loading={logsLoading}
+            onRefresh={refreshLogs}
           />
         </TabsContent>
       </Tabs>
