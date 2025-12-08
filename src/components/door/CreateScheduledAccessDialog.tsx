@@ -63,6 +63,9 @@ export function CreateScheduledAccessDialog({
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.time_from || !formData.time_to) return;
+    
+    // For guest type, require guest_name
+    if (formData.accessType === 'guest' && !formData.guest_name) return;
 
     await createScheduledAccess({
       name: formData.name,
@@ -74,6 +77,8 @@ export function CreateScheduledAccessDialog({
       valid_until: formData.valid_until || undefined,
       granted_to_user: formData.accessType === 'user' ? formData.granted_to_user || undefined : undefined,
       granted_to_company: formData.accessType === 'company' ? formData.granted_to_company || undefined : undefined,
+      guest_name: formData.accessType === 'guest' ? formData.guest_name : undefined,
+      guest_contact: formData.accessType === 'guest' ? formData.guest_contact || undefined : undefined,
       require_face_recognition_entry: formData.require_face_recognition_entry,
       require_face_recognition_exit: formData.require_face_recognition_exit,
       max_entries_per_day: formData.max_entries_per_day ? parseInt(formData.max_entries_per_day) : undefined,
@@ -346,7 +351,10 @@ export function CreateScheduledAccessDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
-          <Button onClick={handleSubmit} disabled={loading || !formData.name}>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={loading || !formData.name || (formData.accessType === 'guest' && !formData.guest_name)}
+          >
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Créer l'accès
           </Button>
