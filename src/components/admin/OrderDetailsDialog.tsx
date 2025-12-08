@@ -84,11 +84,19 @@ const OrderDetailsDialog = ({ order, onClose, onStatusChange }: OrderDetailsDial
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Status & Date */}
-          <div className="flex items-center justify-between">
-            <Badge variant="outline" className="text-sm">
-              {statusLabels[order.status] || order.status}
-            </Badge>
+          {/* Status & Date & Actions */}
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="text-sm">
+                {statusLabels[order.status] || order.status}
+              </Badge>
+              {nextStatus && onStatusChange && (
+                <Button size="sm" onClick={handleStatusChange}>
+                  {nextStatus.label}
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              )}
+            </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="w-4 h-4" />
               {format(new Date(order.created_at), "PPP à HH:mm", { locale: fr })}
@@ -179,18 +187,6 @@ const OrderDetailsDialog = ({ order, onClose, onStatusChange }: OrderDetailsDial
           </div>
         </div>
 
-        {/* Actions Footer */}
-        {nextStatus && onStatusChange && (
-          <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={onClose}>
-              Fermer
-            </Button>
-            <Button onClick={handleStatusChange}>
-              {nextStatus.label}
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </DialogFooter>
-        )}
       </DialogContent>
     </Dialog>
   );
