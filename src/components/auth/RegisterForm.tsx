@@ -8,7 +8,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { geocodeAddress } from "@/lib/geocoding";
+import { geocodeAddress as geocodeAddressApi } from "@/lib/geocoding";
 import { useAuth } from "@/hooks/useAuth";
 type Step = "credentials" | "email-sent" | "profile" | "address" | "payment" | "success";
 interface AddressData {
@@ -331,21 +331,23 @@ const RegisterForm = () => {
     }
   };
   const handleAddressSubmit = async () => {
-    // Build full address from fields
-    const addressParts = [
+    // Build address for geocoding (without apartment/complement that confuse Nominatim)
+    const geocodeAddressParts = [
       `${addressFields.streetNumber}${addressFields.streetNumberComplement ? ' ' + addressFields.streetNumberComplement : ''}`,
       addressFields.streetType,
       addressFields.streetName
     ];
+    const geocodeAddressStr = `${geocodeAddressParts.join(' ')}, ${addressFields.postalCode} ${addressFields.city}`;
     
+    // Build full address for display (includes complements)
+    const displayAddressParts = [...geocodeAddressParts];
     if (addressFields.addressComplement) {
-      addressParts.push(addressFields.addressComplement);
+      displayAddressParts.push(addressFields.addressComplement);
     }
     if (addressFields.apartment) {
-      addressParts.push(addressFields.apartment);
+      displayAddressParts.push(addressFields.apartment);
     }
-    
-    const fullAddress = `${addressParts.join(' ')}, ${addressFields.postalCode} ${addressFields.city}`;
+    const fullAddress = `${displayAddressParts.join(' ')}, ${addressFields.postalCode} ${addressFields.city}`;
     
     if (!addressFields.streetNumber.trim() || !addressFields.streetType.trim() || 
         !addressFields.streetName.trim() || !addressFields.postalCode.trim() || 
@@ -372,7 +374,7 @@ const RegisterForm = () => {
       } = await supabase.from("profiles").select("first_name, last_name").eq("id", currentUser.id).single();
       const userFirstName = profile?.first_name || firstName;
       const userLastName = profile?.last_name || lastName;
-      const geoResult = await geocodeAddress(fullAddress);
+      const geoResult = await geocodeAddressApi(geocodeAddressStr);
       if (!geoResult) {
         toast({
           title: "Adresse non trouvée",
@@ -892,8 +894,8 @@ const PaymentStep = ({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data?.url) {
-        // Redirect to Stripe Checkout in new tab
-        window.open(data.url, "_blank");
+        // Redirect to Stripe Checkout - use location.href for mobile compatibility
+        window.location.href = data.url;
       }
     } catch (error: any) {
       console.error("Checkout error:", error);
