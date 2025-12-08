@@ -43,7 +43,13 @@ const Invitation = () => {
   const [lastName, setLastName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const code = searchParams.get("code");
+  // Get code and clean it (fix quoted-printable encoding artifacts like "3dXXX" instead of "XXX")
+  let code = searchParams.get("code");
+  if (code && code.toLowerCase().startsWith("3d")) {
+    // This happens when email clients don't properly decode quoted-printable "=3d" → "="
+    console.log("[Invitation] Detected quoted-printable artifact, cleaning code:", code);
+    code = code.substring(2); // Remove "3d" prefix
+  }
 
   useEffect(() => {
     if (code) {
