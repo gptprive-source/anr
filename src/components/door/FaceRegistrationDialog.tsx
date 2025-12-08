@@ -120,26 +120,26 @@ export function FaceRegistrationDialog({
         // Convertir le descriptor en tableau pour stockage JSON
         const embeddingArray = descriptorToArray(result.descriptor);
 
-        // Soft-delete des anciens embeddings (RGPD)
-        if (employeeId) {
-          await supabase
-            .from('face_embeddings')
-            .update({ 
-              deleted_at: new Date().toISOString(),
-              deleted_reason: 'replaced_by_new_registration'
-            })
-            .eq('employee_id', employeeId)
-            .is('deleted_at', null);
-        } else {
-          await supabase
-            .from('face_embeddings')
-            .update({ 
-              deleted_at: new Date().toISOString(),
-              deleted_reason: 'replaced_by_new_registration'
-            })
-            .eq('user_id', user.id)
-            .is('deleted_at', null);
+        // Soft-delete des anciens embeddings (RGPD) - MUST complete before insert due to unique constraint
+        const deleteFilter = employeeId 
+          ? { employee_id: employeeId } 
+          : { user_id: user.id };
+        
+        const { error: deleteError } = await supabase
+          .from('face_embeddings')
+          .update({ 
+            deleted_at: new Date().toISOString(),
+            deleted_reason: 'replaced_by_new_registration'
+          })
+          .eq(employeeId ? 'employee_id' : 'user_id', employeeId || user.id)
+          .is('deleted_at', null);
+        
+        if (deleteError) {
+          console.warn('[FaceRegistration] Soft-delete warning:', deleteError);
         }
+        
+        // Small delay to ensure unique constraint is satisfied
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         // Insérer le nouvel embedding
         const { error: insertError } = await supabase
