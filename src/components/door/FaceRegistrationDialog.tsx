@@ -1,10 +1,11 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Camera, Loader2, CheckCircle, AlertTriangle, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useFaceRecognition } from '@/hooks/useFaceRecognition';
 
 interface FaceRegistrationDialogProps {
   open: boolean;
@@ -19,7 +20,7 @@ export function FaceRegistrationDialog({
   onRegistered,
   employeeId
 }: FaceRegistrationDialogProps) {
-  const [step, setStep] = useState<'consent' | 'capture' | 'processing' | 'success' | 'error'>('consent');
+  const [step, setStep] = useState<'consent' | 'loading-models' | 'capture' | 'processing' | 'success' | 'error'>('consent');
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
@@ -27,6 +28,7 @@ export function FaceRegistrationDialog({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+  const { loadModels, extractDescriptor, descriptorToArray, loading: modelsLoading, loadingProgress } = useFaceRecognition();
 
   const startCamera = useCallback(async () => {
     try {
@@ -52,6 +54,16 @@ export function FaceRegistrationDialog({
   }, [stream]);
 
   const handleConsent = async () => {
+    setStep('loading-models');
+    
+    // Charger les modèles face-api.js
+    const loaded = await loadModels();
+    if (!loaded) {
+      setError('Impossible de charger les modèles de reconnaissance faciale');
+      setStep('error');
+      return;
+    }
+    
     setStep('capture');
     await startCamera();
   };
@@ -81,50 +93,87 @@ export function FaceRegistrationDialog({
     setProgress((newImages.length / 3) * 100);
 
     if (newImages.length >= 3) {
-      // 3 images capturées, envoyer au backend
+      // 3 images capturées, traiter localement
       stopCamera();
       setStep('processing');
 
       try {
-        // Use the best quality image (last one captured)
+        // Utiliser la meilleure image (dernière capturée)
         const bestImage = newImages[newImages.length - 1];
-        console.log('Sending face registration request...');
+        console.log('[FaceRegistration] Extraction du descriptor...');
         
-        const { data, error: invokeError } = await supabase.functions.invoke('register-face', {
-          body: {
-            image_base64: bestImage, // Send full data URL, edge function will clean it
-            employee_id: employeeId,
+        // Extraire le descriptor localement avec face-api.js
+        const result = await extractDescriptor(bestImage);
+        
+        if (!result.success || !result.descriptor) {
+          throw new Error(result.error || 'Aucun visage détecté dans l\'image');
+        }
+
+        console.log('[FaceRegistration] Descriptor extrait, confiance:', result.confidence);
+
+        // Obtenir l'utilisateur courant
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('Utilisateur non connecté');
+        }
+
+        // Convertir le descriptor en tableau pour stockage JSON
+        const embeddingArray = descriptorToArray(result.descriptor);
+
+        // Soft-delete des anciens embeddings (RGPD)
+        if (employeeId) {
+          await supabase
+            .from('face_embeddings')
+            .update({ 
+              deleted_at: new Date().toISOString(),
+              deleted_reason: 'replaced_by_new_registration'
+            })
+            .eq('employee_id', employeeId)
+            .is('deleted_at', null);
+        } else {
+          await supabase
+            .from('face_embeddings')
+            .update({ 
+              deleted_at: new Date().toISOString(),
+              deleted_reason: 'replaced_by_new_registration'
+            })
+            .eq('user_id', user.id)
+            .is('deleted_at', null);
+        }
+
+        // Insérer le nouvel embedding
+        const { error: insertError } = await supabase
+          .from('face_embeddings')
+          .insert({
+            user_id: employeeId ? null : user.id,
+            employee_id: employeeId || null,
+            embedding: embeddingArray,
+            embedding_version: 'face-api-v1.7',
+            quality_score: result.confidence,
             consent_given: true,
             consent_method: 'dialog_checkbox',
-          },
-        });
-
-        console.log('Face registration response:', { data, invokeError });
-
-        if (invokeError) {
-          throw new Error(invokeError.message || 'Erreur de connexion');
-        }
-
-        if (!data) {
-          throw new Error('Pas de réponse du serveur');
-        }
-
-        if (data.success) {
-          setStep('success');
-          toast({
-            title: "Visage enregistré",
-            description: "Votre reconnaissance faciale est maintenant active",
+            consent_timestamp: new Date().toISOString(),
+            registered_at: new Date().toISOString(),
           });
-        } else {
-          throw new Error(data.message || data.error || 'Échec de l\'enregistrement');
+
+        if (insertError) {
+          throw new Error('Erreur lors de l\'enregistrement: ' + insertError.message);
         }
+
+        console.log('[FaceRegistration] Embedding enregistré avec succès');
+        
+        setStep('success');
+        toast({
+          title: "Visage enregistré",
+          description: "Votre reconnaissance faciale est maintenant active",
+        });
       } catch (err) {
         console.error('Erreur enregistrement:', err);
         setError(err instanceof Error ? err.message : 'Erreur inconnue');
         setStep('error');
       }
     }
-  }, [capturedImages, captureImage, stopCamera, employeeId, toast]);
+  }, [capturedImages, captureImage, stopCamera, employeeId, toast, extractDescriptor, descriptorToArray]);
 
   const handleClose = () => {
     stopCamera();
@@ -156,6 +205,7 @@ export function FaceRegistrationDialog({
           </DialogTitle>
           <DialogDescription>
             {step === 'consent' && "Configurez la reconnaissance faciale pour le pointage sécurisé"}
+            {step === 'loading-models' && "Chargement des modèles..."}
             {step === 'capture' && `Capture ${capturedImages.length + 1}/3 - Regardez la caméra`}
             {step === 'processing' && "Traitement en cours..."}
             {step === 'success' && "Enregistrement réussi !"}
@@ -174,15 +224,31 @@ export function FaceRegistrationDialog({
                   soient collectées et traitées pour la vérification d'identité lors du pointage.
                 </p>
                 <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                  <li>Données stockées de manière sécurisée et chiffrée</li>
+                  <li>Traitement 100% local sur votre appareil</li>
+                  <li>Seul un vecteur numérique est stocké (pas de photo)</li>
                   <li>Utilisées uniquement pour le pointage</li>
                   <li>Supprimables sur simple demande</li>
-                  <li>Conservation limitée à la durée de votre contrat</li>
                 </ul>
               </div>
               <Button onClick={handleConsent} className="w-full">
                 J'accepte et je continue
               </Button>
+            </div>
+          )}
+
+          {/* Étape chargement modèles */}
+          {step === 'loading-models' && (
+            <div className="py-8 text-center space-y-4">
+              <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
+              <div className="space-y-2">
+                <p>Chargement des modèles de reconnaissance...</p>
+                <Progress value={loadingProgress} className="h-2 max-w-xs mx-auto" />
+                <p className="text-sm text-muted-foreground">
+                  {loadingProgress < 40 && "Chargement du détecteur de visage..."}
+                  {loadingProgress >= 40 && loadingProgress < 70 && "Chargement des points de repère..."}
+                  {loadingProgress >= 70 && "Chargement du modèle de reconnaissance..."}
+                </p>
+              </div>
             </div>
           )}
 
@@ -222,9 +288,9 @@ export function FaceRegistrationDialog({
           {step === 'processing' && (
             <div className="py-8 text-center">
               <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-primary" />
-              <p>Analyse des images en cours...</p>
+              <p>Analyse locale de l'image...</p>
               <p className="text-sm text-muted-foreground">
-                Veuillez patienter quelques secondes
+                Traitement 100% sur votre appareil
               </p>
             </div>
           )}

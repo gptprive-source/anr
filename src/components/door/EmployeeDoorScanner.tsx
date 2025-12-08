@@ -90,7 +90,7 @@ export function EmployeeDoorScanner({ anrId, anrCode, anrAddress }: EmployeeDoor
       await performEntry(anrId, {
         gps_latitude: latitude || undefined,
         gps_longitude: longitude || undefined,
-        face_image_base64: imageBase64,
+        face_verified: true, // Vérification faite localement
         schedule_id: sessionInfo?.schedule?.id,
       });
       checkSession(anrId);
@@ -101,7 +101,7 @@ export function EmployeeDoorScanner({ anrId, anrCode, anrAddress }: EmployeeDoor
         await performExit(anrId, currentSession.id, {
           gps_latitude: latitude || undefined,
           gps_longitude: longitude || undefined,
-          face_image_base64: imageBase64,
+          face_verified: true, // Vérification faite localement
         });
         checkSession(anrId);
       }
@@ -115,7 +115,7 @@ export function EmployeeDoorScanner({ anrId, anrCode, anrAddress }: EmployeeDoor
       await performExit(anrId, currentSession.id, {
         gps_latitude: latitude || undefined,
         gps_longitude: longitude || undefined,
-        face_image_base64: faceImage || undefined,
+        face_verified: faceImage ? true : undefined, // Si vérification faciale faite
         client_signature: signature,
         client_signature_name: name,
         employee_report: report,
