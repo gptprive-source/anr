@@ -186,6 +186,18 @@ export function useDoorAccess(anrId: string | null) {
     }
   }, [anrId, toast]);
 
+  // Notifier le bénéficiaire
+  const notifyBeneficiary = useCallback(async (accessId: string, action: 'created' | 'updated' | 'deleted') => {
+    try {
+      await supabase.functions.invoke('notify-scheduled-access', {
+        body: { access_id: accessId, action },
+      });
+    } catch (error) {
+      console.error('Erreur notification:', error);
+      // Ne pas bloquer si la notification échoue
+    }
+  }, []);
+
   // Créer un accès programmé
   const createScheduledAccess = useCallback(async (access: {
     name: string;
@@ -238,9 +250,12 @@ export function useDoorAccess(anrId: string | null) {
 
       if (error) throw error;
 
+      // Notifier le bénéficiaire par email
+      await notifyBeneficiary(data.id, 'created');
+
       toast({
         title: "Accès programmé créé",
-        description: `${access.name} ajouté avec succès`,
+        description: `${access.name} ajouté - Le bénéficiaire a été notifié par email`,
       });
 
       await fetchScheduledAccess();
@@ -256,12 +271,47 @@ export function useDoorAccess(anrId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [anrId, toast, fetchScheduledAccess]);
+  }, [anrId, toast, fetchScheduledAccess, notifyBeneficiary]);
+
+  // Modifier un accès programmé
+  const updateScheduledAccess = useCallback(async (accessId: string, updates: Partial<ScheduledAccess>) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('door_scheduled_access')
+        .update(updates)
+        .eq('id', accessId);
+
+      if (error) throw error;
+
+      // Notifier le bénéficiaire de la modification
+      await notifyBeneficiary(accessId, 'updated');
+
+      toast({
+        title: "Accès modifié",
+        description: "Le bénéficiaire a été notifié par email",
+      });
+
+      await fetchScheduledAccess();
+    } catch (error) {
+      console.error('Erreur modification accès:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier l'accès",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast, fetchScheduledAccess, notifyBeneficiary]);
 
   // Supprimer un accès programmé
   const deleteScheduledAccess = useCallback(async (accessId: string) => {
     setLoading(true);
     try {
+      // Notifier avant suppression
+      await notifyBeneficiary(accessId, 'deleted');
+
       const { error } = await supabase
         .from('door_scheduled_access')
         .delete()
@@ -271,7 +321,7 @@ export function useDoorAccess(anrId: string | null) {
 
       toast({
         title: "Accès supprimé",
-        description: "L'accès programmé a été supprimé",
+        description: "Le bénéficiaire a été notifié par email",
       });
 
       await fetchScheduledAccess();
@@ -285,7 +335,7 @@ export function useDoorAccess(anrId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [toast, fetchScheduledAccess]);
+  }, [toast, fetchScheduledAccess, notifyBeneficiary]);
 
   // Activer/désactiver un accès programmé
   const toggleScheduledAccess = useCallback(async (accessId: string, isActive: boolean) => {
@@ -324,6 +374,7 @@ export function useDoorAccess(anrId: string | null) {
     fetchAccessLogs,
     fetchScheduledAccess,
     createScheduledAccess,
+    updateScheduledAccess,
     deleteScheduledAccess,
     toggleScheduledAccess,
   };

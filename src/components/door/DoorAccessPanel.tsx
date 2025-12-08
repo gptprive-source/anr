@@ -17,11 +17,13 @@ import {
   QrCode,
   User,
   Phone,
-  Trash2
+  Trash2,
+  Pencil
 } from 'lucide-react';
 import { useDoorAccess } from '@/hooks/useDoorAccess';
 import { useRealtimeDoorLogs } from '@/hooks/useRealtimeDoorLogs';
 import { CreateScheduledAccessDialog } from './CreateScheduledAccessDialog';
+import { EditScheduledAccessDialog } from './EditScheduledAccessDialog';
 import { DoorAccessHistory } from './DoorAccessHistory';
 import { BleConnectionStatus } from './BleConnectionStatus';
 import { BleOpenDoorButton } from './BleOpenDoorButton';
@@ -38,6 +40,8 @@ interface DoorAccessPanelProps {
 
 export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAccessPanelProps) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingAccess, setEditingAccess] = useState<typeof scheduledAccess[0] | null>(null);
   const [activeTab, setActiveTab] = useState(hasDoorModule ? 'instant' : 'scheduled');
   const { toast } = useToast();
 
@@ -47,9 +51,15 @@ export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAc
     scheduledAccess,
     generateToken,
     fetchScheduledAccess,
+    updateScheduledAccess,
     deleteScheduledAccess,
     toggleScheduledAccess,
   } = useDoorAccess(anrId);
+
+  const handleEditAccess = (access: typeof scheduledAccess[0]) => {
+    setEditingAccess(access);
+    setShowEditDialog(true);
+  };
 
   // Use realtime logs hook
   const { logs: accessLogs, loading: logsLoading, refresh: refreshLogs, newLogCount } = useRealtimeDoorLogs({
@@ -343,7 +353,15 @@ export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAc
                               </p>
                             )}
                           </div>
-                          <div className="flex gap-1">
+                        <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditAccess(access)}
+                              title="Modifier"
+                            >
+                              <Pencil className="h-4 w-4 text-primary" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -391,6 +409,15 @@ export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAc
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
         anrId={anrId}
+      />
+
+      {/* Dialog modification accès programmé */}
+      <EditScheduledAccessDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        access={editingAccess}
+        onSave={updateScheduledAccess}
+        loading={loading}
       />
     </div>
   );
