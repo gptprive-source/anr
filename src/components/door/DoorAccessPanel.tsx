@@ -96,19 +96,19 @@ export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAc
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* En-tête */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <DoorOpen className="h-6 w-6 text-primary" />
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <DoorOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             Ouverture de porte
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Gérez l'accès à votre porte connectée
           </p>
         </div>
-        <Badge variant="outline" className="text-sm">
+        <Badge variant="outline" className="text-xs sm:text-sm self-start sm:self-auto">
           <Bluetooth className="h-3 w-3 mr-1" />
           {anrCode}
         </Badge>
@@ -119,16 +119,16 @@ export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAc
 
       {/* Onglets */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="instant" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
+          <TabsTrigger value="instant" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-1 sm:px-3">
             <Key className="h-4 w-4" />
-            Accès instantané
+            <span className="hidden xs:inline">Accès</span> instantané
           </TabsTrigger>
-          <TabsTrigger value="scheduled" className="flex items-center gap-2">
+          <TabsTrigger value="scheduled" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-1 sm:px-3">
             <Clock className="h-4 w-4" />
-            Accès programmés
+            <span className="hidden xs:inline">Accès</span> programmés
           </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
+          <TabsTrigger value="history" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-1 sm:px-3">
             <History className="h-4 w-4" />
             Historique
           </TabsTrigger>
@@ -262,17 +262,17 @@ export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAc
         {/* Accès programmés */}
         <TabsContent value="scheduled" className="space-y-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                   Accès programmés
                 </CardTitle>
-                <CardDescription>
-                  Autorisations récurrentes pour prestataires et visiteurs réguliers
+                <CardDescription className="text-xs sm:text-sm">
+                  Autorisations pour prestataires et visiteurs
                 </CardDescription>
               </div>
-              <Button onClick={() => setShowCreateDialog(true)}>
+              <Button onClick={() => setShowCreateDialog(true)} size="sm" className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Ajouter
               </Button>
@@ -290,20 +290,20 @@ export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAc
                 <div className="space-y-3">
                   {scheduledAccess.map((access) => (
                     <Card key={access.id} className="bg-muted/30">
-                      <CardContent className="pt-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{access.name}</span>
-                              <Badge variant={access.is_active ? "default" : "secondary"}>
+                      <CardContent className="pt-4 px-3 sm:px-6">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="space-y-2 flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium text-sm sm:text-base truncate">{access.name}</span>
+                              <Badge variant={access.is_active ? "default" : "secondary"} className="text-xs">
                                 {access.is_active ? "Actif" : "Inactif"}
                               </Badge>
                             </div>
                             
                             {/* Bénéficiaire */}
                             {(access.beneficiary_first_name || access.beneficiary_last_name) && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <User className="h-4 w-4 text-muted-foreground" />
+                              <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+                                <User className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
                                 <span className="font-medium">
                                   {access.beneficiary_first_name} {access.beneficiary_last_name}
                                 </span>
@@ -316,44 +316,44 @@ export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAc
                             )}
 
                             {access.description && (
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
                                 {access.description}
                               </p>
                             )}
                             
-                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 {access.time_from} - {access.time_to}
                               </span>
                               {access.days_of_week && (
-                                <span>
+                                <span className="text-xs">
                                   {access.days_of_week.map(d => getDayName(d)).join(', ')}
                                 </span>
                               )}
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1 sm:gap-2">
                               {access.forward_calls_to_beneficiary && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Phone className="h-3 w-3 mr-1" />
-                                  Transfert d'appels activé
+                                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2">
+                                  <Phone className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
+                                  Transfert
                                 </Badge>
                               )}
                               {access.require_face_recognition_entry && (
-                                <Badge variant="outline" className="text-xs">
-                                  Reconnaissance faciale
+                                <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2">
+                                  Reco. faciale
                                 </Badge>
                               )}
                             </div>
 
                             {access.valid_from && access.valid_until && (
-                              <p className="text-xs text-muted-foreground">
-                                Valide du {access.valid_from} au {access.valid_until}
+                              <p className="text-[10px] sm:text-xs text-muted-foreground">
+                                Du {access.valid_from} au {access.valid_until}
                               </p>
                             )}
                           </div>
-                        <div className="flex gap-1">
+                          <div className="flex gap-1 self-end sm:self-start flex-shrink-0">
                             <Button
                               variant="ghost"
                               size="sm"
