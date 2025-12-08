@@ -14,7 +14,10 @@ import {
   XCircle,
   Loader2,
   Copy,
-  QrCode
+  QrCode,
+  User,
+  Phone,
+  Trash2
 } from 'lucide-react';
 import { useDoorAccess } from '@/hooks/useDoorAccess';
 import { useRealtimeDoorLogs } from '@/hooks/useRealtimeDoorLogs';
@@ -279,51 +282,88 @@ export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAc
                     <Card key={access.id} className="bg-muted/30">
                       <CardContent className="pt-4">
                         <div className="flex items-start justify-between">
-                          <div className="space-y-1">
+                          <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{access.name}</span>
                               <Badge variant={access.is_active ? "default" : "secondary"}>
                                 {access.is_active ? "Actif" : "Inactif"}
                               </Badge>
                             </div>
+                            
+                            {/* Bénéficiaire */}
+                            {(access.beneficiary_first_name || access.beneficiary_last_name) && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium">
+                                  {access.beneficiary_first_name} {access.beneficiary_last_name}
+                                </span>
+                                {access.beneficiary_anr_code && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {access.beneficiary_anr_code}
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+
                             {access.description && (
                               <p className="text-sm text-muted-foreground">
                                 {access.description}
                               </p>
                             )}
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span>{access.time_from} - {access.time_to}</span>
+                            
+                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {access.time_from} - {access.time_to}
+                              </span>
                               {access.days_of_week && (
                                 <span>
                                   {access.days_of_week.map(d => getDayName(d)).join(', ')}
                                 </span>
                               )}
                             </div>
-                            {access.require_face_recognition_entry && (
-                              <Badge variant="outline" className="text-xs">
-                                Reconnaissance faciale requise
-                              </Badge>
+
+                            <div className="flex flex-wrap gap-2">
+                              {access.forward_calls_to_beneficiary && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Phone className="h-3 w-3 mr-1" />
+                                  Transfert d'appels activé
+                                </Badge>
+                              )}
+                              {access.require_face_recognition_entry && (
+                                <Badge variant="outline" className="text-xs">
+                                  Reconnaissance faciale
+                                </Badge>
+                              )}
+                            </div>
+
+                            {access.valid_from && access.valid_until && (
+                              <p className="text-xs text-muted-foreground">
+                                Valide du {access.valid_from} au {access.valid_until}
+                              </p>
                             )}
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => toggleScheduledAccess(access.id, !access.is_active)}
+                              title={access.is_active ? "Désactiver" : "Activer"}
                             >
                               {access.is_active ? (
-                                <XCircle className="h-4 w-4" />
+                                <XCircle className="h-4 w-4 text-yellow-500" />
                               ) : (
-                                <CheckCircle className="h-4 w-4" />
+                                <CheckCircle className="h-4 w-4 text-green-500" />
                               )}
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => deleteScheduledAccess(access.id)}
-                              className="text-destructive"
+                              className="text-destructive hover:text-destructive"
+                              title="Supprimer"
                             >
-                              <XCircle className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
