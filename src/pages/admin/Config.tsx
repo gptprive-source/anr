@@ -22,7 +22,7 @@ const PLANS = [
 ];
 
 const PLAN_FEATURES = [
-  { key: 'monthly_price', label: 'Tarif mensuel', type: 'number', suffix: '€/mois' },
+  { key: 'annual_price', label: 'Tarif mensuel', type: 'number', suffix: '€/mois', isAnnual: true },
   { key: 'doming_price', label: 'Prix Doming supplémentaire', type: 'number', suffix: '€' },
   { key: 'members_included', label: 'Membres inclus', type: 'number', suffix: '' },
   { key: 'max_extra_members', label: 'Membres supplémentaires max', type: 'number', suffix: '' },
@@ -168,6 +168,15 @@ const Config = () => {
               );
             }
 
+            // Pour les tarifs annuels, afficher en mensuel (diviser par 12)
+            const displayValue = feature.isAnnual ? Math.round((value ?? 0) / 12 * 100) / 100 : (value ?? 0);
+            const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+              const inputValue = Number(e.target.value);
+              // Si c'est un tarif annuel, multiplier par 12 pour stocker
+              const storeValue = feature.isAnnual ? Math.round(inputValue * 12 * 100) / 100 : inputValue;
+              setLocalValue(configKey, storeValue);
+            };
+
             return (
               <div key={feature.key} className="space-y-2">
                 <Label className="text-sm text-muted-foreground">{feature.label}</Label>
@@ -175,8 +184,8 @@ const Config = () => {
                   <Input
                     type="number"
                     step={feature.key.includes('price') ? '0.01' : '1'}
-                    value={value ?? 0}
-                    onChange={(e) => setLocalValue(configKey, Number(e.target.value))}
+                    value={displayValue}
+                    onChange={handleChange}
                     className="w-full"
                   />
                   {feature.suffix && (
