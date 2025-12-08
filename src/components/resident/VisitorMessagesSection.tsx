@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, Phone, Trash2, Check, User, Building2, Mail, MapPin, Briefcase, ArrowRight } from "lucide-react";
+import { MessageSquare, Phone, Trash2, Check, User, Building2, Mail, MapPin, Briefcase, ArrowRight, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -135,7 +135,18 @@ const VisitorMessagesSection = ({ habitationId }: VisitorMessagesSectionProps) =
 
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 min-w-0">
-              <p className="text-sm whitespace-pre-wrap break-words">{latestMessage.message}</p>
+              {latestMessage.message && (
+                <p className="text-sm whitespace-pre-wrap break-words">{latestMessage.message}</p>
+              )}
+              
+              {/* Voice message player */}
+              {latestMessage.voice_message_url && (
+                <div className="flex items-center gap-2 mt-2 p-2 bg-muted rounded-lg">
+                  <Mic className="w-4 h-4 text-primary flex-shrink-0" />
+                  <audio src={latestMessage.voice_message_url} controls className="flex-1 h-8" />
+                </div>
+              )}
+              
               <div className="flex items-center gap-3 mt-2">
                 <span className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(latestMessage.created_at), {

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, Check, Trash2, Phone, Mail, User, Building2, Briefcase, MapPin, Inbox, MailOpen, Mail as MailClosed } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, Check, Trash2, Phone, Mail, User, Building2, Briefcase, MapPin, Inbox, MailOpen, Mail as MailClosed, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -309,7 +309,18 @@ const Messages = () => {
 
                     <div className="flex justify-between items-start gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                        {msg.message && (
+                          <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                        )}
+                        
+                        {/* Voice message player */}
+                        {msg.voice_message_url && (
+                          <div className="flex items-center gap-2 mt-2 p-2 bg-muted rounded-lg">
+                            <Mic className="w-4 h-4 text-primary flex-shrink-0" />
+                            <audio src={msg.voice_message_url} controls className="flex-1 h-8" />
+                          </div>
+                        )}
+                        
                         <div className="flex items-center gap-3 mt-2">
                           <span className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(msg.created_at), {
