@@ -94,7 +94,7 @@ serve(async (req) => {
 
     // Vérifier l'accès Co-Pilot
     let hasAccess = false;
-    let planType = 'pro';
+    let planType = 'free';
 
     // Vérifier d'abord si le mode global est activé
     const { data: globalConfig } = await supabase
@@ -106,9 +106,11 @@ serve(async (req) => {
     const globalEnabled = globalConfig?.value === true || globalConfig?.value === 'true';
 
     if (globalEnabled) {
-      // Mode global activé = accès pour tous
+      // Mode global activé = accès pour TOUS les utilisateurs authentifiés
       hasAccess = true;
+      planType = 'global';
     } else if (company_id) {
+      // Mode normal: vérifier les droits de l'entreprise
       const { data: company } = await supabase
         .from('pro_companies')
         .select('plan_type, copilot_enabled')
