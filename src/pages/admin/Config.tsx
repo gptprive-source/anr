@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace } from "lucide-react";
+import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +72,12 @@ const Config = () => {
   const hasChanges = (key: string) => key in localChanges;
 
   const renderPlanCard = (planId: string, planName: string, PlanIcon: any, planColor: string) => {
+    const descriptionKey = `${planId}_description`;
+    const featuresKey = `${planId}_features`;
+    const descriptionValue = getValue(descriptionKey) || '';
+    const featuresValue = getValue(featuresKey) || [];
+    const featuresText = Array.isArray(featuresValue) ? featuresValue.join('\n') : '';
+
     return (
       <Card key={planId} className="h-full">
         <CardHeader className="pb-4">
@@ -80,6 +87,51 @@ const Config = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Description */}
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground flex items-center gap-1">
+              <FileText className="w-3 h-3" />
+              Description
+            </Label>
+            <div className="flex items-start gap-2">
+              <Textarea
+                value={localChanges[descriptionKey] ?? descriptionValue}
+                onChange={(e) => setLocalValue(descriptionKey, e.target.value)}
+                className="min-h-[60px] text-xs"
+                placeholder="Description de l'offre..."
+              />
+              {hasChanges(descriptionKey) && (
+                <Button size="icon" variant="default" onClick={() => saveConfig(descriptionKey)} disabled={isUpdating}>
+                  <Save className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Features */}
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground flex items-center gap-1">
+              <List className="w-3 h-3" />
+              Avantages (1 par ligne)
+            </Label>
+            <div className="flex items-start gap-2">
+              <Textarea
+                value={localChanges[featuresKey] !== undefined 
+                  ? (Array.isArray(localChanges[featuresKey]) ? localChanges[featuresKey].join('\n') : localChanges[featuresKey])
+                  : featuresText}
+                onChange={(e) => setLocalValue(featuresKey, e.target.value.split('\n').filter(Boolean))}
+                className="min-h-[80px] text-xs"
+                placeholder="Un avantage par ligne..."
+              />
+              {hasChanges(featuresKey) && (
+                <Button size="icon" variant="default" onClick={() => saveConfig(featuresKey)} disabled={isUpdating}>
+                  <Save className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Numeric fields */}
           {PLAN_FEATURES.map((feature) => {
             const configKey = `${planId}_${feature.key}`;
             const value = getValue(configKey);

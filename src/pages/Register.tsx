@@ -15,7 +15,16 @@ const Register = () => {
   const navigate = useNavigate();
   const { getConfig } = useAppConfig();
   
-  const proPlanPrice = getConfig('pro_plan_price') || 29;
+  // Get dynamic prices from config
+  const particulierAnnualPrice = getConfig('particulier_annual_price') || 19;
+  const proPlanPrice = getConfig('pro_annual_price') ? Math.round(getConfig('pro_annual_price') / 12) : 29;
+  
+  // Get dynamic descriptions
+  const particulierDescription = getConfig('particulier_description') || "Pour les propriétaires et locataires souhaitant installer un interphone numérique à leur domicile.";
+  const particulierFeatures = getConfig('particulier_features') || ["1 Doming gratuit pour nouvelle adresse", "Jusqu'à 7 résidents par habitation", "Appels vidéo avec les visiteurs", "Accès programmés (nounou, livreurs...)"];
+  
+  const proDescription = getConfig('entreprise_description') || "Pour les entreprises de services à domicile, aide à la personne, maintenance, collectivités...";
+  const proFeatures = getConfig('entreprise_features') || ["Gestion des employés et missions", "Horodatage entrées/sorties automatique", "Signature client digitale", "Rapports et exports", "Géofencing et reconnaissance faciale", "Webhooks pour intégration RH/Paie"];
 
   if (accountType === "particulier") {
     return (
@@ -62,16 +71,15 @@ const Register = () => {
                     <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </h2>
                   <p className="text-sm text-muted-foreground mb-3">
-                    Pour les propriétaires et locataires souhaitant installer un interphone numérique à leur domicile.
+                    {particulierDescription}
                   </p>
                   <ul className="text-xs text-muted-foreground space-y-1">
-                    <li>✓ 1 Doming gratuit pour nouvelle adresse</li>
-                    <li>✓ Jusqu'à 7 résidents par habitation</li>
-                    <li>✓ Appels vidéo avec les visiteurs</li>
-                    <li>✓ Accès programmés (nounou, livreurs...)</li>
+                    {(Array.isArray(particulierFeatures) ? particulierFeatures : []).map((feature, idx) => (
+                      <li key={idx}>✓ {feature}</li>
+                    ))}
                   </ul>
                   <div className="mt-3 text-sm font-medium text-primary">
-                    À partir de 12€/an
+                    À partir de {particulierAnnualPrice}€/an
                   </div>
                 </div>
               </div>
@@ -97,15 +105,12 @@ const Register = () => {
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-3">
-                    Pour les entreprises de services à domicile, aide à la personne, maintenance, collectivités...
+                    {proDescription}
                   </p>
                   <ul className="text-xs text-muted-foreground space-y-1">
-                    <li>✓ Gestion des employés et missions</li>
-                    <li>✓ Horodatage entrées/sorties automatique</li>
-                    <li>✓ Signature client digitale</li>
-                    <li>✓ Rapports et exports</li>
-                    <li>✓ Géofencing et reconnaissance faciale</li>
-                    <li>✓ Webhooks pour intégration RH/Paie</li>
+                    {(Array.isArray(proFeatures) ? proFeatures : []).map((feature, idx) => (
+                      <li key={idx}>✓ {feature}</li>
+                    ))}
                   </ul>
                   <div className="mt-3 text-sm font-medium bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
                     À partir de {proPlanPrice}€/mois
