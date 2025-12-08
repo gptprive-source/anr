@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Euro, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Sparkles } from "lucide-react";
+import { Save, Euro, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Sparkles, Building2, Home, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -73,22 +73,24 @@ const Config = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="pricing" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="pricing">Tarification</TabsTrigger>
+        <Tabs defaultValue="particuliers" className="space-y-6">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="particuliers">Particuliers</TabsTrigger>
+            <TabsTrigger value="pro">Offres PRO</TabsTrigger>
             <TabsTrigger value="limits">Limites</TabsTrigger>
             <TabsTrigger value="content">Contenu</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="pricing" className="space-y-6">
+          {/* PARTICULIERS TAB */}
+          <TabsContent value="particuliers" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Euro className="w-5 h-5" />
-                  Tarification
+                  <Home className="w-5 h-5" />
+                  Offre Particuliers
                 </CardTitle>
                 <CardDescription>
-                  Gérez les prix de l'abonnement et des Domings
+                  Tarification de l'abonnement interphone pour les particuliers
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -109,7 +111,7 @@ const Config = () => {
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Prix affiché dans le FAQ: {getValue('subscription_price') || 12}€/an
+                    Prix affiché: {getValue('subscription_price') || 12}€/an (minimum pour la 1ère année)
                   </p>
                 </div>
 
@@ -129,6 +131,9 @@ const Config = () => {
                       </Button>
                     )}
                   </div>
+                  <p className="text-sm text-muted-foreground">
+                    Badge QR/NFC supplémentaire
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -146,6 +151,232 @@ const Config = () => {
                         setTimeout(() => saveConfig('free_doming_for_new_anr'), 100);
                       }}
                     />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* PRO OFFERS TAB */}
+          <TabsContent value="pro" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5" />
+                  Plans Professionnels
+                </CardTitle>
+                <CardDescription>
+                  Tarification mensuelle des offres B2B
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* PRO Plan */}
+                  <div className="p-4 border rounded-lg space-y-4">
+                    <div className="text-center">
+                      <span className="text-sm font-medium text-muted-foreground">PRO</span>
+                      <div className="text-2xl font-bold text-primary">
+                        {getValue('pro_plan_price') || 29}€<span className="text-sm font-normal">/mois</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={getValue('pro_plan_price') || 29}
+                        onChange={(e) => setLocalValue('pro_plan_price', Number(e.target.value))}
+                        className="w-full"
+                      />
+                      {hasChanges('pro_plan_price') && (
+                        <Button size="sm" onClick={() => saveConfig('pro_plan_price')} disabled={isUpdating}>
+                          <Save className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ENTREPRISE Plan */}
+                  <div className="p-4 border rounded-lg space-y-4 border-primary/50 bg-primary/5">
+                    <div className="text-center">
+                      <span className="text-sm font-medium text-muted-foreground">ENTREPRISE</span>
+                      <div className="text-2xl font-bold text-primary">
+                        {getValue('entreprise_plan_price') || 99}€<span className="text-sm font-normal">/mois</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={getValue('entreprise_plan_price') || 99}
+                        onChange={(e) => setLocalValue('entreprise_plan_price', Number(e.target.value))}
+                        className="w-full"
+                      />
+                      {hasChanges('entreprise_plan_price') && (
+                        <Button size="sm" onClick={() => saveConfig('entreprise_plan_price')} disabled={isUpdating}>
+                          <Save className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* COLLECTIVITÉS Plan */}
+                  <div className="p-4 border rounded-lg space-y-4">
+                    <div className="text-center">
+                      <span className="text-sm font-medium text-muted-foreground">COLLECTIVITÉS</span>
+                      <div className="text-2xl font-bold text-primary">
+                        {getValue('collectivites_plan_price') || 199}€<span className="text-sm font-normal">/mois</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={getValue('collectivites_plan_price') || 199}
+                        onChange={(e) => setLocalValue('collectivites_plan_price', Number(e.target.value))}
+                        className="w-full"
+                      />
+                      {hasChanges('collectivites_plan_price') && (
+                        <Button size="sm" onClick={() => saveConfig('collectivites_plan_price')} disabled={isUpdating}>
+                          <Save className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Addons (Options payantes)
+                </CardTitle>
+                <CardDescription>
+                  Options supplémentaires facturées mensuellement
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Co-Pilot Addon */}
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <Bot className="w-4 h-4" />
+                      Co-Pilot IA
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={getValue('copilot_addon_price') || 9.99}
+                        onChange={(e) => setLocalValue('copilot_addon_price', Number(e.target.value))}
+                        className="w-full"
+                      />
+                      <span className="text-muted-foreground">€/mois</span>
+                    </div>
+                    {hasChanges('copilot_addon_price') && (
+                      <Button size="sm" className="w-full" onClick={() => saveConfig('copilot_addon_price')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Geofencing Addon */}
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      Géolocalisation
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={getValue('geofencing_addon_price') || 4.99}
+                        onChange={(e) => setLocalValue('geofencing_addon_price', Number(e.target.value))}
+                        className="w-full"
+                      />
+                      <span className="text-muted-foreground">€/mois</span>
+                    </div>
+                    {hasChanges('geofencing_addon_price') && (
+                      <Button size="sm" className="w-full" onClick={() => saveConfig('geofencing_addon_price')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Facial Recognition Addon */}
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Reconnaissance faciale
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={getValue('facial_recognition_addon_price') || 7.99}
+                        onChange={(e) => setLocalValue('facial_recognition_addon_price', Number(e.target.value))}
+                        className="w-full"
+                      />
+                      <span className="text-muted-foreground">€/mois</span>
+                    </div>
+                    {hasChanges('facial_recognition_addon_price') && (
+                      <Button size="sm" className="w-full" onClick={() => saveConfig('facial_recognition_addon_price')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5" />
+                  Employés supplémentaires
+                </CardTitle>
+                <CardDescription>
+                  Facturation des employés au-delà du quota inclus
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <Label>Employés inclus (plan PRO de base)</Label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="number"
+                        value={getValue('pro_max_employees_base') || 10}
+                        onChange={(e) => setLocalValue('pro_max_employees_base', Number(e.target.value))}
+                        className="w-32"
+                      />
+                      {hasChanges('pro_max_employees_base') && (
+                        <Button size="sm" onClick={() => saveConfig('pro_max_employees_base')} disabled={isUpdating}>
+                          <Save className="w-4 h-4 mr-2" />
+                          Enregistrer
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label>Prix par employé supplémentaire (€/mois)</Label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={getValue('pro_price_per_extra_employee') || 2}
+                        onChange={(e) => setLocalValue('pro_price_per_extra_employee', Number(e.target.value))}
+                        className="w-32"
+                      />
+                      {hasChanges('pro_price_per_extra_employee') && (
+                        <Button size="sm" onClick={() => saveConfig('pro_price_per_extra_employee')} disabled={isUpdating}>
+                          <Save className="w-4 h-4 mr-2" />
+                          Enregistrer
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
