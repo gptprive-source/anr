@@ -179,7 +179,7 @@ const Register = () => {
                         </ul>
                       )}
 
-                      {plan.isPro && (membersInfo.membersIncluded > 0 || membersInfo.maxExtraMembers > 0) && (
+                      {(membersInfo.membersIncluded > 0 || membersInfo.maxExtraMembers > 0) && (
                         <div className="text-xs text-muted-foreground space-y-1 mb-3 border-t border-border/50 pt-3">
                           {membersInfo.membersIncluded > 0 && (
                             <div className="flex justify-between">
