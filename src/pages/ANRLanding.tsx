@@ -102,12 +102,22 @@ const ANRLanding = () => {
       const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
       const today = now.toISOString().split('T')[0]; // "YYYY-MM-DD"
 
-      // Query scheduled accesses granted to this user for this ANR
+      // First, get the user's ANR codes (as beneficiary might be identified by their ANR code)
+      const { data: userResidences } = await supabase
+        .from("residents")
+        .select("habitation_id, habitations!inner(anr_id, anrs!inner(code))")
+        .eq("user_id", user.id)
+        .eq("status", "verified");
+
+      const userAnrCodes = userResidences?.map((r: any) => r.habitations?.anrs?.code).filter(Boolean) || [];
+
+      // Query scheduled accesses for this ANR:
+      // 1. Granted directly to this user (granted_to_user = user.id)
+      // 2. OR granted to beneficiary with matching ANR code (beneficiary_anr_code in user's ANR codes)
       const { data: accesses, error: accessError } = await supabase
         .from("door_scheduled_access")
-        .select("id, name, time_from, time_to, days_of_week, valid_from, valid_until, is_active")
+        .select("id, name, time_from, time_to, days_of_week, valid_from, valid_until, is_active, granted_to_user, beneficiary_anr_code")
         .eq("anr_id", anrId)
-        .eq("granted_to_user", user.id)
         .eq("is_active", true);
 
       if (accessError) {
@@ -116,8 +126,17 @@ const ANRLanding = () => {
         return;
       }
 
+      // Filter accesses that match this user
+      const userAccesses = accesses?.filter(access => {
+        // Direct grant to user
+        if (access.granted_to_user === user.id) return true;
+        // Grant via beneficiary ANR code
+        if (access.beneficiary_anr_code && userAnrCodes.includes(access.beneficiary_anr_code)) return true;
+        return false;
+      });
+
       // Find a valid access for current time
-      const validAccessNow = accesses?.find(access => {
+      const validAccessNow = userAccesses?.find(access => {
         // Check day of week
         if (access.days_of_week && !access.days_of_week.includes(currentDay)) {
           return false;
