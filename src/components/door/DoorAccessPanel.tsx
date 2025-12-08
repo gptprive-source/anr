@@ -253,8 +253,8 @@ export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAc
             </Card>
           )}
 
-          {/* Simulation Panel - Development Mode */}
-          {import.meta.env.DEV && hasDoorModule && (
+          {/* Simulation Panel - Development Mode (toujours visible en DEV) */}
+          {import.meta.env.DEV && (
             <BleSimulatorPanel />
           )}
         </TabsContent>

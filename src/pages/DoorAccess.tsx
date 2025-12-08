@@ -110,10 +110,13 @@ export default function DoorAccess() {
     );
   }
 
+  // En mode DEV, simuler la présence du module pour tester l'interface
+  const effectiveHasDoorModule = import.meta.env.DEV ? true : hasDoorModule;
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="container max-w-2xl mx-auto p-4">
-        <DoorAccessPanel anrId={anrId} anrCode={anrCode} hasDoorModule={hasDoorModule} />
+        <DoorAccessPanel anrId={anrId} anrCode={anrCode} hasDoorModule={effectiveHasDoorModule} />
       </div>
       <BottomNav />
     </div>
