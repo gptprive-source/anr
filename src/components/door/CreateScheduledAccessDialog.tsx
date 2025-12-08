@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDoorAccess } from '@/hooks/useDoorAccess';
-import { Loader2, Clock, User, Building2, Shield } from 'lucide-react';
+import { Loader2, Clock, User, Shield, Phone } from 'lucide-react';
 
 interface CreateScheduledAccessDialogProps {
   open: boolean;
@@ -44,9 +44,7 @@ export function CreateScheduledAccessDialog({
     days_of_week: [1, 2, 3, 4, 5] as number[],
     valid_from: '',
     valid_until: '',
-    accessType: 'user' as 'user' | 'company',
-    granted_to_user: '',
-    granted_to_company: '',
+    forward_calls_to_beneficiary: false,
     require_face_recognition_entry: false,
     require_face_recognition_exit: false,
     max_entries_per_day: '',
@@ -74,8 +72,10 @@ export function CreateScheduledAccessDialog({
       days_of_week: formData.days_of_week.length > 0 ? formData.days_of_week : undefined,
       valid_from: formData.valid_from || undefined,
       valid_until: formData.valid_until || undefined,
-      granted_to_user: formData.accessType === 'user' ? formData.granted_to_user || undefined : undefined,
-      granted_to_company: formData.accessType === 'company' ? formData.granted_to_company || undefined : undefined,
+      beneficiary_first_name: formData.beneficiary_first_name,
+      beneficiary_last_name: formData.beneficiary_last_name,
+      beneficiary_anr_code: formData.beneficiary_anr_code,
+      forward_calls_to_beneficiary: formData.forward_calls_to_beneficiary,
       require_face_recognition_entry: formData.require_face_recognition_entry,
       require_face_recognition_exit: formData.require_face_recognition_exit,
       max_entries_per_day: formData.max_entries_per_day ? parseInt(formData.max_entries_per_day) : undefined,
@@ -94,9 +94,7 @@ export function CreateScheduledAccessDialog({
       days_of_week: [1, 2, 3, 4, 5],
       valid_from: '',
       valid_until: '',
-      accessType: 'user',
-      granted_to_user: '',
-      granted_to_company: '',
+      forward_calls_to_beneficiary: false,
       require_face_recognition_entry: false,
       require_face_recognition_exit: false,
       max_entries_per_day: '',
@@ -243,6 +241,26 @@ export function CreateScheduledAccessDialog({
             <p className="text-xs text-muted-foreground">
               Le bénéficiaire doit posséder un compte ANR avec abonnement actif.
             </p>
+          </div>
+
+          {/* Transfert d'appels */}
+          <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="forward_calls" className="text-sm flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Transférer les appels au bénéficiaire
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Le bénéficiaire recevra les appels de votre ANR pendant ses heures d'accès autorisées
+                </p>
+              </div>
+              <Switch
+                id="forward_calls"
+                checked={formData.forward_calls_to_beneficiary}
+                onCheckedChange={(checked) => setFormData({ ...formData, forward_calls_to_beneficiary: checked })}
+              />
+            </div>
           </div>
 
           {/* Sécurité */}

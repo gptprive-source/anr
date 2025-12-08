@@ -193,10 +193,10 @@ export function useDoorAccess(anrId: string | null) {
     days_of_week?: number[];
     valid_from?: string;
     valid_until?: string;
-    granted_to_user?: string;
-    granted_to_company?: string;
-    guest_name?: string;
-    guest_contact?: string;
+    beneficiary_first_name: string;
+    beneficiary_last_name: string;
+    beneficiary_anr_code: string;
+    forward_calls_to_beneficiary?: boolean;
     require_face_recognition_entry?: boolean;
     require_face_recognition_exit?: boolean;
     max_entries_per_day?: number;
@@ -208,11 +208,6 @@ export function useDoorAccess(anrId: string | null) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non authentifié');
-
-      // Generate unique access code for guests
-      const accessCode = access.guest_name ? 
-        `ACC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}` : 
-        undefined;
 
       const { data, error } = await supabase
         .from('door_scheduled_access')
@@ -226,11 +221,10 @@ export function useDoorAccess(anrId: string | null) {
           days_of_week: access.days_of_week,
           valid_from: access.valid_from,
           valid_until: access.valid_until,
-          granted_to_user: access.granted_to_user,
-          granted_to_company: access.granted_to_company,
-          guest_name: access.guest_name,
-          guest_contact: access.guest_contact,
-          access_code: accessCode,
+          beneficiary_first_name: access.beneficiary_first_name,
+          beneficiary_last_name: access.beneficiary_last_name,
+          beneficiary_anr_code: access.beneficiary_anr_code,
+          forward_calls_to_beneficiary: access.forward_calls_to_beneficiary || false,
           require_face_recognition_entry: access.require_face_recognition_entry,
           require_face_recognition_exit: access.require_face_recognition_exit,
           max_entries_per_day: access.max_entries_per_day,

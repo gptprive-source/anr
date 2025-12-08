@@ -952,9 +952,13 @@ export type Database = {
           access_code: string | null
           anr_id: string
           auto_clockout_minutes: number | null
+          beneficiary_anr_code: string | null
+          beneficiary_first_name: string | null
+          beneficiary_last_name: string | null
           created_at: string | null
           days_of_week: number[] | null
           description: string | null
+          forward_calls_to_beneficiary: boolean | null
           granted_by: string
           granted_to_company: string | null
           granted_to_user: string | null
@@ -979,9 +983,13 @@ export type Database = {
           access_code?: string | null
           anr_id: string
           auto_clockout_minutes?: number | null
+          beneficiary_anr_code?: string | null
+          beneficiary_first_name?: string | null
+          beneficiary_last_name?: string | null
           created_at?: string | null
           days_of_week?: number[] | null
           description?: string | null
+          forward_calls_to_beneficiary?: boolean | null
           granted_by: string
           granted_to_company?: string | null
           granted_to_user?: string | null
@@ -1006,9 +1014,13 @@ export type Database = {
           access_code?: string | null
           anr_id?: string
           auto_clockout_minutes?: number | null
+          beneficiary_anr_code?: string | null
+          beneficiary_first_name?: string | null
+          beneficiary_last_name?: string | null
           created_at?: string | null
           days_of_week?: number[] | null
           description?: string | null
+          forward_calls_to_beneficiary?: boolean | null
           granted_by?: string
           granted_to_company?: string | null
           granted_to_user?: string | null
@@ -2654,6 +2666,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_company_owner: {
+        Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
       is_owner_of: {
