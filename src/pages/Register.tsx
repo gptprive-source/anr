@@ -6,12 +6,16 @@ import { Card } from "@/components/ui/card";
 import RegisterForm from "@/components/auth/RegisterForm";
 import RegisterProForm from "@/components/auth/RegisterProForm";
 import VisitorFooter from "@/components/layout/VisitorFooter";
+import { useAppConfig } from "@/hooks/useAppConfig";
 
 type AccountType = "choice" | "particulier" | "entreprise";
 
 const Register = () => {
   const [accountType, setAccountType] = useState<AccountType>("choice");
   const navigate = useNavigate();
+  const { getConfig } = useAppConfig();
+  
+  const proPlanPrice = getConfig('pro_plan_price') || 29;
 
   if (accountType === "particulier") {
     return (
@@ -104,7 +108,7 @@ const Register = () => {
                     <li>✓ Webhooks pour intégration RH/Paie</li>
                   </ul>
                   <div className="mt-3 text-sm font-medium bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
-                    À partir de 29€/mois
+                    À partir de {proPlanPrice}€/mois
                   </div>
                 </div>
               </div>

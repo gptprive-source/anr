@@ -7,25 +7,92 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Plan prices in cents
-const PLAN_PRICES: Record<string, { monthly: number; name: string }> = {
-  pro: { monthly: 2900, name: "ANR PRO" },
-  entreprise: { monthly: 9900, name: "ANR ENTREPRISE" },
-  collectivite: { monthly: 19900, name: "ANR COLLECTIVITÉS" },
-};
-
-// Addon prices in cents per month
-const ADDON_PRICES: Record<string, { monthly: number; name: string }> = {
-  copilot: { monthly: 999, name: "Co-Pilot IA" },
-  geofencing: { monthly: 500, name: "Géofencing avancé" },
-  face_recognition: { monthly: 500, name: "Reconnaissance faciale" },
-  webhooks: { monthly: 1000, name: "Webhooks API" },
-};
-
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-PRO-CHECKOUT] ${step}${detailsStr}`);
 };
+
+// Fetch pricing from app_config
+async function getPricingConfig(supabase: any): Promise<{
+  planPrices: Record<string, { monthly: number; name: string }>;
+  addonPrices: Record<string, { monthly: number; name: string }>;
+  extraEmployeePrice: number;
+}> {
+  const { data: configs, error } = await supabase
+    .from('app_config')
+    .select('key, value')
+    .in('key', [
+      'pro_plan_price',
+      'entreprise_plan_price',
+      'collectivites_plan_price',
+      'copilot_addon_price',
+      'geofencing_addon_price',
+      'facial_recognition_addon_price',
+      'pro_price_per_extra_employee'
+    ]);
+
+  if (error) {
+    logStep("Error fetching pricing config", { error: error.message });
+    // Return default values
+    return {
+      planPrices: {
+        pro: { monthly: 2900, name: "ANR PRO" },
+        entreprise: { monthly: 9900, name: "ANR ENTREPRISE" },
+        collectivite: { monthly: 19900, name: "ANR COLLECTIVITÉS" },
+      },
+      addonPrices: {
+        copilot: { monthly: 999, name: "Co-Pilot IA" },
+        geofencing: { monthly: 499, name: "Géofencing avancé" },
+        face_recognition: { monthly: 799, name: "Reconnaissance faciale" },
+        webhooks: { monthly: 1000, name: "Webhooks API" },
+      },
+      extraEmployeePrice: 200,
+    };
+  }
+
+  const getConfigValue = (key: string, defaultValue: number): number => {
+    const config = configs?.find((c: any) => c.key === key);
+    if (!config) return defaultValue;
+    const value = typeof config.value === 'string' ? parseFloat(config.value) : config.value;
+    return isNaN(value) ? defaultValue : value;
+  };
+
+  // Convert euro prices to cents
+  const planPrices = {
+    pro: { 
+      monthly: Math.round(getConfigValue('pro_plan_price', 29) * 100), 
+      name: "ANR PRO" 
+    },
+    entreprise: { 
+      monthly: Math.round(getConfigValue('entreprise_plan_price', 99) * 100), 
+      name: "ANR ENTREPRISE" 
+    },
+    collectivite: { 
+      monthly: Math.round(getConfigValue('collectivites_plan_price', 199) * 100), 
+      name: "ANR COLLECTIVITÉS" 
+    },
+  };
+
+  const addonPrices = {
+    copilot: { 
+      monthly: Math.round(getConfigValue('copilot_addon_price', 9.99) * 100), 
+      name: "Co-Pilot IA" 
+    },
+    geofencing: { 
+      monthly: Math.round(getConfigValue('geofencing_addon_price', 4.99) * 100), 
+      name: "Géofencing avancé" 
+    },
+    face_recognition: { 
+      monthly: Math.round(getConfigValue('facial_recognition_addon_price', 7.99) * 100), 
+      name: "Reconnaissance faciale" 
+    },
+    webhooks: { monthly: 1000, name: "Webhooks API" },
+  };
+
+  const extraEmployeePrice = Math.round(getConfigValue('pro_price_per_extra_employee', 2) * 100);
+
+  return { planPrices, addonPrices, extraEmployeePrice };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -38,6 +105,11 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     
+    // Initialize Supabase client to fetch config
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    
     const { 
       plan, 
       employeeCount, 
@@ -49,7 +121,11 @@ serve(async (req) => {
     
     logStep("Request data", { plan, employeeCount, addons: Object.keys(addons || {}), userEmail });
     
-    if (!plan || !PLAN_PRICES[plan]) {
+    // Fetch dynamic pricing from app_config
+    const { planPrices, addonPrices, extraEmployeePrice } = await getPricingConfig(supabase);
+    logStep("Pricing config loaded", { planPrices, addonPrices, extraEmployeePrice });
+    
+    if (!plan || !planPrices[plan]) {
       throw new Error("Invalid plan selected");
     }
     
@@ -67,7 +143,7 @@ serve(async (req) => {
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     
     // Main plan
-    const planConfig = PLAN_PRICES[plan];
+    const planConfig = planPrices[plan];
     lineItems.push({
       price_data: {
         currency: "eur",
@@ -87,8 +163,8 @@ serve(async (req) => {
         lineItems.push({
           price_data: {
             currency: "eur",
-            product_data: { name: ADDON_PRICES.copilot.name },
-            unit_amount: ADDON_PRICES.copilot.monthly,
+            product_data: { name: addonPrices.copilot.name },
+            unit_amount: addonPrices.copilot.monthly,
             recurring: { interval: "month" },
           },
           quantity: 1,
@@ -98,8 +174,8 @@ serve(async (req) => {
         lineItems.push({
           price_data: {
             currency: "eur",
-            product_data: { name: ADDON_PRICES.geofencing.name },
-            unit_amount: ADDON_PRICES.geofencing.monthly,
+            product_data: { name: addonPrices.geofencing.name },
+            unit_amount: addonPrices.geofencing.monthly,
             recurring: { interval: "month" },
           },
           quantity: 1,
@@ -109,8 +185,8 @@ serve(async (req) => {
         lineItems.push({
           price_data: {
             currency: "eur",
-            product_data: { name: ADDON_PRICES.face_recognition.name },
-            unit_amount: ADDON_PRICES.face_recognition.monthly,
+            product_data: { name: addonPrices.face_recognition.name },
+            unit_amount: addonPrices.face_recognition.monthly,
             recurring: { interval: "month" },
           },
           quantity: 1,
@@ -122,8 +198,8 @@ serve(async (req) => {
       lineItems.push({
         price_data: {
           currency: "eur",
-          product_data: { name: ADDON_PRICES.webhooks.name },
-          unit_amount: ADDON_PRICES.webhooks.monthly,
+          product_data: { name: addonPrices.webhooks.name },
+          unit_amount: addonPrices.webhooks.monthly,
           recurring: { interval: "month" },
         },
         quantity: 1,
