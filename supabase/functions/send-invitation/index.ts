@@ -18,10 +18,11 @@ serve(async (req) => {
     console.log("[send-invitation] Name:", firstName, lastName);
     console.log("[send-invitation] Habitation:", habitationName);
 
-    // Build invitation URL
+    // Build invitation URL - encode code to avoid quoted-printable issues
     const baseUrl = "https://anr.lovable.app";
-    const invitationUrl = `${baseUrl}/invitation?code=${code}`;
-
+    const encodedCode = encodeURIComponent(code);
+    const invitationUrl = `${baseUrl}/invitation?code=${encodedCode}`;
+    console.log("[send-invitation] Invitation URL:", invitationUrl);
     // Create SMTP client
     const client = new SMTPClient({
       connection: {
