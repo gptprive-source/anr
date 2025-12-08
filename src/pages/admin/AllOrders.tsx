@@ -41,7 +41,7 @@ import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import OrderDetailsDialog from "@/components/admin/OrderDetailsDialog";
 
-type OrderStatus = "pending" | "processing" | "shipped" | "delivered";
+type OrderStatus = "paid" | "pending" | "processing" | "shipped" | "delivered";
 
 interface DomingOrder {
   id: string;
@@ -91,6 +91,7 @@ interface Subscription {
 type UnifiedOrder = (DomingOrder | Subscription) & { orderType: "doming" | "subscription" };
 
 const statusConfig: Record<OrderStatus, { label: string; color: string; icon: React.ComponentType<any> }> = {
+  paid: { label: "En attente", color: "bg-yellow-500", icon: Clock },
   pending: { label: "En attente", color: "bg-yellow-500", icon: Clock },
   processing: { label: "En cours", color: "bg-blue-500", icon: Package },
   shipped: { label: "Expédiée", color: "bg-purple-500", icon: Truck },
@@ -505,7 +506,7 @@ const AllOrders = () => {
                                 <Eye className="w-4 h-4 mr-1" />
                                 Détails
                               </Button>
-                              {status === "pending" && (
+                              {(status === "pending" || status === "paid") && (
                                 <Button
                                   size="sm"
                                   onClick={() => updateStatusMutation.mutate({ orderId: doming.id, newStatus: "processing" })}
