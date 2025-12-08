@@ -212,8 +212,15 @@ const AllOrders = () => {
     if (activeTab === "domings" && order.orderType !== "doming") return false;
 
     // Status filter (only for domings)
-    if (statusFilter !== "all" && order.orderType === "doming" && (order as DomingOrder).status !== statusFilter) {
-      return false;
+    if (statusFilter !== "all" && order.orderType === "doming") {
+      const domingStatus = (order as DomingOrder).status;
+      // "paid" filter includes both "paid" and "pending" for backward compatibility
+      if (statusFilter === "paid" && domingStatus !== "paid" && domingStatus !== "pending") {
+        return false;
+      }
+      if (statusFilter !== "paid" && domingStatus !== statusFilter) {
+        return false;
+      }
     }
 
     // Search filter
@@ -244,7 +251,7 @@ const AllOrders = () => {
     totalDomings: domingOrders?.length || 0,
     subscriptionRevenue: (subscriptions?.length || 0) * 12, // 12€ per subscription
     domingRevenue: domingOrders?.reduce((sum, o) => sum + (o.is_free ? 0 : o.total_price / 100), 0) || 0,
-    pendingDomings: domingOrders?.filter((o) => o.status === "pending").length || 0,
+    pendingDomings: domingOrders?.filter((o) => o.status === "pending" || o.status === "paid").length || 0,
   };
 
   const isLoading = loadingDomings || loadingSubscriptions;
@@ -318,7 +325,7 @@ const AllOrders = () => {
             </CardContent>
           </Card>
           
-          <Card className="cursor-pointer hover:bg-muted/50" onClick={() => { setActiveTab("domings"); setStatusFilter("pending"); }}>
+          <Card className="cursor-pointer hover:bg-muted/50" onClick={() => { setActiveTab("domings"); setStatusFilter("paid"); }}>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 rounded-full bg-yellow-500">
                 <Clock className="w-5 h-5 text-white" />
@@ -362,7 +369,7 @@ const AllOrders = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="pending">En attente</SelectItem>
+                  <SelectItem value="paid">En attente</SelectItem>
                   <SelectItem value="processing">En cours</SelectItem>
                   <SelectItem value="shipped">Expédiée</SelectItem>
                   <SelectItem value="delivered">Livrée</SelectItem>
