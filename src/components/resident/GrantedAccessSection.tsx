@@ -1,16 +1,47 @@
-import { Key, Clock, MapPin, Phone, Shield, Calendar, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { Key, Clock, MapPin, Phone, Shield, Calendar, ChevronDown, ChevronUp, Camera, CheckCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useGrantedAccess } from "@/hooks/useGrantedAccess";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { FaceRegistrationDialog } from "@/components/door/FaceRegistrationDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 
 const GrantedAccessSection = () => {
-  const { loading, grantedAccess } = useGrantedAccess();
+  const { loading, grantedAccess, refetch } = useGrantedAccess();
+  const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
+  const [showFaceDialog, setShowFaceDialog] = useState(false);
+  const [hasFaceRegistered, setHasFaceRegistered] = useState(false);
+  const [checkingFace, setCheckingFace] = useState(true);
+
+  // Check if user has registered their face
+  useEffect(() => {
+    const checkFaceRegistration = async () => {
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('face_embeddings')
+        .select('id')
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .maybeSingle();
+      
+      setHasFaceRegistered(!!data);
+      setCheckingFace(false);
+    };
+
+    checkFaceRegistration();
+  }, [user]);
+
+  // Check if any access requires face recognition
+  const requiresFaceRecognition = grantedAccess.some(
+    a => a.require_face_recognition_entry || a.require_face_recognition_exit
+  );
 
   if (loading || grantedAccess.length === 0) {
     return null;
@@ -78,10 +109,17 @@ const GrantedAccessSection = () => {
                   Transfert d'appels
                 </Badge>
               )}
-              {access.require_face_recognition_entry && (
-                <Badge variant="secondary" className="text-xs">
-                  <Shield className="w-3 h-3 mr-1" />
-                  Reconnaissance faciale
+              {(access.require_face_recognition_entry || access.require_face_recognition_exit) && (
+                <Badge 
+                  variant={hasFaceRegistered ? "secondary" : "destructive"} 
+                  className="text-xs"
+                >
+                  {hasFaceRegistered ? (
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                  ) : (
+                    <Shield className="w-3 h-3 mr-1" />
+                  )}
+                  Reconnaissance faciale {hasFaceRegistered ? "OK" : "requise"}
                 </Badge>
               )}
             </div>
@@ -98,6 +136,17 @@ const GrantedAccessSection = () => {
           </div>
         ))}
       </div>
+
+      {/* Face registration button if required but not registered */}
+      {requiresFaceRecognition && !hasFaceRegistered && !checkingFace && (
+        <Button
+          className="w-full mt-3"
+          onClick={() => setShowFaceDialog(true)}
+        >
+          <Camera className="w-4 h-4 mr-2" />
+          Enregistrer mon visage
+        </Button>
+      )}
 
       {grantedAccess.length > 2 && (
         <Button
@@ -119,6 +168,16 @@ const GrantedAccessSection = () => {
           )}
         </Button>
       )}
+
+      {/* Face Registration Dialog */}
+      <FaceRegistrationDialog
+        open={showFaceDialog}
+        onOpenChange={setShowFaceDialog}
+        onRegistered={() => {
+          setHasFaceRegistered(true);
+          setShowFaceDialog(false);
+        }}
+      />
     </div>
   );
 };
