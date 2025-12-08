@@ -7,6 +7,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Normalize address for comparison: lowercase, no punctuation, single spaces
+function normalizeAddress(address: string): string {
+  return address
+    .toLowerCase()
+    .replace(/[,;.:'"!?]/g, '') // Remove punctuation
+    .replace(/\s+/g, ' ')       // Multiple spaces → single space
+    .trim();
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -162,9 +171,47 @@ serve(async (req) => {
     console.log("[VERIFY-PAYMENT] Creating ANR/habitation:", { isNewAnr, habitationName, extraDomings });
 
     let anrId: string;
+    let actuallyNewAnr = isNewAnr; // Track if we actually created a new ANR
 
-    // Create or get ANR
-    if (isNewAnr) {
+    // ============================================
+    // BACKEND ANR EXISTENCE CHECK (normalized address comparison)
+    // This overrides frontend's is_new_anr if we find a matching address
+    // ============================================
+    const normalizedInputAddress = normalizeAddress(address);
+    console.log("[VERIFY-PAYMENT] Normalized input address:", normalizedInputAddress);
+
+    // Fetch all existing ANRs to check for normalized address match
+    const { data: existingAnrs, error: anrFetchError } = await supabaseAdmin
+      .from("anrs")
+      .select("id, address, code");
+
+    if (anrFetchError) {
+      console.error("[VERIFY-PAYMENT] Error fetching existing ANRs:", anrFetchError);
+    }
+
+    let matchingAnr = null;
+    if (existingAnrs && existingAnrs.length > 0) {
+      for (const anr of existingAnrs) {
+        const normalizedExisting = normalizeAddress(anr.address);
+        if (normalizedExisting === normalizedInputAddress) {
+          matchingAnr = anr;
+          console.log("[VERIFY-PAYMENT] Found matching ANR by normalized address:", anr.code, "| Original:", anr.address);
+          break;
+        }
+      }
+    }
+
+    // Determine if we should create new or use existing
+    if (matchingAnr) {
+      // Override frontend's decision - ANR already exists
+      if (isNewAnr) {
+        console.log("[VERIFY-PAYMENT] OVERRIDE: Frontend said is_new_anr=true but matching ANR found, using existing:", matchingAnr.code);
+      }
+      anrId = matchingAnr.id;
+      actuallyNewAnr = false;
+      console.log("[VERIFY-PAYMENT] Using existing ANR (normalized match):", matchingAnr.code);
+    } else if (isNewAnr) {
+      // No match found and frontend says new - create it
       const anrCode = `ANR-${Date.now().toString(36).toUpperCase()}`;
       const { data: newAnr, error: anrError } = await supabaseAdmin
         .from("anrs")
@@ -179,11 +226,14 @@ serve(async (req) => {
 
       if (anrError) throw new Error(`Error creating ANR: ${anrError.message}`);
       anrId = newAnr.id;
-      console.log("[VERIFY-PAYMENT] New ANR created:", anrId);
+      actuallyNewAnr = true;
+      console.log("[VERIFY-PAYMENT] New ANR created:", anrCode);
     } else {
+      // Frontend says existing ANR
       if (!existingAnrId) throw new Error("Existing ANR ID is required");
       anrId = existingAnrId;
-      console.log("[VERIFY-PAYMENT] Using existing ANR:", anrId);
+      actuallyNewAnr = false;
+      console.log("[VERIFY-PAYMENT] Using existing ANR (from metadata):", anrId);
     }
 
     // Create habitation
@@ -245,8 +295,8 @@ serve(async (req) => {
     if (subError) throw new Error(`Error creating subscription record: ${subError.message}`);
     console.log("[VERIFY-PAYMENT] Subscription saved with session_id for idempotency");
 
-    // Record doming orders
-    const domingQuantity = (isNewAnr ? 1 : 0) + extraDomings; // 1 free if new ANR + extras
+    // Record doming orders (use actuallyNewAnr to determine free doming)
+    const domingQuantity = (actuallyNewAnr ? 1 : 0) + extraDomings; // 1 free if actually new ANR + extras
     if (domingQuantity > 0) {
       const { error: domingError } = await supabaseAdmin
         .from("doming_orders")
@@ -256,7 +306,7 @@ serve(async (req) => {
           quantity: domingQuantity,
           unit_price: 700,
           total_price: extraDomings * 700, // Only extras are charged
-          is_free: isNewAnr,
+          is_free: actuallyNewAnr,
           stripe_payment_intent_id: session.payment_intent as string,
           status: "paid",
           shipping_address: address,
@@ -337,7 +387,7 @@ serve(async (req) => {
       success: true, 
       habitationId: habitation.id,
       anrId,
-      isNewAnr 
+      isNewAnr: actuallyNewAnr 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
