@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { MapPin, Phone, Loader2, DoorOpen } from "lucide-react";
+import { MapPin, Phone, Loader2, DoorOpen, ScanFace } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -13,6 +13,7 @@ import {
 import VisitorFooter from "@/components/layout/VisitorFooter";
 import logoAnr from "@/assets/logo-anr.png";
 import { BleOpenDoorButton } from "@/components/door/BleOpenDoorButton";
+import { FaceVerificationDialog } from "@/components/door/FaceVerificationDialog";
 
 interface ANRData {
   id: string;
@@ -28,6 +29,7 @@ interface ScheduledAccess {
   name: string;
   time_from: string;
   time_to: string;
+  requireFaceRecognition: boolean;
 }
 
 const ANRLanding = () => {
@@ -38,6 +40,8 @@ const ANRLanding = () => {
   const [error, setError] = useState<string | null>(null);
   const [validAccess, setValidAccess] = useState<ScheduledAccess | null>(null);
   const [checkingAccess, setCheckingAccess] = useState(false);
+  const [faceVerificationOpen, setFaceVerificationOpen] = useState(false);
+  const [faceVerified, setFaceVerified] = useState(false);
 
   useEffect(() => {
     const fetchANR = async () => {
@@ -116,7 +120,7 @@ const ANRLanding = () => {
       // 2. OR granted to beneficiary with matching ANR code (beneficiary_anr_code in user's ANR codes)
       const { data: accesses, error: accessError } = await supabase
         .from("door_scheduled_access")
-        .select("id, name, time_from, time_to, days_of_week, valid_from, valid_until, is_active, granted_to_user, beneficiary_anr_code")
+        .select("id, name, time_from, time_to, days_of_week, valid_from, valid_until, is_active, granted_to_user, beneficiary_anr_code, require_face_recognition_entry")
         .eq("anr_id", anrId)
         .eq("is_active", true);
 
@@ -160,6 +164,7 @@ const ANRLanding = () => {
           name: validAccessNow.name,
           time_from: validAccessNow.time_from,
           time_to: validAccessNow.time_to,
+          requireFaceRecognition: validAccessNow.require_face_recognition_entry || false,
         });
       }
     } catch (err) {
@@ -272,11 +277,32 @@ const ANRLanding = () => {
                 <p className="text-xs text-muted-foreground">
                   {validAccess.time_from} - {validAccess.time_to}
                 </p>
+                {validAccess.requireFaceRecognition && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    <ScanFace className="inline h-3 w-3 mr-1" />
+                    Reconnaissance faciale requise
+                  </p>
+                )}
               </div>
-              <BleOpenDoorButton 
-                anrId={anrData.id} 
-                anrCode={anrData.code}
-              />
+              
+              {/* If face recognition required and not yet verified, show verification button */}
+              {validAccess.requireFaceRecognition && !faceVerified ? (
+                <Button
+                  onClick={() => setFaceVerificationOpen(true)}
+                  className="w-full h-24 text-lg bg-amber-600 hover:bg-amber-700"
+                  size="lg"
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <ScanFace className="h-6 w-6" />
+                    <span>Vérifier mon identité</span>
+                  </div>
+                </Button>
+              ) : (
+                <BleOpenDoorButton 
+                  anrId={anrData.id} 
+                  anrCode={anrData.code}
+                />
+              )}
             </div>
           )}
 
@@ -329,6 +355,17 @@ const ANRLanding = () => {
           }
         </p>
       </div>
+
+      {/* Face Verification Dialog */}
+      <FaceVerificationDialog
+        open={faceVerificationOpen}
+        onOpenChange={setFaceVerificationOpen}
+        onVerified={() => {
+          setFaceVerified(true);
+          setFaceVerificationOpen(false);
+        }}
+        action="ENTRY"
+      />
 
       <VisitorFooter />
     </div>
