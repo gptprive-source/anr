@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Euro, Clock, MapPin, Users, Mail, ArrowLeft, Bot } from "lucide-react";
+import { Save, Euro, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -371,6 +371,26 @@ const Config = () => {
                       onCheckedChange={(checked) => {
                         setLocalValue('chatbot_ai_mode_enabled', checked);
                         setTimeout(() => saveConfig('chatbot_ai_mode_enabled'), 100);
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
+                  <div className="space-y-1">
+                    <Label className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" />
+                      Co-Pilot global
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Activer le Co-Pilot pour tous les utilisateurs PRO (test gratuit)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Switch
+                      checked={getValue('copilot_global_enabled') === true || getValue('copilot_global_enabled') === 'true'}
+                      onCheckedChange={(checked) => {
+                        setLocalValue('copilot_global_enabled', checked);
+                        setTimeout(() => saveConfig('copilot_global_enabled'), 100);
                       }}
                     />
                   </div>
