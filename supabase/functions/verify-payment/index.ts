@@ -295,24 +295,47 @@ serve(async (req) => {
     if (subError) throw new Error(`Error creating subscription record: ${subError.message}`);
     console.log("[VERIFY-PAYMENT] Subscription saved with session_id for idempotency");
 
-    // Record doming orders (use actuallyNewAnr to determine free doming)
-    const domingQuantity = (actuallyNewAnr ? 1 : 0) + extraDomings; // 1 free if actually new ANR + extras
-    if (domingQuantity > 0) {
-      const { error: domingError } = await supabaseAdmin
+    // Record doming orders - separate free and paid orders
+    const freeDomingCount = actuallyNewAnr ? 1 : 0;
+    
+    // Create free doming order if new ANR
+    if (freeDomingCount > 0) {
+      const { error: freeDomingError } = await supabaseAdmin
         .from("doming_orders")
         .insert({
           user_id: userId,
           anr_id: anrId,
-          quantity: domingQuantity,
+          quantity: 1,
           unit_price: 700,
-          total_price: extraDomings * 700, // Only extras are charged
-          is_free: actuallyNewAnr,
+          total_price: 0, // Free
+          is_free: true,
           stripe_payment_intent_id: session.payment_intent as string,
           status: "paid",
           shipping_address: address,
         });
 
-      if (domingError) console.error("[VERIFY-PAYMENT] Warning: Error recording doming order:", domingError);
+      if (freeDomingError) console.error("[VERIFY-PAYMENT] Warning: Error recording free doming order:", freeDomingError);
+      else console.log("[VERIFY-PAYMENT] Free doming order created");
+    }
+    
+    // Create paid doming order if extra domings ordered
+    if (extraDomings > 0) {
+      const { error: paidDomingError } = await supabaseAdmin
+        .from("doming_orders")
+        .insert({
+          user_id: userId,
+          anr_id: anrId,
+          quantity: extraDomings,
+          unit_price: 700,
+          total_price: extraDomings * 700, // Paid
+          is_free: false,
+          stripe_payment_intent_id: session.payment_intent as string,
+          status: "paid",
+          shipping_address: address,
+        });
+
+      if (paidDomingError) console.error("[VERIFY-PAYMENT] Warning: Error recording paid doming order:", paidDomingError);
+      else console.log("[VERIFY-PAYMENT] Paid doming order created:", extraDomings, "domings for", extraDomings * 700, "cents");
     }
 
     // Get user email for confirmation
@@ -349,7 +372,7 @@ serve(async (req) => {
           address: address,
           habitationName: habitationName,
           subscriptionAmount: subscriptionAmount,
-          domingQuantity: domingQuantity,
+          domingQuantity: freeDomingCount + extraDomings,
           domingAmount: totalDomingAmount,
           totalAmount: totalAmount,
         };
