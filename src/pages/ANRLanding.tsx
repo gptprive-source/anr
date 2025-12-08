@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { MapPin, Phone, Loader2 } from "lucide-react";
+import { MapPin, Phone, Loader2, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import VisitorFooter from "@/components/layout/VisitorFooter";
 import logoAnr from "@/assets/logo-anr.png";
+import { BleOpenDoorButton } from "@/components/door/BleOpenDoorButton";
 
 interface ANRData {
   id: string;
@@ -22,12 +23,21 @@ interface ANRData {
   habitationCount: number;
 }
 
+interface ScheduledAccess {
+  id: string;
+  name: string;
+  time_from: string;
+  time_to: string;
+}
+
 const ANRLanding = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [anrData, setAnrData] = useState<ANRData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [validAccess, setValidAccess] = useState<ScheduledAccess | null>(null);
+  const [checkingAccess, setCheckingAccess] = useState(false);
 
   useEffect(() => {
     const fetchANR = async () => {
@@ -63,6 +73,9 @@ const ANRLanding = () => {
           ...anr,
           habitationCount: count || 0,
         });
+
+        // Check if current user has valid scheduled access
+        await checkScheduledAccess(anr.id);
       } catch (err) {
         console.error("[ANRLanding] Error:", err);
         setError("Erreur lors du chargement");
@@ -73,6 +86,69 @@ const ANRLanding = () => {
 
     fetchANR();
   }, [code]);
+
+  // Check if the authenticated user has a valid scheduled access for this ANR right now
+  const checkScheduledAccess = async (anrId: string) => {
+    setCheckingAccess(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCheckingAccess(false);
+        return;
+      }
+
+      const now = new Date();
+      const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
+      const today = now.toISOString().split('T')[0]; // "YYYY-MM-DD"
+
+      // Query scheduled accesses granted to this user for this ANR
+      const { data: accesses, error: accessError } = await supabase
+        .from("door_scheduled_access")
+        .select("id, name, time_from, time_to, days_of_week, valid_from, valid_until, is_active")
+        .eq("anr_id", anrId)
+        .eq("granted_to_user", user.id)
+        .eq("is_active", true);
+
+      if (accessError) {
+        console.error("[ANRLanding] Error checking access:", accessError);
+        setCheckingAccess(false);
+        return;
+      }
+
+      // Find a valid access for current time
+      const validAccessNow = accesses?.find(access => {
+        // Check day of week
+        if (access.days_of_week && !access.days_of_week.includes(currentDay)) {
+          return false;
+        }
+
+        // Check date range
+        if (access.valid_from && today < access.valid_from) return false;
+        if (access.valid_until && today > access.valid_until) return false;
+
+        // Check time range
+        if (currentTime < access.time_from || currentTime > access.time_to) {
+          return false;
+        }
+
+        return true;
+      });
+
+      if (validAccessNow) {
+        setValidAccess({
+          id: validAccessNow.id,
+          name: validAccessNow.name,
+          time_from: validAccessNow.time_from,
+          time_to: validAccessNow.time_to,
+        });
+      }
+    } catch (err) {
+      console.error("[ANRLanding] Error checking scheduled access:", err);
+    } finally {
+      setCheckingAccess(false);
+    }
+  };
 
   const openNavigation = (app: 'apple' | 'google' | 'waze' | 'default') => {
     if (!anrData) return;
@@ -167,11 +243,29 @@ const ANRLanding = () => {
 
         {/* Action Buttons */}
         <div className="w-full max-w-md space-y-4">
+          {/* Open Door Button - Only for users with valid scheduled access */}
+          {validAccess && (
+            <div className="space-y-2">
+              <div className="text-center">
+                <p className="text-sm text-green-600 font-medium">
+                  Accès autorisé : {validAccess.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {validAccess.time_from} - {validAccess.time_to}
+                </p>
+              </div>
+              <BleOpenDoorButton 
+                anrId={anrData.id} 
+                anrCode={anrData.code}
+              />
+            </div>
+          )}
+
           {isIOS ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full h-16 text-lg gap-3">
-                  <MapPin className="w-6 h-6" />
+                <Button variant="outline" className="w-full h-14 text-base gap-3">
+                  <MapPin className="w-5 h-5" />
                   Naviguer vers cette adresse
                 </Button>
               </DropdownMenuTrigger>
@@ -191,22 +285,21 @@ const ANRLanding = () => {
             <Button
               onClick={() => openNavigation('default')}
               variant="outline"
-              className="w-full h-16 text-lg gap-3"
+              className="w-full h-14 text-base gap-3"
             >
-              <MapPin className="w-6 h-6" />
+              <MapPin className="w-5 h-5" />
               Naviguer vers cette adresse
             </Button>
           )}
 
           <Button
             onClick={handleCall}
-            variant="hero"
-            className="w-full h-16 text-lg gap-3"
+            variant={validAccess ? "outline" : "hero"}
+            className="w-full h-14 text-base gap-3"
           >
-            <Phone className="w-6 h-6" />
+            <Phone className="w-5 h-5" />
             Appeler cet interphone
           </Button>
-
         </div>
 
         {/* Info text */}
