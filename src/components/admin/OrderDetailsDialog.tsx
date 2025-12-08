@@ -90,14 +90,16 @@ const OrderDetailsDialog = ({ order, onClose, onStatusChange }: OrderDetailsDial
               <Badge variant="outline" className="text-sm">
                 {statusLabels[order.status] || order.status}
               </Badge>
-              {nextStatus ? (
+              {/* Debug: Show actual status value */}
+              <span className="text-xs text-muted-foreground">(status: {order.status})</span>
+              {nextStatus && onStatusChange ? (
                 <Button size="sm" onClick={handleStatusChange}>
                   {nextStatus.label}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
-              ) : (
+              ) : !nextStatus ? (
                 <Badge variant="secondary" className="text-sm">Traitement terminé</Badge>
-              )}
+              ) : null}
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="w-4 h-4" />
