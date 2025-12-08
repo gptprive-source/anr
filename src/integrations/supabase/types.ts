@@ -2562,11 +2562,12 @@ export type Database = {
           habitation_id: string
           id: string
           is_read: boolean | null
-          message: string
+          message: string | null
           read_at: string | null
           visitor_latitude: number | null
           visitor_longitude: number | null
           visitor_phone: string | null
+          voice_message_url: string | null
         }
         Insert: {
           business_card_id?: string | null
@@ -2574,11 +2575,12 @@ export type Database = {
           habitation_id: string
           id?: string
           is_read?: boolean | null
-          message: string
+          message?: string | null
           read_at?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
+          voice_message_url?: string | null
         }
         Update: {
           business_card_id?: string | null
@@ -2586,11 +2588,12 @@ export type Database = {
           habitation_id?: string
           id?: string
           is_read?: boolean | null
-          message?: string
+          message?: string | null
           read_at?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
+          voice_message_url?: string | null
         }
         Relationships: [
           {

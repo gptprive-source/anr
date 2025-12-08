@@ -16,7 +16,8 @@ interface BusinessCard {
 interface VisitorMessage {
   id: string;
   habitation_id: string;
-  message: string;
+  message: string | null;
+  voice_message_url: string | null;
   visitor_phone: string | null;
   visitor_latitude: number | null;
   visitor_longitude: number | null;
@@ -104,17 +105,50 @@ export const useVisitorMessages = (habitationId?: string) => {
   // Send a message (visitor - no auth required)
   const sendMessage = async (
     targetHabitationId: string,
-    message: string,
+    message?: string,
     visitorPhone?: string,
     _templateId?: string,
-    businessCardId?: string
+    businessCardId?: string,
+    audioBase64?: string
   ) => {
     try {
+      // If audio is provided, upload to storage first
+      let voiceMessageUrl: string | null = null;
+      if (audioBase64) {
+        const fileName = `voice-${Date.now()}-${Math.random().toString(36).substring(7)}.webm`;
+        const filePath = `visitor-messages/${targetHabitationId}/${fileName}`;
+        
+        // Convert base64 to Uint8Array
+        const binaryString = atob(audioBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        const { error: uploadError } = await supabase.storage
+          .from('visitor-voice-messages')
+          .upload(filePath, bytes, {
+            contentType: 'audio/webm',
+            upsert: false,
+          });
+        
+        if (uploadError) {
+          console.error("[useVisitorMessages] Upload error:", uploadError);
+          // Continue without voice message if upload fails
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('visitor-voice-messages')
+            .getPublicUrl(filePath);
+          voiceMessageUrl = urlData.publicUrl;
+        }
+      }
+
       const { error } = await (supabase
         .from("visitor_messages" as any)
         .insert({
           habitation_id: targetHabitationId,
-          message,
+          message: message || null,
+          voice_message_url: voiceMessageUrl,
           visitor_phone: visitorPhone || null,
           business_card_id: businessCardId || null,
         }) as any);

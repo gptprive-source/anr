@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,13 +12,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { useVisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
 import { useVisitorCustomTemplates } from "@/hooks/useVisitorCustomTemplates";
-import { Send, Loader2, MessageSquare, Info, User, Building2, CreditCard, Plus, X, Save } from "lucide-react";
+import { Send, Loader2, MessageSquare, Info, User, Building2, CreditCard, Plus, X, Save, Mic, FileText } from "lucide-react";
 import VisitorBusinessCardManager from "./VisitorBusinessCardManager";
 import SaveCustomTemplateDialog from "./SaveCustomTemplateDialog";
+import VoiceRecorder from "./VoiceRecorder";
 
 interface VisitorMessageDialogProps {
   open: boolean;
@@ -47,6 +49,8 @@ const VisitorMessageDialog = ({
   const [showCardManager, setShowCardManager] = useState(false);
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
   const [isCustomMessage, setIsCustomMessage] = useState(false);
+  const [messageType, setMessageType] = useState<"text" | "voice" | "both">("text");
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 
   // Reset on open
   useEffect(() => {
@@ -58,8 +62,14 @@ const VisitorMessageDialog = ({
       setShowCardManager(false);
       setShowSaveTemplateDialog(false);
       setIsCustomMessage(false);
+      setMessageType("text");
+      setAudioBlob(null);
     }
   }, [open]);
+
+  const handleAudioRecorded = useCallback((blob: Blob | null) => {
+    setAudioBlob(blob);
+  }, []);
 
   // Auto-fill phone from card
   useEffect(() => {
@@ -122,22 +132,40 @@ const VisitorMessageDialog = ({
   };
 
   const handleSubmit = async () => {
-    if (!message.trim()) {
+    const hasText = message.trim().length > 0;
+    const hasAudio = audioBlob !== null;
+    
+    if (!hasText && !hasAudio) {
       toast({
         title: "Message requis",
-        description: "Veuillez saisir un message",
+        description: "Veuillez saisir un message texte ou enregistrer un message vocal",
         variant: "destructive",
       });
       return;
     }
 
     setSending(true);
+    
+    // Convert audio blob to base64 if exists
+    let audioBase64: string | undefined;
+    if (audioBlob) {
+      audioBase64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result as string;
+          resolve(base64.split(',')[1]); // Remove data URL prefix
+        };
+        reader.readAsDataURL(audioBlob);
+      });
+    }
+    
     const result = await sendMessage(
       habitationId,
-      message.trim(),
+      message.trim() || undefined,
       phone.trim() || undefined,
       selectedTemplateId || undefined,
-      attachCard && card ? card.id : undefined
+      attachCard && card ? card.id : undefined,
+      audioBase64
     );
 
     if (result.success) {
@@ -156,6 +184,8 @@ const VisitorMessageDialog = ({
     }
     setSending(false);
   };
+
+  const canSubmit = message.trim().length > 0 || audioBlob !== null;
 
   // Render business card preview
   const renderCardPreview = () => {
@@ -260,96 +290,156 @@ const VisitorMessageDialog = ({
               )}
             </div>
 
-            {/* Custom templates section */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm text-muted-foreground">Mes templates</Label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSaveTemplateDialog(true)}
-                  disabled={!message.trim()}
-                  className="h-7 text-xs"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Créer
-                </Button>
-              </div>
-              {customTemplates.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {customTemplates.map((template) => (
-                    <Badge
-                      key={template.id}
-                      variant={selectedTemplateId === template.id ? "default" : "outline"}
-                      className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3 pr-1.5 gap-1"
-                      onClick={() => handleCustomTemplateClick(template)}
-                    >
-                      <span>{template.icon}</span>
-                      <span>{template.name}</span>
-                      <button
-                        onClick={(e) => handleDeleteCustomTemplate(e, template.id)}
-                        className="ml-1 p-0.5 rounded-full hover:bg-destructive/20 transition-colors"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">
-                  Aucun template personnalisé. Tapez un message et cliquez sur "Créer" pour en ajouter.
-                </p>
-              )}
-            </div>
+            {/* Message Type Tabs */}
+            <Tabs value={messageType} onValueChange={(v) => setMessageType(v as "text" | "voice" | "both")} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="text" className="gap-1.5 text-xs sm:text-sm">
+                  <FileText className="w-3.5 h-3.5" />
+                  <span className="hidden xs:inline">Texte</span>
+                </TabsTrigger>
+                <TabsTrigger value="voice" className="gap-1.5 text-xs sm:text-sm">
+                  <Mic className="w-3.5 h-3.5" />
+                  <span className="hidden xs:inline">Vocal</span>
+                </TabsTrigger>
+                <TabsTrigger value="both" className="gap-1.5 text-xs sm:text-sm">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span className="hidden xs:inline">Les deux</span>
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Admin templates (suggestions) */}
-            {adminTemplates.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Suggestions</Label>
-                <div className="flex flex-wrap gap-2">
-                  {adminTemplates.map((template) => (
-                    <Badge
-                      key={template.id}
-                      variant={selectedTemplateId === template.id ? "default" : "secondary"}
-                      className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3"
-                      onClick={() => handleAdminTemplateClick(template)}
+              {/* Text Message Content */}
+              <TabsContent value="text" className="space-y-4 mt-4">
+                {/* Custom templates section */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm text-muted-foreground">Mes templates</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowSaveTemplateDialog(true)}
+                      disabled={!message.trim()}
+                      className="h-7 text-xs"
                     >
-                      {template.icon && <span className="mr-1">{template.icon}</span>}
-                      {template.name}
-                    </Badge>
-                  ))}
+                      <Plus className="w-3 h-3 mr-1" />
+                      Créer
+                    </Button>
+                  </div>
+                  {customTemplates.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {customTemplates.map((template) => (
+                        <Badge
+                          key={template.id}
+                          variant={selectedTemplateId === template.id ? "default" : "outline"}
+                          className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3 pr-1.5 gap-1"
+                          onClick={() => handleCustomTemplateClick(template)}
+                        >
+                          <span>{template.icon}</span>
+                          <span>{template.name}</span>
+                          <button
+                            onClick={(e) => handleDeleteCustomTemplate(e, template.id)}
+                            className="ml-1 p-0.5 rounded-full hover:bg-destructive/20 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">
+                      Aucun template personnalisé. Tapez un message et cliquez sur "Créer" pour en ajouter.
+                    </p>
+                  )}
                 </div>
-              </div>
-            )}
 
-            {/* Message textarea */}
-            <div className="space-y-2">
-              <Label htmlFor="message">Votre message</Label>
-              <Textarea
-                id="message"
-                value={message}
-                onChange={(e) => handleMessageChange(e.target.value)}
-                placeholder="Bonjour, je suis passé pour..."
-                rows={4}
-                maxLength={500}
-              />
-              <div className="flex items-center justify-between">
-                {isCustomMessage && message.trim().length >= 10 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowSaveTemplateDialog(true)}
-                    className="h-7 text-xs"
-                  >
-                    <Save className="w-3 h-3 mr-1" />
-                    Sauvegarder comme template
-                  </Button>
+                {/* Admin templates (suggestions) */}
+                {adminTemplates.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Suggestions</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {adminTemplates.map((template) => (
+                        <Badge
+                          key={template.id}
+                          variant={selectedTemplateId === template.id ? "default" : "secondary"}
+                          className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3"
+                          onClick={() => handleAdminTemplateClick(template)}
+                        >
+                          {template.icon && <span className="mr-1">{template.icon}</span>}
+                          {template.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                <p className="text-xs text-muted-foreground ml-auto">
-                  {message.length}/500
-                </p>
-              </div>
-            </div>
+
+                {/* Message textarea */}
+                <div className="space-y-2">
+                  <Label htmlFor="message">Votre message</Label>
+                  <Textarea
+                    id="message"
+                    value={message}
+                    onChange={(e) => handleMessageChange(e.target.value)}
+                    placeholder="Bonjour, je suis passé pour..."
+                    rows={4}
+                    maxLength={500}
+                  />
+                  <div className="flex items-center justify-between">
+                    {isCustomMessage && message.trim().length >= 10 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowSaveTemplateDialog(true)}
+                        className="h-7 text-xs"
+                      >
+                        <Save className="w-3 h-3 mr-1" />
+                        Sauvegarder comme template
+                      </Button>
+                    )}
+                    <p className="text-xs text-muted-foreground ml-auto">
+                      {message.length}/500
+                    </p>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Voice Message Content */}
+              <TabsContent value="voice" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label className="text-sm">Message vocal (60 sec max)</Label>
+                  <VoiceRecorder 
+                    onRecordingComplete={handleAudioRecorded}
+                    maxDuration={60}
+                  />
+                </div>
+              </TabsContent>
+
+              {/* Both Messages Content */}
+              <TabsContent value="both" className="space-y-4 mt-4">
+                {/* Voice recorder */}
+                <div className="space-y-2">
+                  <Label className="text-sm">Message vocal (60 sec max)</Label>
+                  <VoiceRecorder 
+                    onRecordingComplete={handleAudioRecorded}
+                    maxDuration={60}
+                  />
+                </div>
+                
+                {/* Text message */}
+                <div className="space-y-2">
+                  <Label htmlFor="message-both">Message texte complémentaire</Label>
+                  <Textarea
+                    id="message-both"
+                    value={message}
+                    onChange={(e) => handleMessageChange(e.target.value)}
+                    placeholder="Ajoutez des détails écrits..."
+                    rows={3}
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {message.length}/500
+                  </p>
+                </div>
+              </TabsContent>
+            </Tabs>
 
             {/* Optional phone (only if no card attached) */}
             {!attachCard && (
@@ -377,7 +467,7 @@ const VisitorMessageDialog = ({
             {/* Submit button */}
             <Button
               onClick={handleSubmit}
-              disabled={sending || !message.trim()}
+              disabled={sending || !canSubmit}
               className="w-full"
             >
               {sending ? (
