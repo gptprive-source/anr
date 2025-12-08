@@ -545,6 +545,7 @@ const AllOrders = () => {
         <OrderDetailsDialog
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
+          onStatusChange={(orderId, newStatus) => updateStatusMutation.mutate({ orderId, newStatus })}
         />
       </div>
     </AdminLayout>

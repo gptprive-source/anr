@@ -3,12 +3,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { MapPin, User, Phone, Package, Calendar } from "lucide-react";
+import { MapPin, User, Phone, Package, Calendar, ArrowRight } from "lucide-react";
 import DomingPreview from "./DomingPreview";
 
 interface Order {
@@ -36,9 +38,10 @@ interface Order {
 interface OrderDetailsDialogProps {
   order: Order | null;
   onClose: () => void;
+  onStatusChange?: (orderId: string, newStatus: string) => void;
 }
 
-const OrderDetailsDialog = ({ order, onClose }: OrderDetailsDialogProps) => {
+const OrderDetailsDialog = ({ order, onClose, onStatusChange }: OrderDetailsDialogProps) => {
   if (!order) return null;
 
   const statusLabels: Record<string, string> = {
@@ -46,6 +49,28 @@ const OrderDetailsDialog = ({ order, onClose }: OrderDetailsDialogProps) => {
     processing: "En cours de fabrication",
     shipped: "Expédiée",
     delivered: "Livrée",
+  };
+
+  const getNextStatus = (currentStatus: string): { status: string; label: string } | null => {
+    switch (currentStatus) {
+      case "pending":
+        return { status: "processing", label: "Traiter" };
+      case "processing":
+        return { status: "shipped", label: "Expédier" };
+      case "shipped":
+        return { status: "delivered", label: "Marquer livré" };
+      default:
+        return null;
+    }
+  };
+
+  const nextStatus = getNextStatus(order.status);
+
+  const handleStatusChange = () => {
+    if (nextStatus && onStatusChange) {
+      onStatusChange(order.id, nextStatus.status);
+      onClose();
+    }
   };
 
   return (
@@ -153,6 +178,19 @@ const OrderDetailsDialog = ({ order, onClose }: OrderDetailsDialogProps) => {
             )}
           </div>
         </div>
+
+        {/* Actions Footer */}
+        {nextStatus && onStatusChange && (
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={onClose}>
+              Fermer
+            </Button>
+            <Button onClick={handleStatusChange}>
+              {nextStatus.label}
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
