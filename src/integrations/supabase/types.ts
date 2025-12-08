@@ -949,6 +949,7 @@ export type Database = {
       }
       door_scheduled_access: {
         Row: {
+          access_code: string | null
           anr_id: string
           auto_clockout_minutes: number | null
           created_at: string | null
@@ -957,6 +958,8 @@ export type Database = {
           granted_by: string
           granted_to_company: string | null
           granted_to_user: string | null
+          guest_contact: string | null
+          guest_name: string | null
           id: string
           instructions_for_visitor: string | null
           is_active: boolean | null
@@ -973,6 +976,7 @@ export type Database = {
           valid_until: string | null
         }
         Insert: {
+          access_code?: string | null
           anr_id: string
           auto_clockout_minutes?: number | null
           created_at?: string | null
@@ -981,6 +985,8 @@ export type Database = {
           granted_by: string
           granted_to_company?: string | null
           granted_to_user?: string | null
+          guest_contact?: string | null
+          guest_name?: string | null
           id?: string
           instructions_for_visitor?: string | null
           is_active?: boolean | null
@@ -997,6 +1003,7 @@ export type Database = {
           valid_until?: string | null
         }
         Update: {
+          access_code?: string | null
           anr_id?: string
           auto_clockout_minutes?: number | null
           created_at?: string | null
@@ -1005,6 +1012,8 @@ export type Database = {
           granted_by?: string
           granted_to_company?: string | null
           granted_to_user?: string | null
+          guest_contact?: string | null
+          guest_name?: string | null
           id?: string
           instructions_for_visitor?: string | null
           is_active?: boolean | null
