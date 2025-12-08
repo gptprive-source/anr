@@ -88,7 +88,7 @@ export function useEmployeeDoorAccess() {
     options?: {
       gps_latitude?: number;
       gps_longitude?: number;
-      face_image_base64?: string;
+      face_verified?: boolean; // Nouveau: indique si la vérification faciale a été faite côté client
       schedule_id?: string;
       assignment_id?: string;
     }
@@ -115,24 +115,11 @@ export function useEmployeeDoorAccess() {
           gps_latitude: options?.gps_latitude,
           gps_longitude: options?.gps_longitude,
           action: 'ENTRY',
+          face_verified: options?.face_verified, // Transmettre le résultat de la vérification locale
         },
       });
 
       if (validateResponse.error) throw new Error(validateResponse.error.message);
-
-      // Vérification faciale si requise
-      if (options?.face_image_base64) {
-        const faceResponse = await supabase.functions.invoke('verify-face', {
-          body: {
-            image_base64: options.face_image_base64,
-            anr_id: anrId,
-          },
-        });
-
-        if (faceResponse.error || !faceResponse.data.verified) {
-          throw new Error('Vérification faciale échouée');
-        }
-      }
 
       toast({
         title: "Entrée enregistrée",
@@ -165,7 +152,7 @@ export function useEmployeeDoorAccess() {
     options?: {
       gps_latitude?: number;
       gps_longitude?: number;
-      face_image_base64?: string;
+      face_verified?: boolean; // Nouveau: indique si la vérification faciale a été faite côté client
       client_signature?: string;
       client_signature_name?: string;
       employee_report?: string;
@@ -173,20 +160,6 @@ export function useEmployeeDoorAccess() {
   ): Promise<DoorResult | null> => {
     setLoading(true);
     try {
-      // Vérification faciale si requise
-      if (options?.face_image_base64) {
-        const faceResponse = await supabase.functions.invoke('verify-face', {
-          body: {
-            image_base64: options.face_image_base64,
-            anr_id: anrId,
-          },
-        });
-
-        if (faceResponse.error || !faceResponse.data.verified) {
-          throw new Error('Vérification faciale échouée');
-        }
-      }
-
       // Générer un token de sortie
       const tokenResponse = await supabase.functions.invoke('generate-door-token', {
         body: {
@@ -207,6 +180,7 @@ export function useEmployeeDoorAccess() {
           gps_longitude: options?.gps_longitude,
           action: 'EXIT',
           session_id: sessionId,
+          face_verified: options?.face_verified, // Transmettre le résultat de la vérification locale
         },
       });
 
