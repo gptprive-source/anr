@@ -61,7 +61,7 @@ export function useGrantedAccess() {
 
       const userAnrCode = (residentData.habitations.anrs as any).code;
 
-      // Find all scheduled access where this user is the beneficiary
+      // Find all scheduled access where this user is the beneficiary (NOT the grantor)
       const { data: accessData, error } = await supabase
         .from('door_scheduled_access')
         .select(`
@@ -83,6 +83,7 @@ export function useGrantedAccess() {
           anr_id
         `)
         .eq('beneficiary_anr_code', userAnrCode)
+        .neq('granted_by', user.id) // Exclude access the user granted themselves
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
