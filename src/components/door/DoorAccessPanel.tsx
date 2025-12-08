@@ -30,11 +30,12 @@ import { useToast } from '@/hooks/use-toast';
 interface DoorAccessPanelProps {
   anrId: string;
   anrCode: string;
+  hasDoorModule?: boolean;
 }
 
-export function DoorAccessPanel({ anrId, anrCode }: DoorAccessPanelProps) {
+export function DoorAccessPanel({ anrId, anrCode, hasDoorModule = true }: DoorAccessPanelProps) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState('instant');
+  const [activeTab, setActiveTab] = useState(hasDoorModule ? 'instant' : 'scheduled');
   const { toast } = useToast();
 
   const {
@@ -122,102 +123,125 @@ export function DoorAccessPanel({ anrId, anrCode }: DoorAccessPanelProps) {
 
         {/* Accès instantané */}
         <TabsContent value="instant" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DoorOpen className="h-5 w-5" />
-                Ouverture de porte
-              </CardTitle>
-              <CardDescription>
-                Ouvrez la porte via Bluetooth Low Energy
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* BLE Open Door Button */}
-              <BleOpenDoorButton
-                anrId={anrId}
-                anrCode={anrCode}
-                onSuccess={() => {
-                  // Refresh logs after successful open
-                  setTimeout(() => refreshLogs(), 1000);
-                }}
-              />
+          {!hasDoorModule ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DoorOpen className="h-5 w-5 text-muted-foreground" />
+                  Module de porte non installé
+                </CardTitle>
+                <CardDescription>
+                  L'ouverture instantanée nécessite un module de porte physique.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Le module de porte ANR permet d'ouvrir votre porte à distance via Bluetooth.
+                  Contactez notre support pour commander et installer votre module.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  En attendant, vous pouvez déjà <strong>planifier des accès</strong> dans l'onglet "Accès programmés".
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DoorOpen className="h-5 w-5" />
+                  Ouverture de porte
+                </CardTitle>
+                <CardDescription>
+                  Ouvrez la porte via Bluetooth Low Energy
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* BLE Open Door Button */}
+                <BleOpenDoorButton
+                  anrId={anrId}
+                  anrCode={anrCode}
+                  onSuccess={() => {
+                    // Refresh logs after successful open
+                    setTimeout(() => refreshLogs(), 1000);
+                  }}
+                />
 
-              {/* Manual token generation section */}
-              <div className="pt-4 border-t">
-                <div className="flex items-center gap-2 mb-4">
-                  <Key className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Ou générer un token manuel
-                  </span>
-                </div>
-                
-                <Button 
-                  onClick={handleGenerateToken} 
-                  disabled={loading}
-                  variant="outline"
-                  className="w-full"
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Key className="h-4 w-4 mr-2" />
+                {/* Manual token generation section */}
+                <div className="pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Key className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Ou générer un token manuel
+                    </span>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleGenerateToken} 
+                    disabled={loading}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Key className="h-4 w-4 mr-2" />
+                    )}
+                    Générer token JWS
+                  </Button>
+
+                  {/* Token généré */}
+                  {generatedToken && (
+                    <Card className="bg-muted/50 mt-4">
+                      <CardContent className="pt-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                            <span className="font-medium">Token généré</span>
+                          </div>
+                          <Badge>
+                            {generatedToken.token.ttl_seconds}s
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-sm text-muted-foreground">
+                            <strong>ID:</strong> {generatedToken.token.id.substring(0, 8)}...
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <strong>Valide jusqu'à:</strong>{' '}
+                            {format(new Date(generatedToken.token.valid_until), 'HH:mm:ss', { locale: fr })}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleCopyToken}
+                            className="flex-1"
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copier
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="flex-1"
+                          >
+                            <QrCode className="h-4 w-4 mr-2" />
+                            QR Code
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
                   )}
-                  Générer token JWS
-                </Button>
-
-                {/* Token généré */}
-                {generatedToken && (
-                  <Card className="bg-muted/50 mt-4">
-                    <CardContent className="pt-4 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                          <span className="font-medium">Token généré</span>
-                        </div>
-                        <Badge>
-                          {generatedToken.token.ttl_seconds}s
-                        </Badge>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">
-                          <strong>ID:</strong> {generatedToken.token.id.substring(0, 8)}...
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          <strong>Valide jusqu'à:</strong>{' '}
-                          {format(new Date(generatedToken.token.valid_until), 'HH:mm:ss', { locale: fr })}
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={handleCopyToken}
-                          className="flex-1"
-                        >
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copier
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="flex-1"
-                        >
-                          <QrCode className="h-4 w-4 mr-2" />
-                          QR Code
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Simulation Panel - Development Mode */}
-          {import.meta.env.DEV && (
+          {import.meta.env.DEV && hasDoorModule && (
             <BleSimulatorPanel />
           )}
         </TabsContent>
