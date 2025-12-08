@@ -13,6 +13,7 @@ import ChangeAddressDialog from "@/components/account/ChangeAddressDialog";
 import RGPDRequestDialog from "@/components/account/RGPDRequestDialog";
 import VisitorModeSection from "@/components/account/VisitorModeSection";
 import LeaveHabitationDialog from "@/components/account/LeaveHabitationDialog";
+import GrantedAccessSection from "@/components/resident/GrantedAccessSection";
 interface ProfileData {
   first_name: string | null;
   last_name: string | null;
@@ -361,6 +362,9 @@ const Account = () => {
               <ChevronRight className="w-5 h-5 text-primary" />
             </div>
           </Link>}
+
+        {/* Granted Access Section - Shows door access granted TO this user */}
+        <GrantedAccessSection />
 
         {/* Visitor Mode Section */}
         <VisitorModeSection 
