@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { MapPin, User, Phone, Package, Calendar, ArrowRight } from "lucide-react";
+import { MapPin, User, Phone, Package, Calendar, ArrowRight, CheckCircle } from "lucide-react";
 import DomingPreview from "./DomingPreview";
 
 interface Order {
@@ -51,20 +51,20 @@ const OrderDetailsDialog = ({ order, onClose, onStatusChange }: OrderDetailsDial
     delivered: "Livrée",
   };
 
-  const getNextStatus = (currentStatus: string): { status: string; label: string } | null => {
-    switch (currentStatus) {
-      case "pending":
-        return { status: "processing", label: "Traiter" };
-      case "processing":
-        return { status: "shipped", label: "Expédier" };
-      case "shipped":
-        return { status: "delivered", label: "Marquer livré" };
-      default:
-        return null;
-    }
+  const statusColors: Record<string, string> = {
+    pending: "bg-yellow-500/20 text-yellow-700 border-yellow-500/50",
+    processing: "bg-blue-500/20 text-blue-700 border-blue-500/50",
+    shipped: "bg-purple-500/20 text-purple-700 border-purple-500/50",
+    delivered: "bg-green-500/20 text-green-700 border-green-500/50",
   };
 
-  const nextStatus = getNextStatus(order.status);
+  const nextStatusConfig: Record<string, { status: string; label: string; buttonClass: string }> = {
+    pending: { status: "processing", label: "Traiter", buttonClass: "bg-blue-600 hover:bg-blue-700 text-white" },
+    processing: { status: "shipped", label: "Expédier", buttonClass: "bg-purple-600 hover:bg-purple-700 text-white" },
+    shipped: { status: "delivered", label: "Marquer livré", buttonClass: "bg-green-600 hover:bg-green-700 text-white" },
+  };
+
+  const nextStatus = nextStatusConfig[order.status] || null;
 
   const handleStatusChange = () => {
     if (nextStatus && onStatusChange) {
@@ -84,27 +84,34 @@ const OrderDetailsDialog = ({ order, onClose, onStatusChange }: OrderDetailsDial
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Status & Date & Actions */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="text-sm">
+          {/* Status & Actions */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <Badge className={`text-sm px-3 py-1 ${statusColors[order.status] || "bg-muted"}`}>
                 {statusLabels[order.status] || order.status}
               </Badge>
-              {/* Debug: Show actual status value */}
-              <span className="text-xs text-muted-foreground">(status: {order.status})</span>
-              {nextStatus && onStatusChange ? (
-                <Button size="sm" onClick={handleStatusChange}>
-                  {nextStatus.label}
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              ) : !nextStatus ? (
-                <Badge variant="secondary" className="text-sm">Traitement terminé</Badge>
-              ) : null}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="w-4 h-4" />
+                {format(new Date(order.created_at), "PPP à HH:mm", { locale: fr })}
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="w-4 h-4" />
-              {format(new Date(order.created_at), "PPP à HH:mm", { locale: fr })}
-            </div>
+            
+            {/* Action Button - Prominent */}
+            {nextStatus && onStatusChange ? (
+              <Button 
+                size="lg" 
+                className={`w-full ${nextStatus.buttonClass} font-semibold shadow-lg`}
+                onClick={handleStatusChange}
+              >
+                {nextStatus.label}
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            ) : (
+              <div className="flex items-center justify-center gap-2 py-3 bg-green-500/10 rounded-lg border border-green-500/30">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-green-700 font-medium">Traitement terminé</span>
+              </div>
+            )}
           </div>
 
           <Separator />
