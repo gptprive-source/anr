@@ -90,7 +90,7 @@ export function useDoorAccess(anrId: string | null) {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!session?.access_token) {
         throw new Error('Non authentifié');
       }
 
@@ -104,6 +104,9 @@ export function useDoorAccess(anrId: string | null) {
           granted_to_company: options?.granted_to_company,
           granted_to_employee: options?.granted_to_employee,
           call_id: options?.call_id,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
