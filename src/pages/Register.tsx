@@ -81,6 +81,14 @@ const Register = () => {
     return Array.isArray(features) ? features : [];
   };
 
+  const getMembersInfo = (planId: string) => {
+    return {
+      membersIncluded: getConfig(`${planId}_members_included`) || 0,
+      maxExtraMembers: getConfig(`${planId}_max_extra_members`) || 0,
+      extraMemberPrice: getConfig(`${planId}_extra_member_price`) || 0,
+    };
+  };
+
   // Handle account type selection
   const handlePlanSelect = (planId: string) => {
     if (planId === 'particulier') {
@@ -126,6 +134,7 @@ const Register = () => {
               const price = getPrice(plan.id);
               const description = getDescription(plan.id);
               const features = getFeatures(plan.id);
+              const membersInfo = getMembersInfo(plan.id);
 
               return (
                 <Card 
@@ -168,6 +177,29 @@ const Register = () => {
                             <li className="text-primary text-xs">+ {features.length - 5} autres avantages</li>
                           )}
                         </ul>
+                      )}
+
+                      {plan.isPro && (membersInfo.membersIncluded > 0 || membersInfo.maxExtraMembers > 0) && (
+                        <div className="text-xs text-muted-foreground space-y-1 mb-3 border-t border-border/50 pt-3">
+                          {membersInfo.membersIncluded > 0 && (
+                            <div className="flex justify-between">
+                              <span>Membres inclus</span>
+                              <span className="font-medium text-foreground">{membersInfo.membersIncluded}</span>
+                            </div>
+                          )}
+                          {membersInfo.maxExtraMembers > 0 && (
+                            <div className="flex justify-between">
+                              <span>Membres supplémentaires max</span>
+                              <span className="font-medium text-foreground">{membersInfo.maxExtraMembers}</span>
+                            </div>
+                          )}
+                          {membersInfo.extraMemberPrice > 0 && (
+                            <div className="flex justify-between">
+                              <span>Tarif/Membre supplémentaire</span>
+                              <span className="font-medium text-foreground">{membersInfo.extraMemberPrice}€/mois</span>
+                            </div>
+                          )}
+                        </div>
                       )}
                       
                       <div className={`text-sm font-medium ${plan.color}`}>
