@@ -120,6 +120,7 @@ const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) 
   const [legalName, setLegalName] = useState("");
   const [siret, setSiret] = useState("");
   const [sector, setSector] = useState("");
+  const [customSector, setCustomSector] = useState("");
 
   // Contact info
   const [contactFirstName, setContactFirstName] = useState("");
@@ -146,7 +147,8 @@ const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) 
   const [acceptCgu, setAcceptCgu] = useState(false);
 
   const handleCompanySubmit = () => {
-    if (!companyName.trim() || !siret.trim() || !sector) {
+    const effectiveSector = sector === "Autre" ? customSector.trim() : sector;
+    if (!companyName.trim() || !siret.trim() || !effectiveSector) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs obligatoires",
@@ -267,11 +269,12 @@ const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) 
       if (!authData.user) throw new Error("Erreur lors de la création du compte");
 
       // 2. Redirect to Stripe checkout
+      const effectiveSector = sector === "Autre" ? customSector.trim() : sector;
       const companyData = {
         name: companyName,
         legal_name: legalName || companyName,
         siret: siret.replace(/\s/g, ""),
-        sector,
+        sector: effectiveSector,
         contact_name: `${contactFirstName} ${contactLastName}`,
         contact_email: contactEmail,
         contact_phone: contactPhone,
@@ -393,7 +396,10 @@ const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) 
 
                 <div>
                   <Label htmlFor="sector">Secteur d'activité *</Label>
-                  <Select value={sector} onValueChange={setSector}>
+                  <Select value={sector} onValueChange={(val) => {
+                    setSector(val);
+                    if (val !== "Autre") setCustomSector("");
+                  }}>
                     <SelectTrigger data-copilot-id="sector-select">
                       <SelectValue placeholder="Sélectionnez votre secteur" />
                     </SelectTrigger>
@@ -403,6 +409,14 @@ const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) 
                       ))}
                     </SelectContent>
                   </Select>
+                  {sector === "Autre" && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Précisez votre secteur d'activité"
+                      value={customSector}
+                      onChange={(e) => setCustomSector(e.target.value)}
+                    />
+                  )}
                 </div>
               </div>
 
