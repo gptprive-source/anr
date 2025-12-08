@@ -83,8 +83,8 @@ const AppContent = () => {
       <Sonner />
       <InstallPrompt />
       <SupportChat />
-      <CoPilotChat />
       <BrowserRouter>
+        <CoPilotChat />
         <SupportAlertOverlay />
         <GlobalIncomingCallListener />
         <Routes>
