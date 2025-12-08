@@ -552,6 +552,59 @@ export type Database = {
           },
         ]
       }
+      daily_usage_logs: {
+        Row: {
+          call_id: string | null
+          duration_seconds: number
+          ended_at: string | null
+          estimated_cost_usd: number
+          id: string
+          is_group_call: boolean
+          is_video: boolean
+          participant_count: number
+          participant_minutes: number
+          room_name: string
+          started_at: string | null
+          synced_at: string
+        }
+        Insert: {
+          call_id?: string | null
+          duration_seconds?: number
+          ended_at?: string | null
+          estimated_cost_usd?: number
+          id?: string
+          is_group_call?: boolean
+          is_video?: boolean
+          participant_count?: number
+          participant_minutes?: number
+          room_name: string
+          started_at?: string | null
+          synced_at?: string
+        }
+        Update: {
+          call_id?: string | null
+          duration_seconds?: number
+          ended_at?: string | null
+          estimated_cost_usd?: number
+          id?: string
+          is_group_call?: boolean
+          is_video?: boolean
+          participant_count?: number
+          participant_minutes?: number
+          room_name?: string
+          started_at?: string | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_usage_logs_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "call_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doming_orders: {
         Row: {
           anr_id: string
