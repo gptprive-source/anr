@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-type Step = "company" | "contact" | "plan" | "credentials" | "email-sent" | "success";
+type Step = "company" | "contact" | "plan" | "credentials" | "payment";
 
 interface RegisterProFormProps {
   onBack: () => void;
@@ -111,7 +111,6 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
   const [wantsCopilot, setWantsCopilot] = useState(false);
   const [wantsGeofencing, setWantsGeofencing] = useState(false);
   const [wantsFaceRecognition, setWantsFaceRecognition] = useState(false);
-  const [wantsWebhooks, setWantsWebhooks] = useState(false);
 
   // Credentials
   const [email, setEmail] = useState("");
@@ -172,6 +171,19 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
     setStep("credentials");
   };
 
+  const calculateTotalPrice = () => {
+    const plan = PLANS.find(p => p.id === selectedPlan);
+    let total = plan?.priceValue || 29;
+    
+    if (selectedPlan === "pro") {
+      if (wantsCopilot) total += 9.99;
+      if (wantsGeofencing) total += 5;
+      if (wantsFaceRecognition) total += 10;
+    }
+    
+    return total.toFixed(2);
+  };
+
   const handleCredentialsSubmit = async () => {
     const emailValidation = emailSchema.safeParse(email.trim());
     const passwordValidation = passwordSchema.safeParse(password);
@@ -214,7 +226,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
 
     setLoading(true);
     try {
-      // 1. Create user account
+      // 1. Create user account first
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -229,45 +241,43 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
       if (authError) throw authError;
       if (!authData.user) throw new Error("Erreur lors de la création du compte");
 
-      // 2. Create company
-      const plan = PLANS.find(p => p.id === selectedPlan);
-      const { data: company, error: companyError } = await supabase
-        .from("pro_companies")
-        .insert({
-          name: companyName,
-          legal_name: legalName || companyName,
-          siret: siret.replace(/\s/g, ""),
-          sector,
-          contact_name: `${contactFirstName} ${contactLastName}`,
-          contact_email: contactEmail,
-          contact_phone: contactPhone,
-          address,
-          postal_code: postalCode,
-          city,
-          plan_type: selectedPlan,
-          max_employees: employeeCount[0],
-          copilot_enabled: selectedPlan !== "pro" || wantsCopilot,
-          enable_geofencing: selectedPlan !== "pro" || wantsGeofencing,
-          require_face_recognition_default: selectedPlan !== "pro" || wantsFaceRecognition,
-          enable_webhook: selectedPlan === "collectivite" || (selectedPlan === "entreprise" && wantsWebhooks)
-        })
-        .select()
-        .single();
+      // 2. Redirect to Stripe checkout
+      const companyData = {
+        name: companyName,
+        legal_name: legalName || companyName,
+        siret: siret.replace(/\s/g, ""),
+        sector,
+        contact_name: `${contactFirstName} ${contactLastName}`,
+        contact_email: contactEmail,
+        contact_phone: contactPhone,
+        address,
+        postal_code: postalCode,
+        city,
+      };
 
-      if (companyError) throw companyError;
+      const addons = {
+        copilot: selectedPlan !== "pro" || wantsCopilot,
+        geofencing: selectedPlan !== "pro" || wantsGeofencing,
+        face_recognition: selectedPlan !== "pro" || wantsFaceRecognition,
+      };
 
-      // 3. Assign owner role
-      const { error: roleError } = await supabase
-        .from("pro_company_roles")
-        .insert({
-          company_id: company.id,
-          user_id: authData.user.id,
-          role: "owner"
-        });
+      const { data, error } = await supabase.functions.invoke("create-pro-checkout", {
+        body: {
+          plan: selectedPlan,
+          employeeCount: employeeCount[0],
+          addons,
+          companyData,
+          userEmail: email.trim(),
+          userId: authData.user.id
+        }
+      });
 
-      if (roleError) throw roleError;
+      if (error) throw error;
+      if (!data?.url) throw new Error("Erreur lors de la création de la session de paiement");
 
-      setStep("email-sent");
+      // Redirect to Stripe
+      window.location.href = data.url;
+      
     } catch (error: any) {
       if (error.message?.includes("already registered")) {
         toast({
@@ -297,11 +307,11 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
       <div className="w-full max-w-lg">
         {/* Progress */}
         <div className="flex justify-center gap-2 mb-8">
-          {["company", "contact", "plan", "credentials", "email-sent", "success"].map((s, i) => (
+          {["company", "contact", "plan", "credentials"].map((s, i) => (
             <div
               key={s}
               className={`h-1 w-8 rounded-full transition-colors ${
-                ["company", "contact", "plan", "credentials", "email-sent", "success"].indexOf(step) >= i
+                ["company", "contact", "plan", "credentials"].indexOf(step) >= i
                   ? "bg-gradient-to-r from-blue-600 to-cyan-500"
                   : "bg-secondary"
               }`}
@@ -311,7 +321,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
 
         <div className="glass-effect rounded-3xl p-8 card-shadow">
           {step === "company" && (
-            <div className="space-y-6">
+            <div className="space-y-6" data-copilot-id="pro-register-company-step">
               <div className="text-center">
                 <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-r from-blue-600/20 to-cyan-500/20 flex items-center justify-center mb-4">
                   <Building2 className="h-6 w-6 text-blue-600" />
@@ -330,6 +340,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="Ma Société"
+                    data-copilot-id="company-name-input"
                   />
                 </div>
 
@@ -351,13 +362,14 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
                     onChange={(e) => setSiret(e.target.value)}
                     placeholder="123 456 789 00012"
                     maxLength={17}
+                    data-copilot-id="siret-input"
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="sector">Secteur d'activité *</Label>
                   <Select value={sector} onValueChange={setSector}>
-                    <SelectTrigger>
+                    <SelectTrigger data-copilot-id="sector-select">
                       <SelectValue placeholder="Sélectionnez votre secteur" />
                     </SelectTrigger>
                     <SelectContent>
@@ -383,7 +395,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
           )}
 
           {step === "contact" && (
-            <div className="space-y-6">
+            <div className="space-y-6" data-copilot-id="pro-register-contact-step">
               <div className="text-center">
                 <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-r from-blue-600/20 to-cyan-500/20 flex items-center justify-center mb-4">
                   <User className="h-6 w-6 text-blue-600" />
@@ -478,7 +490,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
           )}
 
           {step === "plan" && (
-            <div className="space-y-6">
+            <div className="space-y-6" data-copilot-id="pro-register-plan-step">
               <div className="text-center">
                 <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-r from-blue-600/20 to-cyan-500/20 flex items-center justify-center mb-4">
                   <CreditCard className="h-6 w-6 text-blue-600" />
@@ -502,6 +514,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
                       setSelectedPlan(plan.id);
                       setEmployeeCount([Math.min(employeeCount[0], plan.maxEmployees)]);
                     }}
+                    data-copilot-id={`plan-${plan.id}`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -581,6 +594,14 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
                 </div>
               )}
 
+              {/* Price summary */}
+              <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Total mensuel</span>
+                  <span className="text-xl font-bold text-primary">{calculateTotalPrice()}€/mois</span>
+                </div>
+              </div>
+
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep("contact")} className="flex-1">
                   <ArrowLeft className="h-4 w-4 mr-2" />
@@ -595,14 +616,14 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
           )}
 
           {step === "credentials" && (
-            <div className="space-y-6">
+            <div className="space-y-6" data-copilot-id="pro-register-credentials-step">
               <div className="text-center">
                 <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-r from-blue-600/20 to-cyan-500/20 flex items-center justify-center mb-4">
                   <Lock className="h-6 w-6 text-blue-600" />
                 </div>
                 <h2 className="text-xl font-semibold">Créez votre compte</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Définissez vos identifiants de connexion
+                  Définissez vos identifiants puis procédez au paiement
                 </p>
               </div>
 
@@ -681,6 +702,17 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
                 </div>
               </div>
 
+              {/* Final price */}
+              <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">À payer maintenant</span>
+                  <span className="text-xl font-bold text-primary">{calculateTotalPrice()}€/mois</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Vous serez redirigé vers Stripe pour le paiement sécurisé
+                </p>
+              </div>
+
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep("plan")} className="flex-1">
                   <ArrowLeft className="h-4 w-4 mr-2" />
@@ -690,44 +722,18 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
                   onClick={handleCredentialsSubmit}
                   disabled={loading || !acceptCgu || password !== confirmPassword}
                   className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-500"
+                  data-copilot-id="pro-submit-btn"
                 >
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
-                      Créer le compte
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Payer et créer
                     </>
                   )}
                 </Button>
               </div>
-            </div>
-          )}
-
-          {step === "email-sent" && (
-            <div className="space-y-6 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-r from-blue-600/20 to-cyan-500/20 flex items-center justify-center">
-                <CheckCircle className="h-8 w-8 text-blue-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Vérifiez votre email</h2>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Un email de confirmation a été envoyé à <strong>{email}</strong>. 
-                  Cliquez sur le lien pour activer votre compte.
-                </p>
-              </div>
-              <div className="p-4 bg-muted/50 rounded-xl text-sm">
-                <p className="font-medium mb-2">Prochaines étapes :</p>
-                <ol className="text-left text-muted-foreground space-y-1">
-                  <li>1. Confirmez votre email</li>
-                  <li>2. Connectez-vous à votre espace PRO</li>
-                  <li>3. Finalisez le paiement</li>
-                  <li>4. Ajoutez vos employés</li>
-                </ol>
-              </div>
-              <Button onClick={() => navigate("/login")} className="w-full bg-gradient-to-r from-blue-600 to-cyan-500">
-                Aller à la connexion
-              </Button>
             </div>
           )}
         </div>

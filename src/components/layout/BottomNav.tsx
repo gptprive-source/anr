@@ -1,6 +1,7 @@
-import { Home, QrCode, User } from "lucide-react";
+import { Home, QrCode, User, Building2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useProCompanyCheck } from "@/hooks/useProCompanyCheck";
 
 interface NavItem {
   icon: React.ReactNode;
@@ -11,10 +12,12 @@ interface NavItem {
 const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isProUser } = useProCompanyCheck();
 
   const navItems: NavItem[] = [
     { icon: <Home className="w-6 h-6" />, label: "Habitant", path: "/dashboard" },
     { icon: <QrCode className="w-6 h-6" />, label: "Visiteur", path: "/visitor" },
+    ...(isProUser ? [{ icon: <Building2 className="w-6 h-6" />, label: "PRO", path: "/pro" }] : []),
     { icon: <User className="w-6 h-6" />, label: "Compte", path: "/account" },
   ];
 
@@ -22,11 +25,12 @@ const BottomNav = () => {
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-t border-border safe-area-bottom">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
+          const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
           return (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
+              data-copilot-id={`bottom-nav-${item.label.toLowerCase()}`}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
                 isActive 

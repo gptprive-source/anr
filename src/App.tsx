@@ -33,6 +33,7 @@ import Messages from "./pages/Messages";
 import DoorAccess from "./pages/DoorAccess";
 import EmployeeScan from "./pages/EmployeeScan";
 import ProDashboard from "./pages/pro/ProDashboard";
+import ProRegistrationSuccess from "./pages/pro/ProRegistrationSuccess";
 import FAQ from "./pages/FAQ";
 import CGU from "./pages/CGU";
 import Privacy from "./pages/Privacy";
@@ -163,6 +164,7 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/pro/registration-success" element={<ProRegistrationSuccess />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/cgu" element={<CGU />} />
           <Route path="/privacy" element={<Privacy />} />
