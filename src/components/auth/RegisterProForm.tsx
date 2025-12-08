@@ -16,6 +16,7 @@ type Step = "company" | "contact" | "plan" | "credentials" | "payment";
 
 interface RegisterProFormProps {
   onBack: () => void;
+  initialPlan?: string;
 }
 
 const emailSchema = z.string().email("Email invalide");
@@ -80,7 +81,7 @@ const PLAN_FEATURES = {
   }
 };
 
-const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
+const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) => {
   const [step, setStep] = useState<Step>("company");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -130,7 +131,7 @@ const RegisterProForm = ({ onBack }: RegisterProFormProps) => {
   const [city, setCity] = useState("");
 
   // Plan
-  const [selectedPlan, setSelectedPlan] = useState("pro");
+  const [selectedPlan, setSelectedPlan] = useState(initialPlan === 'collectivites' ? 'collectivite' : initialPlan);
   const [employeeCount, setEmployeeCount] = useState([30]);
   const [wantsCopilot, setWantsCopilot] = useState(false);
   const [wantsGeofencing, setWantsGeofencing] = useState(false);
