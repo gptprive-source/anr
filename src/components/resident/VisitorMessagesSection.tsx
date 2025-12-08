@@ -136,7 +136,7 @@ const VisitorMessagesSection = ({ habitationId }: VisitorMessagesSectionProps) =
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 min-w-0">
               {latestMessage.message && (
-                <p className="text-sm whitespace-pre-wrap break-words">{latestMessage.message}</p>
+                <p className="text-sm whitespace-pre-wrap break-words line-clamp-3">{latestMessage.message}</p>
               )}
               
               {/* Voice message player */}

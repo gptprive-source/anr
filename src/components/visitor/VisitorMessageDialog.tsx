@@ -295,15 +295,15 @@ const VisitorMessageDialog = ({
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="text" className="gap-1.5 text-xs sm:text-sm">
                   <FileText className="w-3.5 h-3.5" />
-                  <span className="hidden xs:inline">Texte</span>
+                  Texte
                 </TabsTrigger>
                 <TabsTrigger value="voice" className="gap-1.5 text-xs sm:text-sm">
                   <Mic className="w-3.5 h-3.5" />
-                  <span className="hidden xs:inline">Vocal</span>
+                  Vocal
                 </TabsTrigger>
                 <TabsTrigger value="both" className="gap-1.5 text-xs sm:text-sm">
                   <MessageSquare className="w-3.5 h-3.5" />
-                  <span className="hidden xs:inline">Les deux</span>
+                  Les deux
                 </TabsTrigger>
               </TabsList>
 
