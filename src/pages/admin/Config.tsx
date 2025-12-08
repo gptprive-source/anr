@@ -169,7 +169,9 @@ const Config = () => {
             }
 
             // Pour les tarifs annuels, afficher en mensuel (diviser par 12)
-            const displayValue = feature.isAnnual ? Math.round((value ?? 0) / 12 * 100) / 100 : (value ?? 0);
+            // Utiliser localChanges si présent, sinon value de la DB
+            const rawValue = configKey in localChanges ? localChanges[configKey] : (value ?? 0);
+            const displayValue = feature.isAnnual ? Math.round(rawValue / 12 * 100) / 100 : rawValue;
             const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               const inputValue = Number(e.target.value);
               // Si c'est un tarif annuel, multiplier par 12 pour stocker
