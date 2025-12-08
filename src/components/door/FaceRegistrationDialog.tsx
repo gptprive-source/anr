@@ -88,25 +88,35 @@ export function FaceRegistrationDialog({
       try {
         // Use the best quality image (last one captured)
         const bestImage = newImages[newImages.length - 1];
-        const response = await supabase.functions.invoke('register-face', {
+        console.log('Sending face registration request...');
+        
+        const { data, error: invokeError } = await supabase.functions.invoke('register-face', {
           body: {
-            image_base64: bestImage.split(',')[1],
+            image_base64: bestImage, // Send full data URL, edge function will clean it
             employee_id: employeeId,
             consent_given: true,
             consent_method: 'dialog_checkbox',
           },
         });
 
-        if (response.error) throw new Error(response.error.message);
+        console.log('Face registration response:', { data, invokeError });
 
-        if (response.data.success) {
+        if (invokeError) {
+          throw new Error(invokeError.message || 'Erreur de connexion');
+        }
+
+        if (!data) {
+          throw new Error('Pas de réponse du serveur');
+        }
+
+        if (data.success) {
           setStep('success');
           toast({
             title: "Visage enregistré",
             description: "Votre reconnaissance faciale est maintenant active",
           });
         } else {
-          throw new Error(response.data.error || 'Échec de l\'enregistrement');
+          throw new Error(data.message || data.error || 'Échec de l\'enregistrement');
         }
       } catch (err) {
         console.error('Erreur enregistrement:', err);
