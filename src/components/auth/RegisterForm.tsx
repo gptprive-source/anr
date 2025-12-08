@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle, CreditCard, Plus, Minus, FileText, LogOut } from "lucide-react";
+import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle, CreditCard, Plus, Minus, FileText, LogOut, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,7 @@ const RegisterForm = () => {
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [addressFields, setAddressFields] = useState({
@@ -211,7 +212,7 @@ const RegisterForm = () => {
     checkUserState();
   }, [user, authLoading, initialCheckDone, navigate, searchParams]);
   const handleCredentialsSubmit = async () => {
-    const emailValidation = emailSchema.safeParse(email);
+    const emailValidation = emailSchema.safeParse(email.trim());
     const passwordValidation = passwordSchema.safeParse(password);
     if (!emailValidation.success) {
       toast({
@@ -225,6 +226,14 @@ const RegisterForm = () => {
       toast({
         title: "Erreur",
         description: passwordValidation.error.errors[0].message,
+        variant: "destructive"
+      });
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast({
+        title: "Erreur",
+        description: "Les mots de passe ne correspondent pas",
         variant: "destructive"
       });
       return;
@@ -444,7 +453,7 @@ const RegisterForm = () => {
         </div>
 
         <div className="glass-effect rounded-3xl p-8 card-shadow">
-          {step === "credentials" && <CredentialsStep email={email} password={password} setEmail={setEmail} setPassword={setPassword} onSubmit={handleCredentialsSubmit} loading={loading} />}
+          {step === "credentials" && <CredentialsStep email={email} password={password} confirmPassword={confirmPassword} setEmail={setEmail} setPassword={setPassword} setConfirmPassword={setConfirmPassword} onSubmit={handleCredentialsSubmit} loading={loading} />}
           {step === "email-sent" && <EmailSentStep email={email} onResend={handleResendEmail} onBack={() => setStep("credentials")} loading={loading} />}
           {step === "profile" && <ProfileStep firstName={firstName} lastName={lastName} setFirstName={setFirstName} setLastName={setLastName} onSubmit={handleProfileSubmit} loading={loading} onFinishLater={handleFinishLater} />}
           {step === "address" && <AddressStep addressFields={addressFields} setAddressFields={setAddressFields} onSubmit={handleAddressSubmit} onBack={() => setStep("profile")} loading={loading} onFinishLater={handleFinishLater} />}
@@ -464,48 +473,102 @@ const RegisterForm = () => {
 const CredentialsStep = ({
   email,
   password,
+  confirmPassword,
   setEmail,
   setPassword,
+  setConfirmPassword,
   onSubmit,
   loading
 }: {
   email: string;
   password: string;
+  confirmPassword: string;
   setEmail: (v: string) => void;
   setPassword: (v: string) => void;
+  setConfirmPassword: (v: string) => void;
   onSubmit: () => void;
   loading: boolean;
-}) => <div className="space-y-6">
-    <div className="text-center">
-      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-        <Mail className="w-8 h-8 text-primary" />
-      </div>
-      <h2 className="text-2xl font-bold mb-2">Activez votre ANR</h2>
-      <p className="text-muted-foreground">
-        Entrez vos informations de connexion
-      </p>
-    </div>
+}) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" placeholder="votre@email.com" value={email} onChange={e => setEmail(e.target.value)} disabled={loading} />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="password">Mot de passe</Label>
-        <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input id="password" type="password" placeholder="Minimum 6 caractères" value={password} onChange={e => setPassword(e.target.value)} className="pl-10" disabled={loading} />
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+          <Mail className="w-8 h-8 text-primary" />
         </div>
+        <h2 className="text-2xl font-bold mb-2">Activez votre ANR</h2>
+        <p className="text-muted-foreground">
+          Entrez vos informations de connexion
+        </p>
       </div>
 
-      <Button variant="hero" className="w-full" onClick={onSubmit} disabled={!email.trim() || !password.trim() || loading}>
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
-        {!loading && <ArrowRight className="w-4 h-4" />}
-      </Button>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" placeholder="votre@email.com" value={email} onChange={e => setEmail(e.target.value)} disabled={loading} />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password">Mot de passe</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input 
+              id="password" 
+              type={showPassword ? "text" : "password"} 
+              placeholder="Minimum 6 caractères" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              className="pl-10 pr-10" 
+              disabled={loading} 
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input 
+              id="confirmPassword" 
+              type={showConfirmPassword ? "text" : "password"} 
+              placeholder="Confirmez votre mot de passe" 
+              value={confirmPassword} 
+              onChange={e => setConfirmPassword(e.target.value)} 
+              className="pl-10 pr-10" 
+              disabled={loading} 
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              tabIndex={-1}
+            >
+              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {confirmPassword && password !== confirmPassword && (
+            <p className="text-xs text-destructive">Les mots de passe ne correspondent pas</p>
+          )}
+        </div>
+
+        <Button variant="hero" className="w-full" onClick={onSubmit} disabled={!email.trim() || !password.trim() || !confirmPassword.trim() || password !== confirmPassword || loading}>
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continuer"}
+          {!loading && <ArrowRight className="w-4 h-4" />}
+        </Button>
+      </div>
     </div>
-  </div>;
+  );
+};
 const EmailSentStep = ({
   email,
   onResend,
