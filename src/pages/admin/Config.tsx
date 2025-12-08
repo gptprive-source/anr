@@ -148,9 +148,13 @@ const Config = () => {
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={isEnabled}
-                      onCheckedChange={(checked) => {
-                        setLocalValue(configKey, checked);
-                        setTimeout(() => saveConfig(configKey), 100);
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await updateConfig({ key: configKey, value: checked });
+                          toast.success('Configuration mise à jour');
+                        } catch (error) {
+                          toast.error('Erreur lors de la mise à jour');
+                        }
                       }}
                       disabled={isUpdating}
                     />
