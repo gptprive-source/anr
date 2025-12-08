@@ -45,6 +45,7 @@ const OrderDetailsDialog = ({ order, onClose, onStatusChange }: OrderDetailsDial
   if (!order) return null;
 
   const statusLabels: Record<string, string> = {
+    paid: "En attente",
     pending: "En attente",
     processing: "En cours de fabrication",
     shipped: "Expédiée",
@@ -52,6 +53,7 @@ const OrderDetailsDialog = ({ order, onClose, onStatusChange }: OrderDetailsDial
   };
 
   const statusColors: Record<string, string> = {
+    paid: "bg-yellow-500/20 text-yellow-700 border-yellow-500/50",
     pending: "bg-yellow-500/20 text-yellow-700 border-yellow-500/50",
     processing: "bg-blue-500/20 text-blue-700 border-blue-500/50",
     shipped: "bg-purple-500/20 text-purple-700 border-purple-500/50",
@@ -59,6 +61,7 @@ const OrderDetailsDialog = ({ order, onClose, onStatusChange }: OrderDetailsDial
   };
 
   const nextStatusConfig: Record<string, { status: string; label: string; buttonClass: string }> = {
+    paid: { status: "processing", label: "Traiter", buttonClass: "bg-blue-600 hover:bg-blue-700 text-white" },
     pending: { status: "processing", label: "Traiter", buttonClass: "bg-blue-600 hover:bg-blue-700 text-white" },
     processing: { status: "shipped", label: "Expédier", buttonClass: "bg-purple-600 hover:bg-purple-700 text-white" },
     shipped: { status: "delivered", label: "Marquer livré", buttonClass: "bg-green-600 hover:bg-green-700 text-white" },
