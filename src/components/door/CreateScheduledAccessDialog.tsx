@@ -36,6 +36,9 @@ export function CreateScheduledAccessDialog({
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    beneficiary_first_name: '',
+    beneficiary_last_name: '',
+    beneficiary_anr_code: '',
     time_from: '08:00',
     time_to: '18:00',
     days_of_week: [1, 2, 3, 4, 5] as number[],
@@ -61,6 +64,7 @@ export function CreateScheduledAccessDialog({
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.time_from || !formData.time_to) return;
+    if (!formData.beneficiary_first_name || !formData.beneficiary_last_name || !formData.beneficiary_anr_code) return;
 
     await createScheduledAccess({
       name: formData.name,
@@ -82,6 +86,9 @@ export function CreateScheduledAccessDialog({
     setFormData({
       name: '',
       description: '',
+      beneficiary_first_name: '',
+      beneficiary_last_name: '',
+      beneficiary_anr_code: '',
       time_from: '08:00',
       time_to: '18:00',
       days_of_week: [1, 2, 3, 4, 5],
@@ -207,47 +214,35 @@ export function CreateScheduledAccessDialog({
             </div>
           </div>
 
-          {/* Type de bénéficiaire */}
-          <div className="space-y-4">
-            <Label>Bénéficiaire</Label>
-            <Select
-              value={formData.accessType}
-              onValueChange={(value: 'user' | 'company') => setFormData({ ...formData, accessType: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Utilisateur ANR (avec compte)
-                  </div>
-                </SelectItem>
-                <SelectItem value="company">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Entreprise / Prestataire Pro
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-
-            {formData.accessType === 'user' && (
+          {/* Beneficiary Info - Required */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Bénéficiaire (obligatoire)
+            </Label>
+            <div className="grid grid-cols-2 gap-3">
               <Input
-                placeholder="Email ou ID de l'utilisateur ANR"
-                value={formData.granted_to_user}
-                onChange={(e) => setFormData({ ...formData, granted_to_user: e.target.value })}
+                placeholder="Prénom *"
+                value={formData.beneficiary_first_name}
+                onChange={(e) => setFormData({ ...formData, beneficiary_first_name: e.target.value })}
+                required
               />
-            )}
-
-            {formData.accessType === 'company' && (
               <Input
-                placeholder="Nom ou ID de l'entreprise Pro"
-                value={formData.granted_to_company}
-                onChange={(e) => setFormData({ ...formData, granted_to_company: e.target.value })}
+                placeholder="Nom *"
+                value={formData.beneficiary_last_name}
+                onChange={(e) => setFormData({ ...formData, beneficiary_last_name: e.target.value })}
+                required
               />
-            )}
+            </div>
+            <Input
+              placeholder="Code ANR du bénéficiaire (ex: ANR-XXXXXX) *"
+              value={formData.beneficiary_anr_code}
+              onChange={(e) => setFormData({ ...formData, beneficiary_anr_code: e.target.value.toUpperCase() })}
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              Le bénéficiaire doit posséder un compte ANR avec abonnement actif.
+            </p>
           </div>
 
           {/* Sécurité */}
@@ -320,7 +315,7 @@ export function CreateScheduledAccessDialog({
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={loading || !formData.name}
+            disabled={loading || !formData.name || !formData.beneficiary_first_name || !formData.beneficiary_last_name || !formData.beneficiary_anr_code}
           >
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Créer l'accès
