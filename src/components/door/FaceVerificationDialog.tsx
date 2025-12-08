@@ -32,11 +32,19 @@ export function FaceVerificationDialog({
   const { loadModels, verifyFace, loading: modelsLoading, loadingProgress, modelsLoaded } = useFaceRecognition();
   const { toast } = useToast();
 
+  const streamRef = useRef<MediaStream | null>(null);
+
   const startCamera = useCallback(async () => {
     try {
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: 640, height: 480 }
       });
+      streamRef.current = mediaStream;
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -52,33 +60,43 @@ export function FaceVerificationDialog({
   }, [toast]);
 
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
       setStream(null);
     }
-  }, [stream]);
+  }, []);
 
   useEffect(() => {
+    if (!open) {
+      stopCamera();
+      return;
+    }
+
+    let cancelled = false;
+    
     const init = async () => {
-      if (open) {
-        setCaptured(false);
-        setCapturedImage(null);
-        setVerificationResult(null);
-        setStep('loading-models');
-        
-        // Charger les modèles
-        const loaded = await loadModels();
-        if (loaded) {
-          setStep('capture');
-          await startCamera();
-        }
-      } else {
-        stopCamera();
+      setCaptured(false);
+      setCapturedImage(null);
+      setVerificationResult(null);
+      setStep('loading-models');
+      
+      // Charger les modèles
+      const loaded = await loadModels();
+      if (cancelled) return;
+      
+      if (loaded) {
+        setStep('capture');
+        await startCamera();
       }
     };
     
     init();
-    return () => stopCamera();
+    
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
   }, [open, loadModels, startCamera, stopCamera]);
 
   const captureAndVerify = useCallback(async () => {
