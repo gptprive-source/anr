@@ -89,8 +89,18 @@ export function useDoorAccess(anrId: string | null) {
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
+      // Forcer le refresh de la session pour avoir un token valide
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
+      if (sessionError || !session?.access_token) {
+        // Fallback: essayer getSession
+        const { data: fallbackSession } = await supabase.auth.getSession();
+        if (!fallbackSession.session?.access_token) {
+          throw new Error('Non authentifié - veuillez vous reconnecter');
+        }
+      }
+      
+      const accessToken = session?.access_token || (await supabase.auth.getSession()).data.session?.access_token;
+      if (!accessToken) {
         throw new Error('Non authentifié');
       }
 
@@ -106,7 +116,7 @@ export function useDoorAccess(anrId: string | null) {
           call_id: options?.call_id,
         },
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
