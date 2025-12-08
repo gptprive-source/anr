@@ -70,7 +70,7 @@ const Messages = () => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const card = msg.business_card;
-        const matchesMessage = msg.message.toLowerCase().includes(query);
+        const matchesMessage = msg.message?.toLowerCase().includes(query) ?? false;
         const matchesPhone = msg.visitor_phone?.toLowerCase().includes(query);
         const matchesCardName = card
           ? `${card.first_name || ""} ${card.last_name || ""} ${card.company_name || ""}`.toLowerCase().includes(query)
