@@ -28,7 +28,7 @@ const PLAN_FEATURES = [
   { key: 'max_extra_members', label: 'Membres supplémentaires max', type: 'number', suffix: '' },
   { key: 'extra_member_price', label: 'Tarif/Membre supplémentaire', type: 'number', suffix: '€/mois' },
   { key: 'copilot', label: 'Co-Pilot IA', type: 'boolean', icon: Bot },
-  { key: 'geolocation', label: 'Géolocalisation', type: 'boolean', icon: MapPin },
+  { key: 'geolocation', label: 'Géofencing avancé', type: 'boolean', icon: MapPin },
   { key: 'scheduling', label: 'Planification accès', type: 'boolean', icon: Calendar },
   { key: 'facial_recognition', label: 'Reconnaissance faciale', type: 'boolean', icon: ScanFace },
 ];
