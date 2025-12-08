@@ -22,7 +22,7 @@ const PLANS = [
 ];
 
 const PLAN_FEATURES = [
-  { key: 'annual_price', label: 'Tarif annuel', type: 'number', suffix: '€/an' },
+  { key: 'monthly_price', label: 'Tarif mensuel', type: 'number', suffix: '€/mois' },
   { key: 'doming_price', label: 'Prix Doming supplémentaire', type: 'number', suffix: '€' },
   { key: 'members_included', label: 'Membres inclus', type: 'number', suffix: '' },
   { key: 'max_extra_members', label: 'Membres supplémentaires max', type: 'number', suffix: '' },
