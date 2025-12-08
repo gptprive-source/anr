@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDoorAccess } from '@/hooks/useDoorAccess';
-import { Loader2, Clock, User, Building2, Shield } from 'lucide-react';
+import { Loader2, Clock, User, Building2, Shield, UserPlus } from 'lucide-react';
 
 interface CreateScheduledAccessDialogProps {
   open: boolean;
@@ -41,9 +41,11 @@ export function CreateScheduledAccessDialog({
     days_of_week: [1, 2, 3, 4, 5] as number[],
     valid_from: '',
     valid_until: '',
-    accessType: 'user' as 'user' | 'company',
+    accessType: 'guest' as 'user' | 'company' | 'guest',
     granted_to_user: '',
     granted_to_company: '',
+    guest_name: '',
+    guest_contact: '',
     require_face_recognition_entry: false,
     require_face_recognition_exit: false,
     max_entries_per_day: '',
@@ -87,9 +89,11 @@ export function CreateScheduledAccessDialog({
       days_of_week: [1, 2, 3, 4, 5],
       valid_from: '',
       valid_until: '',
-      accessType: 'user',
+      accessType: 'guest',
       granted_to_user: '',
       granted_to_company: '',
+      guest_name: '',
+      guest_contact: '',
       require_face_recognition_entry: false,
       require_face_recognition_exit: false,
       max_entries_per_day: '',
@@ -212,30 +216,54 @@ export function CreateScheduledAccessDialog({
             <Label>Bénéficiaire</Label>
             <Select
               value={formData.accessType}
-              onValueChange={(value: 'user' | 'company') => setFormData({ ...formData, accessType: value })}
+              onValueChange={(value: 'user' | 'company' | 'guest') => setFormData({ ...formData, accessType: value })}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="guest">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Invité sans compte (nounou, artisan...)
+                  </div>
+                </SelectItem>
                 <SelectItem value="user">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4" />
-                    Personne individuelle
+                    Utilisateur ANR (avec compte)
                   </div>
                 </SelectItem>
                 <SelectItem value="company">
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
-                    Entreprise / Prestataire
+                    Entreprise / Prestataire Pro
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
 
+            {formData.accessType === 'guest' && (
+              <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
+                <Input
+                  placeholder="Nom de l'invité (ex: Marie - Nounou)"
+                  value={formData.guest_name}
+                  onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })}
+                />
+                <Input
+                  placeholder="Téléphone ou email (pour envoyer le lien d'accès)"
+                  value={formData.guest_contact}
+                  onChange={(e) => setFormData({ ...formData, guest_contact: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Un lien d'accès unique sera généré et pourra être envoyé par SMS, email ou QR code.
+                </p>
+              </div>
+            )}
+
             {formData.accessType === 'user' && (
               <Input
-                placeholder="Email ou ID de l'utilisateur"
+                placeholder="Email ou ID de l'utilisateur ANR"
                 value={formData.granted_to_user}
                 onChange={(e) => setFormData({ ...formData, granted_to_user: e.target.value })}
               />
@@ -243,7 +271,7 @@ export function CreateScheduledAccessDialog({
 
             {formData.accessType === 'company' && (
               <Input
-                placeholder="Nom ou ID de l'entreprise"
+                placeholder="Nom ou ID de l'entreprise Pro"
                 value={formData.granted_to_company}
                 onChange={(e) => setFormData({ ...formData, granted_to_company: e.target.value })}
               />

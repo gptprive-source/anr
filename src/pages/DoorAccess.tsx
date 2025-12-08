@@ -110,45 +110,10 @@ export default function DoorAccess() {
     );
   }
 
-  if (!hasDoorModule) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="container max-w-2xl mx-auto p-4">
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DoorOpen className="h-5 w-5 text-muted-foreground" />
-                Module de porte non installé
-              </CardTitle>
-              <CardDescription>
-                Aucun module de porte n'est configuré pour votre ANR.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Le module de porte ANR permet d'ouvrir votre porte à distance via Bluetooth.
-                Contactez notre support pour commander et installer votre module.
-              </p>
-              <div className="flex gap-2">
-                <Button onClick={() => navigate('/dashboard')}>
-                  Retour au tableau de bord
-                </Button>
-                <Button variant="outline" onClick={() => navigate('/contact')}>
-                  Contacter le support
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        <BottomNav />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="container max-w-2xl mx-auto p-4">
-        <DoorAccessPanel anrId={anrId} anrCode={anrCode} />
+        <DoorAccessPanel anrId={anrId} anrCode={anrCode} hasDoorModule={hasDoorModule} />
       </div>
       <BottomNav />
     </div>
