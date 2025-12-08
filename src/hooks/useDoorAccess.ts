@@ -89,21 +89,13 @@ export function useDoorAccess(anrId: string | null) {
 
     setLoading(true);
     try {
-      // Forcer le refresh de la session pour avoir un token valide
-      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
-      if (sessionError || !session?.access_token) {
-        // Fallback: essayer getSession
-        const { data: fallbackSession } = await supabase.auth.getSession();
-        if (!fallbackSession.session?.access_token) {
-          throw new Error('Non authentifié - veuillez vous reconnecter');
-        }
-      }
-      
-      const accessToken = session?.access_token || (await supabase.auth.getSession()).data.session?.access_token;
-      if (!accessToken) {
-        throw new Error('Non authentifié');
+      // Vérifier qu'on a une session valide
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Non authentifié - veuillez vous reconnecter');
       }
 
+      // supabase.functions.invoke utilise automatiquement le token de session
       const response = await supabase.functions.invoke('generate-door-token', {
         body: {
           anr_id: anrId,
@@ -114,9 +106,6 @@ export function useDoorAccess(anrId: string | null) {
           granted_to_company: options?.granted_to_company,
           granted_to_employee: options?.granted_to_employee,
           call_id: options?.call_id,
-        },
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
         },
       });
 
