@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDoorAccess } from '@/hooks/useDoorAccess';
-import { Loader2, Clock, User, Building2, Shield, UserPlus } from 'lucide-react';
+import { Loader2, Clock, User, Building2, Shield } from 'lucide-react';
 
 interface CreateScheduledAccessDialogProps {
   open: boolean;
@@ -41,11 +41,9 @@ export function CreateScheduledAccessDialog({
     days_of_week: [1, 2, 3, 4, 5] as number[],
     valid_from: '',
     valid_until: '',
-    accessType: 'guest' as 'user' | 'company' | 'guest',
+    accessType: 'user' as 'user' | 'company',
     granted_to_user: '',
     granted_to_company: '',
-    guest_name: '',
-    guest_contact: '',
     require_face_recognition_entry: false,
     require_face_recognition_exit: false,
     max_entries_per_day: '',
@@ -63,9 +61,6 @@ export function CreateScheduledAccessDialog({
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.time_from || !formData.time_to) return;
-    
-    // For guest type, require guest_name
-    if (formData.accessType === 'guest' && !formData.guest_name) return;
 
     await createScheduledAccess({
       name: formData.name,
@@ -77,8 +72,6 @@ export function CreateScheduledAccessDialog({
       valid_until: formData.valid_until || undefined,
       granted_to_user: formData.accessType === 'user' ? formData.granted_to_user || undefined : undefined,
       granted_to_company: formData.accessType === 'company' ? formData.granted_to_company || undefined : undefined,
-      guest_name: formData.accessType === 'guest' ? formData.guest_name : undefined,
-      guest_contact: formData.accessType === 'guest' ? formData.guest_contact || undefined : undefined,
       require_face_recognition_entry: formData.require_face_recognition_entry,
       require_face_recognition_exit: formData.require_face_recognition_exit,
       max_entries_per_day: formData.max_entries_per_day ? parseInt(formData.max_entries_per_day) : undefined,
@@ -94,11 +87,9 @@ export function CreateScheduledAccessDialog({
       days_of_week: [1, 2, 3, 4, 5],
       valid_from: '',
       valid_until: '',
-      accessType: 'guest',
+      accessType: 'user',
       granted_to_user: '',
       granted_to_company: '',
-      guest_name: '',
-      guest_contact: '',
       require_face_recognition_entry: false,
       require_face_recognition_exit: false,
       max_entries_per_day: '',
@@ -221,18 +212,12 @@ export function CreateScheduledAccessDialog({
             <Label>Bénéficiaire</Label>
             <Select
               value={formData.accessType}
-              onValueChange={(value: 'user' | 'company' | 'guest') => setFormData({ ...formData, accessType: value })}
+              onValueChange={(value: 'user' | 'company') => setFormData({ ...formData, accessType: value })}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="guest">
-                  <div className="flex items-center gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    Invité sans compte (nounou, artisan...)
-                  </div>
-                </SelectItem>
                 <SelectItem value="user">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4" />
@@ -247,24 +232,6 @@ export function CreateScheduledAccessDialog({
                 </SelectItem>
               </SelectContent>
             </Select>
-
-            {formData.accessType === 'guest' && (
-              <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
-                <Input
-                  placeholder="Nom de l'invité (ex: Marie - Nounou)"
-                  value={formData.guest_name}
-                  onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })}
-                />
-                <Input
-                  placeholder="Téléphone ou email (pour envoyer le lien d'accès)"
-                  value={formData.guest_contact}
-                  onChange={(e) => setFormData({ ...formData, guest_contact: e.target.value })}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Un lien d'accès unique sera généré et pourra être envoyé par SMS, email ou QR code.
-                </p>
-              </div>
-            )}
 
             {formData.accessType === 'user' && (
               <Input
@@ -353,7 +320,7 @@ export function CreateScheduledAccessDialog({
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={loading || !formData.name || (formData.accessType === 'guest' && !formData.guest_name)}
+            disabled={loading || !formData.name}
           >
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Créer l'accès
