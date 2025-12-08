@@ -53,8 +53,10 @@ interface ScheduledAccess {
   valid_from: string | null;
   valid_until: string | null;
   is_active: boolean;
-  granted_to_user: string | null;
-  granted_to_company: string | null;
+  beneficiary_first_name: string | null;
+  beneficiary_last_name: string | null;
+  beneficiary_anr_code: string | null;
+  forward_calls_to_beneficiary: boolean | null;
   require_face_recognition_entry: boolean | null;
   require_face_recognition_exit: boolean | null;
 }
