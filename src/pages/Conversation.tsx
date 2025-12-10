@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Mic, Building2, User, Phone, Mail, MapPin, Clock, Check, CheckCheck, Loader2 } from "lucide-react";
+import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useMessageReplies } from "@/hooks/useMessageReplies";
 import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
+import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
-import { format } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
 
@@ -36,6 +37,12 @@ interface VisitorMessage {
   business_card_id: string | null;
   business_card?: BusinessCard | null;
 }
+
+const formatDateSeparator = (date: Date) => {
+  if (isToday(date)) return "Aujourd'hui";
+  if (isYesterday(date)) return "Hier";
+  return format(date, "EEEE d MMMM", { locale: fr });
+};
 
 const Conversation = () => {
   const { visitorId } = useParams<{ visitorId: string }>();
@@ -209,40 +216,52 @@ const Conversation = () => {
     ...replies.map(r => ({ type: 'reply' as const, data: r, date: new Date(r.created_at) }))
   ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
+  // Group messages by date for separators
+  const messagesWithDateSeparators: { type: 'separator' | 'visitor' | 'reply'; data: any; date: Date }[] = [];
+  let lastDateStr = "";
+  
+  allMessages.forEach((msg) => {
+    const dateStr = format(msg.date, "yyyy-MM-dd");
+    if (dateStr !== lastDateStr) {
+      messagesWithDateSeparators.push({ type: 'separator', data: { label: formatDateSeparator(msg.date) }, date: msg.date });
+      lastDateStr = dateStr;
+    }
+    messagesWithDateSeparators.push(msg);
+  });
+
   return (
-    <div className="min-h-screen flex flex-col bg-background pb-20">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
+    <div className="min-h-screen flex flex-col bg-[hsl(30,25%,92%)] pb-20">
+      {/* Header - WhatsApp style */}
+      <div className="sticky top-0 z-10 bg-[hsl(168,76%,36%)] text-white px-2 py-2">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/messages")} className="text-white hover:bg-white/10">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="p-2 rounded-full bg-primary/10 flex-shrink-0">
-              {isCompany ? (
-                <Building2 className="w-5 h-5 text-primary" />
-              ) : (
-                <User className="w-5 h-5 text-primary" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{displayName}</p>
-              {card?.job_title && (
-                <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
-              )}
-            </div>
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            {isCompany ? (
+              <Building2 className="w-5 h-5" />
+            ) : (
+              <User className="w-5 h-5" />
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold truncate">{displayName}</p>
+            {card?.job_title && (
+              <p className="text-xs opacity-80 truncate">{card.job_title}</p>
+            )}
           </div>
 
           {card && (
-            <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" />
+            <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />
           )}
         </div>
       </div>
 
-      {/* Contact Info Card */}
-      {card && (
-        <div className="mx-4 mt-4 p-4 bg-muted/50 rounded-lg border">
+      {/* Contact Info Expandable */}
+      {card && (card.phone || card.email || card.visitor_anr_code) && (
+        <div className="mx-3 mt-3 p-3 bg-card rounded-lg border shadow-sm">
           <div className="flex flex-wrap gap-3 text-sm">
             {card.phone && (
               <a href={`tel:${card.phone}`} className="flex items-center gap-1 text-primary hover:underline">
@@ -266,26 +285,43 @@ const Conversation = () => {
         </div>
       )}
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {allMessages.map((item, index) => {
+      {/* Messages Area - WhatsApp style background */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-2">
+        {messagesWithDateSeparators.map((item, index) => {
+          if (item.type === 'separator') {
+            return (
+              <div key={`sep-${index}`} className="flex justify-center my-3">
+                <span className="bg-white/80 text-muted-foreground text-xs px-3 py-1 rounded-lg shadow-sm">
+                  {item.data.label}
+                </span>
+              </div>
+            );
+          }
+
           if (item.type === 'visitor') {
             const msg = item.data;
             return (
               <div key={`visitor-${msg.id}`} className="flex justify-start">
-                <div className="max-w-[80%] bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
-                  {msg.message && (
-                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                <div className="max-w-[85%]">
+                  {msg.voice_message_url ? (
+                    <div className="mb-1">
+                      <WhatsAppAudioPlayer 
+                        audioUrl={msg.voice_message_url} 
+                        isOwn={false}
+                        showAvatar={true}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1 ml-2">
+                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-card rounded-xl rounded-tl-sm px-3 py-2 shadow-sm border">
+                      <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1 text-right">
+                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                      </p>
+                    </div>
                   )}
-                  {msg.voice_message_url && (
-                    <audio controls className="w-full h-8 mt-2">
-                      <source src={msg.voice_message_url} type="audio/webm" />
-                    </audio>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {format(new Date(msg.created_at), "dd MMM à HH:mm", { locale: fr })}
-                  </p>
                 </div>
               </div>
             );
@@ -293,25 +329,40 @@ const Conversation = () => {
             const reply = item.data;
             return (
               <div key={`reply-${reply.id}`} className="flex justify-end">
-                <div className="max-w-[80%] bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-3">
-                  {reply.reply_text && (
-                    <p className="text-sm whitespace-pre-wrap">{reply.reply_text}</p>
+                <div className="max-w-[85%]">
+                  {reply.reply_voice_url ? (
+                    <div className="mb-1">
+                      <WhatsAppAudioPlayer 
+                        audioUrl={reply.reply_voice_url} 
+                        isOwn={true}
+                        showAvatar={true}
+                      />
+                      <div className="flex items-center justify-end gap-1 mt-1 mr-2">
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                        </span>
+                        {reply.is_read ? (
+                          <CheckCheck className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Check className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[hsl(142,70%,85%)] rounded-xl rounded-tr-sm px-3 py-2 shadow-sm">
+                      <p className="text-sm whitespace-pre-wrap text-[hsl(142,30%,20%)]">{reply.reply_text}</p>
+                      <div className="flex items-center justify-end gap-1 mt-1">
+                        <span className="text-xs text-[hsl(142,30%,40%)]">
+                          {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                        </span>
+                        {reply.is_read ? (
+                          <CheckCheck className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Check className="w-4 h-4 text-[hsl(142,30%,50%)]" />
+                        )}
+                      </div>
+                    </div>
                   )}
-                  {reply.reply_voice_url && (
-                    <audio controls className="w-full h-8 mt-2">
-                      <source src={reply.reply_voice_url} type="audio/webm" />
-                    </audio>
-                  )}
-                  <div className="flex items-center justify-end gap-1 mt-2">
-                    <p className="text-xs opacity-70">
-                      {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
-                    </p>
-                    {reply.is_read ? (
-                      <CheckCheck className="w-3 h-3 opacity-70" />
-                    ) : (
-                      <Check className="w-3 h-3 opacity-70" />
-                    )}
-                  </div>
                 </div>
               </div>
             );
@@ -322,7 +373,7 @@ const Conversation = () => {
       </div>
 
       {/* Input Area - WhatsApp style */}
-      <div className="sticky bottom-20 bg-card border-t p-4">
+      <div className="sticky bottom-20 bg-[hsl(30,15%,88%)] px-2 py-2">
         {showVoiceRecorder ? (
           <VoiceRecorder 
             onRecordingComplete={(blob) => setAudioBlob(blob)}
@@ -335,36 +386,42 @@ const Conversation = () => {
             audioBlob={audioBlob}
           />
         ) : (
-          <div className="flex items-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="flex-shrink-0"
-              onClick={() => setShowVoiceRecorder(true)}
-            >
-              <Mic className="w-5 h-5" />
-            </Button>
-            <Textarea
-              placeholder="Votre réponse..."
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              className="min-h-[44px] max-h-32 resize-none"
-              rows={1}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
+          <div className="flex items-center gap-2">
+            {/* Emoji/Chatbot icon */}
+            <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
+              <Smile className="w-6 h-6" />
+            </button>
+
+            {/* Input Field */}
+            <div className="flex-1 bg-card rounded-full px-4 py-2 flex items-center border shadow-sm">
+              <Input
+                placeholder="Entrez un message"
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                className="border-0 p-0 h-auto bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && replyText.trim()) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+            </div>
+
+            {/* Mic button - main action when no text */}
+            <button 
+              className="p-3 rounded-full bg-[hsl(168,76%,36%)] text-white hover:bg-[hsl(168,76%,30%)] transition-colors shadow-lg"
+              onClick={() => {
+                if (replyText.trim()) {
                   handleSend();
+                } else {
+                  setShowVoiceRecorder(true);
                 }
               }}
-            />
-            <Button
-              size="icon"
-              className="flex-shrink-0"
-              onClick={handleSend}
-              disabled={!replyText.trim() || sending}
+              disabled={sending}
             >
-              <Send className="w-5 h-5" />
-            </Button>
+              <Mic className="w-5 h-5" />
+            </button>
           </div>
         )}
       </div>
