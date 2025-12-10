@@ -30,6 +30,7 @@ import UpdateGPS from "./pages/UpdateGPS";
 import Residents from "./pages/Residents";
 import CallHistory from "./pages/CallHistory";
 import Messages from "./pages/Messages";
+import Contacts from "./pages/Contacts";
 import DoorAccess from "./pages/DoorAccess";
 import EmployeeScan from "./pages/EmployeeScan";
 import ProDashboard from "./pages/pro/ProDashboard";
@@ -144,6 +145,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <Messages />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contacts"
+            element={
+              <ProtectedRoute>
+                <Contacts />
               </ProtectedRoute>
             }
           />
