@@ -158,7 +158,7 @@ const AppContent = () => {
             }
           />
           <Route
-            path="/conversation/:messageId"
+            path="/conversation/:visitorId"
             element={
               <ProtectedRoute>
                 <Conversation />
