@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List } from "lucide-react";
+import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -237,6 +237,7 @@ const Config = () => {
         <Tabs defaultValue="plans" className="space-y-6">
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="plans">Plans & Tarifs</TabsTrigger>
+            <TabsTrigger value="features">Fonctionnalités</TabsTrigger>
             <TabsTrigger value="limits">Limites</TabsTrigger>
             <TabsTrigger value="content">Contenu</TabsTrigger>
           </TabsList>
@@ -270,6 +271,157 @@ const Config = () => {
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* FEATURES TAB */}
+          <TabsContent value="features" className="space-y-6">
+            {/* Plans Activation */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ToggleLeft className="w-5 h-5" />
+                  Offres actives
+                </CardTitle>
+                <CardDescription>
+                  Activer ou désactiver les différentes offres disponibles à l'inscription
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[
+                  { key: 'plan_particulier_enabled', label: 'Offre Particuliers', icon: Home, color: 'text-blue-600' },
+                  { key: 'plan_pro_enabled', label: 'Offre Pro', icon: Building, color: 'text-orange-600' },
+                  { key: 'plan_entreprise_enabled', label: 'Offre Entreprise', icon: Building2, color: 'text-purple-600' },
+                  { key: 'plan_collectivites_enabled', label: 'Offre Collectivités', icon: Landmark, color: 'text-green-600' },
+                ].map(({ key, label, icon: Icon, color }) => {
+                  const isEnabled = getValue(key) === true || getValue(key) === 'true';
+                  return (
+                    <div key={key} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Icon className={`w-5 h-5 ${color}`} />
+                        <span className="font-medium">{label}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              await updateConfig({ key, value: checked });
+                              toast.success(`${label} ${checked ? 'activée' : 'désactivée'}`);
+                            } catch (error) {
+                              toast.error('Erreur lors de la mise à jour');
+                            }
+                          }}
+                          disabled={isUpdating}
+                        />
+                        <Badge variant={isEnabled ? "default" : "secondary"} className={isEnabled ? "bg-green-600" : ""}>
+                          {isEnabled ? "Activée" : "Désactivée"}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+            {/* Communication Features */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Phone className="w-5 h-5" />
+                  Communication
+                </CardTitle>
+                <CardDescription>
+                  Activer ou désactiver les fonctionnalités de communication
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[
+                  { key: 'feature_voice_calls_enabled', label: 'Appels vocaux', icon: Phone, description: 'Permettre les appels audio entre visiteurs et résidents' },
+                  { key: 'feature_video_calls_enabled', label: 'Appels vidéo', icon: Video, description: 'Permettre la vidéo lors des appels (visiteur → résident)' },
+                  { key: 'feature_visitor_text_messages_enabled', label: 'Messages texte visiteurs', icon: MessageSquare, description: 'Permettre aux visiteurs de laisser des messages écrits' },
+                  { key: 'feature_visitor_voice_messages_enabled', label: 'Messages vocaux visiteurs', icon: Mic, description: 'Permettre aux visiteurs de laisser des messages vocaux' },
+                ].map(({ key, label, icon: Icon, description }) => {
+                  const isEnabled = getValue(key) === true || getValue(key) === 'true';
+                  return (
+                    <div key={key} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-5 h-5 text-muted-foreground" />
+                        <div>
+                          <span className="font-medium">{label}</span>
+                          <p className="text-sm text-muted-foreground">{description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              await updateConfig({ key, value: checked });
+                              toast.success(`${label} ${checked ? 'activé' : 'désactivé'}`);
+                            } catch (error) {
+                              toast.error('Erreur lors de la mise à jour');
+                            }
+                          }}
+                          disabled={isUpdating}
+                        />
+                        <Badge variant={isEnabled ? "default" : "secondary"} className={isEnabled ? "bg-green-600" : ""}>
+                          {isEnabled ? "Activé" : "Désactivé"}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+            {/* Door Features */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DoorOpen className="w-5 h-5" />
+                  Ouverture de porte
+                </CardTitle>
+                <CardDescription>
+                  Activer ou désactiver les fonctionnalités d'accès par porte
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[
+                  { key: 'feature_door_opening_enabled', label: 'Ouverture de porte BLE', icon: DoorOpen, description: 'Permettre l\'ouverture de porte via Bluetooth Low Energy' },
+                  { key: 'feature_scheduled_access_enabled', label: 'Autorisations d\'accès programmés', icon: Key, description: 'Permettre la planification d\'accès pour des tiers' },
+                ].map(({ key, label, icon: Icon, description }) => {
+                  const isEnabled = getValue(key) === true || getValue(key) === 'true';
+                  return (
+                    <div key={key} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-5 h-5 text-muted-foreground" />
+                        <div>
+                          <span className="font-medium">{label}</span>
+                          <p className="text-sm text-muted-foreground">{description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              await updateConfig({ key, value: checked });
+                              toast.success(`${label} ${checked ? 'activé' : 'désactivé'}`);
+                            } catch (error) {
+                              toast.error('Erreur lors de la mise à jour');
+                            }
+                          }}
+                          disabled={isUpdating}
+                        />
+                        <Badge variant={isEnabled ? "default" : "secondary"} className={isEnabled ? "bg-green-600" : ""}>
+                          {isEnabled ? "Activé" : "Désactivé"}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           </TabsContent>

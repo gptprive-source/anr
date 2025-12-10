@@ -26,6 +26,9 @@ interface VisitorMessage {
   created_at: string;
   business_card_id: string | null;
   business_card?: BusinessCard | null;
+  has_reply?: boolean;
+  replied_at?: string | null;
+  conversation_token?: string | null;
 }
 
 interface MessageTemplate {
