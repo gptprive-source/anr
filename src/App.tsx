@@ -31,6 +31,7 @@ import Residents from "./pages/Residents";
 import CallHistory from "./pages/CallHistory";
 import Messages from "./pages/Messages";
 import Contacts from "./pages/Contacts";
+import Conversation from "./pages/Conversation";
 import DoorAccess from "./pages/DoorAccess";
 import EmployeeScan from "./pages/EmployeeScan";
 import ProDashboard from "./pages/pro/ProDashboard";
@@ -153,6 +154,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <Contacts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/conversation/:messageId"
+            element={
+              <ProtectedRoute>
+                <Conversation />
               </ProtectedRoute>
             }
           />

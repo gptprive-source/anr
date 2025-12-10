@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, Check, Trash2, Phone, Mail, User, Building2, Briefcase, MapPin, Inbox, MailOpen, Mail as MailClosed, Mic, Reply, UserPlus, MessageCircle } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, Trash2, Phone, Mail, User, Building2, Briefcase, MapPin, Inbox, MailOpen, Mail as MailClosed, Mic, MessageCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,10 +14,6 @@ import { formatDistanceToNow, isToday, isThisWeek, isThisMonth } from "date-fns"
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
 import { Loader2 } from "lucide-react";
-import { ReplyMessageDialog } from "@/components/messages/ReplyMessageDialog";
-import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
-import { useMessageReplies } from "@/hooks/useMessageReplies";
-import { useResidentContacts } from "@/hooks/useResidentContacts";
 
 type StatusFilter = "all" | "unread" | "read";
 type DateFilter = "all" | "today" | "week" | "month";
@@ -31,10 +27,6 @@ const Messages = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [replyingToMessage, setReplyingToMessage] = useState<any>(null);
-  
-  const { contacts, checkIfExists } = useResidentContacts();
 
   // Fetch habitation ID for current user
   useEffect(() => {
@@ -57,7 +49,7 @@ const Messages = () => {
     fetchHabitation();
   }, [user]);
 
-  const { messages, unreadCount, loading, markAsRead, deleteMessage } = useVisitorMessages(habitationId || "");
+  const { messages, unreadCount, loading } = useVisitorMessages(habitationId || "");
 
   // Filter messages
   const filteredMessages = useMemo(() => {
@@ -92,40 +84,6 @@ const Messages = () => {
       return true;
     });
   }, [messages, statusFilter, dateFilter, searchQuery]);
-
-  const handleMarkAsRead = async (messageId: string) => {
-    const result = await markAsRead(messageId);
-    if (!result.success) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de marquer comme lu",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDelete = async (messageId: string) => {
-    setDeletingId(messageId);
-    const result = await deleteMessage(messageId);
-    if (result.success) {
-      toast({ title: "Message supprimé" });
-    } else {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le message",
-        variant: "destructive",
-      });
-    }
-    setDeletingId(null);
-  };
-
-  const handleMarkAllAsRead = async () => {
-    const unreadMessages = messages.filter(m => !m.is_read);
-    for (const msg of unreadMessages) {
-      await markAsRead(msg.id);
-    }
-    toast({ title: `${unreadMessages.length} message(s) marqué(s) comme lu(s)` });
-  };
 
   if (loadingHabitation || loading) {
     return (
@@ -162,7 +120,7 @@ const Messages = () => {
           <div className="flex-1">
             <h1 className="font-bold text-xl flex items-center gap-2">
               <MessageSquare className="w-6 h-6 text-primary" />
-              Messages visiteurs
+              Messages
             </h1>
           </div>
         </div>
@@ -198,7 +156,7 @@ const Messages = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher un message..."
+              placeholder="Rechercher..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -208,7 +166,7 @@ const Messages = () => {
           {/* Filter row */}
           <div className="flex gap-2 flex-wrap">
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[130px]">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
@@ -220,7 +178,7 @@ const Messages = () => {
             </Select>
 
             <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[130px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -230,26 +188,19 @@ const Messages = () => {
                 <SelectItem value="month">Ce mois</SelectItem>
               </SelectContent>
             </Select>
-
-            {unreadCount > 0 && (
-              <Button variant="outline" size="sm" onClick={handleMarkAllAsRead} className="ml-auto">
-                <Check className="w-4 h-4 mr-1" />
-                Tout marquer lu
-              </Button>
-            )}
           </div>
         </div>
 
-        {/* Messages list */}
+        {/* Conversations list */}
         {filteredMessages.length === 0 ? (
           <div className="text-center py-12">
             <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">
-              {messages.length === 0 ? "Aucun message" : "Aucun message correspondant aux filtres"}
+              {messages.length === 0 ? "Aucun message" : "Aucun résultat"}
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filteredMessages.map((msg) => {
               const card = msg.business_card;
               const isCompany = card?.card_type === "company";
@@ -257,147 +208,76 @@ const Messages = () => {
                 ? isCompany
                   ? card.company_name
                   : `${card.first_name || ""} ${card.last_name || ""}`.trim()
-                : null;
+                : msg.visitor_phone || "Visiteur";
+
+              const preview = msg.message 
+                ? msg.message.substring(0, 60) + (msg.message.length > 60 ? "..." : "")
+                : msg.voice_message_url 
+                  ? "🎤 Message vocal"
+                  : "";
 
               return (
                 <Card
                   key={msg.id}
-                  className={`transition-colors ${!msg.is_read ? "border-primary/50 bg-primary/5" : ""}`}
+                  className={`cursor-pointer transition-all hover:bg-accent/50 ${!msg.is_read ? "border-primary/50 bg-primary/5" : ""}`}
+                  onClick={() => navigate(`/conversation/${msg.id}`)}
                 >
                   <CardContent className="p-4">
-                    {/* Business Card Display */}
-                    {card && (
-                      <div className="flex items-start gap-3 p-3 mb-3 bg-muted/50 rounded-lg border border-border/50">
-                        <div className="p-2 rounded-full bg-primary/10 flex-shrink-0">
-                          {isCompany ? (
-                            <Building2 className="w-5 h-5 text-primary" />
-                          ) : (
-                            <User className="w-5 h-5 text-primary" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <p className="font-semibold">{displayName}</p>
-                          {card.job_title && (
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Briefcase className="w-3 h-3" />
-                              {card.job_title}
-                            </p>
-                          )}
-                          <div className="flex flex-wrap gap-3 text-sm">
-                            {card.phone && (
-                              <a
-                                href={`tel:${card.phone}`}
-                                className="text-primary flex items-center gap-1 hover:underline"
-                              >
-                                <Phone className="w-3 h-3" />
-                                {card.phone}
-                              </a>
-                            )}
-                            {card.email && (
-                              <a
-                                href={`mailto:${card.email}`}
-                                className="text-primary flex items-center gap-1 hover:underline"
-                              >
-                                <Mail className="w-3 h-3" />
-                                {card.email}
-                              </a>
-                            )}
-                            {card.visitor_anr_code && (
-                              <span className="text-muted-foreground flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                ANR: {card.visitor_anr_code}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                    <div className="flex items-center gap-3">
+                      {/* Avatar */}
+                      <div className={`p-2 rounded-full flex-shrink-0 ${!msg.is_read ? "bg-primary/20" : "bg-muted"}`}>
+                        {isCompany ? (
+                          <Building2 className={`w-5 h-5 ${!msg.is_read ? "text-primary" : "text-muted-foreground"}`} />
+                        ) : (
+                          <User className={`w-5 h-5 ${!msg.is_read ? "text-primary" : "text-muted-foreground"}`} />
+                        )}
                       </div>
-                    )}
 
-                    <div className="space-y-3">
+                      {/* Content */}
                       <div className="flex-1 min-w-0">
-                        {msg.message && (
-                          <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
-                        )}
-                        
-                        {/* Voice message player */}
-                        {msg.voice_message_url && (
-                          <div className="flex items-center gap-2 mt-2 p-2 bg-muted rounded-lg">
-                            <Mic className="w-4 h-4 text-primary flex-shrink-0" />
-                            <audio src={msg.voice_message_url} controls className="flex-1 h-8" />
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className="text-xs text-muted-foreground">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className={`font-medium truncate ${!msg.is_read ? "text-foreground" : "text-muted-foreground"}`}>
+                            {displayName}
+                          </p>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
                             {formatDistanceToNow(new Date(msg.created_at), {
-                              addSuffix: true,
+                              addSuffix: false,
                               locale: fr,
                             })}
                           </span>
-                          {!card && msg.visitor_phone && (
-                            <a
-                              href={`tel:${msg.visitor_phone}`}
-                              className="text-xs text-primary flex items-center gap-1 hover:underline"
-                            >
-                              <Phone className="w-3 h-3" />
-                              {msg.visitor_phone}
-                            </a>
-                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className={`text-sm truncate ${!msg.is_read ? "text-foreground" : "text-muted-foreground"}`}>
+                            {msg.has_reply && (
+                              <span className="text-primary mr-1">↩</span>
+                            )}
+                            {preview}
+                          </p>
+                        </div>
+
+                        {/* Badges */}
+                        <div className="flex items-center gap-2 mt-2">
                           {!msg.is_read && (
-                            <Badge variant="destructive" className="text-xs">
-                              Non lu
+                            <Badge variant="destructive" className="text-xs h-5">
+                              Nouveau
                             </Badge>
                           )}
                           {msg.has_reply && (
-                            <Badge variant="outline" className="text-xs text-green-600 border-green-600">
-                              <MessageCircle className="w-3 h-3 mr-1" />
+                            <Badge variant="outline" className="text-xs h-5 text-green-600 border-green-600">
                               Répondu
+                            </Badge>
+                          )}
+                          {card?.job_title && (
+                            <Badge variant="secondary" className="text-xs h-5">
+                              {card.job_title}
                             </Badge>
                           )}
                         </div>
                       </div>
 
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setReplyingToMessage(msg)}
-                          className="flex-1"
-                        >
-                          <Reply className="w-4 h-4 mr-1" />
-                          Répondre
-                        </Button>
-                        
-                        {card && (
-                          <AddToContactsButton 
-                            businessCard={card}
-                            messageId={msg.id}
-                          />
-                        )}
-                        
-                        {!msg.is_read && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9"
-                            onClick={() => handleMarkAsRead(msg.id)}
-                            title="Marquer comme lu"
-                          >
-                            <Check className="w-4 h-4 text-success" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9"
-                          onClick={() => handleDelete(msg.id)}
-                          disabled={deletingId === msg.id}
-                          title="Supprimer"
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
+                      {/* Arrow */}
+                      <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                     </div>
                   </CardContent>
                 </Card>
@@ -408,15 +288,6 @@ const Messages = () => {
       </div>
 
       <BottomNav />
-      
-      {/* Reply Dialog */}
-      {replyingToMessage && (
-        <ReplyMessageDialog
-          message={replyingToMessage}
-          open={!!replyingToMessage}
-          onOpenChange={(open) => !open && setReplyingToMessage(null)}
-        />
-      )}
     </div>
   );
 };
