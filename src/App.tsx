@@ -11,7 +11,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallListener";
 import SupportChat from "@/components/support/SupportChat";
-import CoPilotChat from "@/components/copilot/CoPilotChat";
+
 import { SupportAlertOverlay } from "@/components/admin/SupportAlertOverlay";
 import { useAudioUnlock } from "@/hooks/useAudioUnlock";
 import Index from "./pages/Index";
@@ -87,7 +87,7 @@ const AppContent = () => {
       <InstallPrompt />
       <SupportChat />
       <BrowserRouter>
-        <CoPilotChat />
+        
         <SupportAlertOverlay />
         <GlobalIncomingCallListener />
         <Routes>
