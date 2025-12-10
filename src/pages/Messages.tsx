@@ -1,10 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
@@ -67,7 +66,6 @@ const Messages = () => {
     const groups = new Map<string, GroupedConversation>();
 
     messages.forEach((msg) => {
-      // Use business_card_id or visitor_phone as unique visitor identifier
       const visitorId = msg.business_card_id || msg.visitor_phone || `anon-${msg.id}`;
       
       const existing = groups.get(visitorId);
@@ -80,7 +78,6 @@ const Messages = () => {
         : msg.visitor_phone || "Visiteur";
 
       if (existing) {
-        // Update with latest info
         if (new Date(msg.created_at) > existing.lastMessageDate) {
           existing.lastMessage = msg.message || (msg.voice_message_url ? "🎤 Message vocal" : null);
           existing.lastMessageDate = new Date(msg.created_at);
@@ -90,7 +87,6 @@ const Messages = () => {
           existing.unreadCount++;
         }
         existing.totalMessages++;
-        // Keep the most complete business card
         if (card && !existing.businessCard) {
           existing.businessCard = card;
           existing.displayName = displayName;
@@ -113,7 +109,6 @@ const Messages = () => {
       }
     });
 
-    // Sort by last message date descending
     return Array.from(groups.values()).sort(
       (a, b) => b.lastMessageDate.getTime() - a.lastMessageDate.getTime()
     );
@@ -122,16 +117,13 @@ const Messages = () => {
   // Filter conversations
   const filteredConversations = useMemo(() => {
     return groupedConversations.filter((conv) => {
-      // Status filter
       if (statusFilter === "unread" && conv.unreadCount === 0) return false;
       if (statusFilter === "read" && conv.unreadCount > 0) return false;
 
-      // Date filter
       if (dateFilter === "today" && !isToday(conv.lastMessageDate)) return false;
       if (dateFilter === "week" && !isThisWeek(conv.lastMessageDate, { weekStartsOn: 1 })) return false;
       if (dateFilter === "month" && !isThisMonth(conv.lastMessageDate)) return false;
 
-      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesName = conv.displayName.toLowerCase().includes(query);
@@ -149,7 +141,7 @@ const Messages = () => {
 
   if (loadingHabitation || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -157,7 +149,7 @@ const Messages = () => {
 
   if (!habitationId) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-muted-foreground">Aucune habitation trouvée</p>
           <Button className="mt-4" onClick={() => navigate("/dashboard")}>
@@ -170,67 +162,84 @@ const Messages = () => {
 
   const totalMessages = messages.length;
   const totalConversations = groupedConversations.length;
-  const readCount = totalMessages - unreadCount;
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen bg-muted/30 pb-20">
+      {/* Header with shadow */}
+      <div className="bg-card border-b border-border sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate("/dashboard")}
+              className="text-muted-foreground hover:text-foreground hover:bg-muted"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="flex-1 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="font-bold text-lg text-foreground">Messages</h1>
+                <p className="text-xs text-muted-foreground">{totalConversations} conversation{totalConversations > 1 ? 's' : ''}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-2xl mx-auto p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center gap-3 pt-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="font-bold text-xl flex items-center gap-2">
-              <MessageSquare className="w-6 h-6 text-primary" />
-              Messages
-            </h1>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-card rounded-xl p-4 border border-border card-shadow">
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Inbox className="w-4 h-4 text-primary" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-center text-foreground">{totalConversations}</p>
+            <p className="text-xs text-center text-muted-foreground">Conversations</p>
+          </div>
+          
+          <div className="bg-card rounded-xl p-4 border border-border card-shadow">
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
+                <MailClosed className="w-4 h-4 text-destructive" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-center text-destructive">{unreadCount}</p>
+            <p className="text-xs text-center text-muted-foreground">Non lus</p>
+          </div>
+          
+          <div className="bg-card rounded-xl p-4 border border-border card-shadow">
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
+                <MailOpen className="w-4 h-4 text-success" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-center text-success">{totalMessages}</p>
+            <p className="text-xs text-center text-muted-foreground">Total msgs</p>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="p-3 text-center">
-            <div className="flex items-center justify-center gap-2 text-muted-foreground mb-1">
-              <Inbox className="w-4 h-4" />
-              <span className="text-xs">Conversations</span>
-            </div>
-            <p className="text-2xl font-bold">{totalConversations}</p>
-          </Card>
-          <Card className="p-3 text-center">
-            <div className="flex items-center justify-center gap-2 text-destructive mb-1">
-              <MailClosed className="w-4 h-4" />
-              <span className="text-xs">Non lus</span>
-            </div>
-            <p className="text-2xl font-bold text-destructive">{unreadCount}</p>
-          </Card>
-          <Card className="p-3 text-center">
-            <div className="flex items-center justify-center gap-2 text-success mb-1">
-              <MailOpen className="w-4 h-4" />
-              <span className="text-xs">Total msgs</span>
-            </div>
-            <p className="text-2xl font-bold text-success">{totalMessages}</p>
-          </Card>
-        </div>
-
-        {/* Filters */}
+        {/* Search & Filters */}
         <div className="space-y-3">
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher..."
+              placeholder="Rechercher un contact ou message..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-card border-border focus:ring-primary"
             />
           </div>
 
-          {/* Filter row */}
           <div className="flex gap-2 flex-wrap">
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-              <SelectTrigger className="w-[130px]">
-                <Filter className="w-4 h-4 mr-2" />
+              <SelectTrigger className="w-[130px] bg-card border-border">
+                <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -241,7 +250,7 @@ const Messages = () => {
             </Select>
 
             <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-[140px] bg-card border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -254,86 +263,103 @@ const Messages = () => {
           </div>
         </div>
 
-        {/* Conversations list */}
+        {/* Conversations List - WhatsApp Style */}
         {filteredConversations.length === 0 ? (
-          <div className="text-center py-12">
-            <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">
+          <div className="bg-card rounded-xl border border-border p-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+              <MessageSquare className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground font-medium">
               {groupedConversations.length === 0 ? "Aucun message" : "Aucun résultat"}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {groupedConversations.length === 0 
+                ? "Les messages de vos visiteurs apparaîtront ici" 
+                : "Essayez avec d'autres termes de recherche"}
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredConversations.map((conv) => {
+          <div className="bg-card rounded-xl border border-border overflow-hidden card-shadow">
+            {filteredConversations.map((conv, index) => {
               const preview = conv.lastMessage 
-                ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "")
+                ? conv.lastMessage.substring(0, 45) + (conv.lastMessage.length > 45 ? "..." : "")
                 : "";
+              const isVoice = conv.lastMessage?.startsWith("🎤");
 
               return (
-                <Card
+                <div
                   key={conv.visitorId}
-                  className={`cursor-pointer transition-all hover:bg-accent/50 ${conv.unreadCount > 0 ? "border-primary/50 bg-primary/5" : ""}`}
+                  className={`
+                    flex items-center gap-3 p-4 cursor-pointer transition-all
+                    hover:bg-muted/50 active:bg-muted
+                    ${conv.unreadCount > 0 ? "bg-primary/5" : ""}
+                    ${index !== 0 ? "border-t border-border" : ""}
+                  `}
                   onClick={() => navigate(`/conversation/${conv.visitorId}`)}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      {/* Avatar */}
-                      <div className={`p-2 rounded-full flex-shrink-0 ${conv.unreadCount > 0 ? "bg-primary/20" : "bg-muted"}`}>
-                        {conv.isCompany ? (
-                          <Building2 className={`w-5 h-5 ${conv.unreadCount > 0 ? "text-primary" : "text-muted-foreground"}`} />
-                        ) : (
-                          <User className={`w-5 h-5 ${conv.unreadCount > 0 ? "text-primary" : "text-muted-foreground"}`} />
-                        )}
-                      </div>
+                  {/* Unread indicator bar */}
+                  {conv.unreadCount > 0 && (
+                    <div className="absolute left-0 w-1 h-full bg-primary rounded-r" />
+                  )}
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className={`font-medium truncate ${conv.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
-                            {conv.displayName}
-                          </p>
-                          <span className="text-xs text-muted-foreground flex-shrink-0">
-                            {formatDistanceToNow(conv.lastMessageDate, {
-                              addSuffix: false,
-                              locale: fr,
-                            })}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className={`text-sm truncate ${conv.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
-                            {conv.hasReply && (
-                              <span className="text-primary mr-1">↩</span>
-                            )}
-                            {preview}
-                          </p>
-                        </div>
+                  {/* Avatar */}
+                  <div className={`
+                    w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0
+                    ${conv.isCompany ? "bg-accent/10" : "bg-primary/10"}
+                  `}>
+                    {conv.isCompany ? (
+                      <Building2 className="w-6 h-6 text-accent" />
+                    ) : (
+                      <User className="w-6 h-6 text-primary" />
+                    )}
+                  </div>
 
-                        {/* Badges */}
-                        <div className="flex items-center gap-2 mt-2">
-                          {conv.unreadCount > 0 && (
-                            <Badge variant="destructive" className="text-xs h-5">
-                              {conv.unreadCount} nouveau{conv.unreadCount > 1 ? "x" : ""}
-                            </Badge>
-                          )}
-                          {conv.totalMessages > 1 && (
-                            <Badge variant="secondary" className="text-xs h-5">
-                              {conv.totalMessages} messages
-                            </Badge>
-                          )}
-                          {conv.hasReply && (
-                            <Badge variant="outline" className="text-xs h-5 text-green-600 border-green-600">
-                              Répondu
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Arrow */}
-                      <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`font-semibold truncate ${conv.unreadCount > 0 ? "text-foreground" : "text-foreground/80"}`}>
+                        {conv.displayName}
+                      </p>
+                      <span className={`text-xs flex-shrink-0 ${conv.unreadCount > 0 ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                        {formatDistanceToNow(conv.lastMessageDate, {
+                          addSuffix: false,
+                          locale: fr,
+                        })}
+                      </span>
                     </div>
-                  </CardContent>
-                </Card>
+                    
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex items-center gap-1 min-w-0">
+                        {conv.hasReply && (
+                          <span className="text-success text-sm">✓✓</span>
+                        )}
+                        {isVoice && (
+                          <Mic className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        )}
+                        <p className={`text-sm truncate ${conv.unreadCount > 0 ? "text-foreground/70 font-medium" : "text-muted-foreground"}`}>
+                          {isVoice ? "Message vocal" : preview}
+                        </p>
+                      </div>
+                      
+                      {/* Unread badge */}
+                      {conv.unreadCount > 0 && (
+                        <span className="bg-primary text-primary-foreground text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center flex-shrink-0">
+                          {conv.unreadCount}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Job title for companies */}
+                    {conv.jobTitle && (
+                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                        {conv.jobTitle}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Arrow */}
+                  <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
+                </div>
               );
             })}
           </div>
