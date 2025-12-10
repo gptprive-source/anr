@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, Check, Trash2, Phone, Mail, User, Building2, Briefcase, MapPin, Inbox, MailOpen, Mail as MailClosed, Mic } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, Check, Trash2, Phone, Mail, User, Building2, Briefcase, MapPin, Inbox, MailOpen, Mail as MailClosed, Mic, Reply, UserPlus, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,10 @@ import { formatDistanceToNow, isToday, isThisWeek, isThisMonth } from "date-fns"
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
 import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { ReplyMessageDialog } from "@/components/messages/ReplyMessageDialog";
+import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
+import { useMessageReplies } from "@/hooks/useMessageReplies";
+import { useResidentContacts } from "@/hooks/useResidentContacts";
 
 type StatusFilter = "all" | "unread" | "read";
 type DateFilter = "all" | "today" | "week" | "month";
@@ -29,6 +32,9 @@ const Messages = () => {
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [replyingToMessage, setReplyingToMessage] = useState<any>(null);
+  
+  const { contacts, checkIfExists } = useResidentContacts();
 
   // Fetch habitation ID for current user
   useEffect(() => {
@@ -307,7 +313,7 @@ const Messages = () => {
                       </div>
                     )}
 
-                    <div className="flex justify-between items-start gap-3">
+                    <div className="space-y-3">
                       <div className="flex-1 min-w-0">
                         {msg.message && (
                           <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
@@ -342,10 +348,34 @@ const Messages = () => {
                               Non lu
                             </Badge>
                           )}
+                          {msg.has_reply && (
+                            <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                              <MessageCircle className="w-3 h-3 mr-1" />
+                              Répondu
+                            </Badge>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 flex-shrink-0">
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setReplyingToMessage(msg)}
+                          className="flex-1"
+                        >
+                          <Reply className="w-4 h-4 mr-1" />
+                          Répondre
+                        </Button>
+                        
+                        {card && (
+                          <AddToContactsButton 
+                            businessCard={card}
+                            messageId={msg.id}
+                          />
+                        )}
+                        
                         {!msg.is_read && (
                           <Button
                             variant="ghost"
@@ -378,6 +408,15 @@ const Messages = () => {
       </div>
 
       <BottomNav />
+      
+      {/* Reply Dialog */}
+      {replyingToMessage && (
+        <ReplyMessageDialog
+          message={replyingToMessage}
+          open={!!replyingToMessage}
+          onOpenChange={(open) => !open && setReplyingToMessage(null)}
+        />
+      )}
     </div>
   );
 };
