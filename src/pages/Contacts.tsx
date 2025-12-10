@@ -1,0 +1,348 @@
+import { useState } from "react";
+import { useResidentContacts, ResidentContact } from "@/hooks/useResidentContacts";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import BottomNav from "@/components/layout/BottomNav";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Users,
+  Search,
+  Star,
+  Building2,
+  User,
+  Phone,
+  Mail,
+  Home,
+  Trash2,
+  Edit,
+  MoreVertical,
+  Loader2,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+type FilterType = "all" | "favorites" | "companies" | "individuals";
+
+const Contacts = () => {
+  const { toast } = useToast();
+  const { contacts, loading, updateContact, deleteContact, toggleFavorite } = useResidentContacts();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [editingContact, setEditingContact] = useState<ResidentContact | null>(null);
+  const [editNotes, setEditNotes] = useState("");
+  const [deletingContact, setDeletingContact] = useState<ResidentContact | null>(null);
+
+  const filteredContacts = contacts.filter((contact) => {
+    // Apply filter
+    if (filter === "favorites" && !contact.is_favorite) return false;
+    if (filter === "companies" && contact.contact_type !== "company") return false;
+    if (filter === "individuals" && contact.contact_type !== "individual") return false;
+
+    // Apply search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const searchFields = [
+        contact.first_name,
+        contact.last_name,
+        contact.company_name,
+        contact.email,
+        contact.phone,
+        contact.job_title,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return searchFields.includes(query);
+    }
+
+    return true;
+  });
+
+  const handleToggleFavorite = async (contact: ResidentContact) => {
+    const result = await toggleFavorite(contact.id);
+    if (result.success) {
+      toast({
+        title: contact.is_favorite ? "Retiré des favoris" : "Ajouté aux favoris",
+      });
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editingContact) return;
+    const result = await updateContact(editingContact.id, { notes: editNotes });
+    if (result.success) {
+      toast({ title: "Notes mises à jour" });
+      setEditingContact(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingContact) return;
+    const result = await deleteContact(deletingContact.id);
+    if (result.success) {
+      toast({ title: "Contact supprimé" });
+      setDeletingContact(null);
+    }
+  };
+
+  const openEdit = (contact: ResidentContact) => {
+    setEditNotes(contact.notes || "");
+    setEditingContact(contact);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background pb-20">
+      {/* Header */}
+      <div className="bg-primary text-primary-foreground p-6">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Users className="w-6 h-6" />
+          Mes contacts ANR
+        </h1>
+        <p className="text-primary-foreground/80 text-sm mt-1">
+          {contacts.length} contact{contacts.length !== 1 ? "s" : ""} enregistré{contacts.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher un contact..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Filters */}
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilter("all")}
+          >
+            Tous
+          </Button>
+          <Button
+            variant={filter === "favorites" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilter("favorites")}
+          >
+            <Star className="w-4 h-4 mr-1" />
+            Favoris
+          </Button>
+          <Button
+            variant={filter === "companies" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilter("companies")}
+          >
+            <Building2 className="w-4 h-4 mr-1" />
+            Entreprises
+          </Button>
+          <Button
+            variant={filter === "individuals" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilter("individuals")}
+          >
+            <User className="w-4 h-4 mr-1" />
+            Particuliers
+          </Button>
+        </div>
+
+        {/* Contacts List */}
+        {filteredContacts.length === 0 ? (
+          <Card className="p-8 text-center">
+            <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">
+              {searchQuery || filter !== "all"
+                ? "Aucun contact trouvé"
+                : "Aucun contact enregistré"}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Ajoutez des contacts depuis vos messages visiteurs
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {filteredContacts.map((contact) => (
+              <Card key={contact.id} className="p-4">
+                <div className="flex items-start gap-3">
+                  {/* Avatar */}
+                  <button
+                    onClick={() => handleToggleFavorite(contact)}
+                    className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors relative"
+                  >
+                    {contact.contact_type === "company" ? (
+                      <Building2 className="w-5 h-5 text-primary" />
+                    ) : (
+                      <User className="w-5 h-5 text-primary" />
+                    )}
+                    {contact.is_favorite && (
+                      <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 absolute -top-1 -right-1" />
+                    )}
+                  </button>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    {contact.contact_type === "company" ? (
+                      <>
+                        <p className="font-medium truncate">{contact.company_name}</p>
+                        {contact.first_name && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {contact.first_name} {contact.last_name}
+                            {contact.job_title && ` - ${contact.job_title}`}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-medium truncate">
+                          {contact.first_name} {contact.last_name}
+                        </p>
+                        {contact.job_title && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {contact.job_title}
+                          </p>
+                        )}
+                      </>
+                    )}
+
+                    {/* Contact Methods */}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {contact.phone && (
+                        <a
+                          href={`tel:${contact.phone}`}
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                        >
+                          <Phone className="w-3 h-3" /> {contact.phone}
+                        </a>
+                      )}
+                      {contact.email && (
+                        <a
+                          href={`mailto:${contact.email}`}
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+                        >
+                          <Mail className="w-3 h-3" /> {contact.email}
+                        </a>
+                      )}
+                      {contact.anr_code && (
+                        <Badge variant="outline" className="text-xs">
+                          <Home className="w-3 h-3 mr-1" />
+                          ANR: {contact.anr_code}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Notes */}
+                    {contact.notes && (
+                      <p className="text-xs text-muted-foreground mt-2 italic line-clamp-2">
+                        {contact.notes}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions Menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleToggleFavorite(contact)}>
+                        <Star className="w-4 h-4 mr-2" />
+                        {contact.is_favorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openEdit(contact)}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Modifier les notes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setDeletingContact(contact)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Supprimer
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingContact} onOpenChange={(open) => !open && setEditingContact(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier les notes</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Notes personnelles</Label>
+            <Textarea
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              rows={4}
+              placeholder="Ajoutez des notes sur ce contact..."
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingContact(null)}>
+              Annuler
+            </Button>
+            <Button onClick={handleEditSave}>Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingContact} onOpenChange={(open) => !open && setDeletingContact(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce contact ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Le contact sera définitivement supprimé de votre carnet.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <BottomNav />
+    </div>
+  );
+};
+
+export default Contacts;

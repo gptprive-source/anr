@@ -1334,6 +1334,42 @@ export type Database = {
           },
         ]
       }
+      message_replies: {
+        Row: {
+          created_at: string | null
+          habitation_id: string
+          id: string
+          is_read: boolean | null
+          original_message_id: string
+          read_at: string | null
+          reply_text: string | null
+          reply_voice_url: string | null
+          resident_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          habitation_id: string
+          id?: string
+          is_read?: boolean | null
+          original_message_id: string
+          read_at?: string | null
+          reply_text?: string | null
+          reply_voice_url?: string | null
+          resident_id: string
+        }
+        Update: {
+          created_at?: string | null
+          habitation_id?: string
+          id?: string
+          is_read?: boolean | null
+          original_message_id?: string
+          read_at?: string | null
+          reply_text?: string | null
+          reply_voice_url?: string | null
+          resident_id?: string
+        }
+        Relationships: []
+      }
       phone_verifications: {
         Row: {
           created_at: string | null
@@ -1810,6 +1846,63 @@ export type Database = {
           platform?: string
           token?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      resident_contacts: {
+        Row: {
+          anr_code: string | null
+          company_name: string | null
+          contact_type: string | null
+          created_at: string | null
+          email: string | null
+          first_name: string | null
+          id: string
+          is_favorite: boolean | null
+          job_title: string | null
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          source_business_card_id: string | null
+          source_message_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          anr_code?: string | null
+          company_name?: string | null
+          contact_type?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          job_title?: string | null
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          source_business_card_id?: string | null
+          source_message_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          anr_code?: string | null
+          company_name?: string | null
+          contact_type?: string | null
+          created_at?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          job_title?: string | null
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          source_business_card_id?: string | null
+          source_message_id?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -2611,12 +2704,15 @@ export type Database = {
       visitor_messages: {
         Row: {
           business_card_id: string | null
+          conversation_token: string | null
           created_at: string | null
           habitation_id: string
+          has_reply: boolean | null
           id: string
           is_read: boolean | null
           message: string | null
           read_at: string | null
+          replied_at: string | null
           visitor_latitude: number | null
           visitor_longitude: number | null
           visitor_phone: string | null
@@ -2624,12 +2720,15 @@ export type Database = {
         }
         Insert: {
           business_card_id?: string | null
+          conversation_token?: string | null
           created_at?: string | null
           habitation_id: string
+          has_reply?: boolean | null
           id?: string
           is_read?: boolean | null
           message?: string | null
           read_at?: string | null
+          replied_at?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
@@ -2637,12 +2736,15 @@ export type Database = {
         }
         Update: {
           business_card_id?: string | null
+          conversation_token?: string | null
           created_at?: string | null
           habitation_id?: string
+          has_reply?: boolean | null
           id?: string
           is_read?: boolean | null
           message?: string | null
           read_at?: string | null
+          replied_at?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null

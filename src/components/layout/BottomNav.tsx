@@ -1,4 +1,4 @@
-import { Home, QrCode, User, Building2 } from "lucide-react";
+import { Home, QrCode, User, Building2, Users } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useProCompanyCheck } from "@/hooks/useProCompanyCheck";
@@ -17,6 +17,7 @@ const BottomNav = () => {
   const navItems: NavItem[] = [
     { icon: <Home className="w-6 h-6" />, label: "Habitant", path: "/dashboard" },
     { icon: <QrCode className="w-6 h-6" />, label: "Visiteur", path: "/visitor" },
+    { icon: <Users className="w-6 h-6" />, label: "Contacts", path: "/contacts" },
     ...(isProUser ? [{ icon: <Building2 className="w-6 h-6" />, label: "PRO", path: "/pro" }] : []),
     { icon: <User className="w-6 h-6" />, label: "Compte", path: "/account" },
   ];
