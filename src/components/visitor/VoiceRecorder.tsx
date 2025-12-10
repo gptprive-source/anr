@@ -1,10 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, Square, Pause, Play, Trash2, AlertCircle } from "lucide-react";
+import { Mic, Square, Pause, Play, Trash2, AlertCircle, Send, X } from "lucide-react";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 
 interface VoiceRecorderProps {
   onRecordingComplete: (blob: Blob | null) => void;
+  onSend?: () => void;
+  onCancel?: () => void;
+  sending?: boolean;
+  audioBlob?: Blob | null;
   maxDuration?: number;
 }
 
@@ -14,12 +18,19 @@ const formatDuration = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-const VoiceRecorder = ({ onRecordingComplete, maxDuration = 60 }: VoiceRecorderProps) => {
+const VoiceRecorder = ({ 
+  onRecordingComplete, 
+  onSend, 
+  onCancel, 
+  sending = false,
+  audioBlob: externalAudioBlob,
+  maxDuration = 60 
+}: VoiceRecorderProps) => {
   const {
     isRecording,
     isPaused,
     duration,
-    audioBlob,
+    audioBlob: internalAudioBlob,
     audioUrl,
     startRecording,
     stopRecording,
@@ -29,115 +40,153 @@ const VoiceRecorder = ({ onRecordingComplete, maxDuration = 60 }: VoiceRecorderP
     error,
   } = useVoiceRecorder(maxDuration);
 
-  // Notify parent when recording is complete
+  const hasNotifiedRef = useRef(false);
+
+  // Notify parent when recording is complete (only once per recording)
   useEffect(() => {
-    onRecordingComplete(audioBlob);
-  }, [audioBlob, onRecordingComplete]);
+    if (internalAudioBlob && !hasNotifiedRef.current) {
+      hasNotifiedRef.current = true;
+      onRecordingComplete(internalAudioBlob);
+    }
+    if (!internalAudioBlob) {
+      hasNotifiedRef.current = false;
+    }
+  }, [internalAudioBlob, onRecordingComplete]);
+
+  const handleReset = () => {
+    resetRecording();
+    onRecordingComplete(null);
+  };
+
+  const handleCancel = () => {
+    resetRecording();
+    onRecordingComplete(null);
+    onCancel?.();
+  };
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg text-destructive">
-        <AlertCircle className="w-4 h-4 flex-shrink-0" />
-        <span className="text-sm">{error}</span>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg text-destructive">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span className="text-sm">{error}</span>
+        </div>
+        <Button variant="outline" onClick={handleCancel} className="w-full">
+          Retour
+        </Button>
       </div>
     );
   }
 
-  // Show audio player if recording is complete
+  // Show audio player with send button if recording is complete (WhatsApp style)
   if (audioUrl && !isRecording) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-          <audio src={audioUrl} controls className="flex-1 h-10" />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={resetRecording}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleReset}
+          className="flex-shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <Trash2 className="w-5 h-5" />
+        </Button>
+        
+        <div className="flex-1 flex items-center gap-2 p-2 bg-muted rounded-full">
+          <audio src={audioUrl} controls className="flex-1 h-8" />
+          <span className="text-xs text-muted-foreground px-2">
+            {formatDuration(duration)}
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground text-center">
-          Durée: {formatDuration(duration)}
-        </p>
+        
+        <Button
+          size="icon"
+          onClick={onSend}
+          disabled={sending}
+          className="flex-shrink-0 rounded-full"
+        >
+          <Send className="w-5 h-5" />
+        </Button>
       </div>
     );
   }
 
-  // Recording in progress
+  // Recording in progress (WhatsApp style)
   if (isRecording) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-center gap-4 p-4 bg-muted rounded-lg">
-          {/* Recording indicator */}
-          <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`} />
-            <span className="text-lg font-mono font-medium">
-              {formatDuration(duration)}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              / {formatDuration(maxDuration)}
-            </span>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleCancel}
+          className="flex-shrink-0"
+        >
+          <X className="w-5 h-5" />
+        </Button>
+        
+        <div className="flex-1 flex items-center gap-3 px-4 py-2 bg-muted rounded-full">
+          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`} />
+          <span className="font-mono text-sm font-medium">
+            {formatDuration(duration)}
+          </span>
+          <div className="flex-1 h-1 bg-muted-foreground/20 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-red-500 transition-all duration-1000"
+              style={{ width: `${(duration / maxDuration) * 100}%` }}
+            />
           </div>
         </div>
         
-        <div className="flex items-center justify-center gap-2">
-          {isPaused ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={resumeRecording}
-              className="gap-2"
-            >
-              <Play className="w-4 h-4" />
-              Reprendre
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={pauseRecording}
-              className="gap-2"
-            >
-              <Pause className="w-4 h-4" />
-              Pause
-            </Button>
-          )}
-          
-          <Button
-            variant="default"
-            size="sm"
-            onClick={stopRecording}
-            className="gap-2"
-          >
-            <Square className="w-4 h-4" />
-            Terminer
-          </Button>
-          
+        {isPaused ? (
           <Button
             variant="ghost"
-            size="sm"
-            onClick={resetRecording}
-            className="text-destructive hover:text-destructive"
+            size="icon"
+            onClick={resumeRecording}
+            className="flex-shrink-0"
           >
-            <Trash2 className="w-4 h-4" />
+            <Play className="w-5 h-5" />
           </Button>
-        </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={pauseRecording}
+            className="flex-shrink-0"
+          >
+            <Pause className="w-5 h-5" />
+          </Button>
+        )}
+        
+        <Button
+          size="icon"
+          onClick={stopRecording}
+          className="flex-shrink-0 rounded-full bg-red-500 hover:bg-red-600"
+        >
+          <Square className="w-4 h-4" />
+        </Button>
       </div>
     );
   }
 
-  // Initial state - show record button
+  // Initial state - show record button (WhatsApp style)
   return (
-    <Button
-      variant="outline"
-      onClick={startRecording}
-      className="w-full gap-2"
-    >
-      <Mic className="w-4 h-4" />
-      Enregistrer un message vocal
-    </Button>
+    <div className="flex items-center gap-2">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={handleCancel}
+        className="flex-shrink-0"
+      >
+        <X className="w-5 h-5" />
+      </Button>
+      <Button
+        variant="outline"
+        onClick={startRecording}
+        className="flex-1 gap-2 rounded-full"
+      >
+        <Mic className="w-4 h-4" />
+        Appuyer pour enregistrer
+      </Button>
+    </div>
   );
 };
 
