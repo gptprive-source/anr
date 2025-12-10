@@ -25,6 +25,7 @@ interface AddToContactsButtonProps {
   messageId?: string;
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "icon";
+  className?: string;
 }
 
 export const AddToContactsButton = ({
@@ -32,6 +33,7 @@ export const AddToContactsButton = ({
   messageId,
   variant = "outline",
   size = "sm",
+  className,
 }: AddToContactsButtonProps) => {
   const { toast } = useToast();
   const { addContact, checkIfExists } = useResidentContacts();
@@ -94,9 +96,9 @@ export const AddToContactsButton = ({
 
   return (
     <>
-      <Button variant={variant} size={size} onClick={handleClick}>
+      <Button variant={variant} size={size} onClick={handleClick} className={className}>
         <UserPlus className="w-4 h-4 mr-1" />
-        Ajouter aux contacts
+        {size !== "icon" && "Ajouter aux contacts"}
       </Button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
