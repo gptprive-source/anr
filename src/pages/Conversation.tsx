@@ -316,41 +316,19 @@ const Conversation = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
+      {/* Input Area - WhatsApp style */}
       <div className="sticky bottom-20 bg-card border-t p-4">
         {showVoiceRecorder ? (
-          <div className="space-y-3">
-            <VoiceRecorder onRecordingComplete={(blob) => setAudioBlob(blob)} />
-            {audioBlob && (
-              <div className="flex items-center gap-2">
-                <audio controls className="flex-1 h-8">
-                  <source src={URL.createObjectURL(audioBlob)} type="audio/webm" />
-                </audio>
-                <Button size="sm" variant="ghost" onClick={() => setAudioBlob(null)}>
-                  Supprimer
-                </Button>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setShowVoiceRecorder(false);
-                  setAudioBlob(null);
-                }}
-              >
-                Annuler
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={handleSend}
-                disabled={!audioBlob || sending}
-              >
-                {sending ? "Envoi..." : "Envoyer"}
-              </Button>
-            </div>
-          </div>
+          <VoiceRecorder 
+            onRecordingComplete={(blob) => setAudioBlob(blob)}
+            onSend={handleSend}
+            onCancel={() => {
+              setShowVoiceRecorder(false);
+              setAudioBlob(null);
+            }}
+            sending={sending}
+            audioBlob={audioBlob}
+          />
         ) : (
           <div className="flex items-end gap-2">
             <Button
