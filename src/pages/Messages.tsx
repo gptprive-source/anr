@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, Trash2, Phone, Mail, User, Building2, Briefcase, MapPin, Inbox, MailOpen, Mail as MailClosed, Mic, MessageCircle, ChevronRight } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow, isToday, isThisWeek, isThisMonth } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -18,10 +17,22 @@ import { Loader2 } from "lucide-react";
 type StatusFilter = "all" | "unread" | "read";
 type DateFilter = "all" | "today" | "week" | "month";
 
+interface GroupedConversation {
+  visitorId: string;
+  displayName: string;
+  isCompany: boolean;
+  jobTitle: string | null;
+  lastMessage: string | null;
+  lastMessageDate: Date;
+  unreadCount: number;
+  totalMessages: number;
+  hasReply: boolean;
+  businessCard: any | null;
+}
+
 const Messages = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { toast } = useToast();
   const [habitationId, setHabitationId] = useState<string | null>(null);
   const [loadingHabitation, setLoadingHabitation] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -51,39 +62,90 @@ const Messages = () => {
 
   const { messages, unreadCount, loading } = useVisitorMessages(habitationId || "");
 
-  // Filter messages
-  const filteredMessages = useMemo(() => {
-    return messages.filter((msg) => {
+  // Group messages by visitor
+  const groupedConversations = useMemo(() => {
+    const groups = new Map<string, GroupedConversation>();
+
+    messages.forEach((msg) => {
+      // Use business_card_id or visitor_phone as unique visitor identifier
+      const visitorId = msg.business_card_id || msg.visitor_phone || `anon-${msg.id}`;
+      
+      const existing = groups.get(visitorId);
+      const card = msg.business_card;
+      const isCompany = card?.card_type === "company";
+      const displayName = card
+        ? isCompany
+          ? card.company_name || "Entreprise"
+          : `${card.first_name || ""} ${card.last_name || ""}`.trim() || "Visiteur"
+        : msg.visitor_phone || "Visiteur";
+
+      if (existing) {
+        // Update with latest info
+        if (new Date(msg.created_at) > existing.lastMessageDate) {
+          existing.lastMessage = msg.message || (msg.voice_message_url ? "🎤 Message vocal" : null);
+          existing.lastMessageDate = new Date(msg.created_at);
+          existing.hasReply = msg.has_reply || existing.hasReply;
+        }
+        if (!msg.is_read) {
+          existing.unreadCount++;
+        }
+        existing.totalMessages++;
+        // Keep the most complete business card
+        if (card && !existing.businessCard) {
+          existing.businessCard = card;
+          existing.displayName = displayName;
+          existing.isCompany = isCompany;
+          existing.jobTitle = card.job_title;
+        }
+      } else {
+        groups.set(visitorId, {
+          visitorId,
+          displayName,
+          isCompany,
+          jobTitle: card?.job_title || null,
+          lastMessage: msg.message || (msg.voice_message_url ? "🎤 Message vocal" : null),
+          lastMessageDate: new Date(msg.created_at),
+          unreadCount: msg.is_read ? 0 : 1,
+          totalMessages: 1,
+          hasReply: msg.has_reply || false,
+          businessCard: card || null,
+        });
+      }
+    });
+
+    // Sort by last message date descending
+    return Array.from(groups.values()).sort(
+      (a, b) => b.lastMessageDate.getTime() - a.lastMessageDate.getTime()
+    );
+  }, [messages]);
+
+  // Filter conversations
+  const filteredConversations = useMemo(() => {
+    return groupedConversations.filter((conv) => {
       // Status filter
-      if (statusFilter === "unread" && msg.is_read) return false;
-      if (statusFilter === "read" && !msg.is_read) return false;
+      if (statusFilter === "unread" && conv.unreadCount === 0) return false;
+      if (statusFilter === "read" && conv.unreadCount > 0) return false;
 
       // Date filter
-      const msgDate = new Date(msg.created_at);
-      if (dateFilter === "today" && !isToday(msgDate)) return false;
-      if (dateFilter === "week" && !isThisWeek(msgDate, { weekStartsOn: 1 })) return false;
-      if (dateFilter === "month" && !isThisMonth(msgDate)) return false;
+      if (dateFilter === "today" && !isToday(conv.lastMessageDate)) return false;
+      if (dateFilter === "week" && !isThisWeek(conv.lastMessageDate, { weekStartsOn: 1 })) return false;
+      if (dateFilter === "month" && !isThisMonth(conv.lastMessageDate)) return false;
 
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const card = msg.business_card;
-        const matchesMessage = msg.message?.toLowerCase().includes(query) ?? false;
-        const matchesPhone = msg.visitor_phone?.toLowerCase().includes(query);
-        const matchesCardName = card
-          ? `${card.first_name || ""} ${card.last_name || ""} ${card.company_name || ""}`.toLowerCase().includes(query)
-          : false;
-        const matchesCardPhone = card?.phone?.toLowerCase().includes(query);
-        const matchesCardEmail = card?.email?.toLowerCase().includes(query);
+        const matchesName = conv.displayName.toLowerCase().includes(query);
+        const matchesMessage = conv.lastMessage?.toLowerCase().includes(query);
+        const matchesJob = conv.jobTitle?.toLowerCase().includes(query);
         
-        if (!matchesMessage && !matchesPhone && !matchesCardName && !matchesCardPhone && !matchesCardEmail) {
+        if (!matchesName && !matchesMessage && !matchesJob) {
           return false;
         }
       }
 
       return true;
     });
-  }, [messages, statusFilter, dateFilter, searchQuery]);
+  }, [groupedConversations, statusFilter, dateFilter, searchQuery]);
 
   if (loadingHabitation || loading) {
     return (
@@ -107,6 +169,7 @@ const Messages = () => {
   }
 
   const totalMessages = messages.length;
+  const totalConversations = groupedConversations.length;
   const readCount = totalMessages - unreadCount;
 
   return (
@@ -130,9 +193,9 @@ const Messages = () => {
           <Card className="p-3 text-center">
             <div className="flex items-center justify-center gap-2 text-muted-foreground mb-1">
               <Inbox className="w-4 h-4" />
-              <span className="text-xs">Total</span>
+              <span className="text-xs">Conversations</span>
             </div>
-            <p className="text-2xl font-bold">{totalMessages}</p>
+            <p className="text-2xl font-bold">{totalConversations}</p>
           </Card>
           <Card className="p-3 text-center">
             <div className="flex items-center justify-center gap-2 text-destructive mb-1">
@@ -144,9 +207,9 @@ const Messages = () => {
           <Card className="p-3 text-center">
             <div className="flex items-center justify-center gap-2 text-success mb-1">
               <MailOpen className="w-4 h-4" />
-              <span className="text-xs">Lus</span>
+              <span className="text-xs">Total msgs</span>
             </div>
-            <p className="text-2xl font-bold text-success">{readCount}</p>
+            <p className="text-2xl font-bold text-success">{totalMessages}</p>
           </Card>
         </div>
 
@@ -192,55 +255,45 @@ const Messages = () => {
         </div>
 
         {/* Conversations list */}
-        {filteredMessages.length === 0 ? (
+        {filteredConversations.length === 0 ? (
           <div className="text-center py-12">
             <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">
-              {messages.length === 0 ? "Aucun message" : "Aucun résultat"}
+              {groupedConversations.length === 0 ? "Aucun message" : "Aucun résultat"}
             </p>
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredMessages.map((msg) => {
-              const card = msg.business_card;
-              const isCompany = card?.card_type === "company";
-              const displayName = card
-                ? isCompany
-                  ? card.company_name
-                  : `${card.first_name || ""} ${card.last_name || ""}`.trim()
-                : msg.visitor_phone || "Visiteur";
-
-              const preview = msg.message 
-                ? msg.message.substring(0, 60) + (msg.message.length > 60 ? "..." : "")
-                : msg.voice_message_url 
-                  ? "🎤 Message vocal"
-                  : "";
+            {filteredConversations.map((conv) => {
+              const preview = conv.lastMessage 
+                ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "")
+                : "";
 
               return (
                 <Card
-                  key={msg.id}
-                  className={`cursor-pointer transition-all hover:bg-accent/50 ${!msg.is_read ? "border-primary/50 bg-primary/5" : ""}`}
-                  onClick={() => navigate(`/conversation/${msg.id}`)}
+                  key={conv.visitorId}
+                  className={`cursor-pointer transition-all hover:bg-accent/50 ${conv.unreadCount > 0 ? "border-primary/50 bg-primary/5" : ""}`}
+                  onClick={() => navigate(`/conversation/${conv.visitorId}`)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
                       {/* Avatar */}
-                      <div className={`p-2 rounded-full flex-shrink-0 ${!msg.is_read ? "bg-primary/20" : "bg-muted"}`}>
-                        {isCompany ? (
-                          <Building2 className={`w-5 h-5 ${!msg.is_read ? "text-primary" : "text-muted-foreground"}`} />
+                      <div className={`p-2 rounded-full flex-shrink-0 ${conv.unreadCount > 0 ? "bg-primary/20" : "bg-muted"}`}>
+                        {conv.isCompany ? (
+                          <Building2 className={`w-5 h-5 ${conv.unreadCount > 0 ? "text-primary" : "text-muted-foreground"}`} />
                         ) : (
-                          <User className={`w-5 h-5 ${!msg.is_read ? "text-primary" : "text-muted-foreground"}`} />
+                          <User className={`w-5 h-5 ${conv.unreadCount > 0 ? "text-primary" : "text-muted-foreground"}`} />
                         )}
                       </div>
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <p className={`font-medium truncate ${!msg.is_read ? "text-foreground" : "text-muted-foreground"}`}>
-                            {displayName}
+                          <p className={`font-medium truncate ${conv.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                            {conv.displayName}
                           </p>
                           <span className="text-xs text-muted-foreground flex-shrink-0">
-                            {formatDistanceToNow(new Date(msg.created_at), {
+                            {formatDistanceToNow(conv.lastMessageDate, {
                               addSuffix: false,
                               locale: fr,
                             })}
@@ -248,8 +301,8 @@ const Messages = () => {
                         </div>
                         
                         <div className="flex items-center gap-2 mt-1">
-                          <p className={`text-sm truncate ${!msg.is_read ? "text-foreground" : "text-muted-foreground"}`}>
-                            {msg.has_reply && (
+                          <p className={`text-sm truncate ${conv.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                            {conv.hasReply && (
                               <span className="text-primary mr-1">↩</span>
                             )}
                             {preview}
@@ -258,19 +311,19 @@ const Messages = () => {
 
                         {/* Badges */}
                         <div className="flex items-center gap-2 mt-2">
-                          {!msg.is_read && (
+                          {conv.unreadCount > 0 && (
                             <Badge variant="destructive" className="text-xs h-5">
-                              Nouveau
+                              {conv.unreadCount} nouveau{conv.unreadCount > 1 ? "x" : ""}
                             </Badge>
                           )}
-                          {msg.has_reply && (
+                          {conv.totalMessages > 1 && (
+                            <Badge variant="secondary" className="text-xs h-5">
+                              {conv.totalMessages} messages
+                            </Badge>
+                          )}
+                          {conv.hasReply && (
                             <Badge variant="outline" className="text-xs h-5 text-green-600 border-green-600">
                               Répondu
-                            </Badge>
-                          )}
-                          {card?.job_title && (
-                            <Badge variant="secondary" className="text-xs h-5">
-                              {card.job_title}
                             </Badge>
                           )}
                         </div>

@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ShareANRDialog from "./ShareANRDialog";
 import BottomNav from "@/components/layout/BottomNav";
-import VisitorMessagesSection from "./VisitorMessagesSection";
+
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import logoAnr from "@/assets/logo-anr.png";
 interface Resident {
@@ -293,9 +293,6 @@ const ResidentDashboard = () => {
             </div>
           </div>
         </div>
-
-        {/* Visitor Messages Section */}
-        <VisitorMessagesSection habitationId={habitationData.id} />
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
