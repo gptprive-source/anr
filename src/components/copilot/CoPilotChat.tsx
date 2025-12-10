@@ -175,29 +175,29 @@ const CoPilotChat = () => {
 
   return (
     <>
-      {/* Toggle Button */}
+      {/* Toggle Button - Top Right */}
       <Button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full shadow-lg",
+          "fixed top-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg",
           "bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600",
           "transition-all duration-300",
           isOpen && "scale-0 opacity-0"
         )}
         size="icon"
       >
-        <Sparkles className="h-6 w-6 text-white" />
+        <Sparkles className="h-5 w-5 text-white" />
       </Button>
 
       {/* Chat Window */}
       <div
         className={cn(
-          "fixed bottom-20 right-4 z-50 w-[360px] max-w-[calc(100vw-2rem)]",
+          "fixed top-20 right-4 z-50 w-[360px] max-w-[calc(100vw-2rem)]",
           "bg-background border rounded-2xl shadow-2xl",
-          "transition-all duration-300 origin-bottom-right",
+          "transition-all duration-300 origin-top-right",
           isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"
         )}
-        style={{ maxHeight: "calc(100vh - 120px)" }}
+        style={{ maxHeight: "calc(100vh - 100px)" }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600/10 to-cyan-500/10 rounded-t-2xl">
