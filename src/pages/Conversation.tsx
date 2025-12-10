@@ -77,17 +77,22 @@ const Conversation = () => {
 
         setHabitationId(residentData.habitation_id);
 
-        // Determine if visitorId is a business_card_id or visitor_phone
+        // Determine if visitorId is a business_card_id, message ID (anon-xxx), or visitor_phone
         let query = supabase
           .from("visitor_messages" as any)
           .select("*, business_card:visitor_business_cards(*)")
           .eq("habitation_id", residentData.habitation_id)
           .order("created_at", { ascending: true });
 
-        // Check if visitorId looks like a UUID (business_card_id) or phone
+        // Check if visitorId is an anon-{messageId} pattern
+        const isAnonId = visitorId.startsWith("anon-");
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(visitorId);
         
-        if (isUuid) {
+        if (isAnonId) {
+          // Extract the message ID and fetch that specific message
+          const messageId = visitorId.replace("anon-", "");
+          query = query.eq("id", messageId);
+        } else if (isUuid) {
           query = query.eq("business_card_id", visitorId);
         } else {
           // It's a phone number or device ID
