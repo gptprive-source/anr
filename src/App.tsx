@@ -10,7 +10,7 @@ import { SupportAlertProvider } from "@/contexts/SupportAlertContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallListener";
-import SupportChat from "@/components/support/SupportChat";
+import UnifiedAssistant from "@/components/assistant/UnifiedAssistant";
 
 import { SupportAlertOverlay } from "@/components/admin/SupportAlertOverlay";
 import { useAudioUnlock } from "@/hooks/useAudioUnlock";
@@ -85,9 +85,9 @@ const AppContent = () => {
       <Toaster />
       <Sonner />
       <InstallPrompt />
-      <SupportChat />
       <BrowserRouter>
-        
+        <UnifiedAssistant />
+
         <SupportAlertOverlay />
         <GlobalIncomingCallListener />
         <Routes>
