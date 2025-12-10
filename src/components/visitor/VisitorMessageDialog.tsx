@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { useVisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
 import { useVisitorCustomTemplates } from "@/hooks/useVisitorCustomTemplates";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { Send, Loader2, MessageSquare, Info, User, Building2, CreditCard, Plus, X, Save, Mic } from "lucide-react";
 import VisitorBusinessCardManager from "./VisitorBusinessCardManager";
 import SaveCustomTemplateDialog from "./SaveCustomTemplateDialog";
@@ -38,6 +39,7 @@ const VisitorMessageDialog = ({
   const { templates: adminTemplates, retentionDays, sendMessage } = useVisitorMessages();
   const { card, loading: cardLoading } = useVisitorBusinessCard();
   const { templates: customTemplates, saveTemplate, deleteTemplate, incrementUsage } = useVisitorCustomTemplates();
+  const { flags } = useFeatureFlags();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [phone, setPhone] = useState("");
@@ -268,17 +270,19 @@ const VisitorMessageDialog = ({
               )}
             </div>
 
-            {/* Voice Message */}
-            <div className="space-y-2">
-              <Label className="text-sm flex items-center gap-2">
-                <Mic className="w-4 h-4" />
-                Message vocal (optionnel)
-              </Label>
-              <VoiceRecorder 
-                onRecordingComplete={handleAudioRecorded}
-                maxDuration={60}
-              />
-            </div>
+            {/* Voice Message - only if enabled */}
+            {flags.visitorVoiceMessagesEnabled && (
+              <div className="space-y-2">
+                <Label className="text-sm flex items-center gap-2">
+                  <Mic className="w-4 h-4" />
+                  Message vocal (optionnel)
+                </Label>
+                <VoiceRecorder 
+                  onRecordingComplete={handleAudioRecorded}
+                  maxDuration={60}
+                />
+              </div>
+            )}
 
             {/* Custom templates section */}
             <div className="space-y-2">

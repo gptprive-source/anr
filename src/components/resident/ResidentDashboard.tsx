@@ -8,8 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ShareANRDialog from "./ShareANRDialog";
 import BottomNav from "@/components/layout/BottomNav";
-
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import logoAnr from "@/assets/logo-anr.png";
 interface Resident {
   id: string;
@@ -47,6 +47,7 @@ const ResidentDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { flags } = useFeatureFlags();
   
   // Get unread messages count for the badge
   const { unreadCount: unreadMessagesCount } = useVisitorMessages(habitationData?.id || "");
@@ -297,11 +298,15 @@ const ResidentDashboard = () => {
         {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <QuickAction icon={<Users className="w-6 h-6" />} label="Résidents" count={habitationData.residents.length} onClick={() => navigate("/residents")} />
-          <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" badge={unreadMessagesCount} onClick={() => navigate("/messages")} />
+          {flags.visitorTextMessagesEnabled && (
+            <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" badge={unreadMessagesCount} onClick={() => navigate("/messages")} />
+          )}
           <QuickAction icon={<History className="w-6 h-6" />} label="Historique" onClick={() => navigate("/call-history")} />
           <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Notifications"} onClick={toggleMute} active={isMuted} />
           <QuickAction icon={<HelpCircle className="w-6 h-6" />} label="FAQ" onClick={() => navigate("/faq")} />
-          <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} />
+          {flags.doorOpeningEnabled && (
+            <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} />
+          )}
           {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} />}
         </div>
 

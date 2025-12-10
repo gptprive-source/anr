@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Home, Building, Building2, Landmark, ArrowRight, Check } from "lucide-react";
+import { Home, Building, Building2, Landmark, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import RegisterForm from "@/components/auth/RegisterForm";
 import RegisterProForm from "@/components/auth/RegisterProForm";
 import VisitorFooter from "@/components/layout/VisitorFooter";
 import { useAppConfig } from "@/hooks/useAppConfig";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 type AccountType = "choice" | "particulier" | "pro" | "entreprise" | "collectivites";
 
@@ -59,6 +60,16 @@ const Register = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const navigate = useNavigate();
   const { getConfig } = useAppConfig();
+  const { flags, loading: flagsLoading } = useFeatureFlags();
+
+  // Filter plans based on feature flags
+  const enabledPlans = PLAN_CONFIGS.filter(plan => {
+    if (plan.id === 'particulier') return flags.planParticulierEnabled;
+    if (plan.id === 'pro') return flags.planProEnabled;
+    if (plan.id === 'entreprise') return flags.planEntrepriseEnabled;
+    if (plan.id === 'collectivites') return flags.planCollectivitesEnabled;
+    return true;
+  });
 
   const getPrice = (planId: string) => {
     const annualPrice = getConfig(`${planId}_annual_price`);
@@ -111,6 +122,34 @@ const Register = () => {
     );
   }
 
+  if (flagsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // If only one plan is enabled, go directly to that form
+  if (enabledPlans.length === 1) {
+    const onlyPlan = enabledPlans[0];
+    if (onlyPlan.id === 'particulier') {
+      return (
+        <>
+          <RegisterForm onBack={() => navigate("/")} />
+          <VisitorFooter />
+        </>
+      );
+    } else {
+      return (
+        <>
+          <RegisterProForm onBack={() => navigate("/")} initialPlan={onlyPlan.id} />
+          <VisitorFooter />
+        </>
+      );
+    }
+  }
+
   return (
     <>
       <div className="min-h-screen flex items-center justify-center p-4 pb-24">
@@ -123,7 +162,7 @@ const Register = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {PLAN_CONFIGS.map((plan) => {
+            {enabledPlans.map((plan) => {
               const PlanIcon = plan.icon;
               const price = getPrice(plan.id);
               const description = getDescription(plan.id);
