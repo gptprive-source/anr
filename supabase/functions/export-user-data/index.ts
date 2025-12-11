@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +21,7 @@ serve(async (req) => {
     // Check if called with userId in body (from support-chat) or via JWT
     const body = await req.json().catch(() => ({}));
     let userId: string | null = null;
+    const format = body.format || 'json'; // 'json' or 'pdf'
     
     if (body.userId) {
       // Called from support-chat with service role - trust the userId
@@ -57,7 +59,7 @@ serve(async (req) => {
       userId = user.id;
     }
 
-    console.log(`[export-user-data] Exporting data for user: ${userId}`);
+    console.log(`[export-user-data] Exporting data for user: ${userId}, format: ${format}`);
 
     // Fetch all user data
     const [
@@ -69,14 +71,12 @@ serve(async (req) => {
       pushTokensResult,
       userResult
     ] = await Promise.all([
-      // Profile
       supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single(),
       
-      // Residents (habitations)
       supabaseClient
         .from('residents')
         .select(`
@@ -97,13 +97,11 @@ serve(async (req) => {
         `)
         .eq('user_id', userId),
       
-      // Subscriptions
       supabaseClient
         .from('subscriptions')
         .select('id, status, current_period_start, current_period_end, cancel_at_period_end, created_at')
         .eq('user_id', userId),
       
-      // Call logs (where user answered)
       supabaseClient
         .from('call_logs')
         .select('id, status, started_at, answered_at, ended_at')
@@ -111,19 +109,16 @@ serve(async (req) => {
         .order('started_at', { ascending: false })
         .limit(100),
       
-      // Consents
       supabaseClient
         .from('user_consents')
         .select('consent_type, version, consented, consented_at')
         .eq('user_id', userId),
       
-      // Push tokens (without actual token for security)
       supabaseClient
         .from('push_tokens')
         .select('platform, created_at')
         .eq('user_id', userId),
       
-      // Get user email from auth
       supabaseClient.auth.admin.getUserById(userId!)
     ]);
 
@@ -191,11 +186,25 @@ serve(async (req) => {
         action: 'user_data_export',
         entity_type: 'user',
         entity_id: userId,
-        new_value: { exported_at: new Date().toISOString() }
+        new_value: { exported_at: new Date().toISOString(), format }
       });
 
     console.log(`[export-user-data] Export completed for user: ${userId}`);
 
+    // Return PDF if requested
+    if (format === 'pdf') {
+      const pdfBytes = await generatePDF(exportData);
+      
+      return new Response(pdfBytes.buffer as ArrayBuffer, {
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="export-donnees-anr-${new Date().toISOString().split('T')[0]}.pdf"`
+        }
+      });
+    }
+
+    // Default: return JSON
     return new Response(JSON.stringify(exportData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -208,3 +217,208 @@ serve(async (req) => {
     });
   }
 });
+
+async function generatePDF(data: any): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  
+  const fontSize = 10;
+  const titleSize = 14;
+  const headerSize = 12;
+  const lineHeight = 14;
+  const margin = 50;
+  const pageWidth = 595;
+  const pageHeight = 842;
+  const contentWidth = pageWidth - 2 * margin;
+  
+  let page = pdfDoc.addPage([pageWidth, pageHeight]);
+  let y = pageHeight - margin;
+  
+  const addNewPageIfNeeded = (requiredSpace: number) => {
+    if (y < margin + requiredSpace) {
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      y = pageHeight - margin;
+    }
+  };
+  
+  const drawText = (text: string, x: number, yPos: number, options: { font?: any; size?: number; color?: any } = {}) => {
+    const usedFont = options.font || font;
+    const size = options.size || fontSize;
+    const color = options.color || rgb(0, 0, 0);
+    
+    // Truncate text if too long
+    let displayText = text;
+    const maxWidth = contentWidth - (x - margin);
+    while (usedFont.widthOfTextAtSize(displayText, size) > maxWidth && displayText.length > 0) {
+      displayText = displayText.slice(0, -1);
+    }
+    
+    page.drawText(displayText, { x, y: yPos, size, font: usedFont, color });
+  };
+  
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return 'N/A';
+    try {
+      return new Date(dateStr).toLocaleString('fr-FR', { 
+        dateStyle: 'short', 
+        timeStyle: 'short' 
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Title
+  drawText('EXPORT DE VOS DONNÉES PERSONNELLES', margin, y, { font: boldFont, size: titleSize, color: rgb(0.1, 0.3, 0.6) });
+  y -= lineHeight * 2;
+  
+  // Subtitle
+  drawText('Document généré conformément au RGPD - Article 15', margin, y, { size: 9, color: rgb(0.4, 0.4, 0.4) });
+  y -= lineHeight * 2;
+  
+  // Export info
+  drawText(`Date d'export: ${formatDate(data.export_date)}`, margin, y);
+  y -= lineHeight;
+  drawText(`ID Utilisateur: ${data.user_id}`, margin, y);
+  y -= lineHeight;
+  drawText(`Email: ${data.email}`, margin, y);
+  y -= lineHeight * 2;
+  
+  // Profile section
+  addNewPageIfNeeded(100);
+  drawText('PROFIL', margin, y, { font: boldFont, size: headerSize, color: rgb(0.1, 0.3, 0.6) });
+  y -= lineHeight * 1.5;
+  
+  if (data.profile) {
+    drawText(`Prénom: ${data.profile.first_name || 'N/A'}`, margin + 10, y);
+    y -= lineHeight;
+    drawText(`Nom: ${data.profile.last_name || 'N/A'}`, margin + 10, y);
+    y -= lineHeight;
+    drawText(`Téléphone: ${data.profile.phone_number || 'N/A'}`, margin + 10, y);
+    y -= lineHeight;
+    drawText(`Téléphone vérifié: ${data.profile.phone_verified ? 'Oui' : 'Non'}`, margin + 10, y);
+    y -= lineHeight;
+    drawText(`Compte créé le: ${formatDate(data.profile.created_at)}`, margin + 10, y);
+    y -= lineHeight * 2;
+  }
+  
+  // Habitations section
+  addNewPageIfNeeded(100);
+  drawText('HABITATIONS', margin, y, { font: boldFont, size: headerSize, color: rgb(0.1, 0.3, 0.6) });
+  y -= lineHeight * 1.5;
+  
+  if (data.habitations && data.habitations.length > 0) {
+    for (const hab of data.habitations) {
+      addNewPageIfNeeded(80);
+      drawText(`• ${hab.name || 'Sans nom'}`, margin + 10, y, { font: boldFont });
+      y -= lineHeight;
+      drawText(`  Adresse: ${hab.address || 'N/A'}`, margin + 10, y);
+      y -= lineHeight;
+      drawText(`  Code ANR: ${hab.anr_code || 'N/A'}`, margin + 10, y);
+      y -= lineHeight;
+      drawText(`  Propriétaire: ${hab.is_owner ? 'Oui' : 'Non'} | Muté: ${hab.is_muted ? 'Oui' : 'Non'} | Statut: ${hab.status || 'N/A'}`, margin + 10, y);
+      y -= lineHeight;
+      drawText(`  Rejoint le: ${formatDate(hab.joined_at)}`, margin + 10, y);
+      y -= lineHeight * 1.5;
+    }
+  } else {
+    drawText('Aucune habitation', margin + 10, y);
+    y -= lineHeight * 2;
+  }
+  
+  // Subscriptions section
+  addNewPageIfNeeded(80);
+  drawText('ABONNEMENTS', margin, y, { font: boldFont, size: headerSize, color: rgb(0.1, 0.3, 0.6) });
+  y -= lineHeight * 1.5;
+  
+  if (data.subscriptions && data.subscriptions.length > 0) {
+    for (const sub of data.subscriptions) {
+      addNewPageIfNeeded(60);
+      drawText(`• Statut: ${sub.status || 'N/A'}`, margin + 10, y);
+      y -= lineHeight;
+      drawText(`  Période: ${formatDate(sub.period_start)} - ${formatDate(sub.period_end)}`, margin + 10, y);
+      y -= lineHeight;
+      drawText(`  Annulation programmée: ${sub.cancel_at_period_end ? 'Oui' : 'Non'}`, margin + 10, y);
+      y -= lineHeight;
+      drawText(`  Créé le: ${formatDate(sub.created_at)}`, margin + 10, y);
+      y -= lineHeight * 1.5;
+    }
+  } else {
+    drawText('Aucun abonnement', margin + 10, y);
+    y -= lineHeight * 2;
+  }
+  
+  // Call history section
+  addNewPageIfNeeded(80);
+  drawText('HISTORIQUE D\'APPELS (100 derniers)', margin, y, { font: boldFont, size: headerSize, color: rgb(0.1, 0.3, 0.6) });
+  y -= lineHeight * 1.5;
+  
+  if (data.call_history && data.call_history.length > 0) {
+    for (const call of data.call_history) {
+      addNewPageIfNeeded(40);
+      const duration = call.started_at && call.ended_at 
+        ? Math.round((new Date(call.ended_at).getTime() - new Date(call.started_at).getTime()) / 1000) + 's'
+        : 'N/A';
+      drawText(`• ${formatDate(call.started_at)} | Statut: ${call.status} | Durée: ${duration}`, margin + 10, y);
+      y -= lineHeight;
+    }
+    y -= lineHeight;
+  } else {
+    drawText('Aucun appel', margin + 10, y);
+    y -= lineHeight * 2;
+  }
+  
+  // Devices section
+  addNewPageIfNeeded(60);
+  drawText('APPAREILS ENREGISTRÉS', margin, y, { font: boldFont, size: headerSize, color: rgb(0.1, 0.3, 0.6) });
+  y -= lineHeight * 1.5;
+  
+  if (data.devices && data.devices.length > 0) {
+    for (const device of data.devices) {
+      addNewPageIfNeeded(30);
+      drawText(`• ${device.platform} - Enregistré le: ${formatDate(device.registered_at)}`, margin + 10, y);
+      y -= lineHeight;
+    }
+    y -= lineHeight;
+  } else {
+    drawText('Aucun appareil', margin + 10, y);
+    y -= lineHeight * 2;
+  }
+  
+  // Data retention section
+  addNewPageIfNeeded(100);
+  drawText('POLITIQUE DE CONSERVATION', margin, y, { font: boldFont, size: headerSize, color: rgb(0.1, 0.3, 0.6) });
+  y -= lineHeight * 1.5;
+  
+  if (data.data_retention_info) {
+    for (const [key, value] of Object.entries(data.data_retention_info)) {
+      addNewPageIfNeeded(30);
+      const label = key.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+      drawText(`• ${label}: ${value}`, margin + 10, y);
+      y -= lineHeight;
+    }
+  }
+  
+  // Footer on last page
+  y = margin;
+  page.drawLine({
+    start: { x: margin, y: y + 20 },
+    end: { x: pageWidth - margin, y: y + 20 },
+    thickness: 0.5,
+    color: rgb(0.8, 0.8, 0.8)
+  });
+  
+  drawText('Ce document constitue la réponse officielle à votre demande d\'accès aux données conformément au RGPD.', margin, y + 5, { size: 8, color: rgb(0.5, 0.5, 0.5) });
+  
+  // Set PDF metadata and permissions (read-only)
+  pdfDoc.setTitle('Export données personnelles ANR');
+  pdfDoc.setAuthor('ANR');
+  pdfDoc.setSubject('Export RGPD Article 15');
+  pdfDoc.setCreator('ANR Application');
+  pdfDoc.setProducer('ANR');
+  pdfDoc.setCreationDate(new Date());
+  pdfDoc.setModificationDate(new Date());
+  
+  return await pdfDoc.save();
+}

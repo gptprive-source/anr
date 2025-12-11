@@ -155,17 +155,18 @@ const Account = () => {
   const handleExportData = async () => {
     setExportLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("export-user-data");
+      const response = await supabase.functions.invoke("export-user-data", {
+        body: { format: 'pdf' }
+      });
       
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (response.error) throw response.error;
       
-      // Create and download JSON file - data is directly the export object
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
+      // Handle PDF binary response
+      const pdfBlob = new Blob([response.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `mes-donnees-anr-${new Date().toISOString().split("T")[0]}.json`;
+      a.download = `mes-donnees-anr-${new Date().toISOString().split("T")[0]}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -173,7 +174,7 @@ const Account = () => {
       
       toast({
         title: "Export réussi",
-        description: "Vos données ont été téléchargées"
+        description: "Vos données ont été téléchargées en PDF"
       });
     } catch (error: any) {
       console.error("Error exporting data:", error);
