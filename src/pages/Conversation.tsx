@@ -276,12 +276,11 @@ const Conversation = () => {
           {/* Contact Info inside sticky header */}
           {card && (card.phone || card.email || card.visitor_anr_code) && (
             <div className="p-3 bg-background/50 rounded-lg border border-purple-500">
-              <div className="flex flex-wrap gap-2 text-sm">
+              <div className="flex flex-wrap gap-3 text-sm">
                 {card.phone && (
                   <a 
                     href={`tel:${card.phone}`} 
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors font-medium"
-                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1 text-blue-500 hover:underline cursor-pointer"
                   >
                     <Phone className="w-4 h-4" />
                     {card.phone}
@@ -290,15 +289,14 @@ const Conversation = () => {
                 {card.email && (
                   <a 
                     href={`mailto:${card.email}`} 
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 transition-colors font-medium"
-                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1 text-orange-500 hover:underline cursor-pointer"
                   >
                     <Mail className="w-4 h-4" />
                     {card.email}
                   </a>
                 )}
                 {card.visitor_anr_code && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 text-green-600 font-medium">
+                  <span className="flex items-center gap-1 text-green-500">
                     <MapPin className="w-4 h-4" />
                     ANR: {card.visitor_anr_code}
                   </span>
