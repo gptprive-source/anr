@@ -238,13 +238,13 @@ const Account = () => {
   };
   const statusInfo = getSubscriptionStatus();
   return <div className="min-h-screen pb-20">
-      <div className="max-w-lg mx-auto p-4 space-y-6">
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
         {/* Header */}
         <div className="pt-4">
           <h1 className="text-2xl font-bold">Mon compte Interphone</h1>
         </div>
 
-        {/* Profile card */}
+        {/* Profile card - full width */}
         <div className="bg-background/50 rounded-2xl p-6 card-shadow border border-blue-500">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center">
@@ -257,38 +257,67 @@ const Account = () => {
           </div>
         </div>
 
-        {/* Subscription section */}
-        {subscription && <div className="bg-background/50 rounded-2xl p-4 card-shadow space-y-4 border border-green-500">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-green-500" />
+        {/* Grid layout - 2 columns on desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Subscription section */}
+          {subscription && <div className="bg-background/50 rounded-2xl p-4 card-shadow space-y-4 border border-green-500">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="font-medium">Abonnement ANR</p>
+                  <p className={`text-sm ${statusInfo.color}`}>{statusInfo.label}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-medium">Abonnement ANR</p>
-                <p className={`text-sm ${statusInfo.color}`}>{statusInfo.label}</p>
+
+              <div className="flex items-center gap-3 pl-13">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {subscription.cancel_at_period_end ? "Fin le" : "Prochain renouvellement :"}{" "}
+                  <span className="font-medium text-foreground">
+                    {formatDate(subscription.current_period_end)}
+                  </span>
+                </p>
               </div>
-            </div>
 
-            <div className="flex items-center gap-3 pl-13">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                {subscription.cancel_at_period_end ? "Fin le" : "Prochain renouvellement :"}{" "}
-                <span className="font-medium text-foreground">
-                  {formatDate(subscription.current_period_end)}
-                </span>
-              </p>
-            </div>
+              <Button variant="outline" className="w-full gap-2" onClick={handleManageSubscription} disabled={portalLoading}>
+                {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>
+                    <ExternalLink className="w-4 h-4" />
+                    Gérer mon abonnement
+                  </>}
+              </Button>
+            </div>}
 
-            <Button variant="outline" className="w-full gap-2" onClick={handleManageSubscription} disabled={portalLoading}>
-              {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>
-                  <ExternalLink className="w-4 h-4" />
-                  Gérer mon abonnement
-                </>}
-            </Button>
-          </div>}
+          {/* Habitation section */}
+          {habitation && <div className="bg-background/50 rounded-2xl p-4 card-shadow space-y-4 border border-orange-500">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                  <Home className="w-5 h-5 text-orange-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{habitation.name}</p>
+                  <p className="text-sm text-muted-foreground">{habitation.is_owner ? "Propriétaire" : "Résident invité"}</p>
+                </div>
+              </div>
 
-        {/* Info sections */}
-        <div className="space-y-3">
+              <div className="flex items-start gap-3 pl-13">
+                <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">{habitation.anr_address}</p>
+              </div>
+
+              <div className="flex gap-2">
+                {habitation.is_owner ? <Button variant="outline" className="flex-1 gap-2" onClick={() => setShowChangeAddressDialog(true)}>
+                    <MapPin className="w-4 h-4" />
+                    Déménager
+                  </Button> : <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive" onClick={() => setShowLeaveDialog(true)}>
+                    <LogOut className="w-4 h-4" />
+                    Quitter l'habitation
+                  </Button>}
+              </div>
+            </div>}
+
+          {/* Email section */}
           <div className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-yellow-500">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
@@ -317,103 +346,75 @@ const Account = () => {
               </Button>
             </div>
           </div>
-        </div>
 
-        {/* Habitation section */}
-        {habitation && <div className="bg-background/50 rounded-2xl p-4 card-shadow space-y-4 border border-orange-500">
+          {/* Admin link */}
+          {isAdmin && <Link to="/admin" className="block">
+              <div className="glass-effect rounded-xl p-4 flex items-center justify-between bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors h-full">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-primary">Panel Admin</p>
+                    <p className="text-xs text-muted-foreground">Accéder à l'administration</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-primary" />
+              </div>
+            </Link>}
+
+          {/* RGPD section */}
+          <div className="bg-background/50 rounded-xl p-4 space-y-3 border border-rose-500">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
-                <Home className="w-5 h-5 text-orange-500" />
+              <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-rose-500" />
               </div>
               <div className="flex-1">
-                <p className="font-medium">{habitation.name}</p>
-                <p className="text-sm text-muted-foreground">{habitation.is_owner ? "Propriétaire" : "Résident invité"}</p>
+                <p className="font-medium">Mes droits RGPD</p>
+                <p className="text-xs text-muted-foreground">Protection de vos données personnelles</p>
               </div>
             </div>
-
-            <div className="flex items-start gap-3 pl-13">
-              <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-              <p className="text-sm text-muted-foreground">{habitation.anr_address}</p>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <Button 
+                variant="outline" 
+                className="gap-2" 
+                onClick={handleExportData}
+                disabled={exportLoading}
+              >
+                {exportLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Exporter
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => setShowRGPDDialog(true)}
+              >
+                <FileText className="w-4 h-4" />
+                Demande RGPD
+              </Button>
             </div>
+          </div>
+        </div>
 
-            <div className="flex gap-2">
-              {habitation.is_owner ? <Button variant="outline" className="flex-1 gap-2" onClick={() => setShowChangeAddressDialog(true)}>
-                  <MapPin className="w-4 h-4" />
-                  Déménager
-                </Button> : <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive" onClick={() => setShowLeaveDialog(true)}>
-                  <LogOut className="w-4 h-4" />
-                  Quitter l'habitation
-                </Button>}
-            </div>
-          </div>}
-
-        {/* Admin link */}
-        {isAdmin && <Link to="/admin" className="block">
-            <div className="glass-effect rounded-xl p-4 flex items-center justify-between bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-primary">Panel Admin</p>
-                  <p className="text-xs text-muted-foreground">Accéder à l'administration</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-primary" />
-            </div>
-          </Link>}
-
-        {/* Granted Access Section - Shows door access granted TO this user */}
+        {/* Granted Access Section - full width */}
         <GrantedAccessSection />
 
-        {/* Visitor Mode Section */}
+        {/* Visitor Mode Section - full width */}
         <VisitorModeSection 
           userProfile={profile}
           userEmail={user?.email}
         />
 
-        {/* RGPD section */}
-        <div className="bg-background/50 rounded-xl p-4 space-y-3 border border-rose-500">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-rose-500" />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium">Mes droits RGPD</p>
-              <p className="text-xs text-muted-foreground">Protection de vos données personnelles</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-2">
-            <Button 
-              variant="outline" 
-              className="gap-2" 
-              onClick={handleExportData}
-              disabled={exportLoading}
-            >
-              {exportLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  Exporter
-                </>
-              )}
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              className="gap-2"
-              onClick={() => setShowRGPDDialog(true)}
-            >
-              <FileText className="w-4 h-4" />
-              Demande RGPD
-            </Button>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="pt-4 space-y-3">
+        {/* Actions - full width */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Button variant="outline" className="w-full gap-2" onClick={handleSignOut}>
             <LogOut className="w-5 h-5" />
             Se déconnecter
