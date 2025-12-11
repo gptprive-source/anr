@@ -589,8 +589,9 @@ const Conversation = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="sticky bottom-20 bg-background px-4 py-3 max-w-2xl mx-auto w-full">
+      {/* Input Area - positioned just above footer */}
+      <div className="fixed bottom-16 left-0 right-0 bg-background px-4 py-2 border-t">
+        <div className="max-w-2xl mx-auto w-full">
         {/* Hidden file input */}
         <input
           ref={fileInputRef}
@@ -747,6 +748,7 @@ const Conversation = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       <BottomNav />
