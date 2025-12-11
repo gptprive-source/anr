@@ -12,7 +12,7 @@ const HeroSection = () => {
   const handleInstall = async () => {
     await promptInstall();
   };
-  return <section className="relative min-h-screen flex items-start justify-center overflow-hidden px-4 pt-12 pb-20">
+  return <section className="relative min-h-screen flex items-start justify-center overflow-hidden px-4 pt-6 pb-20">
       {/* Install button - top right */}
       {isInstallable && !isInstalled && (
         <div className="absolute top-6 right-6 z-20">
