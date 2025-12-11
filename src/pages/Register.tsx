@@ -172,7 +172,7 @@ const Register = () => {
               return (
                 <Card 
                   key={plan.id}
-                  className={`p-6 cursor-pointer hover:border-primary transition-all duration-200 group relative overflow-hidden border-2 ${plan.borderColor} hover:shadow-lg`}
+                  className={`p-6 cursor-pointer hover:border-primary transition-all duration-200 group relative overflow-hidden border ${plan.borderColor} hover:shadow-lg`}
                   onClick={() => handlePlanSelect(plan.id)}
                 >
                   <div className="flex items-start gap-4">

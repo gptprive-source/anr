@@ -245,7 +245,7 @@ const Account = () => {
         </div>
 
         {/* Profile card */}
-        <div className="glass-effect rounded-2xl p-6 card-shadow border-2 border-blue-500">
+        <div className="glass-effect rounded-2xl p-6 card-shadow border border-blue-500">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center">
               <User className="w-8 h-8 text-blue-500" />
@@ -258,7 +258,7 @@ const Account = () => {
         </div>
 
         {/* Subscription section */}
-        {subscription && <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4 border-2 border-green-500">
+        {subscription && <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4 border border-green-500">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
                 <CreditCard className="w-5 h-5 text-green-500" />
@@ -289,7 +289,7 @@ const Account = () => {
 
         {/* Info sections */}
         <div className="space-y-3">
-          <div className="glass-effect rounded-xl p-4 flex items-center justify-between border-2 border-purple-500">
+          <div className="glass-effect rounded-xl p-4 flex items-center justify-between border border-purple-500">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
                 <Mail className="w-5 h-5 text-purple-500" />
@@ -303,7 +303,7 @@ const Account = () => {
           </div>
 
           {/* Phone number editable */}
-          <div className="glass-effect rounded-xl p-4 border-2 border-cyan-500">
+          <div className="glass-effect rounded-xl p-4 border border-cyan-500">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center">
                 <Phone className="w-5 h-5 text-cyan-500" />
@@ -320,7 +320,7 @@ const Account = () => {
         </div>
 
         {/* Habitation section */}
-        {habitation && <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4 border-2 border-orange-500">
+        {habitation && <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4 border border-orange-500">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
                 <Home className="w-5 h-5 text-orange-500" />
@@ -373,7 +373,7 @@ const Account = () => {
         />
 
         {/* RGPD section */}
-        <div className="glass-effect rounded-xl p-4 space-y-3 border-2 border-rose-500">
+        <div className="glass-effect rounded-xl p-4 space-y-3 border border-rose-500">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center">
               <Shield className="w-5 h-5 text-rose-500" />

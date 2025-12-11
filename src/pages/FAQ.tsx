@@ -190,11 +190,15 @@ const FAQ = () => {
                 <span>{section.title}</span>
               </h2>
               <Accordion type="single" collapsible className="space-y-2">
-                {section.questions.map((item, questionIndex) => (
+                {section.questions.map((item, questionIndex) => {
+                  // Cycle through colors for each question
+                  const colorCycle = ["border-blue-500", "border-orange-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
+                  const borderColor = colorCycle[questionIndex % colorCycle.length];
+                  return (
                   <AccordionItem
                     key={questionIndex}
                     value={`${sectionIndex}-${questionIndex}`}
-                    className="border border-blue-500/50 rounded-lg px-4 bg-card"
+                    className={`border ${borderColor} rounded-lg px-4 bg-card`}
                   >
                     <AccordionTrigger className="text-left hover:no-underline">
                       {item.q}
@@ -203,7 +207,8 @@ const FAQ = () => {
                       {item.a}
                     </AccordionContent>
                   </AccordionItem>
-                ))}
+                  );
+                })}
               </Accordion>
             </div>
           ))}
@@ -216,7 +221,7 @@ const FAQ = () => {
           )}
 
           {/* Contact section */}
-          <div className="mt-8 p-6 bg-green-500/10 rounded-lg text-center border-2 border-green-500">
+          <div className="mt-8 p-6 bg-green-500/10 rounded-lg text-center border border-green-500">
             <h3 className="font-semibold mb-2">Vous n'avez pas trouvé votre réponse ?</h3>
             <p className="text-muted-foreground text-sm mb-4">
               Contactez notre support à l'adresse suivante :

@@ -195,7 +195,7 @@ const Messages = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <Card className="p-3 text-center border-2 border-blue-500">
+          <Card className="p-3 text-center border border-blue-500">
             <div className="flex items-center justify-center gap-2 mb-1">
               <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
                 <Inbox className="w-4 h-4 text-blue-500" />
@@ -204,7 +204,7 @@ const Messages = () => {
             <p className="text-2xl font-bold">{totalConversations}</p>
             <span className="text-xs text-muted-foreground">Conversations</span>
           </Card>
-          <Card className="p-3 text-center border-2 border-red-500">
+          <Card className="p-3 text-center border border-red-500">
             <div className="flex items-center justify-center gap-2 mb-1">
               <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
                 <MailClosed className="w-4 h-4 text-red-500" />
@@ -213,7 +213,7 @@ const Messages = () => {
             <p className="text-2xl font-bold text-red-500">{unreadCount}</p>
             <span className="text-xs text-muted-foreground">Non lus</span>
           </Card>
-          <Card className="p-3 text-center border-2 border-green-500">
+          <Card className="p-3 text-center border border-green-500">
             <div className="flex items-center justify-center gap-2 mb-1">
               <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
                 <MailOpen className="w-4 h-4 text-green-500" />
@@ -275,15 +275,19 @@ const Messages = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredConversations.map((conv) => {
+            {filteredConversations.map((conv, index) => {
               const preview = conv.lastMessage 
                 ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "")
                 : "";
 
+              // Cycle through colors: blue, orange, purple, pink, green, cyan
+              const colorCycle = ["border-blue-500", "border-orange-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
+              const borderColor = colorCycle[index % colorCycle.length];
+
               return (
                 <Card
                   key={conv.visitorId}
-                  className={`cursor-pointer transition-all hover:bg-accent/50 border-2 ${conv.unreadCount > 0 ? "border-primary bg-primary/5" : "border-purple-500"}`}
+                  className={`cursor-pointer transition-all hover:bg-accent/50 border ${conv.unreadCount > 0 ? "border-primary bg-primary/5" : borderColor}`}
                   onClick={() => navigate(`/conversation/${conv.visitorId}`)}
                 >
                   <CardContent className="p-4">

@@ -176,7 +176,7 @@ const Contacts = () => {
 
         {/* Contacts List */}
         {filteredContacts.length === 0 ? (
-          <Card className="p-8 text-center border-2 border-gray-400">
+          <Card className="p-8 text-center border border-gray-400">
             <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
               {searchQuery || filter !== "all"
@@ -189,8 +189,12 @@ const Contacts = () => {
           </Card>
         ) : (
           <div className="space-y-3">
-            {filteredContacts.map((contact) => (
-              <Card key={contact.id} className={`p-4 border-2 ${contact.contact_type === "company" ? "border-orange-500" : "border-blue-500"}`}>
+            {filteredContacts.map((contact, index) => {
+              // Cycle through colors: blue, orange, purple, pink, green, cyan
+              const colorCycle = ["border-blue-500", "border-orange-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
+              const borderColor = colorCycle[index % colorCycle.length];
+              return (
+              <Card key={contact.id} className={`p-4 border ${borderColor}`}>
                 <div className="flex items-start gap-3">
                   {/* Avatar */}
                   <button
@@ -293,7 +297,8 @@ const Contacts = () => {
                   </DropdownMenu>
                 </div>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
