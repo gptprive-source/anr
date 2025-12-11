@@ -25,6 +25,7 @@ const PLANS = [
 const PLAN_FEATURES = [
   { key: 'annual_price', label: 'Tarif mensuel', type: 'number', suffix: '€/mois', isAnnual: true, syncStripe: true },
   { key: 'doming_price', label: 'Prix Doming supplémentaire', type: 'number', suffix: '€' },
+  { key: 'door_module_price', label: 'Prix Boîtier Gâche Électrique', type: 'number', suffix: '€', icon: DoorOpen },
   { key: 'members_included', label: 'Membres inclus', type: 'number', suffix: '' },
   { key: 'max_extra_members', label: 'Membres supplémentaires max', type: 'number', suffix: '' },
   { key: 'extra_member_price', label: 'Tarif/Membre supplémentaire', type: 'number', suffix: '€/mois' },
