@@ -14,6 +14,7 @@ import UnifiedAssistant from "@/components/assistant/UnifiedAssistant";
 
 import { SupportAlertOverlay } from "@/components/admin/SupportAlertOverlay";
 import { useAudioUnlock } from "@/hooks/useAudioUnlock";
+import ScrollToTop from "@/components/ScrollToTop";
 import Index from "./pages/Index";
 import Visitor from "./pages/Visitor";
 import ANRLanding from "./pages/ANRLanding";
@@ -86,6 +87,7 @@ const AppContent = () => {
       <Sonner />
       <InstallPrompt />
       <BrowserRouter>
+        <ScrollToTop />
         <UnifiedAssistant />
 
         <SupportAlertOverlay />
