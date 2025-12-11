@@ -44,7 +44,8 @@ const UnifiedAssistant = () => {
   const { isOpen: supportIsOpen, setIsOpen: setSupportIsOpen, rgpdRequest, clearRGPDRequest } = useSupportChat();
   
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"copilot" | "support">("copilot");
+  // Default to support tab if not logged in
+  const [activeTab, setActiveTab] = useState<"copilot" | "support">(user ? "copilot" : "support");
   
   // CoPilot state
   const [copilotMessages, setCopilotMessages] = useState<CoPilotMessage[]>(() => {
@@ -618,7 +619,8 @@ const UnifiedAssistant = () => {
 
   const lastSupportMessageIsFaq = supportMessages.length > 0 && supportMessages[supportMessages.length - 1].source === "faq";
 
-  if (!user) return null;
+  // Show support button for everyone, but CoPilot only for logged-in users
+  const showCoPilot = !!user;
 
   return (
     <>
@@ -632,8 +634,9 @@ const UnifiedAssistant = () => {
           isOpen && "scale-0 opacity-0"
         )}
         size="icon"
+        title="Nous contacter"
       >
-        <Sparkles className="h-5 w-5 text-white" />
+        <MessageCircle className="h-5 w-5 text-white" />
       </Button>
 
       {/* Chat Window */}
@@ -649,18 +652,25 @@ const UnifiedAssistant = () => {
         {/* Header with Tabs */}
         <div className="border-b">
           <div className="flex items-center justify-between px-4 pt-3">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "copilot" | "support")} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 h-9">
-                <TabsTrigger value="copilot" className="text-xs gap-1.5">
-                  <Compass className="h-3.5 w-3.5" />
-                  Co-Pilot
-                </TabsTrigger>
-                <TabsTrigger value="support" className="text-xs gap-1.5">
-                  <MessageCircle className="h-3.5 w-3.5" />
-                  Support
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {showCoPilot ? (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "copilot" | "support")} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 h-9">
+                  <TabsTrigger value="copilot" className="text-xs gap-1.5">
+                    <Compass className="h-3.5 w-3.5" />
+                    Co-Pilot
+                  </TabsTrigger>
+                  <TabsTrigger value="support" className="text-xs gap-1.5">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    Support
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            ) : (
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-primary" />
+                <span className="font-medium text-sm">Nous contacter</span>
+              </div>
+            )}
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="ml-2 -mr-2">
               <X className="h-4 w-4" />
             </Button>
@@ -706,7 +716,7 @@ const UnifiedAssistant = () => {
 
         {/* Content */}
         <div className="flex-1 flex flex-col min-h-0">
-          {activeTab === "copilot" ? (
+          {showCoPilot && activeTab === "copilot" ? (
             <>
               <ScrollArea className="flex-1 p-4" ref={scrollRef}>
                 {copilotMessages.length === 0 ? (
