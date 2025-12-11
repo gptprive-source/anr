@@ -245,9 +245,9 @@ const Conversation = () => {
 
   return (
     <div className="min-h-screen flex flex-col pb-20">
-      {/* Sticky Header */}
+      {/* Sticky Header with Contact Info */}
       <div className="sticky top-0 z-10 bg-background border-b">
-        <div className="max-w-2xl mx-auto w-full p-4">
+        <div className="max-w-2xl mx-auto w-full p-4 space-y-3">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
               <ArrowLeft className="w-5 h-5" />
@@ -272,36 +272,34 @@ const Conversation = () => {
               <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" />
             )}
           </div>
+
+          {/* Contact Info inside sticky header */}
+          {card && (card.phone || card.email || card.visitor_anr_code) && (
+            <div className="p-3 bg-background/50 rounded-lg border border-purple-500">
+              <div className="flex flex-wrap gap-3 text-sm">
+                {card.phone && (
+                  <a href={`tel:${card.phone}`} className="flex items-center gap-1 text-blue-500 hover:underline">
+                    <Phone className="w-4 h-4" />
+                    {card.phone}
+                  </a>
+                )}
+                {card.email && (
+                  <a href={`mailto:${card.email}`} className="flex items-center gap-1 text-orange-500 hover:underline">
+                    <Mail className="w-4 h-4" />
+                    {card.email}
+                  </a>
+                )}
+                {card.visitor_anr_code && (
+                  <span className="flex items-center gap-1 text-green-500">
+                    <MapPin className="w-4 h-4" />
+                    ANR: {card.visitor_anr_code}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Contact Info */}
-      {card && (card.phone || card.email || card.visitor_anr_code) && (
-        <div className="max-w-2xl mx-auto w-full px-4">
-          <div className="p-3 bg-background/50 rounded-lg border border-purple-500">
-            <div className="flex flex-wrap gap-3 text-sm">
-              {card.phone && (
-                <a href={`tel:${card.phone}`} className="flex items-center gap-1 text-blue-500 hover:underline">
-                  <Phone className="w-4 h-4" />
-                  {card.phone}
-                </a>
-              )}
-              {card.email && (
-                <a href={`mailto:${card.email}`} className="flex items-center gap-1 text-orange-500 hover:underline">
-                  <Mail className="w-4 h-4" />
-                  {card.email}
-                </a>
-              )}
-              {card.visitor_anr_code && (
-                <span className="flex items-center gap-1 text-green-500">
-                  <MapPin className="w-4 h-4" />
-                  ANR: {card.visitor_anr_code}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 max-w-2xl mx-auto w-full">
