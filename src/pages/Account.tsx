@@ -346,9 +346,9 @@ const Account = () => {
 
           {/* Admin link */}
           {isAdmin && <Link to="/admin" className="block">
-              <div className="glass-effect rounded-xl p-4 flex items-center justify-between bg-blue-500/5 border-2 border-blue-500 hover:bg-blue-500/10 transition-colors h-full">
+              <div className="bg-background/50 rounded-xl p-4 flex items-center justify-between border-2 border-blue-500 hover:bg-blue-500/10 transition-colors h-full">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
                     <Shield className="w-5 h-5 text-blue-500" />
                   </div>
                   <div>
