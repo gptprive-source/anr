@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video } from "lucide-react";
+import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -11,6 +11,7 @@ import { useMessageReplies } from "@/hooks/useMessageReplies";
 import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
+import VideoRecorder from "@/components/messages/VideoRecorder";
 import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
@@ -146,8 +147,10 @@ const Conversation = () => {
   const [loading, setLoading] = useState(true);
   const [replyText, setReplyText] = useState("");
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [sending, setSending] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
   const [habitationId, setHabitationId] = useState<string | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
@@ -285,7 +288,7 @@ const Conversation = () => {
   };
 
   const handleSend = async () => {
-    if (!habitationId || !firstMessageId || (!replyText.trim() && !audioBlob && !selectedMedia)) return;
+    if (!habitationId || !firstMessageId || (!replyText.trim() && !audioBlob && !selectedMedia && !videoBlob)) return;
 
     setSending(true);
     try {
@@ -296,18 +299,26 @@ const Conversation = () => {
         audioBase64 = btoa(String.fromCharCode(...bytes));
       }
 
+      // Convert videoBlob to File for upload
+      let mediaToSend = selectedMedia;
+      if (videoBlob && !selectedMedia) {
+        mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, { type: videoBlob.type || 'video/webm' });
+      }
+
       const result = await sendReply(
         firstMessageId,
         habitationId,
         replyText.trim() || undefined,
         audioBase64,
-        selectedMedia || undefined
+        mediaToSend || undefined
       );
 
       if (result.success) {
         setReplyText("");
         setAudioBlob(null);
+        setVideoBlob(null);
         setShowVoiceRecorder(false);
+        setShowVideoRecorder(false);
         clearSelectedMedia();
       } else {
         throw new Error(result.error);
@@ -609,7 +620,18 @@ const Conversation = () => {
           </div>
         )}
 
-        {showVoiceRecorder ? (
+        {showVideoRecorder ? (
+          <VideoRecorder
+            onRecordingComplete={(blob) => setVideoBlob(blob)}
+            onSend={handleSend}
+            onCancel={() => {
+              setShowVideoRecorder(false);
+              setVideoBlob(null);
+            }}
+            sending={sending}
+            videoBlob={videoBlob}
+          />
+        ) : showVoiceRecorder ? (
           <VoiceRecorder 
             onRecordingComplete={(blob) => setAudioBlob(blob)}
             onSend={handleSend}
@@ -628,6 +650,14 @@ const Conversation = () => {
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="w-6 h-6" />
+            </button>
+
+            {/* Camera Button for video selfie */}
+            <button 
+              className="p-2 text-muted-foreground hover:text-pink-500 transition-colors"
+              onClick={() => setShowVideoRecorder(true)}
+            >
+              <Camera className="w-6 h-6" />
             </button>
 
             {/* Emoji Picker */}
