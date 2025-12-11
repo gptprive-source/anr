@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Menu, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Paperclip, Send } from "lucide-react";
+import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -58,14 +59,17 @@ const Conversation = () => {
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [habitationId, setHabitationId] = useState<string | null>(null);
 
+  // Get the first message ID for replies hook
   const firstMessageId = visitorMessages[0]?.id || "";
   const { replies, sendReply, loading: repliesLoading } = useMessageReplies(firstMessageId);
 
+  // Fetch all messages from this visitor
   useEffect(() => {
     const fetchVisitorMessages = async () => {
       if (!visitorId || !user) return;
 
       try {
+        // First get user's habitation
         const { data: residentData } = await supabase
           .from("residents")
           .select("habitation_id")
@@ -80,21 +84,25 @@ const Conversation = () => {
 
         setHabitationId(residentData.habitation_id);
 
+        // Determine if visitorId is a business_card_id, message ID (anon-xxx), or visitor_phone
         let query = supabase
           .from("visitor_messages" as any)
           .select("*, business_card:visitor_business_cards(*)")
           .eq("habitation_id", residentData.habitation_id)
           .order("created_at", { ascending: true });
 
+        // Check if visitorId is an anon-{messageId} pattern
         const isAnonId = visitorId.startsWith("anon-");
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(visitorId);
         
         if (isAnonId) {
+          // Extract the message ID and fetch that specific message
           const messageId = visitorId.replace("anon-", "");
           query = query.eq("id", messageId);
         } else if (isUuid) {
           query = query.eq("business_card_id", visitorId);
         } else {
+          // It's a phone number or device ID
           query = query.eq("visitor_phone", visitorId);
         }
 
@@ -114,6 +122,7 @@ const Conversation = () => {
 
         setVisitorMessages(data as VisitorMessage[]);
 
+        // Mark all as read
         const unreadIds = data.filter((m: any) => !m.is_read).map((m: any) => m.id);
         if (unreadIds.length > 0) {
           await supabase
@@ -137,6 +146,7 @@ const Conversation = () => {
     fetchVisitorMessages();
   }, [visitorId, user]);
 
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [visitorMessages, replies]);
@@ -180,10 +190,8 @@ const Conversation = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <div className="glass-card p-6">
-          <Loader2 className="w-8 h-8 animate-spin text-white" />
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -192,6 +200,7 @@ const Conversation = () => {
     return null;
   }
 
+  // Get visitor info from first message with business card
   const messageWithCard = visitorMessages.find(m => m.business_card);
   const card = messageWithCard?.business_card;
   const isCompany = card?.card_type === "company";
@@ -201,11 +210,13 @@ const Conversation = () => {
       : `${card.first_name || ""} ${card.last_name || ""}`.trim()
     : visitorMessages[0]?.visitor_phone || "Visiteur";
 
+  // Combine visitor messages and replies in chronological order
   const allMessages = [
     ...visitorMessages.map(m => ({ type: 'visitor' as const, data: m, date: new Date(m.created_at) })),
     ...replies.map(r => ({ type: 'reply' as const, data: r, date: new Date(r.created_at) }))
   ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
+  // Group messages by date for separators
   const messagesWithDateSeparators: { type: 'separator' | 'visitor' | 'reply'; data: any; date: Date }[] = [];
   let lastDateStr = "";
   
@@ -219,69 +230,68 @@ const Conversation = () => {
   });
 
   return (
-    <div className="min-h-screen flex flex-col gradient-bg pb-20">
-      {/* Header - Transparent with glassmorphism */}
-      <div className="glass-header sticky top-0 z-10">
-        <div className="flex items-center gap-3 px-3 py-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate("/messages")} 
-            className="text-white hover:bg-white/10 rounded-full"
-          >
-            <Menu className="w-6 h-6" />
+    <div className="min-h-screen flex flex-col bg-[hsl(30,25%,92%)] pb-20">
+      {/* Header - WhatsApp style */}
+      <div className="sticky top-0 z-10 bg-[hsl(168,76%,36%)] text-white px-2 py-2">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/messages")} className="text-white hover:bg-white/10">
+            <ArrowLeft className="w-5 h-5" />
           </Button>
           
-          <div className="flex-1 text-center">
-            <p className="font-semibold text-white text-lg">{displayName}</p>
-          </div>
-
-          {/* Avatar with thick white border */}
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center border-[3px] border-white shadow-lg">
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
             {isCompany ? (
-              <Building2 className="w-6 h-6 text-white" />
+              <Building2 className="w-5 h-5" />
             ) : (
-              <User className="w-6 h-6 text-white" />
+              <User className="w-5 h-5" />
             )}
           </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold truncate">{displayName}</p>
+            {card?.job_title && (
+              <p className="text-xs opacity-80 truncate">{card.job_title}</p>
+            )}
+          </div>
+
+          {card && (
+            <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />
+          )}
         </div>
       </div>
 
-      {/* Contact Info Card */}
+      {/* Contact Info Expandable */}
       {card && (card.phone || card.email || card.visitor_anr_code) && (
-        <div className="mx-4 mt-3">
-          <div className="glass-card p-3">
-            <div className="flex flex-wrap gap-3 text-sm">
-              {card.phone && (
-                <a href={`tel:${card.phone}`} className="flex items-center gap-1 text-blue-600 hover:underline">
-                  <Phone className="w-4 h-4" />
-                  {card.phone}
-                </a>
-              )}
-              {card.email && (
-                <a href={`mailto:${card.email}`} className="flex items-center gap-1 text-blue-600 hover:underline">
-                  <Mail className="w-4 h-4" />
-                  {card.email}
-                </a>
-              )}
-              {card.visitor_anr_code && (
-                <span className="flex items-center gap-1 text-gray-500">
-                  <MapPin className="w-4 h-4" />
-                  ANR: {card.visitor_anr_code}
-                </span>
-              )}
-            </div>
+        <div className="mx-3 mt-3 p-3 bg-card rounded-lg border shadow-sm">
+          <div className="flex flex-wrap gap-3 text-sm">
+            {card.phone && (
+              <a href={`tel:${card.phone}`} className="flex items-center gap-1 text-primary hover:underline">
+                <Phone className="w-4 h-4" />
+                {card.phone}
+              </a>
+            )}
+            {card.email && (
+              <a href={`mailto:${card.email}`} className="flex items-center gap-1 text-primary hover:underline">
+                <Mail className="w-4 h-4" />
+                {card.email}
+              </a>
+            )}
+            {card.visitor_anr_code && (
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <MapPin className="w-4 h-4" />
+                ANR: {card.visitor_anr_code}
+              </span>
+            )}
           </div>
         </div>
       )}
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      {/* Messages Area - WhatsApp style background */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-2">
         {messagesWithDateSeparators.map((item, index) => {
           if (item.type === 'separator') {
             return (
-              <div key={`sep-${index}`} className="flex justify-center my-4">
-                <span className="bg-white/80 backdrop-blur-sm text-gray-600 text-xs px-4 py-1.5 rounded-full shadow-sm font-medium">
+              <div key={`sep-${index}`} className="flex justify-center my-3">
+                <span className="bg-white/80 text-muted-foreground text-xs px-3 py-1 rounded-lg shadow-sm">
                   {item.data.label}
                 </span>
               </div>
@@ -292,64 +302,68 @@ const Conversation = () => {
             const msg = item.data;
             return (
               <div key={`visitor-${msg.id}`} className="flex justify-start">
-                {msg.voice_message_url ? (
-                  <div className="max-w-[80%]">
-                    <WhatsAppAudioPlayer 
-                      audioUrl={msg.voice_message_url} 
-                      isOwn={false}
-                      showAvatar={true}
-                    />
-                    <p className="text-xs text-white/70 mt-1 ml-2">
-                      {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bubble-received">
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{msg.message}</p>
-                    <p className="text-xs text-gray-500 mt-1 text-right">
-                      {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
-                    </p>
-                  </div>
-                )}
+                <div className="max-w-[85%]">
+                  {msg.voice_message_url ? (
+                    <div className="mb-1">
+                      <WhatsAppAudioPlayer 
+                        audioUrl={msg.voice_message_url} 
+                        isOwn={false}
+                        showAvatar={true}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1 ml-2">
+                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-card rounded-xl rounded-tl-sm px-3 py-2 shadow-sm border">
+                      <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1 text-right">
+                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           } else {
             const reply = item.data;
             return (
               <div key={`reply-${reply.id}`} className="flex justify-end">
-                {reply.reply_voice_url ? (
-                  <div className="max-w-[80%]">
-                    <WhatsAppAudioPlayer 
-                      audioUrl={reply.reply_voice_url} 
-                      isOwn={true}
-                      showAvatar={true}
-                    />
-                    <div className="flex items-center justify-end gap-1 mt-1 mr-2">
-                      <span className="text-xs text-white/70">
-                        {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
-                      </span>
-                      {reply.is_read ? (
-                        <CheckCheck className="w-4 h-4 text-white" />
-                      ) : (
-                        <Check className="w-4 h-4 text-white/70" />
-                      )}
+                <div className="max-w-[85%]">
+                  {reply.reply_voice_url ? (
+                    <div className="mb-1">
+                      <WhatsAppAudioPlayer 
+                        audioUrl={reply.reply_voice_url} 
+                        isOwn={true}
+                        showAvatar={true}
+                      />
+                      <div className="flex items-center justify-end gap-1 mt-1 mr-2">
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                        </span>
+                        {reply.is_read ? (
+                          <CheckCheck className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Check className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="bubble-sent">
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{reply.reply_text}</p>
-                    <div className="flex items-center justify-end gap-1 mt-1">
-                      <span className="text-xs text-gray-600">
-                        {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
-                      </span>
-                      {reply.is_read ? (
-                        <CheckCheck className="w-4 h-4 text-blue-500" />
-                      ) : (
-                        <Check className="w-4 h-4 text-gray-500" />
-                      )}
+                  ) : (
+                    <div className="bg-[hsl(142,70%,85%)] rounded-xl rounded-tr-sm px-3 py-2 shadow-sm">
+                      <p className="text-sm whitespace-pre-wrap text-[hsl(142,30%,20%)]">{reply.reply_text}</p>
+                      <div className="flex items-center justify-end gap-1 mt-1">
+                        <span className="text-xs text-[hsl(142,30%,40%)]">
+                          {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                        </span>
+                        {reply.is_read ? (
+                          <CheckCheck className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Check className="w-4 h-4 text-[hsl(142,30%,50%)]" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           }
@@ -358,46 +372,45 @@ const Conversation = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - Pill style EXACT from mockup */}
-      <div className="sticky bottom-20 px-4 py-3">
+      {/* Input Area - WhatsApp style */}
+      <div className="sticky bottom-20 bg-[hsl(30,15%,88%)] px-2 py-2">
         {showVoiceRecorder ? (
-          <div className="glass-card p-3">
-            <VoiceRecorder 
-              onRecordingComplete={(blob) => setAudioBlob(blob)}
-              onSend={handleSend}
-              onCancel={() => {
-                setShowVoiceRecorder(false);
-                setAudioBlob(null);
-              }}
-              sending={sending}
-              audioBlob={audioBlob}
-            />
-          </div>
+          <VoiceRecorder 
+            onRecordingComplete={(blob) => setAudioBlob(blob)}
+            onSend={handleSend}
+            onCancel={() => {
+              setShowVoiceRecorder(false);
+              setAudioBlob(null);
+            }}
+            sending={sending}
+            audioBlob={audioBlob}
+          />
         ) : (
-          <div className="input-pill flex items-center gap-3">
-            {/* Attachment icon */}
-            <button className="text-blue-500 hover:text-blue-600 transition-colors p-1">
-              <Paperclip className="w-6 h-6" />
+          <div className="flex items-center gap-2">
+            {/* Emoji/Chatbot icon */}
+            <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
+              <Smile className="w-6 h-6" />
             </button>
 
             {/* Input Field */}
-            <input
-              type="text"
-              placeholder="Écrivez un message..."
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              className="flex-1 bg-transparent border-0 outline-none text-gray-800 placeholder:text-gray-400 text-base"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && replyText.trim()) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
+            <div className="flex-1 bg-card rounded-full px-4 py-2 flex items-center border shadow-sm">
+              <Input
+                placeholder="Entrez un message"
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                className="border-0 p-0 h-auto bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && replyText.trim()) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+            </div>
 
-            {/* Send/Mic button - Round gradient */}
+            {/* Mic button - main action when no text */}
             <button 
-              className="send-button-round flex-shrink-0"
+              className="p-3 rounded-full bg-[hsl(168,76%,36%)] text-white hover:bg-[hsl(168,76%,30%)] transition-colors shadow-lg"
               onClick={() => {
                 if (replyText.trim()) {
                   handleSend();
@@ -407,11 +420,7 @@ const Conversation = () => {
               }}
               disabled={sending}
             >
-              {replyText.trim() ? (
-                <Send className="w-5 h-5" />
-              ) : (
-                <Mic className="w-5 h-5" />
-              )}
+              <Mic className="w-5 h-5" />
             </button>
           </div>
         )}

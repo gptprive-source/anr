@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Mic } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
@@ -65,6 +67,7 @@ const Messages = () => {
     const groups = new Map<string, GroupedConversation>();
 
     messages.forEach((msg) => {
+      // Use business_card_id or visitor_phone as unique visitor identifier
       const visitorId = msg.business_card_id || msg.visitor_phone || `anon-${msg.id}`;
       
       const existing = groups.get(visitorId);
@@ -77,6 +80,7 @@ const Messages = () => {
         : msg.visitor_phone || "Visiteur";
 
       if (existing) {
+        // Update with latest info
         if (new Date(msg.created_at) > existing.lastMessageDate) {
           existing.lastMessage = msg.message || (msg.voice_message_url ? "🎤 Message vocal" : null);
           existing.lastMessageDate = new Date(msg.created_at);
@@ -86,6 +90,7 @@ const Messages = () => {
           existing.unreadCount++;
         }
         existing.totalMessages++;
+        // Keep the most complete business card
         if (card && !existing.businessCard) {
           existing.businessCard = card;
           existing.displayName = displayName;
@@ -108,6 +113,7 @@ const Messages = () => {
       }
     });
 
+    // Sort by last message date descending
     return Array.from(groups.values()).sort(
       (a, b) => b.lastMessageDate.getTime() - a.lastMessageDate.getTime()
     );
@@ -116,13 +122,16 @@ const Messages = () => {
   // Filter conversations
   const filteredConversations = useMemo(() => {
     return groupedConversations.filter((conv) => {
+      // Status filter
       if (statusFilter === "unread" && conv.unreadCount === 0) return false;
       if (statusFilter === "read" && conv.unreadCount > 0) return false;
 
+      // Date filter
       if (dateFilter === "today" && !isToday(conv.lastMessageDate)) return false;
       if (dateFilter === "week" && !isThisWeek(conv.lastMessageDate, { weekStartsOn: 1 })) return false;
       if (dateFilter === "month" && !isThisMonth(conv.lastMessageDate)) return false;
 
+      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesName = conv.displayName.toLowerCase().includes(query);
@@ -140,19 +149,17 @@ const Messages = () => {
 
   if (loadingHabitation || loading) {
     return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <div className="glass-card p-6">
-          <Loader2 className="w-8 h-8 animate-spin text-white" />
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!habitationId) {
     return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
-        <div className="glass-card text-center p-8">
-          <p className="text-card-foreground">Aucune habitation trouvée</p>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-muted-foreground">Aucune habitation trouvée</p>
           <Button className="mt-4" onClick={() => navigate("/dashboard")}>
             Retour
           </Button>
@@ -163,190 +170,170 @@ const Messages = () => {
 
   const totalMessages = messages.length;
   const totalConversations = groupedConversations.length;
+  const readCount = totalMessages - unreadCount;
 
   return (
-    <div className="min-h-screen gradient-bg pb-24">
-      {/* Header - Glassmorphism */}
-      <div className="glass-header sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => navigate("/dashboard")}
-              className="text-white/90 hover:text-white hover:bg-white/10 rounded-full"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="font-bold text-xl text-white">Messages</h1>
-              <p className="text-xs text-white/70">{totalConversations} conversation{totalConversations > 1 ? 's' : ''}</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-white" />
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen pb-20">
       <div className="max-w-2xl mx-auto p-4 space-y-4">
-        {/* Stats Cards - Glassmorphism */}
+        {/* Header */}
+        <div className="flex items-center gap-3 pt-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="font-bold text-xl flex items-center gap-2">
+              <MessageSquare className="w-6 h-6 text-primary" />
+              Messages
+            </h1>
+          </div>
+        </div>
+
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="glass-card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                <Inbox className="w-4 h-4 text-blue-600" />
-              </div>
+          <Card className="p-3 text-center">
+            <div className="flex items-center justify-center gap-2 text-muted-foreground mb-1">
+              <Inbox className="w-4 h-4" />
+              <span className="text-xs">Conversations</span>
             </div>
-            <p className="text-2xl font-bold text-card-foreground">{totalConversations}</p>
-            <span className="text-xs text-muted-foreground">Conversations</span>
+            <p className="text-2xl font-bold">{totalConversations}</p>
+          </Card>
+          <Card className="p-3 text-center">
+            <div className="flex items-center justify-center gap-2 text-destructive mb-1">
+              <MailClosed className="w-4 h-4" />
+              <span className="text-xs">Non lus</span>
+            </div>
+            <p className="text-2xl font-bold text-destructive">{unreadCount}</p>
+          </Card>
+          <Card className="p-3 text-center">
+            <div className="flex items-center justify-center gap-2 text-success mb-1">
+              <MailOpen className="w-4 h-4" />
+              <span className="text-xs">Total msgs</span>
+            </div>
+            <p className="text-2xl font-bold text-success">{totalMessages}</p>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <div className="space-y-3">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
-          
-          <div className="glass-card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
-                <MailClosed className="w-4 h-4 text-red-500" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-red-500">{unreadCount}</p>
-            <span className="text-xs text-muted-foreground">Non lus</span>
-          </div>
-          
-          <div className="glass-card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                <MailOpen className="w-4 h-4 text-green-500" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-card-foreground">{totalMessages}</p>
-            <span className="text-xs text-muted-foreground">Total</span>
+
+          {/* Filter row */}
+          <div className="flex gap-2 flex-wrap">
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+              <SelectTrigger className="w-[130px]">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="unread">Non lus</SelectItem>
+                <SelectItem value="read">Lus</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes dates</SelectItem>
+                <SelectItem value="today">Aujourd'hui</SelectItem>
+                <SelectItem value="week">Cette semaine</SelectItem>
+                <SelectItem value="month">Ce mois</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Search - Glassmorphism */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500" />
-          <Input
-            placeholder="Rechercher..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 h-12 glass-input border-0 rounded-full text-card-foreground placeholder:text-muted-foreground"
-          />
-        </div>
-
-        {/* Filters - Glassmorphism */}
-        <div className="flex gap-3">
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-            <SelectTrigger className="flex-1 glass-input border-0 rounded-full h-11 text-card-foreground">
-              <Filter className="w-4 h-4 mr-2 text-blue-500" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="glass-card border-0">
-              <SelectItem value="all">Tous</SelectItem>
-              <SelectItem value="unread">Non lus</SelectItem>
-              <SelectItem value="read">Lus</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
-            <SelectTrigger className="flex-1 glass-input border-0 rounded-full h-11 text-card-foreground">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="glass-card border-0">
-              <SelectItem value="all">Toutes dates</SelectItem>
-              <SelectItem value="today">Aujourd'hui</SelectItem>
-              <SelectItem value="week">Cette semaine</SelectItem>
-              <SelectItem value="month">Ce mois</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Conversations List - Glassmorphism */}
+        {/* Conversations list */}
         {filteredConversations.length === 0 ? (
-          <div className="glass-card p-12 text-center">
-            <div className="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
-              <MessageSquare className="w-10 h-10 text-blue-500" />
-            </div>
-            <p className="text-card-foreground font-semibold text-lg">
+          <div className="text-center py-12">
+            <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">
               {groupedConversations.length === 0 ? "Aucun message" : "Aucun résultat"}
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              {groupedConversations.length === 0
-                ? "Les messages de vos visiteurs apparaîtront ici" 
-                : "Essayez avec d'autres termes de recherche"}
             </p>
           </div>
         ) : (
-          <div className="glass-card overflow-hidden">
-            {filteredConversations.map((conv, index) => {
+          <div className="space-y-2">
+            {filteredConversations.map((conv) => {
               const preview = conv.lastMessage 
                 ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "")
                 : "";
-              const isVoice = conv.lastMessage?.startsWith("🎤");
 
               return (
-                <div
+                <Card
                   key={conv.visitorId}
-                  className={`
-                    relative flex items-center gap-4 px-4 py-4 cursor-pointer transition-all duration-200
-                    hover:bg-white/50 active:bg-white/70
-                    ${index !== 0 ? "border-t border-white/20" : ""}
-                  `}
+                  className={`cursor-pointer transition-all hover:bg-accent/50 ${conv.unreadCount > 0 ? "border-primary/50 bg-primary/5" : ""}`}
                   onClick={() => navigate(`/conversation/${conv.visitorId}`)}
                 >
-                  {/* Avatar with white border */}
-                  <div className={`
-                    w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-white shadow-lg
-                    ${conv.unreadCount > 0 
-                      ? "bg-gradient-to-br from-blue-400 to-blue-600" 
-                      : "bg-gradient-to-br from-gray-200 to-gray-300"}
-                  `}>
-                    {conv.isCompany ? (
-                      <Building2 className={`w-6 h-6 ${conv.unreadCount > 0 ? "text-white" : "text-gray-500"}`} />
-                    ) : (
-                      <User className={`w-6 h-6 ${conv.unreadCount > 0 ? "text-white" : "text-gray-500"}`} />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={`font-semibold truncate ${conv.unreadCount > 0 ? "text-card-foreground" : "text-muted-foreground"}`}>
-                        {conv.displayName}
-                      </p>
-                      <span className={`text-xs flex-shrink-0 ${conv.unreadCount > 0 ? "text-blue-500 font-semibold" : "text-muted-foreground"}`}>
-                        {formatDistanceToNow(conv.lastMessageDate, {
-                          addSuffix: false,
-                          locale: fr,
-                        })}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between gap-2 mt-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {conv.hasReply && (
-                          <span className="text-blue-500 text-xs font-bold">✓✓</span>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      {/* Avatar */}
+                      <div className={`p-2 rounded-full flex-shrink-0 ${conv.unreadCount > 0 ? "bg-primary/20" : "bg-muted"}`}>
+                        {conv.isCompany ? (
+                          <Building2 className={`w-5 h-5 ${conv.unreadCount > 0 ? "text-primary" : "text-muted-foreground"}`} />
+                        ) : (
+                          <User className={`w-5 h-5 ${conv.unreadCount > 0 ? "text-primary" : "text-muted-foreground"}`} />
                         )}
-                        {isVoice && (
-                          <Mic className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                        )}
-                        <p className={`text-sm truncate ${conv.unreadCount > 0 ? "text-card-foreground/80" : "text-muted-foreground"}`}>
-                          {isVoice ? "Message vocal" : preview}
-                        </p>
                       </div>
-                      
-                      {/* Unread badge - Gradient blue */}
-                      {conv.unreadCount > 0 && (
-                        <span className="bg-gradient-to-r from-blue-400 to-blue-600 text-white text-xs font-bold rounded-full min-w-[24px] h-6 px-2 flex items-center justify-center flex-shrink-0 shadow-md">
-                          {conv.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Arrow */}
-                  <ChevronRight className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                </div>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className={`font-medium truncate ${conv.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                            {conv.displayName}
+                          </p>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            {formatDistanceToNow(conv.lastMessageDate, {
+                              addSuffix: false,
+                              locale: fr,
+                            })}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className={`text-sm truncate ${conv.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                            {conv.hasReply && (
+                              <span className="text-primary mr-1">↩</span>
+                            )}
+                            {preview}
+                          </p>
+                        </div>
+
+                        {/* Badges */}
+                        <div className="flex items-center gap-2 mt-2">
+                          {conv.unreadCount > 0 && (
+                            <Badge variant="destructive" className="text-xs h-5">
+                              {conv.unreadCount} nouveau{conv.unreadCount > 1 ? "x" : ""}
+                            </Badge>
+                          )}
+                          {conv.totalMessages > 1 && (
+                            <Badge variant="secondary" className="text-xs h-5">
+                              {conv.totalMessages} messages
+                            </Badge>
+                          )}
+                          {conv.hasReply && (
+                            <Badge variant="outline" className="text-xs h-5 text-green-600 border-green-600">
+                              Répondu
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Arrow */}
+                      <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                    </div>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
