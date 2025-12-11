@@ -86,6 +86,25 @@ export const useVisitorCustomTemplates = () => {
     }
   };
 
+  const updateTemplate = async (templateId: string, name: string, content: string, icon: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('visitor_custom_templates')
+        .update({ name, content, icon, updated_at: new Date().toISOString() })
+        .eq('id', templateId)
+        .eq('device_id', deviceId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setTemplates(prev => prev.map(t => t.id === templateId ? (data as VisitorCustomTemplate) : t));
+      return data;
+    } catch (error) {
+      console.error('Error updating custom template:', error);
+      throw error;
+    }
+  };
+
   const incrementUsage = async (templateId: string) => {
     try {
       const template = templates.find(t => t.id === templateId);
@@ -115,6 +134,7 @@ export const useVisitorCustomTemplates = () => {
     templates,
     loading,
     saveTemplate,
+    updateTemplate,
     deleteTemplate,
     incrementUsage,
     refetch: fetchTemplates

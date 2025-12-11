@@ -224,7 +224,7 @@ async function generatePDF(data: any): Promise<Uint8Array> {
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
   const fontSize = 10;
-  const titleSize = 14;
+  const titleSize = 16;
   const headerSize = 12;
   const lineHeight = 14;
   const margin = 50;
@@ -234,6 +234,11 @@ async function generatePDF(data: any): Promise<Uint8Array> {
   
   let page = pdfDoc.addPage([pageWidth, pageHeight]);
   let y = pageHeight - margin;
+  
+  const primaryColor = rgb(0.055, 0.647, 0.914); // #0EA5E9
+  const darkBlue = rgb(0.008, 0.522, 0.780); // #0284C7
+  const grayText = rgb(0.4, 0.4, 0.4);
+  const darkText = rgb(0.2, 0.2, 0.2);
   
   const addNewPageIfNeeded = (requiredSpace: number) => {
     if (y < margin + requiredSpace) {
@@ -245,7 +250,7 @@ async function generatePDF(data: any): Promise<Uint8Array> {
   const drawText = (text: string, x: number, yPos: number, options: { font?: any; size?: number; color?: any } = {}) => {
     const usedFont = options.font || font;
     const size = options.size || fontSize;
-    const color = options.color || rgb(0, 0, 0);
+    const color = options.color || darkText;
     
     // Truncate text if too long
     let displayText = text;
@@ -269,21 +274,92 @@ async function generatePDF(data: any): Promise<Uint8Array> {
     }
   };
 
-  // Title
-  drawText('EXPORT DE VOS DONNÉES PERSONNELLES', margin, y, { font: boldFont, size: titleSize, color: rgb(0.1, 0.3, 0.6) });
-  y -= lineHeight * 2;
+  // === HEADER STYLE FACTURE ===
+  // Header background (simulated gradient with rectangle)
+  page.drawRectangle({
+    x: 0,
+    y: pageHeight - 100,
+    width: pageWidth,
+    height: 100,
+    color: primaryColor,
+  });
   
-  // Subtitle
-  drawText('Document généré conformément au RGPD - Article 15', margin, y, { size: 9, color: rgb(0.4, 0.4, 0.4) });
-  y -= lineHeight * 2;
+  // Overlay for gradient effect
+  page.drawRectangle({
+    x: pageWidth / 2,
+    y: pageHeight - 100,
+    width: pageWidth / 2,
+    height: 100,
+    color: darkBlue,
+  });
   
-  // Export info
-  drawText(`Date d'export: ${formatDate(data.export_date)}`, margin, y);
+  // Title in header
+  page.drawText('ANR', { 
+    x: margin, 
+    y: pageHeight - 45, 
+    size: 28, 
+    font: boldFont, 
+    color: rgb(1, 1, 1) 
+  });
+  
+  page.drawText('Export de vos données personnelles', { 
+    x: margin, 
+    y: pageHeight - 70, 
+    size: 14, 
+    font: font, 
+    color: rgb(1, 1, 1) 
+  });
+  
+  // Document reference on right
+  page.drawText('Document RGPD', { 
+    x: pageWidth - margin - 100, 
+    y: pageHeight - 45, 
+    size: 10, 
+    font: font, 
+    color: rgb(1, 1, 1) 
+  });
+  
+  page.drawText('Article 15', { 
+    x: pageWidth - margin - 100, 
+    y: pageHeight - 60, 
+    size: 12, 
+    font: boldFont, 
+    color: rgb(1, 1, 1) 
+  });
+  
+  y = pageHeight - 130;
+  
+  // === INFO BOX ===
+  // Light gray info box
+  page.drawRectangle({
+    x: margin,
+    y: y - 60,
+    width: contentWidth,
+    height: 60,
+    color: rgb(0.97, 0.98, 0.99),
+    borderColor: rgb(0.9, 0.9, 0.9),
+    borderWidth: 1,
+  });
+  
+  // User info in box
+  y -= 20;
+  drawText(`Utilisateur: ${data.profile?.first_name || ''} ${data.profile?.last_name || ''}`, margin + 15, y, { font: boldFont });
   y -= lineHeight;
-  drawText(`ID Utilisateur: ${data.user_id}`, margin, y);
+  drawText(`Email: ${data.email}`, margin + 15, y);
   y -= lineHeight;
-  drawText(`Email: ${data.email}`, margin, y);
-  y -= lineHeight * 2;
+  drawText(`Date d'export: ${formatDate(data.export_date)}`, margin + 15, y);
+  y -= lineHeight;
+  
+  // ID on right side
+  page.drawText(`Réf: ${data.user_id?.substring(0, 8).toUpperCase() || 'N/A'}`, { 
+    x: pageWidth - margin - 100, 
+    y: y + lineHeight * 2, 
+    size: 9, 
+    font: font, 
+    color: grayText 
+  });
+  
+  y -= 30;
   
   // Profile section
   addNewPageIfNeeded(100);
