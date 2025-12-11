@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Send, Loader2, Compass, MessageCircle, Bot, User, UserCog, BookOpen, RefreshCw, FileText, Trash2, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Sparkles, X, Send, Loader2, Compass, MessageCircle, Bot, User, UserCog, BookOpen, RefreshCw, FileText, Trash2, ThumbsUp, ThumbsDown, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -622,19 +622,32 @@ const UnifiedAssistant = () => {
 
   return (
     <>
-      {/* Toggle Button - Top Right */}
-      <Button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "fixed top-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg",
-          "bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600",
-          "transition-all duration-300",
-          isOpen && "scale-0 opacity-0"
-        )}
-        size="icon"
-      >
-        <Sparkles className="h-5 w-5 text-white" />
-      </Button>
+      {/* Toggle Buttons - Top Right */}
+      <div className={cn(
+        "fixed top-4 right-4 z-50 flex flex-col gap-3 transition-all duration-300",
+        isOpen && "scale-0 opacity-0"
+      )}>
+        <Button
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            "h-12 w-12 rounded-full shadow-lg",
+            "bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
+          )}
+          size="icon"
+        >
+          <Sparkles className="h-5 w-5 text-white" />
+        </Button>
+        <Button
+          onClick={() => window.location.href = "mailto:support@anr.fr"}
+          className={cn(
+            "h-12 w-12 rounded-full shadow-lg",
+            "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
+          )}
+          size="icon"
+        >
+          <Mail className="h-5 w-5 text-white" />
+        </Button>
+      </div>
 
       {/* Chat Window */}
       <div
