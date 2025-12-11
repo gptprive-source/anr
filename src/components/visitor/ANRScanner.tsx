@@ -139,29 +139,34 @@ const ANRScanner = () => {
         )}
 
         {/* Mode selector */}
-        <div className="glass-effect rounded-2xl p-2 mb-6 flex gap-2">
+        <div className="glass-effect rounded-2xl p-2 mb-6 flex gap-2 border border-primary">
           <ModeButton
             active={mode === "qr"}
             onClick={() => setMode("qr")}
             icon={<QrCode className="w-5 h-5" />}
             label="QR Code"
+            color="blue"
           />
           <ModeButton
             active={mode === "nfc"}
             onClick={() => setMode("nfc")}
             icon={<Nfc className="w-5 h-5" />}
             label="NFC"
+            color="orange"
           />
           <ModeButton
             active={mode === "manual"}
             onClick={() => setMode("manual")}
             icon={<Hash className="w-5 h-5" />}
             label="Numéro"
+            color="green"
           />
         </div>
 
         {/* Content based on mode */}
-        <div className="glass-effect rounded-2xl p-6 card-shadow">
+        <div className={`glass-effect rounded-2xl p-6 card-shadow border ${
+          mode === "qr" ? "border-blue-500" : mode === "nfc" ? "border-orange-500" : "border-green-500"
+        }`}>
           {mode === "qr" && <QRScannerContent onScan={handleSubmit} loading={loading} />}
           {mode === "nfc" && <NFCScannerContent onScan={handleSubmit} loading={loading} />}
           {mode === "manual" && (
@@ -183,24 +188,34 @@ const ModeButton = ({
   onClick,
   icon,
   label,
+  color = "blue",
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
-}) => (
-  <button
-    onClick={onClick}
-    className={`flex-1 flex flex-col items-center gap-2 py-3 px-4 rounded-xl transition-all ${
-      active
-        ? "bg-primary text-primary-foreground"
-        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-    }`}
-  >
-    {icon}
-    <span className="text-xs font-medium">{label}</span>
-  </button>
-);
+  color?: "blue" | "orange" | "green";
+}) => {
+  const colorClasses = {
+    blue: "bg-blue-500/10 text-blue-500",
+    orange: "bg-orange-500/10 text-orange-500",
+    green: "bg-green-500/10 text-green-500",
+  };
+  
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 flex flex-col items-center gap-2 py-3 px-4 rounded-xl transition-all ${
+        active
+          ? "bg-primary text-primary-foreground"
+          : `${colorClasses[color]} hover:opacity-80`
+      }`}
+    >
+      {icon}
+      <span className="text-xs font-medium">{label}</span>
+    </button>
+  );
+};
 
 const QRScannerContent = ({ onScan, loading }: { onScan: (code: string) => void; loading: boolean }) => {
   const [scanning, setScanning] = useState(false);

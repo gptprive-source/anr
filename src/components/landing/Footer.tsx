@@ -1,4 +1,4 @@
-import { Shield } from "lucide-react";
+import { Shield, HelpCircle, Lock, FileText, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Footer = () => {
@@ -7,7 +7,7 @@ const Footer = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center border border-primary">
               <Shield className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="text-xl font-bold">ANR</span>
@@ -17,11 +17,23 @@ const Footer = () => {
             © 2024 ANR - Adresse Numérique Résidentielle. Système breveté.
           </p>
           
-          <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link to="/faq" className="hover:text-foreground transition-colors">FAQ</Link>
-            <Link to="/privacy" className="hover:text-foreground transition-colors">Confidentialité</Link>
-            <Link to="/cgu" className="hover:text-foreground transition-colors">CGU</Link>
-            <Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link>
+          <div className="flex gap-4 text-sm">
+            <Link to="/faq" className="text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-1">
+              <HelpCircle className="w-4 h-4" />
+              FAQ
+            </Link>
+            <Link to="/privacy" className="text-purple-500 hover:text-purple-600 transition-colors flex items-center gap-1">
+              <Lock className="w-4 h-4" />
+              Confidentialité
+            </Link>
+            <Link to="/cgu" className="text-orange-500 hover:text-orange-600 transition-colors flex items-center gap-1">
+              <FileText className="w-4 h-4" />
+              CGU
+            </Link>
+            <Link to="/contact" className="text-green-500 hover:text-green-600 transition-colors flex items-center gap-1">
+              <Mail className="w-4 h-4" />
+              Contact
+            </Link>
           </div>
         </div>
       </div>
