@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { MapPin, Phone, Loader2, DoorOpen, ScanFace } from "lucide-react";
+import { MapPin, Phone, Loader2, DoorOpen, ScanFace, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -223,16 +223,19 @@ const ANRLanding = () => {
     return (
       <div className="min-h-screen flex flex-col">
         <div className="flex-1 flex flex-col items-center justify-center p-6">
-          <img src={logoAnr} alt="ANR" className="w-24 h-24 mb-6 opacity-50" />
-          <h1 className="text-xl font-semibold text-destructive mb-2">
-            {error || "ANR introuvable"}
-          </h1>
-          <p className="text-muted-foreground text-center mb-6">
-            Ce code ANR n'existe pas ou a été supprimé.
-          </p>
-          <Button onClick={() => navigate("/visitor")} variant="outline">
-            Scanner un autre ANR
-          </Button>
+          <div className="p-8 rounded-2xl border-2 border-destructive bg-card text-center max-w-md">
+            <img src={logoAnr} alt="ANR" className="w-24 h-24 mb-6 opacity-50 mx-auto" />
+            <h1 className="text-xl font-semibold text-destructive mb-2">
+              {error || "ANR introuvable"}
+            </h1>
+            <p className="text-muted-foreground mb-6">
+              Ce code ANR n'existe pas ou a été supprimé.
+            </p>
+            <Button onClick={() => navigate("/visitor")} variant="outline" className="border-2 border-blue-500">
+              <QrCode className="w-4 h-4 mr-2 text-blue-500" />
+              Scanner un autre ANR
+            </Button>
+          </div>
         </div>
         <VisitorFooter />
       </div>
@@ -246,17 +249,19 @@ const ANRLanding = () => {
         <img src={logoAnr} alt="ANR" className="w-20 h-20 mb-6" />
         
         {/* ANR Code */}
-        <div className="bg-white rounded-2xl px-6 py-3 mb-4 shadow-sm">
+        <div className="bg-white rounded-2xl px-6 py-3 mb-4 shadow-sm border-2 border-primary">
           <p className="text-2xl font-mono font-bold tracking-wider text-slate-900">
             {anrData.code}
           </p>
         </div>
 
         {/* Address */}
-        <Card className="w-full max-w-md mb-8">
+        <Card className="w-full max-w-md mb-8 border-2 border-blue-500">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-5 h-5 text-blue-500" />
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Adresse</p>
                 <p className="font-medium">{anrData.address}</p>
@@ -269,7 +274,7 @@ const ANRLanding = () => {
         <div className="w-full max-w-md space-y-4">
           {/* Open Door Button - Only for users with valid scheduled access */}
           {validAccess && (
-            <div className="space-y-2">
+            <div className="space-y-2 p-4 rounded-lg border-2 border-green-500 bg-green-500/5">
               <div className="text-center">
                 <p className="text-sm text-green-600 font-medium">
                   Accès autorisé : {validAccess.name}
@@ -309,8 +314,10 @@ const ANRLanding = () => {
           {isIOS ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full h-14 text-base gap-3">
-                  <MapPin className="w-5 h-5" />
+                <Button variant="outline" className="w-full h-14 text-base gap-3 border-2 border-orange-500">
+                  <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+                    <MapPin className="w-4 h-4 text-orange-500" />
+                  </div>
                   Naviguer vers cette adresse
                 </Button>
               </DropdownMenuTrigger>
@@ -330,9 +337,11 @@ const ANRLanding = () => {
             <Button
               onClick={() => openNavigation('default')}
               variant="outline"
-              className="w-full h-14 text-base gap-3"
+              className="w-full h-14 text-base gap-3 border-2 border-orange-500"
             >
-              <MapPin className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+                <MapPin className="w-4 h-4 text-orange-500" />
+              </div>
               Naviguer vers cette adresse
             </Button>
           )}
@@ -340,9 +349,11 @@ const ANRLanding = () => {
           <Button
             onClick={handleCall}
             variant={validAccess ? "outline" : "hero"}
-            className="w-full h-14 text-base gap-3"
+            className={`w-full h-14 text-base gap-3 ${validAccess ? "border-2 border-purple-500" : ""}`}
           >
-            <Phone className="w-5 h-5" />
+            <div className={`w-8 h-8 rounded-full ${validAccess ? "bg-purple-500/10" : "bg-white/20"} flex items-center justify-center`}>
+              <Phone className={`w-4 h-4 ${validAccess ? "text-purple-500" : "text-white"}`} />
+            </div>
             Appeler cet interphone
           </Button>
         </div>

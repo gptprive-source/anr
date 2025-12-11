@@ -16,16 +16,20 @@ const MentionsLegales = () => {
             </Link>
           </Button>
           <div className="flex items-center gap-3">
-            <Scale className="w-8 h-8 text-primary" />
+            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center border-2 border-blue-500">
+              <Scale className="w-6 h-6 text-blue-500" />
+            </div>
             <h1 className="text-3xl font-bold">Mentions Légales</h1>
           </div>
         </div>
 
         <div className="space-y-8 text-sm leading-relaxed">
           {/* Éditeur */}
-          <section className="space-y-4">
+          <section className="space-y-4 p-4 rounded-lg border-2 border-blue-500">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-primary" />
+              <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <Building2 className="w-4 h-4 text-blue-500" />
+              </div>
               Éditeur du site
             </h2>
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
@@ -40,9 +44,11 @@ const MentionsLegales = () => {
           </section>
 
           {/* Directeur de publication */}
-          <section className="space-y-4">
+          <section className="space-y-4 p-4 rounded-lg border-2 border-orange-500">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <User className="w-5 h-5 text-primary" />
+              <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+                <User className="w-4 h-4 text-orange-500" />
+              </div>
               Directeur de la publication
             </h2>
             <div className="bg-muted/50 rounded-lg p-4">
@@ -52,9 +58,11 @@ const MentionsLegales = () => {
           </section>
 
           {/* Hébergement */}
-          <section className="space-y-4">
+          <section className="space-y-4 p-4 rounded-lg border-2 border-green-500">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Server className="w-5 h-5 text-primary" />
+              <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                <Server className="w-4 h-4 text-green-500" />
+              </div>
               Hébergement
             </h2>
             <div className="bg-muted/50 rounded-lg p-4 space-y-4">
@@ -73,9 +81,11 @@ const MentionsLegales = () => {
           </section>
 
           {/* Contact DPO */}
-          <section className="space-y-4">
+          <section className="space-y-4 p-4 rounded-lg border-2 border-purple-500">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Mail className="w-5 h-5 text-primary" />
+              <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
+                <Mail className="w-4 h-4 text-purple-500" />
+              </div>
               Délégué à la Protection des Données (DPO)
             </h2>
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
@@ -89,8 +99,13 @@ const MentionsLegales = () => {
           </section>
 
           {/* Propriété intellectuelle */}
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold">Propriété intellectuelle</h2>
+          <section className="space-y-4 p-4 rounded-lg border-2 border-cyan-500">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center">
+                <Scale className="w-4 h-4 text-cyan-500" />
+              </div>
+              Propriété intellectuelle
+            </h2>
             <p className="text-muted-foreground">
               L'ensemble du contenu de ce site (textes, images, logos, icônes, sons, logiciels, etc.) est la propriété exclusive d'ANR SAS ou de ses partenaires et est protégé par les lois françaises et internationales relatives à la propriété intellectuelle.
             </p>
@@ -100,8 +115,13 @@ const MentionsLegales = () => {
           </section>
 
           {/* Cookies */}
-          <section className="space-y-4">
-            <h2 className="text-xl font-semibold">Cookies et traceurs</h2>
+          <section className="space-y-4 p-4 rounded-lg border-2 border-pink-500">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-pink-500/10 flex items-center justify-center">
+                <Server className="w-4 h-4 text-pink-500" />
+              </div>
+              Cookies et traceurs
+            </h2>
             <p className="text-muted-foreground">
               Ce site utilise des cookies strictement nécessaires au fonctionnement du service (authentification, préférences). Aucun cookie publicitaire ou de traçage marketing n'est utilisé.
             </p>
@@ -115,13 +135,13 @@ const MentionsLegales = () => {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">Liens utiles</h2>
             <div className="flex flex-wrap gap-3">
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="border-2 border-purple-500">
                 <Link to="/privacy">Politique de Confidentialité</Link>
               </Button>
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="border-2 border-blue-500">
                 <Link to="/cgu">Conditions Générales d'Utilisation</Link>
               </Button>
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="border-2 border-green-500">
                 <Link to="/contact">Nous contacter</Link>
               </Button>
             </div>

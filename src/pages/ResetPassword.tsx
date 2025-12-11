@@ -88,8 +88,8 @@ const ResetPassword = () => {
       <>
         <div className="min-h-screen flex items-center justify-center p-4 pb-20">
           <div className="w-full max-w-md">
-            <div className="glass-effect rounded-3xl p-8 card-shadow text-center">
-              <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+            <div className="glass-effect rounded-3xl p-8 card-shadow text-center border-2 border-green-500">
+              <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4 border-2 border-green-500">
                 <CheckCircle className="w-10 h-10 text-green-500" />
               </div>
               <h2 className="text-xl font-bold text-green-500 mb-2">Mot de passe modifié !</h2>
@@ -106,11 +106,11 @@ const ResetPassword = () => {
     <>
       <div className="min-h-screen flex items-center justify-center p-4 pb-20">
         <div className="w-full max-w-md">
-          <div className="glass-effect rounded-3xl p-8 card-shadow">
+          <div className="glass-effect rounded-3xl p-8 card-shadow border-2 border-blue-500">
             <div className="space-y-6">
               <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-8 h-8 text-primary" />
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mx-auto mb-4 border-2 border-blue-500">
+                  <Lock className="w-8 h-8 text-blue-500" />
                 </div>
                 <h2 className="text-2xl font-bold mb-2">Nouveau mot de passe</h2>
                 <p className="text-muted-foreground">
@@ -122,14 +122,16 @@ const ResetPassword = () => {
                 <div className="space-y-2">
                   <Label htmlFor="password">Nouveau mot de passe</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-purple-500/10 flex items-center justify-center">
+                      <Lock className="w-3 h-3 text-purple-500" />
+                    </div>
                     <Input
                       id="password"
                       type="password"
                       placeholder="Minimum 6 caractères"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10"
+                      className="pl-12"
                       disabled={loading}
                     />
                   </div>
@@ -138,14 +140,16 @@ const ResetPassword = () => {
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-orange-500/10 flex items-center justify-center">
+                      <Lock className="w-3 h-3 text-orange-500" />
+                    </div>
                     <Input
                       id="confirmPassword"
                       type="password"
                       placeholder="Confirmez votre mot de passe"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-10"
+                      className="pl-12"
                       disabled={loading}
                       onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
                     />

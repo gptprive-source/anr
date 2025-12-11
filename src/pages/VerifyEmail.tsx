@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -88,10 +88,15 @@ const VerifyEmail = () => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="glass-effect rounded-3xl p-8 card-shadow text-center">
+        <div className={`glass-effect rounded-3xl p-8 card-shadow text-center border-2 ${
+          status === "loading" || authLoading ? "border-blue-500" :
+          status === "success" ? "border-green-500" : "border-destructive"
+        }`}>
           {(status === "loading" || authLoading) && (
             <div className="space-y-4">
-              <Loader2 className="w-16 h-16 text-primary mx-auto animate-spin" />
+              <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto border-2 border-blue-500">
+                <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+              </div>
               <h2 className="text-xl font-bold">Vérification en cours...</h2>
               <p className="text-muted-foreground">Veuillez patienter</p>
             </div>
@@ -99,7 +104,7 @@ const VerifyEmail = () => {
 
           {status === "success" && !authLoading && (
             <div className="space-y-4">
-              <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto border-2 border-green-500">
                 <CheckCircle className="w-10 h-10 text-green-500" />
               </div>
               <h2 className="text-xl font-bold text-green-500">Vérifié !</h2>
@@ -110,13 +115,14 @@ const VerifyEmail = () => {
 
           {status === "error" && !authLoading && (
             <div className="space-y-4">
-              <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto border-2 border-destructive">
                 <XCircle className="w-10 h-10 text-destructive" />
               </div>
               <h2 className="text-xl font-bold text-destructive">Erreur</h2>
               <p className="text-muted-foreground">{message}</p>
               <div className="space-y-2 pt-4">
-                <Button variant="secondary" onClick={() => navigate("/login")} className="w-full">
+                <Button variant="secondary" onClick={() => navigate("/login")} className="w-full border-2 border-blue-500">
+                  <Mail className="w-4 h-4 mr-2 text-blue-500" />
                   Retour à la connexion
                 </Button>
               </div>

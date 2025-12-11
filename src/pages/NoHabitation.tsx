@@ -14,8 +14,8 @@ const NoHabitation = () => {
       <div className="max-w-lg mx-auto p-6 space-y-8">
         {/* Header */}
         <div className="pt-8 text-center space-y-4">
-          <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-            <Home className="w-10 h-10 text-primary" />
+          <div className="w-20 h-20 mx-auto rounded-full bg-blue-500/10 flex items-center justify-center border-2 border-blue-500">
+            <Home className="w-10 h-10 text-blue-500" />
           </div>
           <h1 className="text-2xl font-bold">Votre compte est actif</h1>
           <p className="text-muted-foreground leading-relaxed">
@@ -27,15 +27,17 @@ const NoHabitation = () => {
         {/* Options */}
         <div className="space-y-4">
           <Card 
-            className={`cursor-pointer transition-all hover:border-primary/50 ${
-              selectedOption === "move" ? "border-primary ring-2 ring-primary/20" : ""
+            className={`cursor-pointer transition-all border-2 ${
+              selectedOption === "move" 
+                ? "border-blue-500 ring-2 ring-blue-500/20" 
+                : "border-blue-500/50 hover:border-blue-500"
             }`}
             onClick={() => setSelectedOption("move")}
           >
             <CardHeader className="pb-2">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <MapPin className="w-6 h-6 text-primary" />
+                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <MapPin className="w-6 h-6 text-blue-500" />
                 </div>
                 <div>
                   <CardTitle className="text-lg">J'emménage quelque part</CardTitle>
@@ -53,15 +55,17 @@ const NoHabitation = () => {
           </Card>
 
           <Card 
-            className={`cursor-pointer transition-all hover:border-primary/50 ${
-              selectedOption === "invite" ? "border-primary ring-2 ring-primary/20" : ""
+            className={`cursor-pointer transition-all border-2 ${
+              selectedOption === "invite" 
+                ? "border-orange-500 ring-2 ring-orange-500/20" 
+                : "border-orange-500/50 hover:border-orange-500"
             }`}
             onClick={() => setSelectedOption("invite")}
           >
             <CardHeader className="pb-2">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-secondary/50 flex items-center justify-center">
-                  <UserPlus className="w-6 h-6 text-foreground" />
+                <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                  <UserPlus className="w-6 h-6 text-orange-500" />
                 </div>
                 <div>
                   <CardTitle className="text-lg">Je rejoins une habitation</CardTitle>

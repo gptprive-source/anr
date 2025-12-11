@@ -69,10 +69,10 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
   };
 
   return (
-    <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4">
+    <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4 border-2 border-indigo-500">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-          <User className="w-5 h-5 text-primary" />
+        <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center border-2 border-indigo-500">
+          <User className="w-5 h-5 text-indigo-500" />
         </div>
         <div className="flex-1">
           <p className="font-medium">Mode visiteur</p>
@@ -81,10 +81,12 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
       </div>
 
       {/* Business Card */}
-      <div className="border rounded-lg p-3 space-y-2">
+      <div className="border-2 border-purple-500 rounded-lg p-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-muted-foreground" />
+            <div className="w-6 h-6 rounded-full bg-purple-500/10 flex items-center justify-center">
+              <CreditCard className="w-3 h-3 text-purple-500" />
+            </div>
             <span className="text-sm font-medium">Ma carte de visite</span>
           </div>
           <Button variant="ghost" size="sm" onClick={handleOpenCardManager}>
@@ -97,9 +99,9 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
         ) : card ? (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             {card.card_type === "company" ? (
-              <Building2 className="w-3 h-3" />
+              <Building2 className="w-3 h-3 text-purple-500" />
             ) : (
-              <User className="w-3 h-3" />
+              <User className="w-3 h-3 text-purple-500" />
             )}
             <span>{getCardSummary()}</span>
             {card.email && <span>• {card.email}</span>}
@@ -113,10 +115,12 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
       </div>
 
       {/* Custom Templates */}
-      <div className="border rounded-lg p-3 space-y-2">
+      <div className="border-2 border-cyan-500 rounded-lg p-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-muted-foreground" />
+            <div className="w-6 h-6 rounded-full bg-cyan-500/10 flex items-center justify-center">
+              <MessageSquare className="w-3 h-3 text-cyan-500" />
+            </div>
             <span className="text-sm font-medium">Mes templates de messages</span>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setShowNewTemplateDialog(true)}>

@@ -269,12 +269,14 @@ const Invitation = () => {
   if (step === "error") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center space-y-6">
-          <XCircle className="w-16 h-16 text-destructive mx-auto" />
+        <div className="max-w-md w-full text-center space-y-6 p-6 rounded-2xl border-2 border-destructive bg-card">
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto border-2 border-destructive">
+            <XCircle className="w-10 h-10 text-destructive" />
+          </div>
           <h1 className="text-2xl font-bold">Invitation invalide</h1>
           <p className="text-muted-foreground">{error}</p>
-          <Button onClick={() => navigate("/")} variant="outline">
-            <Home className="w-4 h-4 mr-2" />
+          <Button onClick={() => navigate("/")} variant="outline" className="border-2 border-blue-500">
+            <Home className="w-4 h-4 mr-2 text-blue-500" />
             Retour à l'accueil
           </Button>
         </div>
@@ -285,14 +287,16 @@ const Invitation = () => {
   if (step === "success") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center space-y-6">
-          <CheckCircle className="w-16 h-16 text-success mx-auto" />
+        <div className="max-w-md w-full text-center space-y-6 p-6 rounded-2xl border-2 border-green-500 bg-card">
+          <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto border-2 border-green-500">
+            <CheckCircle className="w-10 h-10 text-green-500" />
+          </div>
           <h1 className="text-2xl font-bold">Bienvenue !</h1>
           <p className="text-muted-foreground">
             Vous avez rejoint l'habitation avec succès.
             {!user && " Vérifiez votre email pour activer votre compte."}
           </p>
-          <Button onClick={() => navigate(user ? "/dashboard" : "/login")}>
+          <Button onClick={() => navigate(user ? "/dashboard" : "/login")} className="bg-green-500 hover:bg-green-600">
             {user ? "Aller au tableau de bord" : "Se connecter"}
           </Button>
         </div>
@@ -311,7 +315,10 @@ const Invitation = () => {
 
         {/* Habitation info */}
         {invitation?.habitation && (
-          <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
+          <div className="p-4 rounded-lg bg-green-500/10 border-2 border-green-500 text-center">
+            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-2">
+              <Home className="w-5 h-5 text-green-500" />
+            </div>
             <p className="font-semibold">{invitation.habitation.name}</p>
             <p className="text-sm text-muted-foreground">
               {invitation.habitation.anrs?.address}
@@ -321,14 +328,14 @@ const Invitation = () => {
 
         {/* Already logged in */}
         {user ? (
-          <div className="space-y-4">
+          <div className="space-y-4 p-4 rounded-lg border-2 border-purple-500">
             <p className="text-center text-muted-foreground">
               Connecté en tant que <strong>{user.email}</strong>
             </p>
             <Button
               onClick={acceptInvitationForExistingUser}
               disabled={submitting}
-              className="w-full"
+              className="w-full bg-purple-500 hover:bg-purple-600"
             >
               {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -339,17 +346,19 @@ const Invitation = () => {
           </div>
         ) : (
           /* Registration form */
-          <div className="space-y-4">
+          <div className="space-y-4 p-4 rounded-lg border-2 border-blue-500">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <Mail className="w-3 h-3 text-blue-500" />
+                </div>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   disabled
-                  className="pl-10 bg-muted"
+                  className="pl-12 bg-muted"
                 />
               </div>
             </div>
@@ -358,12 +367,14 @@ const Invitation = () => {
               <div className="space-y-2">
                 <Label htmlFor="firstName">Prénom</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-orange-500/10 flex items-center justify-center">
+                    <User className="w-3 h-3 text-orange-500" />
+                  </div>
                   <Input
                     id="firstName"
                     value={firstName}
                     disabled
-                    className="pl-10 bg-muted"
+                    className="pl-12 bg-muted"
                   />
                 </div>
               </div>
@@ -381,14 +392,16 @@ const Invitation = () => {
             <div className="space-y-2">
               <Label htmlFor="password">Mot de passe</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-purple-500/10 flex items-center justify-center">
+                  <Lock className="w-3 h-3 text-purple-500" />
+                </div>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimum 6 caractères"
-                  className="pl-10"
+                  className="pl-12"
                   disabled={submitting}
                 />
               </div>
@@ -408,7 +421,7 @@ const Invitation = () => {
 
             <p className="text-xs text-center text-muted-foreground">
               Vous avez déjà un compte ?{" "}
-              <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/login")}>
+              <Button variant="link" className="p-0 h-auto text-blue-500" onClick={() => navigate("/login")}>
                 Connectez-vous
               </Button>
             </p>

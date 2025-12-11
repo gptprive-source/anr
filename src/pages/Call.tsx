@@ -2,9 +2,10 @@ import { useParams, useSearchParams, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CallInterface from "@/components/call/CallInterface";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { logger } from "@/lib/logger";
+import { Button } from "@/components/ui/button";
 
 interface CallData {
   address: string;
@@ -242,13 +243,20 @@ const Call = () => {
   if (error || !callData) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-        <p className="text-destructive mb-4">{error || "Erreur"}</p>
-        <button 
-          onClick={() => window.history.back()}
-          className="text-primary hover:underline"
-        >
-          Retour
-        </button>
+        <div className="p-8 rounded-2xl border-2 border-destructive bg-card text-center max-w-md">
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4 border-2 border-destructive">
+            <AlertTriangle className="w-8 h-8 text-destructive" />
+          </div>
+          <p className="text-destructive font-medium mb-4">{error || "Erreur"}</p>
+          <Button 
+            onClick={() => window.history.back()}
+            variant="outline"
+            className="border-2 border-blue-500"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2 text-blue-500" />
+            Retour
+          </Button>
+        </div>
       </div>
     );
   }

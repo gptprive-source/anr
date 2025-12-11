@@ -15,7 +15,6 @@ import {
   Clock
 } from 'lucide-react';
 import { EmployeeDoorScanner } from '@/components/door/EmployeeDoorScanner';
-// Supprimé: ANRScanner non compatible avec props
 import VisitorFooter from '@/components/layout/VisitorFooter';
 
 export default function EmployeeScan() {
@@ -120,11 +119,11 @@ export default function EmployeeScan() {
     return (
       <div className="min-h-screen bg-background pb-20">
         <div className="container max-w-lg mx-auto p-4">
-          <Card className="mt-8">
+          <Card className="mt-8 border-2 border-blue-500">
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
-                <div className="p-4 rounded-full bg-primary/10">
-                  <QrCode className="h-12 w-12 text-primary" />
+                <div className="p-4 rounded-full bg-blue-500/10 border-2 border-blue-500">
+                  <QrCode className="h-12 w-12 text-blue-500" />
                 </div>
               </div>
               <CardTitle>Scanner l'ANR</CardTitle>
@@ -161,10 +160,12 @@ export default function EmployeeScan() {
 
           {/* Info employé */}
           {employeeInfo && (
-            <Card className="mt-4 bg-primary/5">
+            <Card className="mt-4 border-2 border-orange-500">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3">
-                  <Building2 className="h-5 w-5 text-primary" />
+                  <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                    <Building2 className="h-5 w-5 text-orange-500" />
+                  </div>
                   <div>
                     <p className="font-medium">
                       {employeeInfo.first_name} {employeeInfo.last_name}
@@ -190,11 +191,13 @@ export default function EmployeeScan() {
         <div className="container max-w-lg mx-auto p-4">
           {/* Info employé en haut */}
           {employeeInfo && (
-            <Card className="mb-4 bg-primary/5">
+            <Card className="mb-4 border-2 border-green-500">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Building2 className="h-5 w-5 text-primary" />
+                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <Building2 className="h-5 w-5 text-green-500" />
+                    </div>
                     <div>
                       <p className="font-medium">
                         {employeeInfo.first_name} {employeeInfo.last_name}
@@ -204,7 +207,7 @@ export default function EmployeeScan() {
                       </p>
                     </div>
                   </div>
-                  <Badge>Employé</Badge>
+                  <Badge className="bg-green-500">Employé</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -226,8 +229,9 @@ export default function EmployeeScan() {
                 setScanning(true);
                 navigate('/employee-scan');
               }}
+              className="border-2 border-purple-500"
             >
-              <QrCode className="h-4 w-4 mr-2" />
+              <QrCode className="h-4 w-4 mr-2 text-purple-500" />
               Scanner une autre ANR
             </Button>
           </div>
@@ -241,16 +245,18 @@ export default function EmployeeScan() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="container max-w-lg mx-auto p-4">
-        <Card className="mt-8">
+        <Card className="mt-8 border-2 border-orange-500">
           <CardHeader className="text-center">
-            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
+            <div className="w-16 h-16 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto mb-4 border-2 border-orange-500">
+              <AlertTriangle className="h-8 w-8 text-orange-500" />
+            </div>
             <CardTitle>Aucune ANR sélectionnée</CardTitle>
             <CardDescription>
               Scannez un QR code ANR pour commencer
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Button onClick={() => setScanning(true)}>
+            <Button onClick={() => setScanning(true)} className="border-2 border-blue-500 bg-blue-500 hover:bg-blue-600">
               <QrCode className="h-4 w-4 mr-2" />
               Scanner une ANR
             </Button>
