@@ -174,24 +174,19 @@ const Messages = () => {
 
   return (
     <div className="min-h-screen pb-20">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-500 text-white p-6">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} className="text-white hover:bg-white/20">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="font-bold text-xl flex items-center gap-2">
-                <MessageSquare className="w-6 h-6" />
-                Messages
-              </h1>
-            </div>
+      <div className="max-w-2xl mx-auto p-4 space-y-4">
+        {/* Header */}
+        <div className="flex items-center gap-4 pt-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-purple-500" />
+              Messages
+            </h1>
           </div>
         </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto p-4 space-y-4">
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
