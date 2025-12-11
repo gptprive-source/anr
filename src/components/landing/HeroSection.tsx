@@ -13,17 +13,15 @@ const HeroSection = () => {
     await promptInstall();
   };
   return <section className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 py-20">
-      {/* Login button - top right */}
-      <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
-        {isInstallable && !isInstalled && <Button variant="outline" size="sm" onClick={handleInstall} className="gap-2">
+      {/* Install button - top right */}
+      {isInstallable && !isInstalled && (
+        <div className="absolute top-6 right-6 z-20">
+          <Button variant="outline" size="sm" onClick={handleInstall} className="gap-2">
             <Download className="w-4 h-4" />
             Installer
-          </Button>}
-        <Button variant="ghost" size="sm" onClick={() => navigate("/login")} className="gap-2">
-          <LogIn className="w-4 h-4" />
-          Se connecter
-        </Button>
-      </div>
+          </Button>
+        </div>
+      )}
       {/* Background effects */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_hsl(199,89%,48%,0.1)_0%,_transparent_50%)]" />
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
@@ -52,7 +50,7 @@ const HeroSection = () => {
           sans installation matérielle.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-in" style={{
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6 animate-fade-in" style={{
         animationDelay: "0.4s"
       }}>
           <Button variant="hero" size="xl" onClick={() => navigate("/register")}>
@@ -62,6 +60,13 @@ const HeroSection = () => {
           <Button variant="glass" size="xl" onClick={() => navigate("/visitor")} className="!border-2 !border-blue-400 ring-4 ring-blue-400/40 shadow-[0_0_20px_rgba(96,165,250,0.4)]">
             <QrCode className="w-5 h-5" />
             J'appelle un résident
+          </Button>
+        </div>
+
+        <div className="flex justify-center mb-16 animate-fade-in" style={{ animationDelay: "0.45s" }}>
+          <Button variant="ghost" size="lg" onClick={() => navigate("/login")} className="gap-2">
+            <LogIn className="w-5 h-5" />
+            Se connecter
           </Button>
         </div>
 
