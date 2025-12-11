@@ -58,10 +58,10 @@ const MentionsLegales = () => {
           </section>
 
           {/* Hébergement */}
-          <section className="space-y-4 p-4 rounded-lg border-2 border-green-500">
+          <section className="space-y-4 p-4 rounded-lg border-2 border-yellow-500">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                <Server className="w-4 h-4 text-green-500" />
+              <div className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                <Server className="w-4 h-4 text-yellow-500" />
               </div>
               Hébergement
             </h2>
@@ -99,10 +99,10 @@ const MentionsLegales = () => {
           </section>
 
           {/* Propriété intellectuelle */}
-          <section className="space-y-4 p-4 rounded-lg border-2 border-cyan-500">
+          <section className="space-y-4 p-4 rounded-lg border-2 border-green-500">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center">
-                <Scale className="w-4 h-4 text-cyan-500" />
+              <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                <Scale className="w-4 h-4 text-green-500" />
               </div>
               Propriété intellectuelle
             </h2>
@@ -115,10 +115,10 @@ const MentionsLegales = () => {
           </section>
 
           {/* Cookies */}
-          <section className="space-y-4 p-4 rounded-lg border-2 border-pink-500">
+          <section className="space-y-4 p-4 rounded-lg border-2 border-cyan-500">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-pink-500/10 flex items-center justify-center">
-                <Server className="w-4 h-4 text-pink-500" />
+              <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center">
+                <Server className="w-4 h-4 text-cyan-500" />
               </div>
               Cookies et traceurs
             </h2>
@@ -135,13 +135,13 @@ const MentionsLegales = () => {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">Liens utiles</h2>
             <div className="flex flex-wrap gap-3">
-              <Button variant="outline" asChild className="border-2 border-purple-500">
+              <Button variant="outline" asChild className="border-2 border-pink-500">
                 <Link to="/privacy">Politique de Confidentialité</Link>
               </Button>
-              <Button variant="outline" asChild className="border-2 border-blue-500">
+              <Button variant="outline" asChild className="border-2 border-purple-500">
                 <Link to="/cgu">Conditions Générales d'Utilisation</Link>
               </Button>
-              <Button variant="outline" asChild className="border-2 border-green-500">
+              <Button variant="outline" asChild className="border-2 border-yellow-500">
                 <Link to="/contact">Nous contacter</Link>
               </Button>
             </div>

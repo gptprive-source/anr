@@ -43,7 +43,7 @@ const HowItWorks = () => {
         <div className="grid md:grid-cols-4 gap-8">
           {steps.map((step, index) => {
             // Cycle through colors
-            const colorCycle = ["border-blue-500 text-blue-500", "border-orange-500 text-orange-500", "border-purple-500 text-purple-500", "border-green-500 text-green-500"];
+            const colorCycle = ["border-blue-500 text-blue-500", "border-orange-500 text-orange-500", "border-yellow-500 text-yellow-500", "border-purple-500 text-purple-500", "border-green-500 text-green-500"];
             const colorClass = colorCycle[index % colorCycle.length];
             const borderColor = colorClass.split(" ")[0];
             const textColor = colorClass.split(" ")[1];

@@ -289,10 +289,10 @@ const Account = () => {
 
         {/* Info sections */}
         <div className="space-y-3">
-          <div className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-purple-500">
+          <div className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-yellow-500">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-purple-500" />
+              <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                <Mail className="w-5 h-5 text-yellow-500" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Email</p>

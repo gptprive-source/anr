@@ -115,11 +115,11 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
       </div>
 
       {/* Custom Templates */}
-      <div className="border border-cyan-500 rounded-lg p-3 space-y-2">
+      <div className="border border-yellow-500 rounded-lg p-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-cyan-500/10 flex items-center justify-center">
-              <MessageSquare className="w-3 h-3 text-cyan-500" />
+            <div className="w-6 h-6 rounded-full bg-yellow-500/10 flex items-center justify-center">
+              <MessageSquare className="w-3 h-3 text-yellow-500" />
             </div>
             <span className="text-sm font-medium">Mes templates de messages</span>
           </div>

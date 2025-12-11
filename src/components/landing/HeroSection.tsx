@@ -90,11 +90,12 @@ const FeatureCard = ({
   icon: React.ReactNode;
   title: string;
   description: string;
-  color?: "blue" | "orange" | "green" | "purple" | "cyan" | "rose";
+  color?: "blue" | "orange" | "yellow" | "green" | "purple" | "cyan" | "rose";
 }) => {
   const colorClasses = {
     blue: { border: "border-blue-500", bg: "bg-blue-500/10", text: "text-blue-500" },
     orange: { border: "border-orange-500", bg: "bg-orange-500/10", text: "text-orange-500" },
+    yellow: { border: "border-yellow-500", bg: "bg-yellow-500/10", text: "text-yellow-500" },
     green: { border: "border-green-500", bg: "bg-green-500/10", text: "text-green-500" },
     purple: { border: "border-purple-500", bg: "bg-purple-500/10", text: "text-purple-500" },
     cyan: { border: "border-cyan-500", bg: "bg-cyan-500/10", text: "text-cyan-500" },

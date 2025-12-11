@@ -314,9 +314,9 @@ const ANRLanding = () => {
           {isIOS ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full h-14 text-base gap-3 border-2 border-orange-500">
-                  <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
-                    <MapPin className="w-4 h-4 text-orange-500" />
+                <Button variant="outline" className="w-full h-14 text-base gap-3 border-2 border-yellow-500">
+                  <div className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                    <MapPin className="w-4 h-4 text-yellow-500" />
                   </div>
                   Naviguer vers cette adresse
                 </Button>
@@ -337,10 +337,10 @@ const ANRLanding = () => {
             <Button
               onClick={() => openNavigation('default')}
               variant="outline"
-              className="w-full h-14 text-base gap-3 border-2 border-orange-500"
+              className="w-full h-14 text-base gap-3 border-2 border-yellow-500"
             >
-              <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
-                <MapPin className="w-4 h-4 text-orange-500" />
+              <div className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                <MapPin className="w-4 h-4 text-yellow-500" />
               </div>
               Naviguer vers cette adresse
             </Button>
