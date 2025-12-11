@@ -210,9 +210,8 @@ const ChangeAddressDialog = ({
 
       if (resError) throw resError;
 
-      // If new ANR, create free Doming order - utiliser l'adresse saisie
+      // If new ANR, create free Doming order - toujours utiliser l'adresse saisie par l'utilisateur
       if (isNewAnr) {
-        const shippingAddress = selectedSource === "gps" ? gpsAddress : originalAddress;
         await supabase.from("doming_orders").insert({
           user_id: user.id,
           anr_id: anrId,
@@ -221,7 +220,7 @@ const ChangeAddressDialog = ({
           total_price: 0,
           is_free: true,
           status: "pending",
-          shipping_address: shippingAddress || originalAddress,
+          shipping_address: originalAddress,
         });
         toast.success("Nouvelle ANR créée ! Un Doming gratuit vous sera envoyé.");
       } else {
