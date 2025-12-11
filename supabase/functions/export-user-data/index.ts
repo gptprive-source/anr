@@ -274,60 +274,104 @@ async function generatePDF(data: any): Promise<Uint8Array> {
     }
   };
 
+  // === COMPANY INFO ===
+  const companyInfo = {
+    name: 'ANR - Adresse Numérique Résidentielle',
+    address: '21 avenue Cuvier',
+    city: '93420 Villepinte, France',
+    email: 'contact@anr.fr',
+    phone: '+33 1 XX XX XX XX',
+    siret: 'SIRET: XXX XXX XXX XXXXX',
+    website: 'www.anr.fr'
+  };
+
   // === HEADER STYLE FACTURE ===
   // Header background (simulated gradient with rectangle)
   page.drawRectangle({
     x: 0,
-    y: pageHeight - 100,
+    y: pageHeight - 120,
     width: pageWidth,
-    height: 100,
+    height: 120,
     color: primaryColor,
   });
   
   // Overlay for gradient effect
   page.drawRectangle({
     x: pageWidth / 2,
-    y: pageHeight - 100,
+    y: pageHeight - 120,
     width: pageWidth / 2,
-    height: 100,
+    height: 120,
     color: darkBlue,
   });
   
   // Title in header
   page.drawText('ANR', { 
     x: margin, 
-    y: pageHeight - 45, 
+    y: pageHeight - 40, 
     size: 28, 
     font: boldFont, 
     color: rgb(1, 1, 1) 
   });
   
+  page.drawText('Adresse Numérique Résidentielle', { 
+    x: margin, 
+    y: pageHeight - 58, 
+    size: 10, 
+    font: font, 
+    color: rgb(0.9, 0.95, 1) 
+  });
+  
   page.drawText('Export de vos données personnelles', { 
     x: margin, 
-    y: pageHeight - 70, 
+    y: pageHeight - 80, 
     size: 14, 
     font: font, 
     color: rgb(1, 1, 1) 
   });
   
-  // Document reference on right
-  page.drawText('Document RGPD', { 
-    x: pageWidth - margin - 100, 
-    y: pageHeight - 45, 
-    size: 10, 
+  // Company info on right side of header
+  page.drawText(companyInfo.address, { 
+    x: pageWidth - margin - 130, 
+    y: pageHeight - 35, 
+    size: 9, 
     font: font, 
-    color: rgb(1, 1, 1) 
+    color: rgb(0.9, 0.95, 1) 
   });
   
-  page.drawText('Article 15', { 
-    x: pageWidth - margin - 100, 
-    y: pageHeight - 60, 
-    size: 12, 
+  page.drawText(companyInfo.city, { 
+    x: pageWidth - margin - 130, 
+    y: pageHeight - 47, 
+    size: 9, 
+    font: font, 
+    color: rgb(0.9, 0.95, 1) 
+  });
+  
+  page.drawText(companyInfo.email, { 
+    x: pageWidth - margin - 130, 
+    y: pageHeight - 59, 
+    size: 9, 
+    font: font, 
+    color: rgb(0.9, 0.95, 1) 
+  });
+  
+  page.drawText(companyInfo.phone, { 
+    x: pageWidth - margin - 130, 
+    y: pageHeight - 71, 
+    size: 9, 
+    font: font, 
+    color: rgb(0.9, 0.95, 1) 
+  });
+  
+  // Document reference
+  page.drawText('Document RGPD - Article 15', { 
+    x: pageWidth - margin - 130, 
+    y: pageHeight - 95, 
+    size: 10, 
     font: boldFont, 
     color: rgb(1, 1, 1) 
   });
   
-  y = pageHeight - 130;
+  y = pageHeight - 150;
   
   // === INFO BOX ===
   // Light gray info box
@@ -477,15 +521,20 @@ async function generatePDF(data: any): Promise<Uint8Array> {
   }
   
   // Footer on last page
-  y = margin;
+  y = margin + 30;
   page.drawLine({
-    start: { x: margin, y: y + 20 },
-    end: { x: pageWidth - margin, y: y + 20 },
+    start: { x: margin, y: y + 25 },
+    end: { x: pageWidth - margin, y: y + 25 },
     thickness: 0.5,
     color: rgb(0.8, 0.8, 0.8)
   });
   
-  drawText('Ce document constitue la réponse officielle à votre demande d\'accès aux données conformément au RGPD.', margin, y + 5, { size: 8, color: rgb(0.5, 0.5, 0.5) });
+  // Company footer info
+  drawText(`${companyInfo.name}`, margin, y + 10, { size: 8, color: grayText, font: boldFont });
+  drawText(`${companyInfo.address}, ${companyInfo.city} | ${companyInfo.email} | ${companyInfo.phone}`, margin, y - 2, { size: 7, color: grayText });
+  drawText(`${companyInfo.siret} | ${companyInfo.website}`, margin, y - 12, { size: 7, color: grayText });
+  
+  drawText('Ce document constitue la réponse officielle à votre demande d\'accès aux données conformément au RGPD.', margin, y - 26, { size: 7, color: rgb(0.6, 0.6, 0.6) });
   
   // Set PDF metadata and permissions (read-only)
   pdfDoc.setTitle('Export données personnelles ANR');
