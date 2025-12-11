@@ -297,8 +297,9 @@ serve(async (req) => {
           collectivites: 2388 // 199€/month * 12
         };
         
-        // The price in app_config is already annual (stored as monthly * 12)
-        const annualPrice = (priceConfig?.value as number) || defaultPrices[planType] || 12;
+        // The price in app_config is already annual - ensure it's a number
+        const rawPrice = priceConfig?.value;
+        const annualPrice = typeof rawPrice === 'number' ? rawPrice : Number(rawPrice) || defaultPrices[planType] || 12;
         
         const planLabels: Record<string, string> = {
           particulier: "Particulier",
