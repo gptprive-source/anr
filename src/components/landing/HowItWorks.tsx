@@ -37,7 +37,7 @@ const HowItWorks = () => {
               {/* Connector line */}
               {index < steps.length - 1 && <div className="hidden md:block absolute top-12 left-1/2 w-full h-0.5 bg-gradient-to-r from-primary/50 to-accent/50" />}
               
-              <div className="relative flex flex-col items-center text-center bg-[#15253b]">
+              <div className="relative flex flex-col items-center text-center bg-[#15253b] my-0 py-[21px]">
                 <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 border border-border flex items-center justify-center text-primary mb-6 relative z-10">
                   {step.icon}
                   <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
