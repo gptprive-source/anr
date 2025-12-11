@@ -2417,6 +2417,7 @@ export type Database = {
           current_period_start: string | null
           habitation_id: string | null
           id: string
+          plan_type: string | null
           status: string
           stripe_customer_id: string
           stripe_session_id: string | null
@@ -2431,6 +2432,7 @@ export type Database = {
           current_period_start?: string | null
           habitation_id?: string | null
           id?: string
+          plan_type?: string | null
           status?: string
           stripe_customer_id: string
           stripe_session_id?: string | null
@@ -2445,6 +2447,7 @@ export type Database = {
           current_period_start?: string | null
           habitation_id?: string | null
           id?: string
+          plan_type?: string | null
           status?: string
           stripe_customer_id?: string
           stripe_session_id?: string | null

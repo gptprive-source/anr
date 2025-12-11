@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import BottomNav from "@/components/layout/BottomNav";
 import DeleteAccountDialog from "@/components/account/DeleteAccountDialog";
 import ChangeAddressDialog from "@/components/account/ChangeAddressDialog";
@@ -25,6 +26,7 @@ interface SubscriptionData {
   status: string;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
+  plan_type?: string;
 }
 interface HabitationData {
   id: string;
@@ -47,6 +49,7 @@ const Account = () => {
   const [showChangeEmailDialog, setShowChangeEmailDialog] = useState(false);
   const [showChangePhoneDialog, setShowChangePhoneDialog] = useState(false);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     user,
     signOut
@@ -57,6 +60,43 @@ const Account = () => {
   const {
     toast
   } = useToast();
+
+  // Handle plan change success
+  useEffect(() => {
+    const handlePlanChangeSuccess = async () => {
+      const planChanged = searchParams.get("plan_changed");
+      const sessionId = searchParams.get("session_id");
+      const newPlan = searchParams.get("new_plan");
+
+      if (planChanged === "success" && sessionId) {
+        try {
+          const { error } = await supabase.functions.invoke("verify-plan-change", {
+            body: { sessionId }
+          });
+
+          if (error) {
+            console.error("Error verifying plan change:", error);
+            sonnerToast.error("Erreur lors de la vérification du changement de plan");
+          } else {
+            sonnerToast.success(`Votre abonnement a été mis à jour vers le plan ${newPlan?.charAt(0).toUpperCase()}${newPlan?.slice(1)} !`);
+          }
+        } catch (err) {
+          console.error("Plan change verification error:", err);
+        }
+
+        // Clear URL params
+        setSearchParams({});
+        // Refresh data
+        if (user) fetchData();
+      } else if (planChanged === "cancelled") {
+        sonnerToast.info("Changement de plan annulé");
+        setSearchParams({});
+      }
+    };
+
+    handlePlanChangeSuccess();
+  }, [searchParams, user]);
+
   useEffect(() => {
     if (user) {
       fetchData();
@@ -76,7 +116,7 @@ const Account = () => {
       // Fetch subscription
       const {
         data: subData
-      } = await supabase.from("subscriptions").select("status, current_period_end, cancel_at_period_end").eq("user_id", user?.id).order("created_at", {
+      } = await supabase.from("subscriptions").select("status, current_period_end, cancel_at_period_end, plan_type").eq("user_id", user?.id).order("created_at", {
         ascending: false
       }).limit(1).maybeSingle();
       setSubscription(subData);

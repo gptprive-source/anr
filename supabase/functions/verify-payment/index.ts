@@ -277,6 +277,10 @@ serve(async (req) => {
       periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
     }
     
+    // Determine plan type from metadata or default to particulier
+    const planType = metadata.plan_type || "particulier";
+    console.log("[VERIFY-PAYMENT] Plan type:", planType);
+
     // Save subscription to database WITH stripe_session_id for idempotency
     const { error: subError } = await supabaseAdmin
       .from("subscriptions")
@@ -290,6 +294,7 @@ serve(async (req) => {
         current_period_start: periodStart,
         current_period_end: periodEnd,
         cancel_at_period_end: subscription?.cancel_at_period_end || false,
+        plan_type: planType,
       });
 
     if (subError) throw new Error(`Error creating subscription record: ${subError.message}`);
