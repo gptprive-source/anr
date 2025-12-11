@@ -260,7 +260,7 @@ const UpdateGPS = () => {
         </div>
 
         {/* Instructions */}
-        <div className="glass-effect rounded-2xl p-4 card-shadow border border-blue-500">
+        <div className="glass-effect rounded-2xl p-4 card-shadow border-2 border-blue-500">
           <div className="flex items-start gap-3">
             <MapPin className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
             <div className="text-sm">
@@ -303,7 +303,7 @@ const UpdateGPS = () => {
           </div>}
 
         {/* Scanner Area */}
-        <div className="glass-effect rounded-2xl p-4 card-shadow border border-purple-500">
+        <div className="glass-effect rounded-2xl p-4 card-shadow border-2 border-purple-500">
           {mode === "qr" ? <div className="space-y-4">
               <div id="qr-reader-gps" className="w-full aspect-square rounded-xl overflow-hidden bg-secondary" />
               
