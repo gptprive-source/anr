@@ -96,28 +96,38 @@ serve(async (req) => {
           });
         }
         
-        console.log("[CREATE-PLAN-CHANGE] Found active subscription:", currentSub.id);
+        console.log("[CREATE-PLAN-CHANGE] Current subscription:", currentSub.id);
         console.log("[CREATE-PLAN-CHANGE] Current price:", currentPriceId, "-> New price:", priceId);
         
-        // Update the subscription with the new price
-        const updatedSubscription = await stripe.subscriptions.update(currentSub.id, {
-          items: [
+        // Instead of updating directly, create a checkout session for the new plan
+        // The user must complete payment before the plan changes
+        const origin = req.headers.get("origin") || "https://anr.lovable.app";
+        
+        // Cancel the current subscription at period end when new one starts
+        const session = await stripe.checkout.sessions.create({
+          customer: customerId,
+          line_items: [
             {
-              id: currentSub.items.data[0].id,
               price: priceId,
+              quantity: 1,
             },
           ],
-          proration_behavior: "create_prorations",
+          mode: "subscription",
+          success_url: `${origin}/account?plan_changed=success&new_plan=${newPlan}`,
+          cancel_url: `${origin}/account?plan_changed=cancelled`,
+          subscription_data: {
+            metadata: {
+              previous_subscription_id: currentSub.id,
+              upgrade_from: currentPriceId,
+            },
+          },
         });
 
-        console.log("[CREATE-PLAN-CHANGE] Subscription updated successfully:", updatedSubscription.id);
+        console.log("[CREATE-PLAN-CHANGE] Checkout session created for upgrade:", session.id);
 
-        // Return success without redirecting to portal
         return new Response(JSON.stringify({ 
-          success: true,
-          updated: true,
-          subscriptionId: updatedSubscription.id,
-          newPlan: newPlan
+          url: session.url,
+          requiresPayment: true
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
