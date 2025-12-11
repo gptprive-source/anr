@@ -644,7 +644,7 @@ const UnifiedAssistant = () => {
           "transition-all duration-300 origin-top-right",
           isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"
         )}
-        style={{ height: "min(600px, calc(100vh - 100px))" }}
+        style={{ height: "min(500px, calc(100vh - 180px))" }}
       >
         {/* Header with Tabs */}
         <div className="border-b">
