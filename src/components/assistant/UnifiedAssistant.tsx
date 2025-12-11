@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useSupportChat } from "@/contexts/SupportChatContext";
 
 // CoPilot types
@@ -41,6 +41,7 @@ const replaceConfigVariables = (text: string, configMap: Record<string, string>)
 const UnifiedAssistant = () => {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const { isOpen: supportIsOpen, setIsOpen: setSupportIsOpen, rgpdRequest, clearRGPDRequest } = useSupportChat();
   
   const [isOpen, setIsOpen] = useState(false);
@@ -638,7 +639,7 @@ const UnifiedAssistant = () => {
           <Sparkles className="h-5 w-5 text-white" />
         </Button>
         <Button
-          onClick={() => { setIsOpen(true); setActiveTab("support"); }}
+          onClick={() => navigate("/contacts")}
           className={cn(
             "h-12 w-12 rounded-full shadow-lg",
             "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
