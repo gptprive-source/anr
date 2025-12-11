@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Loader2, Receipt, Calendar, CreditCard, Truck, CheckCircle, Clock, FileText } from "lucide-react";
+import { ArrowLeft, Package, Loader2, Receipt, Calendar, CreditCard, Truck, CheckCircle, Clock, FileText, Euro } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
+import { useAppConfig } from "@/hooks/useAppConfig";
 
 interface DomingOrder {
   id: string;
@@ -50,9 +51,28 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
 const Orders = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { configs } = useAppConfig();
   const [loading, setLoading] = useState(true);
   const [domingOrders, setDomingOrders] = useState<DomingOrder[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+
+  // Get plan price from config
+  const getPlanPrice = (planType: string): number => {
+    const configKey = `${planType}_annual_price`;
+    const config = configs?.find(c => c.key === configKey);
+    if (config?.value) {
+      const value = typeof config.value === 'number' ? config.value : Number(config.value);
+      return value;
+    }
+    // Default prices
+    const defaults: Record<string, number> = {
+      particulier: 12,
+      pro: 348,
+      entreprise: 1188,
+      collectivites: 2388
+    };
+    return defaults[planType] || 12;
+  };
 
   useEffect(() => {
     if (user) {
@@ -197,7 +217,9 @@ const Orders = () => {
             </Card>
           ) : (
             <div className="space-y-3">
-              {subscriptions.map((sub) => (
+              {subscriptions.map((sub) => {
+                const annualPrice = getPlanPrice(sub.plan_type);
+                return (
                 <Card key={sub.id} className="border-green-500">
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-3">
@@ -212,9 +234,16 @@ const Orders = () => {
                     <Separator className="my-2" />
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Euro className="w-4 h-4" />
+                        <span className="font-semibold text-foreground">{annualPrice.toFixed(2)}€/an</span>
+                      </div>
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />
                         <span>
-                          Depuis le {formatDate(sub.current_period_start)}
+                          Depuis le {formatDate(sub.current_period_start || sub.created_at)}
                           {sub.current_period_end && ` · Expire le ${formatDate(sub.current_period_end)}`}
                         </span>
                       </div>
@@ -231,7 +260,7 @@ const Orders = () => {
                     </Button>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           )}
         </section>

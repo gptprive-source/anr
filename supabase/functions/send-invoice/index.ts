@@ -281,7 +281,7 @@ serve(async (req) => {
         
         // Fetch plan price from app_config - use the actual plan type
         const planType = sub.plan_type || 'particulier';
-        const priceKey = planType === 'particulier' ? 'particulier_plan_price' : `${planType}_plan_price`;
+        const priceKey = `${planType}_annual_price`;
         
         const { data: priceConfig } = await supabase
           .from('app_config')
@@ -289,19 +289,16 @@ serve(async (req) => {
           .eq('key', priceKey)
           .single();
         
-        // Default prices per plan
+        // Default annual prices per plan
         const defaultPrices: Record<string, number> = {
           particulier: 12,
-          pro: 29,
-          entreprise: 99,
-          collectivites: 199
+          pro: 348,        // 29€/month * 12
+          entreprise: 1188, // 99€/month * 12
+          collectivites: 2388 // 199€/month * 12
         };
         
-        const planPrice = (priceConfig?.value as number) || defaultPrices[planType] || 12;
-        
-        // For monthly plans, show annual amount
-        const annualPrice = planType === 'particulier' ? planPrice : planPrice * 12;
-        const displayPeriod = planType === 'particulier' ? '12 mois' : '12 mois';
+        // The price in app_config is already annual (stored as monthly * 12)
+        const annualPrice = (priceConfig?.value as number) || defaultPrices[planType] || 12;
         
         const planLabels: Record<string, string> = {
           particulier: "Particulier",
@@ -310,7 +307,7 @@ serve(async (req) => {
           collectivites: "Collectivités"
         };
         
-        logStep("Plan pricing", { planType, priceKey, planPrice, annualPrice });
+        logStep("Plan pricing", { planType, priceKey, annualPrice });
         
         invoiceData = {
           email: user?.email || '',
@@ -319,7 +316,7 @@ serve(async (req) => {
           invoiceNumber: `ANR-SUB-${sub.id.substring(0, 8).toUpperCase()}`,
           invoiceDate: createdDate.toLocaleDateString('fr-FR'),
           items: [{
-            description: `Abonnement ANR ${planLabels[planType] || planType} (${displayPeriod})`,
+            description: `Abonnement ANR ${planLabels[planType] || planType} (12 mois)`,
             quantity: 1,
             unitPrice: annualPrice,
             total: annualPrice
