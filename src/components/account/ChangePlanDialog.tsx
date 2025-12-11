@@ -110,10 +110,21 @@ const ChangePlanDialog = ({ open, onOpenChange, currentPlan }: ChangePlanDialogP
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       
-      if (data?.updated) {
-        toast.success("Votre abonnement a été mis à jour !");
+      if (data?.sameplan) {
+        toast.info("Vous êtes déjà sur ce plan");
+        onOpenChange(false);
+        return;
       }
       
+      if (data?.updated || data?.success) {
+        toast.success(`Votre abonnement a été mis à jour vers le plan ${planId.charAt(0).toUpperCase() + planId.slice(1)} !`);
+        onOpenChange(false);
+        // Refresh the page to update subscription status
+        window.location.reload();
+        return;
+      }
+      
+      // Si pas de subscription existante, rediriger vers Stripe checkout
       if (data?.url) {
         window.open(data.url, "_blank");
         onOpenChange(false);
