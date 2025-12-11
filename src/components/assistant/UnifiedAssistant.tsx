@@ -619,8 +619,6 @@ const UnifiedAssistant = () => {
 
   const lastSupportMessageIsFaq = supportMessages.length > 0 && supportMessages[supportMessages.length - 1].source === "faq";
 
-  if (!user) return null;
-
   return (
     <>
       {/* Toggle Buttons - Top Right */}
@@ -628,16 +626,18 @@ const UnifiedAssistant = () => {
         "fixed top-4 right-4 z-50 flex flex-col gap-3 transition-all duration-300",
         isOpen && "scale-0 opacity-0"
       )}>
-        <Button
-          onClick={() => setIsOpen(!isOpen)}
-          className={cn(
-            "h-12 w-12 rounded-full shadow-lg",
-            "bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
-          )}
-          size="icon"
-        >
-          <Sparkles className="h-5 w-5 text-white" />
-        </Button>
+        {user && (
+          <Button
+            onClick={() => setIsOpen(!isOpen)}
+            className={cn(
+              "h-12 w-12 rounded-full shadow-lg",
+              "bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
+            )}
+            size="icon"
+          >
+            <Sparkles className="h-5 w-5 text-white" />
+          </Button>
+        )}
         <Button
           onClick={() => navigate("/contact")}
           className={cn(
@@ -650,16 +650,17 @@ const UnifiedAssistant = () => {
         </Button>
       </div>
 
-      {/* Chat Window */}
-      <div
-        className={cn(
-          "fixed top-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)]",
-          "bg-background border rounded-2xl shadow-2xl flex flex-col overflow-hidden",
-          "transition-all duration-300 origin-top-right",
-          isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"
-        )}
-        style={{ height: "min(600px, calc(100vh - 100px))" }}
-      >
+      {/* Chat Window - only for authenticated users */}
+      {user && (
+        <div
+          className={cn(
+            "fixed top-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)]",
+            "bg-background border rounded-2xl shadow-2xl flex flex-col overflow-hidden",
+            "transition-all duration-300 origin-top-right",
+            isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"
+          )}
+          style={{ height: "min(600px, calc(100vh - 100px))" }}
+        >
         {/* Header with Tabs */}
         <div className="border-b">
           <div className="flex items-center justify-between px-4 pt-3">
@@ -880,7 +881,8 @@ const UnifiedAssistant = () => {
             </>
           )}
         </div>
-      </div>
+        </div>
+      )}
     </>
   );
 };
