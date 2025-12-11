@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +14,19 @@ import VoiceRecorder from "@/components/visitor/VoiceRecorder";
 import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
+
+const EMOJI_LIST = [
+  "😀", "😃", "😄", "😁", "😅", "😂", "🤣", "😊",
+  "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘",
+  "😗", "😙", "😚", "😋", "😛", "😜", "🤪", "😝",
+  "🤑", "🤗", "🤭", "🤫", "🤔", "🤐", "🤨", "😐",
+  "😑", "😶", "😏", "😒", "🙄", "😬", "🤥", "😌",
+  "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢",
+  "👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙",
+  "👋", "🤚", "🖐️", "✋", "🖖", "👏", "🙌", "👐",
+  "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍",
+  "💯", "✅", "❌", "⭐", "🌟", "💫", "🔥", "💪"
+];
 
 interface BusinessCard {
   id: string;
@@ -391,10 +405,27 @@ const Conversation = () => {
           />
         ) : (
           <div className="flex items-center gap-2">
-            {/* Emoji icon */}
-            <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
-              <Smile className="w-6 h-6" />
-            </button>
+            {/* Emoji Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
+                  <Smile className="w-6 h-6" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-2" side="top" align="start">
+                <div className="grid grid-cols-8 gap-1">
+                  {EMOJI_LIST.map((emoji, index) => (
+                    <button
+                      key={index}
+                      className="text-xl p-1 hover:bg-muted rounded transition-colors"
+                      onClick={() => setReplyText(prev => prev + emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
 
             {/* Input Field */}
             <div className="flex-1 bg-background/50 rounded-full px-4 py-2 flex items-center border border-purple-500">
