@@ -43,6 +43,7 @@ import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import NoHabitation from "./pages/NoHabitation";
 import Shop from "./pages/Shop";
+import ShopSuccess from "./pages/ShopSuccess";
 import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 
@@ -196,6 +197,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <Shop />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shop-success"
+            element={
+              <ProtectedRoute>
+                <ShopSuccess />
               </ProtectedRoute>
             }
           />
