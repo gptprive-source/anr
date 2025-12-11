@@ -639,12 +639,12 @@ const UnifiedAssistant = () => {
       {/* Chat Window */}
       <div
         className={cn(
-          "fixed top-20 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)]",
+          "fixed top-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)]",
           "bg-background border rounded-2xl shadow-2xl flex flex-col overflow-hidden",
           "transition-all duration-300 origin-top-right",
           isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"
         )}
-        style={{ height: "min(500px, calc(100vh - 180px))" }}
+        style={{ height: "min(600px, calc(100vh - 100px))" }}
       >
         {/* Header with Tabs */}
         <div className="border-b">
