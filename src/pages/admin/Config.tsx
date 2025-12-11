@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key } from "lucide-react";
+import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -271,6 +271,51 @@ const Config = () => {
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Stripe Price IDs */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  Intégration Stripe
+                </CardTitle>
+                <CardDescription>
+                  Configurez les Price IDs Stripe pour chaque offre. Créez de nouveaux prix dans le dashboard Stripe puis collez les IDs ici.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {PLANS.map((plan) => {
+                  const configKey = `${plan.id}_stripe_price_id`;
+                  const value = getValue(configKey) || '';
+                  const PlanIcon = plan.icon;
+                  
+                  return (
+                    <div key={plan.id} className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <PlanIcon className={`w-4 h-4 ${plan.color}`} />
+                        {plan.name} - Stripe Price ID
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={localChanges[configKey] ?? value}
+                          onChange={(e) => setLocalValue(configKey, e.target.value)}
+                          placeholder="price_xxxxxxxxxxxxx"
+                          className="font-mono text-sm"
+                        />
+                        {hasChanges(configKey) && (
+                          <Button size="icon" variant="default" onClick={() => saveConfig(configKey)} disabled={isUpdating}>
+                            <Save className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <p className="text-xs text-muted-foreground mt-4">
+                  💡 Pour créer de nouveaux prix : Dashboard Stripe → Produits → Créer un prix → Copier l'ID (format: price_xxx)
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
