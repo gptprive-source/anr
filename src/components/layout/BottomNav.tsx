@@ -1,5 +1,5 @@
 import { Home, LayoutDashboard, QrCode, User, Building2, Users } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useProCompanyCheck } from "@/hooks/useProCompanyCheck";
 
@@ -10,7 +10,6 @@ interface NavItem {
 }
 
 const BottomNav = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const { isProUser } = useProCompanyCheck();
 
@@ -27,11 +26,13 @@ const BottomNav = () => {
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-t border-border safe-area-bottom">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+          const isActive = item.path === "/" 
+            ? location.pathname === "/" 
+            : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
           return (
-            <button
+            <Link
               key={item.path}
-              onClick={() => navigate(item.path)}
+              to={item.path}
               data-copilot-id={`bottom-nav-${item.label.toLowerCase()}`}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
@@ -42,7 +43,7 @@ const BottomNav = () => {
             >
               {item.icon}
               <span className="text-xs font-medium">{item.label}</span>
-            </button>
+            </Link>
           );
         })}
       </div>
