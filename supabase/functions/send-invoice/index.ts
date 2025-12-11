@@ -298,8 +298,16 @@ serve(async (req) => {
         };
         
         // The price in app_config is already annual - ensure it's a number
-        const rawPrice = priceConfig?.value;
-        const annualPrice = typeof rawPrice === 'number' ? rawPrice : Number(rawPrice) || defaultPrices[planType] || 12;
+        let rawPrice = priceConfig?.value;
+        // Handle case where value might be a JSON string or wrapped in quotes
+        if (typeof rawPrice === 'string') {
+          try {
+            rawPrice = JSON.parse(rawPrice);
+          } catch {
+            // Not JSON, just a plain string
+          }
+        }
+        const annualPrice = Number(rawPrice) || defaultPrices[planType] || 12;
         
         const planLabels: Record<string, string> = {
           particulier: "Particulier",
