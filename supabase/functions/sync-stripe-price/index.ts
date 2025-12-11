@@ -87,15 +87,18 @@ serve(async (req) => {
     // Update app_config with new price ID
     const configKey = `${planId}_stripe_price_id`;
     
-    // Check if config exists
+    // First, get old price ID for deactivation later
     const { data: existingConfig } = await supabaseClient
       .from("app_config")
-      .select("id")
+      .select("id, value")
       .eq("key", configKey)
       .single();
 
+    const oldPriceId = existingConfig?.value as string | undefined;
+
+    // Now update or insert the new price ID
     if (existingConfig) {
-      await supabaseClient
+      const { error: updateError } = await supabaseClient
         .from("app_config")
         .update({ 
           value: newPrice.id,
@@ -103,8 +106,13 @@ serve(async (req) => {
           updated_by: user.id 
         })
         .eq("key", configKey);
+      
+      if (updateError) {
+        console.error("[SYNC-STRIPE-PRICE] Update error:", updateError);
+        throw new Error(`Failed to update app_config: ${updateError.message}`);
+      }
     } else {
-      await supabaseClient
+      const { error: insertError } = await supabaseClient
         .from("app_config")
         .insert({
           key: configKey,
@@ -113,21 +121,20 @@ serve(async (req) => {
           description: `Stripe Price ID for ${planId} plan`,
           updated_by: user.id,
         });
+      
+      if (insertError) {
+        console.error("[SYNC-STRIPE-PRICE] Insert error:", insertError);
+        throw new Error(`Failed to insert app_config: ${insertError.message}`);
+      }
     }
 
-    console.log("[SYNC-STRIPE-PRICE] Updated app_config with new price ID");
+    console.log("[SYNC-STRIPE-PRICE] Updated app_config with new price ID:", newPrice.id);
 
     // Deactivate old price (optional - keeps Stripe clean)
-    const { data: oldPriceConfig } = await supabaseClient
-      .from("app_config")
-      .select("value")
-      .eq("key", configKey)
-      .single();
-
-    if (oldPriceConfig?.value && oldPriceConfig.value !== newPrice.id) {
+    if (oldPriceId && oldPriceId !== newPrice.id) {
       try {
-        await stripe.prices.update(oldPriceConfig.value as string, { active: false });
-        console.log("[SYNC-STRIPE-PRICE] Deactivated old price:", oldPriceConfig.value);
+        await stripe.prices.update(oldPriceId, { active: false });
+        console.log("[SYNC-STRIPE-PRICE] Deactivated old price:", oldPriceId);
       } catch (e) {
         console.log("[SYNC-STRIPE-PRICE] Could not deactivate old price (may not exist)");
       }
