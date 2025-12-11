@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAppConfig } from "@/hooks/useAppConfig";
+import { useUserPlan } from "@/hooks/useUserPlan";
 import InviteResidentDialog from "@/components/resident/InviteResidentDialog";
 import BottomNav from "@/components/layout/BottomNav";
 
@@ -36,10 +36,10 @@ const Residents = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { getConfig } = useAppConfig();
+  const { limits } = useUserPlan();
 
-  // Get max residents from global config
-  const maxResidents = getConfig("max_residents_per_habitation") || 7;
+  // Get max residents from user's plan dynamically
+  const maxResidents = limits.maxResidents;
 
   useEffect(() => {
     if (user) {

@@ -17,6 +17,7 @@ interface CheckoutRequest {
   };
   habitationName: string;
   existingAnrId?: string;
+  planType?: string;
 }
 
 serve(async (req) => {
@@ -45,8 +46,8 @@ serve(async (req) => {
     console.log("[CREATE-CHECKOUT] User authenticated:", user.email);
 
     const body: CheckoutRequest = await req.json();
-    const { extraDomings, isNewAnr, addressData, habitationName, existingAnrId } = body;
-    console.log("[CREATE-CHECKOUT] Request body:", { extraDomings, isNewAnr, habitationName });
+    const { extraDomings, isNewAnr, addressData, habitationName, existingAnrId, planType = "particulier" } = body;
+    console.log("[CREATE-CHECKOUT] Request body:", { extraDomings, isNewAnr, habitationName, planType });
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
@@ -111,7 +112,8 @@ serve(async (req) => {
         is_new_anr: isNewAnr.toString(),
         extra_domings: extraDomings.toString(),
         existing_anr_id: existingAnrId || "",
-        checkout_origin: origin, // Store origin for debugging
+        checkout_origin: origin,
+        plan_type: planType,
       },
       success_url: `${origin}/register?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/register?payment=cancelled`,

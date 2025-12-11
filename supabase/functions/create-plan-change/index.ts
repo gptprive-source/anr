@@ -113,12 +113,18 @@ serve(async (req) => {
             },
           ],
           mode: "subscription",
-          success_url: `${origin}/account?plan_changed=success&new_plan=${newPlan}`,
+          success_url: `${origin}/account?plan_changed=success&new_plan=${newPlan}&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${origin}/account?plan_changed=cancelled`,
+          metadata: {
+            user_id: user.id,
+            new_plan: newPlan,
+            previous_subscription_id: currentSub.id,
+          },
           subscription_data: {
             metadata: {
               previous_subscription_id: currentSub.id,
               upgrade_from: currentPriceId,
+              plan_type: newPlan,
             },
           },
         });
