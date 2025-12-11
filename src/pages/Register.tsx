@@ -19,7 +19,7 @@ const PLAN_CONFIGS = [
     icon: Home, 
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
-    borderColor: 'border-blue-500/50',
+    borderColor: 'border-blue-500',
     priceFormat: 'annual',
     isPro: false,
   },
@@ -29,7 +29,7 @@ const PLAN_CONFIGS = [
     icon: Building, 
     color: 'text-orange-500',
     bgColor: 'bg-orange-500/10',
-    borderColor: 'border-orange-500/50',
+    borderColor: 'border-orange-500',
     priceFormat: 'monthly',
     isPro: true,
   },
@@ -39,7 +39,7 @@ const PLAN_CONFIGS = [
     icon: Building2, 
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
-    borderColor: 'border-purple-500/50',
+    borderColor: 'border-purple-500',
     priceFormat: 'monthly',
     isPro: true,
   },
@@ -49,7 +49,7 @@ const PLAN_CONFIGS = [
     icon: Landmark, 
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
-    borderColor: 'border-green-500/50',
+    borderColor: 'border-green-500',
     priceFormat: 'monthly',
     isPro: true,
   },
@@ -172,7 +172,7 @@ const Register = () => {
               return (
                 <Card 
                   key={plan.id}
-                  className={`p-6 cursor-pointer hover:border-primary transition-all duration-200 group relative overflow-hidden ${plan.borderColor} hover:shadow-lg`}
+                  className={`p-6 cursor-pointer hover:border-primary transition-all duration-200 group relative overflow-hidden border-2 ${plan.borderColor} hover:shadow-lg`}
                   onClick={() => handlePlanSelect(plan.id)}
                 >
                   <div className="flex items-start gap-4">

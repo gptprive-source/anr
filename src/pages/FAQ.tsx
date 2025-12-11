@@ -216,7 +216,7 @@ const FAQ = () => {
           )}
 
           {/* Contact section */}
-          <div className="mt-8 p-6 bg-green-500/10 rounded-lg text-center border border-green-500/50">
+          <div className="mt-8 p-6 bg-green-500/10 rounded-lg text-center border-2 border-green-500">
             <h3 className="font-semibold mb-2">Vous n'avez pas trouvé votre réponse ?</h3>
             <p className="text-muted-foreground text-sm mb-4">
               Contactez notre support à l'adresse suivante :

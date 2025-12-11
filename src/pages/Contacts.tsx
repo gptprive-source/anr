@@ -176,7 +176,7 @@ const Contacts = () => {
 
         {/* Contacts List */}
         {filteredContacts.length === 0 ? (
-          <Card className="p-8 text-center border border-gray-300/50">
+          <Card className="p-8 text-center border-2 border-gray-400">
             <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
               {searchQuery || filter !== "all"
@@ -190,7 +190,7 @@ const Contacts = () => {
         ) : (
           <div className="space-y-3">
             {filteredContacts.map((contact) => (
-              <Card key={contact.id} className={`p-4 ${contact.contact_type === "company" ? "border-orange-500/50" : "border-blue-500/50"}`}>
+              <Card key={contact.id} className={`p-4 border-2 ${contact.contact_type === "company" ? "border-orange-500" : "border-blue-500"}`}>
                 <div className="flex items-start gap-3">
                   {/* Avatar */}
                   <button

@@ -151,7 +151,7 @@ const Login = () => {
       <>
         <div className="min-h-screen flex items-center justify-center p-4 pb-20">
           <div className="w-full max-w-md">
-            <div className="glass-effect rounded-3xl p-8 card-shadow border border-purple-500/50">
+            <div className="glass-effect rounded-3xl p-8 card-shadow border-2 border-purple-500">
               <div className="space-y-6">
                 <div className="text-center">
                   <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mx-auto mb-4">
@@ -208,7 +208,7 @@ const Login = () => {
     <>
       <div className="min-h-screen flex items-center justify-center p-4 pb-20">
         <div className="w-full max-w-md">
-          <div className="glass-effect rounded-3xl p-8 card-shadow border border-blue-500/50">
+          <div className="glass-effect rounded-3xl p-8 card-shadow border-2 border-blue-500">
             <div className="space-y-6">
               <div className="text-center">
                 <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
