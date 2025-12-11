@@ -99,6 +99,10 @@ const Config = () => {
         // Extract plan from configKey: "pro_door_module_price" -> "pro_door_module"
         stripePlanId = configKey.replace('_price', '');
         stripeProductType = 'one_time';
+      } else if (configKey.endsWith('_extra_member_price')) {
+        // Extract plan from configKey: "pro_extra_member_price" -> "pro_extra_member"
+        stripePlanId = configKey.replace('_price', '');
+        stripeProductType = 'recurring';
       }
       
       // Then sync with Stripe
@@ -498,6 +502,46 @@ const Config = () => {
                           <td className="py-2 font-mono text-xs">{getValue('door_module_stripe_price_id') || '-'}</td>
                           <td className="py-2 text-right font-medium">{getValue('door_module_price') || 0}€</td>
                         </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Membres supplémentaires par plan */}
+                <div>
+                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Membres Supplémentaires (par plan)
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 font-medium">Plan</th>
+                          <th className="text-left py-2 font-medium">Clé Config</th>
+                          <th className="text-left py-2 font-medium font-mono">Stripe Price ID</th>
+                          <th className="text-right py-2 font-medium">Prix Config</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {PLANS.map((plan) => {
+                          const priceIdKey = `${plan.id}_extra_member_stripe_price_id`;
+                          const priceKey = `${plan.id}_extra_member_price`;
+                          const priceId = getValue(priceIdKey) || '-';
+                          const price = getValue(priceKey) || 0;
+                          const PlanIcon = plan.icon;
+                          return (
+                            <tr key={plan.id} className="border-b border-border/50">
+                              <td className="py-2 flex items-center gap-2">
+                                <PlanIcon className={`w-4 h-4 ${plan.color}`} />
+                                Extra {plan.name}
+                              </td>
+                              <td className="py-2 text-muted-foreground text-xs">{priceIdKey}</td>
+                              <td className="py-2 font-mono text-xs">{priceId}</td>
+                              <td className="py-2 text-right font-medium">{price}€/mois</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

@@ -27,6 +27,10 @@ const PRODUCT_IDS: Record<string, string> = {
   pro_door_module: "prod_TaSgkfdMyB3222",
   entreprise_door_module: "prod_TaSgT8JDPAsVys",
   collectivites_door_module: "prod_TaSgYO3BZUX3iH",
+  particulier_extra_member: "prod_TaSj9l3Xbo7EUW",
+  pro_extra_member: "prod_TaSjUDySFDZEyA",
+  entreprise_extra_member: "prod_TaSjYibtYI17o2",
+  collectivites_extra_member: "prod_TaSj5XDBVQdk4n",
 };
 
 serve(async (req) => {
