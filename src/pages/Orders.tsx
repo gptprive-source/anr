@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Loader2, Receipt, Calendar, CreditCard, Truck, CheckCircle, Clock } from "lucide-react";
+import { ArrowLeft, Package, Loader2, Receipt, Calendar, CreditCard, Truck, CheckCircle, Clock, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import BottomNav from "@/components/layout/BottomNav";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface DomingOrder {
   id: string;
@@ -128,6 +129,31 @@ const Orders = () => {
     return labels[planType] || planType;
   };
 
+  const viewInvoice = async (orderId: string, orderType: 'doming' | 'subscription') => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-invoice', {
+        body: { 
+          orderId, 
+          orderType,
+          viewOnly: true 
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.invoiceHtml) {
+        const newWindow = window.open();
+        if (newWindow) {
+          newWindow.document.write(data.invoiceHtml);
+          newWindow.document.close();
+        }
+      }
+    } catch (error) {
+      console.error("Error viewing invoice:", error);
+      toast.error("Erreur lors de l'affichage de la facture");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -184,13 +210,25 @@ const Orders = () => {
                       {getStatusBadge(sub.status)}
                     </div>
                     <Separator className="my-2" />
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4" />
-                      <span>
-                        Depuis le {formatDate(sub.current_period_start)}
-                        {sub.current_period_end && ` · Expire le ${formatDate(sub.current_period_end)}`}
-                      </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4" />
+                        <span>
+                          Depuis le {formatDate(sub.current_period_start)}
+                          {sub.current_period_end && ` · Expire le ${formatDate(sub.current_period_end)}`}
+                        </span>
+                      </div>
                     </div>
+                    <Separator className="my-2" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-green-500 text-green-600 hover:bg-green-50"
+                      onClick={() => viewInvoice(sub.id, 'subscription')}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Voir la facture
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -257,10 +295,22 @@ const Orders = () => {
                     )}
 
                     <Separator className="my-2" />
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4" />
-                      <span>{formatDate(order.created_at)}</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4" />
+                        <span>{formatDate(order.created_at)}</span>
+                      </div>
                     </div>
+                    <Separator className="my-2" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-purple-500 text-purple-600 hover:bg-purple-50"
+                      onClick={() => viewInvoice(order.id, 'doming')}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Voir la facture
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
