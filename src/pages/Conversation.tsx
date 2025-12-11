@@ -325,9 +325,9 @@ const Conversation = () => {
               <AddToContactsButton 
                 businessCard={card} 
                 messageId={visitorMessages[0]?.id} 
-                size="sm" 
-                variant="default"
-                className="bg-blue-500 hover:bg-blue-600 text-white flex-shrink-0"
+                size="icon" 
+                variant="ghost"
+                className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
               />
             ) : (
               <AddToContactsButton 
@@ -343,9 +343,9 @@ const Conversation = () => {
                   visitor_anr_code: null,
                 }} 
                 messageId={visitorMessages[0]?.id} 
-                size="sm" 
-                variant="default"
-                className="bg-blue-500 hover:bg-blue-600 text-white flex-shrink-0"
+                size="icon" 
+                variant="ghost"
+                className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
               />
             )}
           </div>
