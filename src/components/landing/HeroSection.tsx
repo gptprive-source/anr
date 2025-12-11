@@ -74,9 +74,9 @@ const HeroSection = () => {
         <div className="grid md:grid-cols-3 gap-6 animate-fade-in" style={{
         animationDelay: "0.5s"
       }}>
-          <FeatureCard icon={<QrCode className="w-6 h-6" />} title="QR Code & NFC" description="Scannez ou approchez votre téléphone pour sonner instantanément" className="bg-[#15253b]" />
-          <FeatureCard icon={<Smartphone className="w-6 h-6" />} title="Vidéo HD" description="Voyez votre visiteur avant de répondre, où que vous soyez" className="bg-[#15253b]" />
-          <FeatureCard icon={<Shield className="w-6 h-6" />} title="Sécurisé" description="Validation GPS et cryptographie avancée pour votre sécurité" className="bg-[#15253b]" />
+          <FeatureCard icon={<QrCode className="w-6 h-6" />} title="QR Code & NFC" description="Scannez ou approchez votre téléphone pour sonner instantanément" />
+          <FeatureCard icon={<Smartphone className="w-6 h-6" />} title="Vidéo HD" description="Voyez votre visiteur avant de répondre, où que vous soyez" />
+          <FeatureCard icon={<Shield className="w-6 h-6" />} title="Sécurisé" description="Validation GPS et cryptographie avancée pour votre sécurité" />
         </div>
       </div>
     </section>;
