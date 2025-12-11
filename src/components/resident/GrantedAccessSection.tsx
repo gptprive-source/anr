@@ -69,6 +69,7 @@ const GrantedAccessSection = () => {
           const colorSets = [
             { border: "border-blue-500", text: "text-blue-500", borderLeft: "border-blue-500/30" },
             { border: "border-orange-500", text: "text-orange-500", borderLeft: "border-orange-500/30" },
+            { border: "border-yellow-500", text: "text-yellow-500", borderLeft: "border-yellow-500/30" },
             { border: "border-purple-500", text: "text-purple-500", borderLeft: "border-purple-500/30" },
             { border: "border-green-500", text: "text-green-500", borderLeft: "border-green-500/30" },
             { border: "border-pink-500", text: "text-pink-500", borderLeft: "border-pink-500/30" },

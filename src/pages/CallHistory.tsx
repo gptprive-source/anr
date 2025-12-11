@@ -69,7 +69,7 @@ const CallHistory = () => {
 
         {/* Call History */}
         {habitationId && (
-          <div className="bg-background/50 rounded-2xl p-4 card-shadow border border-cyan-500">
+          <div className="bg-background/50 rounded-2xl p-4 card-shadow border border-yellow-500">
             <CallHistorySection habitationId={habitationId} />
           </div>
         )}

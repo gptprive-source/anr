@@ -192,7 +192,7 @@ const FAQ = () => {
               <Accordion type="single" collapsible className="space-y-2">
                 {section.questions.map((item, questionIndex) => {
                   // Cycle through colors for each question
-                  const colorCycle = ["border-blue-500", "border-orange-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
+                  const colorCycle = ["border-blue-500", "border-orange-500", "border-yellow-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
                   const borderColor = colorCycle[questionIndex % colorCycle.length];
                   return (
                   <AccordionItem

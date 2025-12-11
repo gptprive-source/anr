@@ -275,8 +275,8 @@ const Messages = () => {
                 ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "")
                 : "";
 
-              // Cycle through colors: blue, orange, purple, pink, green, cyan
-              const colorCycle = ["border-blue-500", "border-orange-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
+              // Cycle through colors: blue, orange, yellow, purple, pink, green, cyan
+              const colorCycle = ["border-blue-500", "border-orange-500", "border-yellow-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
               const borderColor = colorCycle[index % colorCycle.length];
 
               return (

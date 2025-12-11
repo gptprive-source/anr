@@ -301,9 +301,9 @@ const ResidentDashboard = () => {
           {flags.visitorTextMessagesEnabled && (
             <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" badge={unreadMessagesCount} onClick={() => navigate("/messages")} color="purple" />
           )}
-          <QuickAction icon={<History className="w-6 h-6" />} label="Historique" onClick={() => navigate("/call-history")} color="cyan" />
+          <QuickAction icon={<History className="w-6 h-6" />} label="Historique" onClick={() => navigate("/call-history")} color="yellow" />
           <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Notifications"} onClick={toggleMute} active={isMuted} color="orange" />
-          <QuickAction icon={<HelpCircle className="w-6 h-6" />} label="FAQ" onClick={() => navigate("/faq")} color="green" />
+          <QuickAction icon={<HelpCircle className="w-6 h-6" />} label="FAQ" onClick={() => navigate("/faq")} color="cyan" />
           {flags.doorOpeningEnabled && (
             <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />
           )}
@@ -339,11 +339,12 @@ const QuickAction = ({
   badge?: number;
   onClick: () => void;
   active?: boolean;
-  color?: "blue" | "orange" | "green" | "purple" | "cyan" | "rose";
+  color?: "blue" | "orange" | "yellow" | "green" | "purple" | "cyan" | "rose";
 }) => {
   const colorClasses = {
     blue: "border-blue-500 bg-blue-500/10 text-blue-500",
     orange: "border-orange-500 bg-orange-500/10 text-orange-500",
+    yellow: "border-yellow-500 bg-yellow-500/10 text-yellow-500",
     green: "border-green-500 bg-green-500/10 text-green-500",
     purple: "border-purple-500 bg-purple-500/10 text-purple-500",
     cyan: "border-cyan-500 bg-cyan-500/10 text-cyan-500",
