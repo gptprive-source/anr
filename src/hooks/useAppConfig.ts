@@ -41,17 +41,22 @@ export const useAppConfig = () => {
   };
 
   const updateConfig = useMutation({
-    mutationFn: async ({ key, value }: { key: string; value: any }) => {
+    mutationFn: async ({ key, value, category = 'plans' }: { key: string; value: any; category?: string }) => {
       // Log the action
       const oldConfig = configs?.find(c => c.key === key);
       
+      // Use upsert to create or update
       const { error } = await supabase
         .from('app_config')
-        .update({ 
+        .upsert({ 
+          key,
           value: JSON.stringify(value),
+          category: oldConfig?.category || category,
           updated_by: user?.id,
-        })
-        .eq('key', key);
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'key'
+        });
       
       if (error) throw error;
 
@@ -74,7 +79,7 @@ export const useAppConfig = () => {
     configs,
     isLoading,
     getConfig,
-    updateConfig: updateConfig.mutate,
+    updateConfig: updateConfig.mutateAsync,
     isUpdating: updateConfig.isPending,
     refetch,
   };
