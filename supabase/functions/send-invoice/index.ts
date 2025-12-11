@@ -213,18 +213,34 @@ serve(async (req) => {
       };
       
       if (requestData.orderType === 'subscription') {
-        // Fetch subscription with user profile
+        // Fetch subscription
         const { data: sub, error: subError } = await supabase
           .from('subscriptions')
-          .select('*, profiles:user_id(*)')
+          .select('*')
           .eq('id', requestData.orderId)
           .single();
         
         if (subError || !sub) {
+          logStep("Subscription not found", { error: subError });
           throw new Error('Subscription not found');
         }
         
-        const profile = sub.profiles as any;
+        logStep("Subscription found", { subId: sub.id, userId: sub.user_id });
+        
+        // Fetch user profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', sub.user_id)
+          .single();
+        
+        logStep("Profile found", { profile });
+        
+        // Fetch user email from auth
+        const { data: { user } } = await supabase.auth.admin.getUserById(sub.user_id);
+        
+        logStep("User email found", { email: user?.email });
+        
         const createdDate = new Date(sub.created_at);
         
         // Fetch plan price from app_config
@@ -243,7 +259,7 @@ serve(async (req) => {
         };
         
         invoiceData = {
-          email: profile?.email || '',
+          email: user?.email || '',
           firstName: profile?.first_name || '',
           lastName: profile?.last_name || '',
           invoiceNumber: `ANR-SUB-${sub.id.substring(0, 8).toUpperCase()}`,
