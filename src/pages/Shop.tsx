@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,15 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Package, Minus, Plus, CreditCard, Truck, QrCode, DoorOpen, Loader2, ShoppingCart } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ArrowLeft, Package, Minus, Plus, CreditCard, Truck, QrCode, DoorOpen, Loader2, ShoppingCart, Home } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import BottomNav from "@/components/layout/BottomNav";
-
-// Price IDs will be fetched from app_config dynamically
 
 const Shop = () => {
   const navigate = useNavigate();
@@ -26,6 +25,11 @@ const Shop = () => {
   const [doorModuleQuantity, setDoorModuleQuantity] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // ANR address state
+  const [anrAddress, setAnrAddress] = useState<string | null>(null);
+  const [loadingAnrAddress, setLoadingAnrAddress] = useState(true);
+  const [addressChoice, setAddressChoice] = useState<"anr" | "custom">("anr");
+  
   // Shipping info
   const [shippingInfo, setShippingInfo] = useState({
     firstName: "",
@@ -35,6 +39,55 @@ const Shop = () => {
     city: "",
     phone: "",
   });
+
+  // Fetch user's ANR address on mount
+  useEffect(() => {
+    const fetchAnrAddress = async () => {
+      if (!user) {
+        setLoadingAnrAddress(false);
+        return;
+      }
+      
+      try {
+        const { data: residentData } = await supabase
+          .from("residents")
+          .select(`
+            habitation:habitations (
+              anr:anrs (address)
+            )
+          `)
+          .eq("user_id", user.id)
+          .eq("status", "verified")
+          .maybeSingle();
+        
+        if (residentData?.habitation) {
+          const hab = residentData.habitation as any;
+          const address = hab.anr?.address || null;
+          setAnrAddress(address);
+          
+          // Pre-fill the address field if ANR address is available
+          if (address) {
+            setShippingInfo(prev => ({ ...prev, address }));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching ANR address:", error);
+      } finally {
+        setLoadingAnrAddress(false);
+      }
+    };
+    
+    fetchAnrAddress();
+  }, [user]);
+
+  // Handle address choice change
+  useEffect(() => {
+    if (addressChoice === "anr" && anrAddress) {
+      setShippingInfo(prev => ({ ...prev, address: anrAddress }));
+    } else if (addressChoice === "custom") {
+      setShippingInfo(prev => ({ ...prev, address: "" }));
+    }
+  }, [addressChoice, anrAddress]);
 
   const domingPrice = getConfig("doming_price") || 7;
   const doorModulePrice = getConfig("door_module_price") || 149;
@@ -231,6 +284,35 @@ const Shop = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Address choice - only show if ANR address exists */}
+            {anrAddress && !loadingAnrAddress && (
+              <div className="space-y-3">
+                <Label>Choisir l'adresse</Label>
+                <RadioGroup
+                  value={addressChoice}
+                  onValueChange={(value) => setAddressChoice(value as "anr" | "custom")}
+                  className="space-y-2"
+                >
+                  <div className="flex items-center space-x-3 p-3 rounded-lg border border-green-500/50 bg-green-500/5">
+                    <RadioGroupItem value="anr" id="anr-address" />
+                    <Label htmlFor="anr-address" className="flex items-center gap-2 cursor-pointer flex-1">
+                      <Home className="h-4 w-4 text-green-500" />
+                      <div>
+                        <span className="font-medium">À mon ANR</span>
+                        <p className="text-sm text-muted-foreground">{anrAddress}</p>
+                      </div>
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-3 p-3 rounded-lg border">
+                    <RadioGroupItem value="custom" id="custom-address" />
+                    <Label htmlFor="custom-address" className="cursor-pointer">
+                      Autre adresse
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="firstName">Prénom *</Label>
@@ -259,6 +341,8 @@ const Shop = () => {
                 value={shippingInfo.address}
                 onChange={(e) => setShippingInfo({ ...shippingInfo, address: e.target.value })}
                 placeholder="21 avenue des Champs-Élysées"
+                disabled={addressChoice === "anr" && !!anrAddress}
+                className={addressChoice === "anr" && anrAddress ? "bg-muted" : ""}
               />
             </div>
             
