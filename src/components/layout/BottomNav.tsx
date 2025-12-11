@@ -15,7 +15,7 @@ const BottomNav = () => {
   const { isProUser } = useProCompanyCheck();
 
   const navItems: NavItem[] = [
-    { icon: <Home className="w-6 h-6" />, label: "Habitant", path: "/dashboard" },
+    { icon: <Home className="w-6 h-6" />, label: "Dashboard", path: "/dashboard" },
     { icon: <QrCode className="w-6 h-6" />, label: "Visiteur", path: "/visitor" },
     { icon: <Users className="w-6 h-6" />, label: "Contacts", path: "/contacts" },
     ...(isProUser ? [{ icon: <Building2 className="w-6 h-6" />, label: "PRO", path: "/pro" }] : []),
