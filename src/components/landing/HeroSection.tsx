@@ -106,7 +106,7 @@ const FeatureCard = ({
   return (
     <div 
       className="bg-card/80 backdrop-blur-xl rounded-2xl p-6 card-shadow transition-colors text-center"
-      style={{ border: `2px solid ${c.borderColor}` }}
+      style={{ border: `1px solid ${c.borderColor}` }}
     >
       <div className={`w-12 h-12 rounded-xl ${c.bg} flex items-center justify-center ${c.text} mb-4 mx-auto`}>
         {icon}
