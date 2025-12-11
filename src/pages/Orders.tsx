@@ -223,7 +223,7 @@ const Orders = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full border-green-500 text-green-600 hover:bg-green-50"
+                      className="w-full border-green-500 text-green-600 hover:bg-green-500/10 hover:text-green-600"
                       onClick={() => viewInvoice(sub.id, 'subscription')}
                     >
                       <FileText className="w-4 h-4 mr-2" />
@@ -305,7 +305,7 @@ const Orders = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full border-purple-500 text-purple-600 hover:bg-purple-50"
+                      className="w-full border-purple-500 text-purple-600 hover:bg-purple-500/10 hover:text-purple-600"
                       onClick={() => viewInvoice(order.id, 'doming')}
                     >
                       <FileText className="w-4 h-4 mr-2" />
