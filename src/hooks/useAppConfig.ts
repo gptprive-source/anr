@@ -15,7 +15,7 @@ export const useAppConfig = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const { data: configs, isLoading } = useQuery({
+  const { data: configs, isLoading, refetch } = useQuery({
     queryKey: ['app_config'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -76,5 +76,6 @@ export const useAppConfig = () => {
     getConfig,
     updateConfig: updateConfig.mutate,
     isUpdating: updateConfig.isPending,
+    refetch,
   };
 };
