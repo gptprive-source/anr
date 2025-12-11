@@ -379,7 +379,7 @@ const Conversation = () => {
   });
 
   return (
-    <div className="min-h-screen flex flex-col pb-20">
+    <div className="min-h-screen flex flex-col pb-16">
       {/* Sticky Header with Contact Info */}
       <div className="sticky top-0 z-10 bg-background border-b">
         <div className="max-w-2xl mx-auto w-full p-4 space-y-3">
@@ -466,8 +466,8 @@ const Conversation = () => {
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 max-w-2xl mx-auto w-full">
+      {/* Messages Area - extra padding for fixed input area + footer */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-40 space-y-3 max-w-2xl mx-auto w-full">
         {messagesWithDateSeparators.map((item, index) => {
           if (item.type === 'separator') {
             return (
