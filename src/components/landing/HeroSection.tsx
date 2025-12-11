@@ -92,19 +92,22 @@ const FeatureCard = ({
   description: string;
   color?: "blue" | "orange" | "yellow" | "green" | "purple" | "cyan" | "rose";
 }) => {
-  const colorClasses = {
-    blue: { border: "border-blue-500", bg: "bg-blue-500/10", text: "text-blue-500" },
-    orange: { border: "border-orange-500", bg: "bg-orange-500/10", text: "text-orange-500" },
-    yellow: { border: "border-yellow-500", bg: "bg-yellow-500/10", text: "text-yellow-500" },
-    green: { border: "border-green-500", bg: "bg-green-500/10", text: "text-green-500" },
-    purple: { border: "border-purple-500", bg: "bg-purple-500/10", text: "text-purple-500" },
-    cyan: { border: "border-cyan-500", bg: "bg-cyan-500/10", text: "text-cyan-500" },
-    rose: { border: "border-rose-500", bg: "bg-rose-500/10", text: "text-rose-500" },
+  const colorStyles = {
+    blue: { borderColor: "#3b82f6", bg: "bg-blue-500/10", text: "text-blue-500" },
+    orange: { borderColor: "#f97316", bg: "bg-orange-500/10", text: "text-orange-500" },
+    yellow: { borderColor: "#eab308", bg: "bg-yellow-500/10", text: "text-yellow-500" },
+    green: { borderColor: "#22c55e", bg: "bg-green-500/10", text: "text-green-500" },
+    purple: { borderColor: "#a855f7", bg: "bg-purple-500/10", text: "text-purple-500" },
+    cyan: { borderColor: "#06b6d4", bg: "bg-cyan-500/10", text: "text-cyan-500" },
+    rose: { borderColor: "#f43f5e", bg: "bg-rose-500/10", text: "text-rose-500" },
   };
-  const c = colorClasses[color];
+  const c = colorStyles[color];
   
   return (
-    <div className={`glass-effect rounded-2xl p-6 card-shadow transition-colors text-center border-2 ${c.border}`}>
+    <div 
+      className="bg-card/80 backdrop-blur-xl rounded-2xl p-6 card-shadow transition-colors text-center"
+      style={{ border: `2px solid ${c.borderColor}` }}
+    >
       <div className={`w-12 h-12 rounded-xl ${c.bg} flex items-center justify-center ${c.text} mb-4 mx-auto`}>
         {icon}
       </div>
