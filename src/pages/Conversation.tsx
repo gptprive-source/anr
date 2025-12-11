@@ -305,21 +305,6 @@ const Conversation = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}`}>
-              {isCompany ? (
-                <Building2 className="w-5 h-5 text-orange-500" />
-              ) : (
-                <User className="w-5 h-5 text-purple-500" />
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{displayName}</p>
-              {card?.job_title && (
-                <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
-              )}
-            </div>
 
             {card ? (
               <AddToContactsButton 
@@ -348,6 +333,21 @@ const Conversation = () => {
                 className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
               />
             )}
+            
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}`}>
+              {isCompany ? (
+                <Building2 className="w-5 h-5 text-orange-500" />
+              ) : (
+                <User className="w-5 h-5 text-purple-500" />
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold truncate">{displayName}</p>
+              {card?.job_title && (
+                <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
+              )}
+            </div>
           </div>
 
           {/* Contact Info inside sticky header */}
