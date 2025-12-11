@@ -81,7 +81,23 @@ serve(async (req) => {
 
       if (subscriptions.data.length > 0) {
         const currentSub = subscriptions.data[0];
+        const currentPriceId = currentSub.items.data[0].price.id;
+        
+        // Check if already on the same plan
+        if (currentPriceId === priceId) {
+          console.log("[CREATE-PLAN-CHANGE] Already on the same plan");
+          return new Response(JSON.stringify({ 
+            success: true,
+            message: "Vous êtes déjà sur ce plan",
+            sameplan: true
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+        
         console.log("[CREATE-PLAN-CHANGE] Found active subscription:", currentSub.id);
+        console.log("[CREATE-PLAN-CHANGE] Current price:", currentPriceId, "-> New price:", priceId);
         
         // Update the subscription with the new price
         const updatedSubscription = await stripe.subscriptions.update(currentSub.id, {
@@ -94,17 +110,14 @@ serve(async (req) => {
           proration_behavior: "create_prorations",
         });
 
-        console.log("[CREATE-PLAN-CHANGE] Subscription updated:", updatedSubscription.id);
+        console.log("[CREATE-PLAN-CHANGE] Subscription updated successfully:", updatedSubscription.id);
 
-        // Create a portal session to show the updated subscription
-        const portalSession = await stripe.billingPortal.sessions.create({
-          customer: customerId,
-          return_url: `${req.headers.get("origin")}/account`,
-        });
-
+        // Return success without redirecting to portal
         return new Response(JSON.stringify({ 
-          url: portalSession.url,
-          updated: true 
+          success: true,
+          updated: true,
+          subscriptionId: updatedSubscription.id,
+          newPlan: newPlan
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
