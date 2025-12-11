@@ -8,6 +8,8 @@ interface MessageReply {
   habitation_id: string;
   reply_text: string | null;
   reply_voice_url: string | null;
+  reply_media_url: string | null;
+  reply_media_type: string | null;
   is_read: boolean;
   read_at: string | null;
   created_at: string;
@@ -39,13 +41,16 @@ export const useMessageReplies = (messageId?: string) => {
     originalMessageId: string,
     habitationId: string,
     replyText?: string,
-    audioBase64?: string
+    audioBase64?: string,
+    mediaFile?: File
   ) => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Non authentifié");
 
       let replyVoiceUrl: string | null = null;
+      let replyMediaUrl: string | null = null;
+      let replyMediaType: string | null = null;
       
       // Upload audio if provided
       if (audioBase64) {
@@ -75,6 +80,31 @@ export const useMessageReplies = (messageId?: string) => {
         }
       }
 
+      // Upload media file if provided
+      if (mediaFile) {
+        const ext = mediaFile.name.split('.').pop() || 'bin';
+        const fileName = `media-${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+        const filePath = `message-replies/${habitationId}/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('visitor-voice-messages')
+          .upload(filePath, mediaFile, {
+            contentType: mediaFile.type,
+            upsert: false,
+          });
+        
+        if (uploadError) {
+          console.error("[useMessageReplies] Media upload error:", uploadError);
+          throw new Error("Erreur lors de l'upload du fichier");
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('visitor-voice-messages')
+            .getPublicUrl(filePath);
+          replyMediaUrl = urlData.publicUrl;
+          replyMediaType = mediaFile.type.startsWith('video/') ? 'video' : 'image';
+        }
+      }
+
       const { data, error } = await (supabase
         .from("message_replies" as any)
         .insert({
@@ -83,6 +113,8 @@ export const useMessageReplies = (messageId?: string) => {
           habitation_id: habitationId,
           reply_text: replyText || null,
           reply_voice_url: replyVoiceUrl,
+          reply_media_url: replyMediaUrl,
+          reply_media_type: replyMediaType,
         })
         .select()
         .single() as any);

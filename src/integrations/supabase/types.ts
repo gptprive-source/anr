@@ -1342,6 +1342,8 @@ export type Database = {
           is_read: boolean | null
           original_message_id: string
           read_at: string | null
+          reply_media_type: string | null
+          reply_media_url: string | null
           reply_text: string | null
           reply_voice_url: string | null
           resident_id: string
@@ -1353,6 +1355,8 @@ export type Database = {
           is_read?: boolean | null
           original_message_id: string
           read_at?: string | null
+          reply_media_type?: string | null
+          reply_media_url?: string | null
           reply_text?: string | null
           reply_voice_url?: string | null
           resident_id: string
@@ -1364,6 +1368,8 @@ export type Database = {
           is_read?: boolean | null
           original_message_id?: string
           read_at?: string | null
+          reply_media_type?: string | null
+          reply_media_url?: string | null
           reply_text?: string | null
           reply_voice_url?: string | null
           resident_id?: string
