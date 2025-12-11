@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, HelpCircle, MessageSquare, DoorOpen, ShoppingCart } from "lucide-react";
+import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, HelpCircle, MessageSquare, DoorOpen, ShoppingCart, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
@@ -309,7 +309,7 @@ const ResidentDashboard = () => {
           {flags.visitorTextMessagesEnabled && <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" badge={unreadMessagesCount} onClick={() => navigate("/messages")} color="purple" />}
           <QuickAction icon={<History className="w-6 h-6" />} label="Historique" onClick={() => navigate("/call-history")} color="yellow" />
           <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Notifications"} onClick={toggleMute} active={isMuted} color="orange" />
-          <QuickAction icon={<HelpCircle className="w-6 h-6" />} label="FAQ" onClick={() => navigate("/faq")} color="cyan" />
+          <QuickAction icon={<Receipt className="w-6 h-6" />} label="Commandes" onClick={() => navigate("/orders")} color="teal" />
           <QuickAction icon={<ShoppingCart className="w-6 h-6" />} label="Boutique" onClick={() => navigate("/shop")} color="pink" />
           {flags.doorOpeningEnabled && <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />}
           {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} color="green" />}
@@ -344,7 +344,7 @@ const QuickAction = ({
   badge?: number;
   onClick: () => void;
   active?: boolean;
-  color?: "blue" | "orange" | "yellow" | "green" | "purple" | "cyan" | "rose" | "pink";
+  color?: "blue" | "orange" | "yellow" | "green" | "purple" | "cyan" | "rose" | "pink" | "teal";
 }) => {
   const colorClasses = {
     blue: "border-blue-500 bg-blue-500/10 text-blue-500",
@@ -354,7 +354,8 @@ const QuickAction = ({
     purple: "border-purple-500 bg-purple-500/10 text-purple-500",
     cyan: "border-cyan-500 bg-cyan-500/10 text-cyan-500",
     rose: "border-rose-500 bg-rose-500/10 text-rose-500",
-    pink: "border-pink-500 bg-pink-500/10 text-pink-500"
+    pink: "border-pink-500 bg-pink-500/10 text-pink-500",
+    teal: "border-teal-500 bg-teal-500/10 text-teal-500"
   };
   const borderClass = colorClasses[color].split(" ")[0];
   const bgClass = colorClasses[color].split(" ")[1];

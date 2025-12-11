@@ -403,8 +403,80 @@ serve(async (req) => {
         } else {
           console.log("[VERIFY-PAYMENT] Confirmation email sent successfully");
         }
+
+        // Now send the invoice
+        const invoiceDate = new Date().toLocaleDateString('fr-FR');
+        const invoiceNumber = `ANR-${Date.now().toString(36).toUpperCase()}`;
+        
+        const invoiceItems = [
+          {
+            description: `Abonnement ANR - ${planType.charAt(0).toUpperCase() + planType.slice(1)}`,
+            quantity: 1,
+            unitPrice: subscriptionAmount,
+            total: subscriptionAmount,
+          },
+        ];
+
+        if (freeDomingCount > 0) {
+          invoiceItems.push({
+            description: "Doming ANR (offert)",
+            quantity: freeDomingCount,
+            unitPrice: 0,
+            total: 0,
+          });
+        }
+
+        if (extraDomings > 0) {
+          const domingUnitPrice = totalDomingAmount / extraDomings;
+          invoiceItems.push({
+            description: "Doming ANR supplémentaire",
+            quantity: extraDomings,
+            unitPrice: domingUnitPrice,
+            total: totalDomingAmount,
+          });
+        }
+
+        const subtotal = totalAmount / 1.2; // Reverse calculate HT from TTC
+        const tax = totalAmount - subtotal;
+
+        const invoicePayload = {
+          email: userEmail,
+          firstName: profile?.first_name || "Cher(e) abonné(e)",
+          lastName: profile?.last_name || "",
+          invoiceNumber,
+          invoiceDate,
+          items: invoiceItems,
+          subtotal,
+          tax,
+          total: totalAmount,
+          paymentMethod: "Carte bancaire (Stripe)",
+          billingAddress: address,
+          shippingAddress: address,
+          orderType: "subscription",
+        };
+
+        console.log("[VERIFY-PAYMENT] Sending invoice:", invoicePayload);
+
+        const invoiceResponse = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-invoice`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify(invoicePayload),
+          }
+        );
+
+        if (!invoiceResponse.ok) {
+          const invoiceError = await invoiceResponse.text();
+          console.error("[VERIFY-PAYMENT] Invoice send failed:", invoiceError);
+        } else {
+          console.log("[VERIFY-PAYMENT] Invoice sent successfully");
+        }
       } catch (emailError) {
-        console.error("[VERIFY-PAYMENT] Error sending confirmation email:", emailError);
+        console.error("[VERIFY-PAYMENT] Error sending confirmation email/invoice:", emailError);
         // Don't fail the whole process if email fails
       }
     }
