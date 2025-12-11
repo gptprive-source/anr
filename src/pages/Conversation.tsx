@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus } from "lucide-react";
+import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -125,6 +125,9 @@ const Conversation = () => {
   const [sending, setSending] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [habitationId, setHabitationId] = useState<string | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get the first message ID for replies hook
   const firstMessageId = visitorMessages[0]?.id || "";
@@ -218,8 +221,47 @@ const Conversation = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [visitorMessages, replies]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Fichier trop volumineux",
+        description: "La taille maximale est de 10 Mo",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      toast({
+        title: "Type de fichier non supporté",
+        description: "Seules les photos et vidéos sont acceptées",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedMedia(file);
+    setMediaPreview(URL.createObjectURL(file));
+  };
+
+  const clearSelectedMedia = () => {
+    setSelectedMedia(null);
+    if (mediaPreview) {
+      URL.revokeObjectURL(mediaPreview);
+      setMediaPreview(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSend = async () => {
-    if (!habitationId || !firstMessageId || (!replyText.trim() && !audioBlob)) return;
+    if (!habitationId || !firstMessageId || (!replyText.trim() && !audioBlob && !selectedMedia)) return;
 
     setSending(true);
     try {
@@ -234,13 +276,15 @@ const Conversation = () => {
         firstMessageId,
         habitationId,
         replyText.trim() || undefined,
-        audioBase64
+        audioBase64,
+        selectedMedia || undefined
       );
 
       if (result.success) {
         setReplyText("");
         setAudioBlob(null);
         setShowVoiceRecorder(false);
+        clearSelectedMedia();
       } else {
         throw new Error(result.error);
       }
@@ -429,7 +473,42 @@ const Conversation = () => {
             return (
               <div key={`reply-${reply.id}`} className="flex justify-end">
                 <div className="max-w-[85%]">
-                  {reply.reply_voice_url ? (
+                  {/* Media message */}
+                  {reply.reply_media_url && (
+                    <div className="mb-1">
+                      <div className="bg-green-500/10 rounded-xl rounded-tr-sm p-1 border border-green-500 overflow-hidden">
+                        {reply.reply_media_type === 'video' ? (
+                          <video 
+                            src={reply.reply_media_url} 
+                            controls 
+                            className="max-w-full rounded-lg max-h-64"
+                          />
+                        ) : (
+                          <img 
+                            src={reply.reply_media_url} 
+                            alt="Photo envoyée" 
+                            className="max-w-full rounded-lg max-h-64 cursor-pointer"
+                            onClick={() => window.open(reply.reply_media_url, '_blank')}
+                          />
+                        )}
+                        {reply.reply_text && (
+                          <p className="text-sm whitespace-pre-wrap px-2 py-1">{reply.reply_text}</p>
+                        )}
+                        <div className="flex items-center justify-end gap-1 px-2 py-1">
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                          </span>
+                          {reply.is_read ? (
+                            <CheckCheck className="w-4 h-4 text-blue-500" />
+                          ) : (
+                            <Check className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Voice message */}
+                  {reply.reply_voice_url && !reply.reply_media_url && (
                     <div className="mb-1">
                       <WhatsAppAudioPlayer 
                         audioUrl={reply.reply_voice_url} 
@@ -447,7 +526,9 @@ const Conversation = () => {
                         )}
                       </div>
                     </div>
-                  ) : (
+                  )}
+                  {/* Text only message */}
+                  {!reply.reply_voice_url && !reply.reply_media_url && reply.reply_text && (
                     <div className="bg-green-500/10 rounded-xl rounded-tr-sm px-3 py-2 border border-green-500">
                       <p className="text-sm whitespace-pre-wrap">{reply.reply_text}</p>
                       <div className="flex items-center justify-end gap-1 mt-1">
@@ -473,6 +554,38 @@ const Conversation = () => {
 
       {/* Input Area */}
       <div className="sticky bottom-20 bg-background px-4 py-3 max-w-2xl mx-auto w-full">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+
+        {/* Media Preview */}
+        {selectedMedia && mediaPreview && (
+          <div className="mb-3 relative inline-block">
+            <div className="relative rounded-lg overflow-hidden border border-blue-500 max-w-48">
+              {selectedMedia.type.startsWith('video/') ? (
+                <video src={mediaPreview} className="max-h-32 object-cover" />
+              ) : (
+                <img src={mediaPreview} alt="Preview" className="max-h-32 object-cover" />
+              )}
+              <button
+                onClick={clearSelectedMedia}
+                className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 rounded text-xs text-white flex items-center gap-1">
+                {selectedMedia.type.startsWith('video/') ? <Video className="w-3 h-3" /> : <Image className="w-3 h-3" />}
+                {(selectedMedia.size / 1024 / 1024).toFixed(1)} Mo
+              </div>
+            </div>
+          </div>
+        )}
+
         {showVoiceRecorder ? (
           <VoiceRecorder 
             onRecordingComplete={(blob) => setAudioBlob(blob)}
@@ -486,6 +599,14 @@ const Conversation = () => {
           />
         ) : (
           <div className="flex items-center gap-2">
+            {/* Attachment Button */}
+            <button 
+              className="p-2 text-muted-foreground hover:text-blue-500 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="w-6 h-6" />
+            </button>
+
             {/* Emoji Picker */}
             <Popover>
               <PopoverTrigger asChild>
@@ -523,7 +644,7 @@ const Conversation = () => {
                 onChange={(e) => setReplyText(e.target.value)}
                 className="border-0 p-0 h-auto bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey && replyText.trim()) {
+                  if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
                     e.preventDefault();
                     handleSend();
                   }
@@ -531,11 +652,11 @@ const Conversation = () => {
               />
             </div>
 
-            {/* Mic/Send button - changes based on text input */}
+            {/* Mic/Send button - changes based on text input or media */}
             <button 
               className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               onClick={() => {
-                if (replyText.trim()) {
+                if (replyText.trim() || selectedMedia) {
                   handleSend();
                 } else {
                   setShowVoiceRecorder(true);
@@ -543,7 +664,9 @@ const Conversation = () => {
               }}
               disabled={sending}
             >
-              {replyText.trim() ? (
+              {sending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (replyText.trim() || selectedMedia) ? (
                 <Send className="w-5 h-5" />
               ) : (
                 <Mic className="w-5 h-5" />
