@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Send, CheckCircle, Building2, User, Briefcase, Newspaper, TrendingUp, Megaphone, Monitor, Landmark, FileText, Shield, Users } from "lucide-react";
 import VisitorFooter from "@/components/layout/VisitorFooter";
+
 const departmentLabels = {
   administratif: {
     label: "Administratif",
@@ -48,6 +49,7 @@ const departmentLabels = {
     icon: Landmark
   }
 };
+
 const contactSchema = z.object({
   sender_type: z.enum(["particulier", "societe", "collectivites"]),
   company_name: z.string().optional(),
@@ -61,22 +63,23 @@ const contactSchema = z.object({
   subject: z.string().optional(),
   message: z.string().min(10, "Message trop court (10 caractères minimum)")
 });
+
 type ContactFormData = z.infer<typeof contactSchema>;
+
 const Contact = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
   const [isLoading, setIsLoading] = useState(false);
   const {
     register,
     handleSubmit,
     watch,
     setValue,
-    formState: {
-      errors
-    }
+    formState: { errors }
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
@@ -84,15 +87,13 @@ const Contact = () => {
       department: "commercial"
     }
   });
+
   const senderType = watch("sender_type");
+
   const onSubmit = async (data: ContactFormData) => {
     setIsLoading(true);
     try {
-      // Insert message
-      const {
-        data: insertedMessage,
-        error
-      } = await supabase.from("contact_messages").insert({
+      const { data: insertedMessage, error } = await supabase.from("contact_messages").insert({
         sender_type: data.sender_type,
         company_name: data.company_name || null,
         first_name: data.first_name,
@@ -105,14 +106,13 @@ const Contact = () => {
         subject: data.subject || null,
         message: data.message
       }).select().single();
+
       if (error) throw error;
 
-      // Send notification email
       await supabase.functions.invoke("notify-contact-message", {
-        body: {
-          messageId: insertedMessage.id
-        }
+        body: { messageId: insertedMessage.id }
       });
+
       setIsSubmitted(true);
     } catch (error) {
       console.error("Error submitting contact form:", error);
@@ -121,12 +121,14 @@ const Contact = () => {
       setIsLoading(false);
     }
   };
+
   if (isSubmitted) {
-    return <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
         <div className="flex-1 flex items-center justify-center p-4">
-          <Card className="max-w-md w-full text-center">
+          <Card className="max-w-md w-full text-center border-2 border-green-500">
             <CardContent className="pt-8 pb-8 space-y-6">
-              <div className="w-20 h-20 mx-auto rounded-full bg-green-500/20 flex items-center justify-center">
+              <div className="w-20 h-20 mx-auto rounded-full bg-green-500/10 flex items-center justify-center border-2 border-green-500">
                 <CheckCircle className="w-10 h-10 text-green-500" />
               </div>
               <div>
@@ -142,14 +144,17 @@ const Contact = () => {
           </Card>
         </div>
         <VisitorFooter />
-      </div>;
+      </div>
+    );
   }
-  return <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center border border-primary">
               <Shield className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-bold text-lg">ANR</span>
@@ -167,10 +172,12 @@ const Contact = () => {
             </p>
           </div>
 
-          <Card>
+          <Card className="border-2 border-blue-500">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Send className="w-5 h-5 text-primary" />
+                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <Send className="w-4 h-4 text-blue-500" />
+                </div>
                 Formulaire de contact
               </CardTitle>
               <CardDescription>
@@ -186,34 +193,42 @@ const Contact = () => {
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="particulier" id="particulier" />
                       <Label htmlFor="particulier" className="flex items-center gap-2 cursor-pointer text-sm sm:text-base">
-                        <User className="w-4 h-4" />
+                        <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center">
+                          <User className="w-3 h-3 text-blue-500" />
+                        </div>
                         Particulier
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="societe" id="societe" />
                       <Label htmlFor="societe" className="flex items-center gap-2 cursor-pointer text-sm sm:text-base">
-                        <Building2 className="w-4 h-4" />
+                        <div className="w-6 h-6 rounded-full bg-orange-500/10 flex items-center justify-center">
+                          <Building2 className="w-3 h-3 text-orange-500" />
+                        </div>
                         Société
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="collectivites" id="collectivites" />
                       <Label htmlFor="collectivites" className="flex items-center gap-2 cursor-pointer text-sm sm:text-base">
-                        <Landmark className="w-4 h-4" />
+                        <div className="w-6 h-6 rounded-full bg-purple-500/10 flex items-center justify-center">
+                          <Landmark className="w-3 h-3 text-purple-500" />
+                        </div>
                         Collectivité
                       </Label>
                     </div>
                   </RadioGroup>
                 </div>
 
-                {/* Company/Entity Name (if société or collectivité) */}
-                {(senderType === "societe" || senderType === "collectivites") && <div className="space-y-2">
+                {/* Company/Entity Name */}
+                {(senderType === "societe" || senderType === "collectivites") && (
+                  <div className="space-y-2">
                     <Label htmlFor="company_name">
                       {senderType === "collectivites" ? "Nom de la collectivité" : "Nom de l'entreprise"}
                     </Label>
                     <Input id="company_name" {...register("company_name")} placeholder={senderType === "collectivites" ? "Nom de votre collectivité" : "Nom de votre entreprise"} />
-                  </div>}
+                  </div>
+                )}
 
                 {/* Name */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -262,15 +277,14 @@ const Contact = () => {
                       <SelectValue placeholder="Sélectionnez un service" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(departmentLabels).map(([value, {
-                      label,
-                      icon: Icon
-                    }]) => <SelectItem key={value} value={value}>
+                      {Object.entries(departmentLabels).map(([value, { label, icon: Icon }]) => (
+                        <SelectItem key={value} value={value}>
                           <div className="flex items-center gap-2">
                             <Icon className="w-4 h-4 text-muted-foreground" />
                             {label}
                           </div>
-                        </SelectItem>)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -289,13 +303,17 @@ const Contact = () => {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? <div className="flex items-center gap-2">
+                  {isLoading ? (
+                    <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                       Envoi en cours...
-                    </div> : <div className="flex items-center gap-2">
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
                       <Send className="w-4 h-4" />
                       Envoyer le message
-                    </div>}
+                    </div>
+                  )}
                 </Button>
               </form>
             </CardContent>
@@ -304,6 +322,8 @@ const Contact = () => {
       </main>
 
       <VisitorFooter />
-    </div>;
+    </div>
+  );
 };
+
 export default Contact;

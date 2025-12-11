@@ -1,6 +1,6 @@
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/layout/BottomNav";
 import VisitorFooter from "@/components/layout/VisitorFooter";
@@ -53,7 +53,14 @@ const Privacy = () => {
           Retour
         </Button>
 
-        <div className="bg-card rounded-lg p-6 shadow-sm border">
+        <div className="bg-card rounded-lg p-6 shadow-sm border-2 border-purple-500">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center border-2 border-purple-500">
+              <Shield className="w-6 h-6 text-purple-500" />
+            </div>
+            <h1 className="text-2xl font-bold">Politique de Confidentialité</h1>
+          </div>
+          
           {renderMarkdown(content)}
           
           {lastUpdated && (

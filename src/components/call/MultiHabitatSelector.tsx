@@ -16,6 +16,8 @@ interface Habitat {
   residents: Resident[];
 }
 
+const COLORS = ["blue", "orange", "purple", "green", "pink", "cyan"] as const;
+
 const MultiHabitatSelector = () => {
   const { anrId } = useParams<{ anrId: string }>();
   const location = useLocation();
@@ -145,8 +147,8 @@ const MultiHabitatSelector = () => {
     <div className="min-h-screen p-4 pb-20">
       <div className="max-w-md mx-auto">
         <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <Home className="w-8 h-8 text-primary" />
+          <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mx-auto mb-4 border-2 border-blue-500">
+            <Home className="w-8 h-8 text-blue-500" />
           </div>
           <h1 className="text-2xl font-bold mb-2">Choisissez la résidence</h1>
           <p className="text-muted-foreground text-sm">
@@ -170,17 +172,18 @@ const MultiHabitatSelector = () => {
           {filteredHabitats.map((habitat, index) => {
             const residenceNum = getResidenceNumber(habitat.name) || String(index + 1);
             const displayName = getDisplayName(habitat);
+            const color = COLORS[index % COLORS.length];
 
             return (
               <button
                 key={habitat.id}
                 onClick={() => handleSelect(habitat)}
-                className="w-full glass-effect rounded-2xl p-4 flex items-center gap-4 hover:border-primary/30 hover:bg-primary/5 transition-all text-left group"
+                className={`w-full glass-effect rounded-2xl p-4 flex items-center gap-4 transition-all text-left group border-2 border-${color}-500 hover:bg-${color}-500/5`}
               >
                 {/* Residence number badge */}
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex flex-col items-center justify-center group-hover:bg-primary/20 transition-colors">
-                  <span className="text-xs text-primary/70 font-medium">Rés.</span>
-                  <span className="text-xl font-bold text-primary">{residenceNum}</span>
+                <div className={`w-14 h-14 rounded-xl bg-${color}-500/10 flex flex-col items-center justify-center group-hover:bg-${color}-500/20 transition-colors`}>
+                  <span className={`text-xs text-${color}-500/70 font-medium`}>Rés.</span>
+                  <span className={`text-xl font-bold text-${color}-500`}>{residenceNum}</span>
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -191,7 +194,7 @@ const MultiHabitatSelector = () => {
                 </div>
 
                 {/* Call indicator */}
-                <div className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className={`text-${color}-500 opacity-0 group-hover:opacity-100 transition-opacity`}>
                   <span className="text-sm font-medium">Sonner →</span>
                 </div>
               </button>
