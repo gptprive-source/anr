@@ -424,45 +424,20 @@ const Conversation = () => {
               )}
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div 
+              className="flex-1 min-w-0 cursor-pointer hover:opacity-70 transition-opacity"
+              onClick={() => {
+                // Navigate to contacts page with scroll to this contact
+                const contactIdentifier = card?.email || card?.phone || visitorId;
+                navigate(`/contacts?scrollTo=${encodeURIComponent(contactIdentifier || '')}`);
+              }}
+            >
               <p className="font-semibold truncate">{displayName}</p>
               {card?.job_title && (
                 <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
               )}
             </div>
           </div>
-
-          {/* Contact Info inside sticky header */}
-          {card && (card.phone || card.email || card.visitor_anr_code) && (
-            <div className="p-3 bg-background/50 rounded-lg border border-purple-500 overflow-hidden">
-              <div className="flex items-center gap-3 text-sm flex-nowrap overflow-x-auto">
-                {card.phone && (
-                  <a 
-                    href={`tel:${card.phone}`} 
-                    className="flex items-center gap-1 text-blue-500 hover:underline cursor-pointer flex-shrink-0"
-                  >
-                    <Phone className="w-4 h-4 flex-shrink-0" />
-                    <span className="whitespace-nowrap">{card.phone}</span>
-                  </a>
-                )}
-                {card.email && (
-                  <a 
-                    href={`mailto:${card.email}`} 
-                    className="flex items-center gap-1 text-orange-500 hover:underline cursor-pointer min-w-0"
-                  >
-                    <Mail className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{card.email}</span>
-                  </a>
-                )}
-                {card.visitor_anr_code && (
-                  <span className="flex items-center gap-1 text-green-500 flex-shrink-0">
-                    <MapPin className="w-4 h-4 flex-shrink-0" />
-                    <span className="whitespace-nowrap">ANR: {card.visitor_anr_code}</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

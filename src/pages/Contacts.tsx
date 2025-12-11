@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useResidentContacts, ResidentContact } from "@/hooks/useResidentContacts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ type FilterType = "all" | "favorites" | "companies" | "individuals";
 const Contacts = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { contacts, loading, updateContact, deleteContact, toggleFavorite } = useResidentContacts();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
@@ -61,6 +62,28 @@ const Contacts = () => {
     notes: "",
   });
   const [deletingContact, setDeletingContact] = useState<ResidentContact | null>(null);
+  const contactRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  // Scroll to contact if scrollTo param is present
+  useEffect(() => {
+    const scrollTo = searchParams.get("scrollTo");
+    if (scrollTo && !loading && contacts.length > 0) {
+      // Find contact by email, phone, or id
+      const contact = contacts.find(
+        (c) => c.email === scrollTo || c.phone === scrollTo || c.id === scrollTo
+      );
+      if (contact && contactRefs.current[contact.id]) {
+        setTimeout(() => {
+          contactRefs.current[contact.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Highlight effect
+          contactRefs.current[contact.id]?.classList.add("ring-2", "ring-primary");
+          setTimeout(() => {
+            contactRefs.current[contact.id]?.classList.remove("ring-2", "ring-primary");
+          }, 2000);
+        }, 100);
+      }
+    }
+  }, [searchParams, loading, contacts]);
 
   const filteredContacts = contacts.filter((contact) => {
     // Apply filter
@@ -228,7 +251,11 @@ const Contacts = () => {
               const colorCycle = ["border-blue-500", "border-orange-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
               const borderColor = colorCycle[index % colorCycle.length];
               return (
-              <Card key={contact.id} className={`p-4 border ${borderColor}`}>
+              <Card 
+                key={contact.id} 
+                ref={(el) => { contactRefs.current[contact.id] = el; }}
+                className={`p-4 border ${borderColor} transition-all`}
+              >
                 <div className="flex items-start gap-3">
                   {/* Avatar */}
                   <button
