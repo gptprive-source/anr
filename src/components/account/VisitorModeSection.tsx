@@ -80,82 +80,85 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
         </div>
       </div>
 
-      {/* Business Card */}
-      <div className="border border-purple-500 rounded-lg p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-purple-500/10 flex items-center justify-center">
-              <CreditCard className="w-3 h-3 text-purple-500" />
+      {/* Grid for Business Card and Templates side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Business Card */}
+        <div className="border border-purple-500 rounded-lg p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-purple-500/10 flex items-center justify-center">
+                <CreditCard className="w-3 h-3 text-purple-500" />
+              </div>
+              <span className="text-sm font-medium">Ma carte de visite</span>
             </div>
-            <span className="text-sm font-medium">Ma carte de visite</span>
+            <Button variant="ghost" size="sm" onClick={handleOpenCardManager}>
+              {card ? "Modifier" : "Créer"}
+            </Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleOpenCardManager}>
-            {card ? "Modifier" : "Créer"}
-          </Button>
-        </div>
-        
-        {cardLoading ? (
-          <p className="text-xs text-muted-foreground">Chargement...</p>
-        ) : card ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {card.card_type === "company" ? (
-              <Building2 className="w-3 h-3 text-purple-500" />
-            ) : (
-              <User className="w-3 h-3 text-purple-500" />
-            )}
-            <span>{getCardSummary()}</span>
-            {card.email && <span>• {card.email}</span>}
-            {card.phone && <span>• {card.phone}</span>}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Créez une carte pour vous présenter rapidement aux résidents
-          </p>
-        )}
-      </div>
-
-      {/* Custom Templates */}
-      <div className="border border-yellow-500 rounded-lg p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-yellow-500/10 flex items-center justify-center">
-              <MessageSquare className="w-3 h-3 text-yellow-500" />
+          
+          {cardLoading ? (
+            <p className="text-xs text-muted-foreground">Chargement...</p>
+          ) : card ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {card.card_type === "company" ? (
+                <Building2 className="w-3 h-3 text-purple-500" />
+              ) : (
+                <User className="w-3 h-3 text-purple-500" />
+              )}
+              <span>{getCardSummary()}</span>
+              {card.email && <span>• {card.email}</span>}
+              {card.phone && <span>• {card.phone}</span>}
             </div>
-            <span className="text-sm font-medium">Mes templates de messages</span>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setShowNewTemplateDialog(true)}>
-            <Plus className="w-4 h-4" />
-          </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Créez une carte pour vous présenter rapidement aux résidents
+            </p>
+          )}
         </div>
 
-        {templatesLoading ? (
-          <p className="text-xs text-muted-foreground">Chargement...</p>
-        ) : templates.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {templates.map((template) => (
-              <Badge 
-                key={template.id} 
-                variant="secondary" 
-                className="flex items-center gap-1 pr-1"
-              >
-                <span>{template.icon}</span>
-                <span className="max-w-[100px] truncate">{template.name}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-4 w-4 p-0 ml-1 hover:bg-destructive/20"
-                  onClick={() => handleDeleteTemplate(template.id, template.name)}
+        {/* Custom Templates */}
+        <div className="border border-yellow-500 rounded-lg p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                <MessageSquare className="w-3 h-3 text-yellow-500" />
+              </div>
+              <span className="text-sm font-medium">Mes templates</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setShowNewTemplateDialog(true)}>
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {templatesLoading ? (
+            <p className="text-xs text-muted-foreground">Chargement...</p>
+          ) : templates.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {templates.map((template) => (
+                <Badge 
+                  key={template.id} 
+                  variant="secondary" 
+                  className="flex items-center gap-1 pr-1"
                 >
-                  <Trash2 className="w-3 h-3 text-destructive" />
-                </Button>
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Créez des templates pour laisser des messages rapidement
-          </p>
-        )}
+                  <span>{template.icon}</span>
+                  <span className="max-w-[100px] truncate">{template.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 ml-1 hover:bg-destructive/20"
+                    onClick={() => handleDeleteTemplate(template.id, template.name)}
+                  >
+                    <Trash2 className="w-3 h-3 text-destructive" />
+                  </Button>
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Créez des templates pour laisser des messages rapidement
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Dialogs */}
