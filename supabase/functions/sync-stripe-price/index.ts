@@ -15,7 +15,7 @@ const PLAN_PRODUCT_IDS: Record<string, string> = {
   collectivites: "prod_TaQmqPcFg83tyH",
 };
 
-// Product IDs for one-time purchases - separate products per plan for domings
+// Product IDs for one-time purchases - separate products per plan for domings and door modules
 const PRODUCT_IDS: Record<string, string> = {
   doming: "prod_TaRUttFGQVbh4L",
   particulier_doming: "prod_TaSKkFa6uuiRN2",
@@ -23,6 +23,10 @@ const PRODUCT_IDS: Record<string, string> = {
   entreprise_doming: "prod_TaSK8fFvBtbupo",
   collectivites_doming: "prod_TaSKOciTJXE9xm",
   door_module: "prod_TaRk72XZTmH8eD",
+  particulier_door_module: "prod_TaSg5Pu61wLBRv",
+  pro_door_module: "prod_TaSgkfdMyB3222",
+  entreprise_door_module: "prod_TaSgT8JDPAsVys",
+  collectivites_door_module: "prod_TaSgYO3BZUX3iH",
 };
 
 serve(async (req) => {

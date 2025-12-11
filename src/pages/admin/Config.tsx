@@ -95,8 +95,9 @@ const Config = () => {
         // Extract plan from configKey: "pro_doming_price" -> "pro_doming"
         stripePlanId = configKey.replace('_price', '');
         stripeProductType = 'one_time';
-      } else if (configKey.endsWith('_door_module_price') || configKey === 'door_module_price') {
-        stripePlanId = 'door_module';
+      } else if (configKey.endsWith('_door_module_price')) {
+        // Extract plan from configKey: "pro_door_module_price" -> "pro_door_module"
+        stripePlanId = configKey.replace('_price', '');
         stripeProductType = 'one_time';
       }
       
@@ -455,25 +456,44 @@ const Config = () => {
                   </div>
                 </div>
 
-                {/* Modules Porte */}
+                {/* Modules Porte par plan */}
                 <div>
                   <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
                     <DoorOpen className="w-4 h-4" />
-                    Modules Porte
+                    Gâches Électriques (par plan)
                   </h4>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-2 font-medium">Produit</th>
+                          <th className="text-left py-2 font-medium">Plan</th>
                           <th className="text-left py-2 font-medium">Clé Config</th>
                           <th className="text-left py-2 font-medium font-mono">Stripe Price ID</th>
                           <th className="text-right py-2 font-medium">Prix Config</th>
                         </tr>
                       </thead>
                       <tbody>
+                        {PLANS.map((plan) => {
+                          const priceIdKey = `${plan.id}_door_module_stripe_price_id`;
+                          const priceKey = `${plan.id}_door_module_price`;
+                          const priceId = getValue(priceIdKey) || '-';
+                          const price = getValue(priceKey) || 0;
+                          const PlanIcon = plan.icon;
+                          return (
+                            <tr key={plan.id} className="border-b border-border/50">
+                              <td className="py-2 flex items-center gap-2">
+                                <PlanIcon className={`w-4 h-4 ${plan.color}`} />
+                                Gâche {plan.name}
+                              </td>
+                              <td className="py-2 text-muted-foreground text-xs">{priceIdKey}</td>
+                              <td className="py-2 font-mono text-xs">{priceId}</td>
+                              <td className="py-2 text-right font-medium">{price}€</td>
+                            </tr>
+                          );
+                        })}
+                        {/* Door module générique */}
                         <tr className="border-b border-border/50">
-                          <td className="py-2">Boîtier Gâche Électrique</td>
+                          <td className="py-2 text-muted-foreground">Door Module (legacy)</td>
                           <td className="py-2 text-muted-foreground text-xs">door_module_stripe_price_id</td>
                           <td className="py-2 font-mono text-xs">{getValue('door_module_stripe_price_id') || '-'}</td>
                           <td className="py-2 text-right font-medium">{getValue('door_module_price') || 0}€</td>

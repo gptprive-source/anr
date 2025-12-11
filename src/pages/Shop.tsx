@@ -93,11 +93,11 @@ const Shop = () => {
 
   // Get prices based on user's plan
   const domingPrice = getConfig(`${planType}_doming_price`) || getConfig("doming_price") || 7;
-  const doorModulePrice = getConfig("door_module_price") || 149;
+  const doorModulePrice = getConfig(`${planType}_door_module_price`) || getConfig("door_module_price") || 149;
   
   // Get Stripe price IDs based on user's plan
   const domingPriceId = getConfig(`${planType}_doming_stripe_price_id`) || getConfig("doming_stripe_price_id") || "price_1SdGbkEDmI80OIpdI5a5sjf2";
-  const doorModulePriceId = getConfig("door_module_stripe_price_id") || "price_1SdGr2EDmI80OIpd91Jb96nN";
+  const doorModulePriceId = getConfig(`${planType}_door_module_stripe_price_id`) || getConfig("door_module_stripe_price_id") || "price_1SdGr2EDmI80OIpd91Jb96nN";
 
   const domingTotal = domingQuantity * domingPrice;
   const doorModuleTotal = doorModuleQuantity * doorModulePrice;
