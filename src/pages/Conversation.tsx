@@ -434,7 +434,7 @@ const Conversation = () => {
                           {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                         </span>
                         {reply.is_read ? (
-                          <CheckCheck className="w-4 h-4 text-primary" />
+                          <CheckCheck className="w-4 h-4 text-blue-500" />
                         ) : (
                           <Check className="w-4 h-4 text-muted-foreground" />
                         )}
@@ -448,7 +448,7 @@ const Conversation = () => {
                           {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                         </span>
                         {reply.is_read ? (
-                          <CheckCheck className="w-4 h-4 text-green-500" />
+                          <CheckCheck className="w-4 h-4 text-blue-500" />
                         ) : (
                           <Check className="w-4 h-4 text-muted-foreground" />
                         )}
