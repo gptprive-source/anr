@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Send, CheckCircle, Building2, User, Briefcase, Newspaper, TrendingUp, Megaphone, Monitor, Landmark, FileText, Shield, Users } from "lucide-react";
+import { Send, CheckCircle, Building2, User, Briefcase, Newspaper, TrendingUp, Megaphone, Monitor, Landmark, FileText, Shield, Users, X } from "lucide-react";
 import VisitorFooter from "@/components/layout/VisitorFooter";
 
 const departmentLabels = {
@@ -67,6 +67,7 @@ const contactSchema = z.object({
 type ContactFormData = z.infer<typeof contactSchema>;
 
 const Contact = () => {
+  const navigate = useNavigate();
   const [isSubmitted, setIsSubmitted] = useState(false);
   
   useEffect(() => {
@@ -172,8 +173,14 @@ const Contact = () => {
             </p>
           </div>
 
-          <Card className="border-2 border-blue-500">
-            <CardHeader>
+          <Card className="border-2 border-blue-500 relative">
+            <button
+              onClick={() => navigate(-1)}
+              className="absolute top-4 left-4 w-8 h-8 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4 text-white" />
+            </button>
+            <CardHeader className="pt-12">
               <CardTitle className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
                   <Send className="w-4 h-4 text-blue-500" />
