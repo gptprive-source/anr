@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { User, CreditCard, MessageSquare, Plus, Trash2, Building2 } from "lucide-react";
+import { User, CreditCard, MessageSquare, Plus, Trash2, Building2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useVisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
-import { useVisitorCustomTemplates } from "@/hooks/useVisitorCustomTemplates";
+import { useVisitorCustomTemplates, type VisitorCustomTemplate } from "@/hooks/useVisitorCustomTemplates";
 import VisitorBusinessCardManager from "@/components/visitor/VisitorBusinessCardManager";
 import SaveCustomTemplateDialog from "@/components/visitor/SaveCustomTemplateDialog";
+import EditCustomTemplateDialog from "@/components/visitor/EditCustomTemplateDialog";
 import { toast } from "sonner";
 
 interface VisitorModeSectionProps {
@@ -19,9 +20,10 @@ interface VisitorModeSectionProps {
 
 const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps) => {
   const { card, loading: cardLoading, saveCard } = useVisitorBusinessCard();
-  const { templates, loading: templatesLoading, saveTemplate, deleteTemplate } = useVisitorCustomTemplates();
+  const { templates, loading: templatesLoading, saveTemplate, updateTemplate, deleteTemplate } = useVisitorCustomTemplates();
   const [showCardManager, setShowCardManager] = useState(false);
   const [showNewTemplateDialog, setShowNewTemplateDialog] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<VisitorCustomTemplate | null>(null);
 
   // Pre-fill business card with resident profile if empty
   const handleOpenCardManager = async () => {
@@ -56,6 +58,15 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
       toast.success(`Template "${name}" créé`);
     } catch {
       toast.error("Erreur lors de la création");
+    }
+  };
+
+  const handleUpdateTemplate = async (templateId: string, name: string, content: string, icon: string) => {
+    try {
+      await updateTemplate(templateId, name, content, icon);
+      toast.success(`Template "${name}" mis à jour`);
+    } catch {
+      toast.error("Erreur lors de la mise à jour");
     }
   };
 
@@ -138,15 +149,30 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
                 <Badge 
                   key={template.id} 
                   variant="secondary" 
-                  className="flex items-center gap-1 pr-1"
+                  className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+                  onClick={() => setEditingTemplate(template)}
                 >
                   <span>{template.icon}</span>
                   <span className="max-w-[100px] truncate">{template.name}</span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 ml-1 hover:bg-destructive/20"
-                    onClick={() => handleDeleteTemplate(template.id, template.name)}
+                    className="h-4 w-4 p-0 ml-1 hover:bg-primary/20"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingTemplate(template);
+                    }}
+                  >
+                    <Pencil className="w-3 h-3 text-primary" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 hover:bg-destructive/20"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteTemplate(template.id, template.name);
+                    }}
                   >
                     <Trash2 className="w-3 h-3 text-destructive" />
                   </Button>
@@ -172,6 +198,13 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
         onOpenChange={setShowNewTemplateDialog}
         messageContent=""
         onSave={handleSaveNewTemplate}
+      />
+
+      <EditCustomTemplateDialog
+        open={!!editingTemplate}
+        onOpenChange={(open) => !open && setEditingTemplate(null)}
+        template={editingTemplate}
+        onSave={handleUpdateTemplate}
       />
     </div>
   );
