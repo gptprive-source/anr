@@ -43,6 +43,7 @@ import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import NoHabitation from "./pages/NoHabitation";
 import Shop from "./pages/Shop";
+import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -195,6 +196,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <Shop />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute>
+                <Orders />
               </ProtectedRoute>
             }
           />
