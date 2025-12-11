@@ -86,12 +86,7 @@ export const AddToContactsButton = ({
   };
 
   if (existingContact) {
-    return (
-      <Badge variant="secondary" className="gap-1">
-        <Check className="w-3 h-3" />
-        Contact enregistré
-      </Badge>
-    );
+    return null;
   }
 
   return (
