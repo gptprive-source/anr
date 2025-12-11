@@ -322,7 +322,13 @@ const Conversation = () => {
             </div>
 
             {card ? (
-              <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" />
+              <AddToContactsButton 
+                businessCard={card} 
+                messageId={visitorMessages[0]?.id} 
+                size="sm" 
+                variant="default"
+                className="bg-blue-500 hover:bg-blue-600 text-white flex-shrink-0"
+              />
             ) : (
               <AddToContactsButton 
                 businessCard={{
@@ -337,8 +343,9 @@ const Conversation = () => {
                   visitor_anr_code: null,
                 }} 
                 messageId={visitorMessages[0]?.id} 
-                size="icon" 
-                variant="ghost" 
+                size="sm" 
+                variant="default"
+                className="bg-blue-500 hover:bg-blue-600 text-white flex-shrink-0"
               />
             )}
           </div>
