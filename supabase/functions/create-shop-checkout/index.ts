@@ -46,7 +46,9 @@ serve(async (req) => {
       throw new Error("No items in cart");
     }
 
-    if (!shippingInfo?.firstName || !shippingInfo?.lastName || !shippingInfo?.address || !shippingInfo?.postalCode || !shippingInfo?.city) {
+    // For ANR address, we only need firstName, lastName and address (full address string)
+    // For custom address, we need all fields
+    if (!shippingInfo?.firstName || !shippingInfo?.lastName || !shippingInfo?.address) {
       throw new Error("Missing shipping information");
     }
 
