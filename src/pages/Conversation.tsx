@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile } from "lucide-react";
+import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -321,8 +321,25 @@ const Conversation = () => {
               )}
             </div>
 
-            {card && (
+            {card ? (
               <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" />
+            ) : (
+              <AddToContactsButton 
+                businessCard={{
+                  id: visitorId || "",
+                  card_type: "individual",
+                  first_name: displayName !== "Visiteur" ? displayName : null,
+                  last_name: null,
+                  company_name: null,
+                  job_title: null,
+                  phone: visitorMessages[0]?.visitor_phone || null,
+                  email: null,
+                  visitor_anr_code: null,
+                }} 
+                messageId={visitorMessages[0]?.id} 
+                size="icon" 
+                variant="ghost" 
+              />
             )}
           </div>
 
@@ -507,7 +524,7 @@ const Conversation = () => {
               />
             </div>
 
-            {/* Mic/Send button */}
+            {/* Mic/Send button - changes based on text input */}
             <button 
               className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               onClick={() => {
@@ -519,7 +536,11 @@ const Conversation = () => {
               }}
               disabled={sending}
             >
-              <Mic className="w-5 h-5" />
+              {replyText.trim() ? (
+                <Send className="w-5 h-5" />
+              ) : (
+                <Mic className="w-5 h-5" />
+              )}
             </button>
           </div>
         )}
