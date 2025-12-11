@@ -160,8 +160,8 @@ const Account = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       
-      // Create and download JSON file
-      const blob = new Blob([JSON.stringify(data.userData, null, 2)], { type: "application/json" });
+      // Create and download JSON file - data is directly the export object
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
