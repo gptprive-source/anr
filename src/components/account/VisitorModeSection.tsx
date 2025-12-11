@@ -144,39 +144,40 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
           {templatesLoading ? (
             <p className="text-xs text-muted-foreground">Chargement...</p>
           ) : templates.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-2">
               {templates.map((template) => (
-                <Badge 
+                <div 
                   key={template.id} 
-                  variant="secondary" 
-                  className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
-                  onClick={() => setEditingTemplate(template)}
+                  className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-yellow-500/30"
                 >
-                  <span>{template.icon}</span>
-                  <span className="max-w-[100px] truncate">{template.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-4 w-4 p-0 ml-1 hover:bg-primary/20"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingTemplate(template);
-                    }}
-                  >
-                    <Pencil className="w-3 h-3 text-primary" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-4 w-4 p-0 hover:bg-destructive/20"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteTemplate(template.id, template.name);
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3 text-destructive" />
-                  </Button>
-                </Badge>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                      <span className="text-sm">{template.icon}</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{template.name}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[150px]">{template.content}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => setEditingTemplate(template)}
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-yellow-500" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => handleDeleteTemplate(template.id, template.name)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
