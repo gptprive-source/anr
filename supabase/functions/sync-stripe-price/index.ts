@@ -7,12 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Product IDs for each plan (created in Stripe)
+// Product IDs for each plan (from Stripe)
 const PLAN_PRODUCT_IDS: Record<string, string> = {
-  particulier: "prod_SdFudLsHmYy0JT",
-  pro: "prod_SdGD2LRGxxUFBw",
-  entreprise: "prod_SdGDxQ8QcnVKNc",
-  collectivites: "prod_SdGD1l8h8GIlWi",
+  particulier: "prod_TaQmGPTf56GNWg",
+  pro: "prod_TaQmcaz98bAfb7",
+  entreprise: "prod_TaQmQwyLudSVGN",
+  collectivites: "prod_TaQmqPcFg83tyH",
 };
 
 serve(async (req) => {
