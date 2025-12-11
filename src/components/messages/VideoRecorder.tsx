@@ -54,8 +54,18 @@ const VideoRecorder = ({ onRecordingComplete, onSend, onCancel, sending, videoBl
   const startCamera = async () => {
     try {
       setError(null);
+      
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Votre navigateur ne supporte pas l'accès à la caméra");
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } },
+        video: { 
+          facingMode: "user", 
+          width: { ideal: 480 }, 
+          height: { ideal: 480 } 
+        },
         audio: true
       });
       
@@ -63,13 +73,27 @@ const VideoRecorder = ({ onRecordingComplete, onSend, onCancel, sending, videoBl
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.muted = true; // Mute to avoid echo
-        await videoRef.current.play();
-        setCameraReady(true);
+        videoRef.current.muted = true;
+        
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().then(() => {
+            setCameraReady(true);
+          }).catch(err => {
+            console.error("[VideoRecorder] Play error:", err);
+            setError("Impossible de démarrer la caméra");
+          });
+        };
       }
     } catch (err: any) {
       console.error("[VideoRecorder] Camera error:", err);
-      setError("Impossible d'accéder à la caméra. Vérifiez les permissions.");
+      if (err.name === 'NotAllowedError') {
+        setError("Accès à la caméra refusé. Autorisez l'accès dans les paramètres.");
+      } else if (err.name === 'NotFoundError') {
+        setError("Aucune caméra détectée sur cet appareil.");
+      } else {
+        setError("Impossible d'accéder à la caméra: " + (err.message || err.name));
+      }
     }
   };
 
@@ -81,34 +105,55 @@ const VideoRecorder = ({ onRecordingComplete, onSend, onCancel, sending, videoBl
     setCameraReady(false);
   };
 
+  const getSupportedMimeType = () => {
+    const types = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+      'video/mp4',
+    ];
+    
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+    return '';
+  };
+
   const startRecording = () => {
-    if (!streamRef.current) return;
+    if (!streamRef.current) {
+      console.error("[VideoRecorder] No stream available");
+      return;
+    }
 
     chunksRef.current = [];
     
-    const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+    const mimeType = getSupportedMimeType();
+    console.log("[VideoRecorder] Using mimeType:", mimeType);
+    
     let mediaRecorder: MediaRecorder;
     
     try {
+      const options = mimeType ? { mimeType } : undefined;
       mediaRecorder = new MediaRecorder(streamRef.current, options);
     } catch (e) {
-      // Fallback for browsers that don't support vp9
-      try {
-        mediaRecorder = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
-      } catch (e2) {
-        // Last resort - try mp4
-        mediaRecorder = new MediaRecorder(streamRef.current);
-      }
+      console.error("[VideoRecorder] MediaRecorder error:", e);
+      setError("Enregistrement vidéo non supporté sur ce navigateur");
+      return;
     }
 
     mediaRecorder.ondataavailable = (e) => {
+      console.log("[VideoRecorder] Data available:", e.data.size);
       if (e.data.size > 0) {
         chunksRef.current.push(e.data);
       }
     };
 
     mediaRecorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType || 'video/webm' });
+      console.log("[VideoRecorder] Recording stopped, chunks:", chunksRef.current.length);
+      const blob = new Blob(chunksRef.current, { type: mimeType || 'video/webm' });
+      console.log("[VideoRecorder] Created blob:", blob.size, blob.type);
       onRecordingComplete(blob);
       
       const url = URL.createObjectURL(blob);
@@ -116,6 +161,11 @@ const VideoRecorder = ({ onRecordingComplete, onSend, onCancel, sending, videoBl
       
       // Stop camera after recording
       stopCamera();
+    };
+
+    mediaRecorder.onerror = (e: any) => {
+      console.error("[VideoRecorder] MediaRecorder error:", e);
+      setError("Erreur lors de l'enregistrement");
     };
 
     mediaRecorderRef.current = mediaRecorder;
@@ -155,7 +205,7 @@ const VideoRecorder = ({ onRecordingComplete, onSend, onCancel, sending, videoBl
           </div>
           <p className="text-sm text-destructive">{error}</p>
           <div className="flex gap-2 justify-center">
-            <Button variant="outline" size="sm" onClick={startCamera}>
+            <Button variant="outline" size="sm" onClick={() => { setError(null); startCamera(); }}>
               Réessayer
             </Button>
             <Button variant="ghost" size="sm" onClick={onCancel}>
@@ -178,15 +228,24 @@ const VideoRecorder = ({ onRecordingComplete, onSend, onCancel, sending, videoBl
             controls
             autoPlay
             loop
+            playsInline
           />
         ) : (
           <video 
             ref={videoRef} 
-            className="w-full h-full object-cover mirror"
+            className="w-full h-full object-cover"
             style={{ transform: 'scaleX(-1)' }}
             playsInline
             muted
+            autoPlay
           />
+        )}
+
+        {/* Loading indicator */}
+        {!cameraReady && !previewUrl && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+            <Loader2 className="w-8 h-8 text-white animate-spin" />
+          </div>
         )}
 
         {/* Recording indicator */}
@@ -261,7 +320,7 @@ const VideoRecorder = ({ onRecordingComplete, onSend, onCancel, sending, videoBl
       </div>
       
       {/* Hint text */}
-      {!previewUrl && !isRecording && (
+      {!previewUrl && !isRecording && cameraReady && (
         <p className="text-center text-xs text-muted-foreground pb-3">
           Appuyez pour enregistrer (max 30s)
         </p>
