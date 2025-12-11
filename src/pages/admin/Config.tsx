@@ -24,8 +24,8 @@ const PLANS = [
 
 const PLAN_FEATURES = [
   { key: 'annual_price', label: 'Tarif mensuel', type: 'number', suffix: '€/mois', isAnnual: true, syncStripe: true },
-  { key: 'doming_price', label: 'Prix Doming supplémentaire', type: 'number', suffix: '€' },
-  { key: 'door_module_price', label: 'Prix Boîtier Gâche Électrique', type: 'number', suffix: '€', icon: DoorOpen },
+  { key: 'doming_price', label: 'Prix Doming supplémentaire', type: 'number', suffix: '€', syncStripe: true, stripeProduct: 'doming' },
+  { key: 'door_module_price', label: 'Prix Boîtier Gâche Électrique', type: 'number', suffix: '€', icon: DoorOpen, syncStripe: true, stripeProduct: 'door_module' },
   { key: 'members_included', label: 'Membres inclus', type: 'number', suffix: '' },
   { key: 'max_extra_members', label: 'Membres supplémentaires max', type: 'number', suffix: '' },
   { key: 'extra_member_price', label: 'Tarif/Membre supplémentaire', type: 'number', suffix: '€/mois' },
@@ -80,15 +80,28 @@ const Config = () => {
     }
   };
 
-  const saveConfigWithStripeSync = async (planId: string, annualPrice: number, configKey: string) => {
+  const saveConfigWithStripeSync = async (planId: string, price: number, configKey: string, productType?: string) => {
     setSyncingStripe(planId);
     try {
       // First save the config locally
-      await updateConfig({ key: configKey, value: annualPrice });
+      await updateConfig({ key: configKey, value: price });
+      
+      // Determine the actual planId for Stripe based on the configKey
+      let stripePlanId = planId;
+      let stripeProductType = productType;
+      
+      // Handle doming and door module prices (they're not plan-specific)
+      if (configKey.endsWith('_doming_price') || configKey === 'doming_price') {
+        stripePlanId = 'doming';
+        stripeProductType = 'one_time';
+      } else if (configKey.endsWith('_door_module_price') || configKey === 'door_module_price') {
+        stripePlanId = 'door_module';
+        stripeProductType = 'one_time';
+      }
       
       // Then sync with Stripe
       const { data, error } = await supabase.functions.invoke('sync-stripe-price', {
-        body: { planId, annualPrice }
+        body: { planId: stripePlanId, annualPrice: price, productType: stripeProductType }
       });
 
       if (error) throw error;
@@ -255,11 +268,12 @@ const Config = () => {
                       variant="default" 
                       onClick={() => {
                         if (feature.syncStripe) {
-                          saveConfigWithStripeSync(planId, localChanges[configKey], configKey);
+                          const productType = feature.stripeProduct ? 'one_time' : undefined;
+                          saveConfigWithStripeSync(feature.stripeProduct || planId, localChanges[configKey], configKey, productType);
                         } else {
                           saveConfig(configKey);
                         }
-                      }} 
+                      }}
                       disabled={isUpdating || isSyncingThisPlan}
                     >
                       {isSyncingThisPlan ? (
