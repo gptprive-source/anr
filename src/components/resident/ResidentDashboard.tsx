@@ -311,7 +311,7 @@ const ResidentDashboard = () => {
           <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Notifications"} onClick={toggleMute} active={isMuted} color="orange" />
           <QuickAction icon={<HelpCircle className="w-6 h-6" />} label="FAQ" onClick={() => navigate("/faq")} color="cyan" />
           {flags.doorOpeningEnabled && <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />}
-          {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} color="cyan" className="border border-solid border-[#00ff04]" />}
+          {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} color="green" />}
         </div>
 
         {/* Test Call Button (DEV) */}
