@@ -1,0 +1,1 @@
+UPDATE app_config SET value = '"price_1SdHbBEDmI80OIpdmJgz3j0T"' WHERE key = 'pro_doming_stripe_price_id'
