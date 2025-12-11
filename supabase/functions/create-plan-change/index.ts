@@ -7,12 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Map plan IDs to Stripe price IDs - these should be configured in app_config
+// Stripe price IDs for each plan
 const PLAN_PRICE_IDS: Record<string, string> = {
-  particulier: Deno.env.get("STRIPE_PRICE_PARTICULIER") || "",
-  pro: Deno.env.get("STRIPE_PRICE_PRO") || "",
-  entreprise: Deno.env.get("STRIPE_PRICE_ENTREPRISE") || "",
-  collectivites: Deno.env.get("STRIPE_PRICE_COLLECTIVITES") || "",
+  particulier: "price_1SdFulEDmI80OIpdXJsPpKkr",
+  pro: "price_1SdFurEDmI80OIpdvEoTYYsy",
+  entreprise: "price_1SdFutEDmI80OIpdE71JzYEL",
+  collectivites: "price_1SdFuvEDmI80OIpd8w7lwSun",
 };
 
 serve(async (req) => {
