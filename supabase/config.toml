@@ -121,3 +121,9 @@ verify_jwt = false
 
 [functions.verify-pro-payment]
 verify_jwt = false
+
+[functions.sync-stripe-price]
+verify_jwt = true
+
+[functions.create-plan-change]
+verify_jwt = true

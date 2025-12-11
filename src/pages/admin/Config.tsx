@@ -9,10 +9,11 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key, CreditCard } from "lucide-react";
+import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key, CreditCard, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 
 const PLANS = [
   { id: 'particulier', name: 'Particulier', icon: Home, color: 'text-blue-600' },
@@ -22,7 +23,7 @@ const PLANS = [
 ];
 
 const PLAN_FEATURES = [
-  { key: 'annual_price', label: 'Tarif mensuel', type: 'number', suffix: '€/mois', isAnnual: true },
+  { key: 'annual_price', label: 'Tarif mensuel', type: 'number', suffix: '€/mois', isAnnual: true, syncStripe: true },
   { key: 'doming_price', label: 'Prix Doming supplémentaire', type: 'number', suffix: '€' },
   { key: 'members_included', label: 'Membres inclus', type: 'number', suffix: '' },
   { key: 'max_extra_members', label: 'Membres supplémentaires max', type: 'number', suffix: '' },
@@ -34,8 +35,9 @@ const PLAN_FEATURES = [
 ];
 
 const Config = () => {
-  const { configs, isLoading, updateConfig, isUpdating } = useAppConfig();
+  const { configs, isLoading, updateConfig, isUpdating, refetch } = useAppConfig();
   const [localChanges, setLocalChanges] = useState<Record<string, any>>({});
+  const [syncingStripe, setSyncingStripe] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const getValue = (key: string) => {
@@ -66,6 +68,37 @@ const Config = () => {
       toast.success('Configuration mise à jour');
     } catch (error) {
       toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  const saveConfigWithStripeSync = async (planId: string, annualPrice: number, configKey: string) => {
+    setSyncingStripe(planId);
+    try {
+      // First save the config locally
+      await updateConfig({ key: configKey, value: annualPrice });
+      
+      // Then sync with Stripe
+      const { data, error } = await supabase.functions.invoke('sync-stripe-price', {
+        body: { planId, annualPrice }
+      });
+
+      if (error) throw error;
+
+      setLocalChanges(prev => {
+        const next = { ...prev };
+        delete next[configKey];
+        return next;
+      });
+
+      // Refresh configs to get updated Stripe price ID
+      await refetch();
+      
+      toast.success(`Prix synchronisé avec Stripe (${data.priceId})`);
+    } catch (error: any) {
+      console.error('Stripe sync error:', error);
+      toast.error(`Erreur sync Stripe: ${error.message}`);
+    } finally {
+      setSyncingStripe(null);
     }
   };
 
@@ -183,9 +216,19 @@ const Config = () => {
               setLocalValue(configKey, storeValue);
             };
 
+            const isSyncingThisPlan = syncingStripe === planId;
+
             return (
               <div key={feature.key} className="space-y-2">
-                <Label className="text-sm text-muted-foreground">{feature.label}</Label>
+                <Label className="text-sm text-muted-foreground flex items-center gap-2">
+                  {feature.label}
+                  {feature.syncStripe && (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      <CreditCard className="w-3 h-3 mr-1" />
+                      Sync Stripe
+                    </Badge>
+                  )}
+                </Label>
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
@@ -198,8 +241,23 @@ const Config = () => {
                     <span className="text-sm text-muted-foreground whitespace-nowrap">{feature.suffix}</span>
                   )}
                   {hasChanges(configKey) && (
-                    <Button size="icon" variant="default" onClick={() => saveConfig(configKey)} disabled={isUpdating}>
-                      <Save className="w-4 h-4" />
+                    <Button 
+                      size="icon" 
+                      variant="default" 
+                      onClick={() => {
+                        if (feature.syncStripe) {
+                          saveConfigWithStripeSync(planId, localChanges[configKey], configKey);
+                        } else {
+                          saveConfig(configKey);
+                        }
+                      }} 
+                      disabled={isUpdating || isSyncingThisPlan}
+                    >
+                      {isSyncingThisPlan ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
                     </Button>
                   )}
                 </div>
