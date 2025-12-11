@@ -117,7 +117,7 @@ serve(async (req) => {
         .insert({
           key: configKey,
           value: newPrice.id,
-          category: "stripe",
+          category: "pricing",
           description: `Stripe Price ID for ${planId} plan`,
           updated_by: user.id,
         });
