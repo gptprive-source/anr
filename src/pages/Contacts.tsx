@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useResidentContacts, ResidentContact } from "@/hooks/useResidentContacts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ type FilterType = "all" | "favorites" | "companies" | "individuals";
 
 const Contacts = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { contacts, loading, updateContact, deleteContact, toggleFavorite } = useResidentContacts();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
@@ -242,8 +244,23 @@ const Contacts = () => {
                     )}
                   </button>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
+                  {/* Info - Clickable to open conversation */}
+                  <div 
+                    className="flex-1 min-w-0 cursor-pointer hover:opacity-80"
+                    onClick={() => {
+                      // Use source_business_card_id, phone, or anr_code to navigate to conversation
+                      const conversationId = contact.source_business_card_id || contact.phone || contact.anr_code;
+                      if (conversationId) {
+                        navigate(`/conversation/${conversationId}`);
+                      } else {
+                        toast({
+                          title: "Conversation introuvable",
+                          description: "Aucun identifiant de conversation disponible pour ce contact",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
                     {contact.contact_type === "company" ? (
                       <>
                         <p className="font-medium truncate">{contact.company_name}</p>
@@ -268,7 +285,7 @@ const Contacts = () => {
                     )}
 
                     {/* Contact Methods */}
-                    <div className="flex flex-wrap gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
                       {contact.phone && (
                         <a
                           href={`tel:${contact.phone}`}
