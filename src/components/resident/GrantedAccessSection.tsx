@@ -66,40 +66,48 @@ const GrantedAccessSection = () => {
 
       <div className="space-y-3">
         {displayedAccess.map((access, index) => {
-          const color = COLORS[index % COLORS.length];
+          const colorSets = [
+            { border: "border-blue-500", text: "text-blue-500", borderLeft: "border-blue-500/30" },
+            { border: "border-orange-500", text: "text-orange-500", borderLeft: "border-orange-500/30" },
+            { border: "border-purple-500", text: "text-purple-500", borderLeft: "border-purple-500/30" },
+            { border: "border-green-500", text: "text-green-500", borderLeft: "border-green-500/30" },
+            { border: "border-pink-500", text: "text-pink-500", borderLeft: "border-pink-500/30" },
+            { border: "border-cyan-500", text: "text-cyan-500", borderLeft: "border-cyan-500/30" },
+          ];
+          const colorSet = colorSets[index % colorSets.length];
           return (
             <div 
               key={access.id} 
-              className={`bg-background/50 rounded-xl p-3 border-2 border-${color}-500`}
+              className={`bg-background/50 rounded-xl p-3 border-2 ${colorSet.border}`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <p className="font-medium text-sm">{access.name}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <MapPin className={`w-3 h-3 text-${color}-500`} />
+                  <p className="font-medium text-sm text-foreground">{access.name}</p>
+                  <p className="text-xs text-foreground/70 flex items-center gap-1">
+                    <MapPin className={`w-3 h-3 ${colorSet.text}`} />
                     {access.anr.address}
                   </p>
                 </div>
-                <Badge variant="outline" className={`text-xs border-${color}-500 text-${color}-500`}>
+                <Badge variant="outline" className={`text-xs ${colorSet.border} ${colorSet.text}`}>
                   {access.anr.code}
                 </Badge>
               </div>
 
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <Clock className={`w-3 h-3 text-${color}-500`} />
+                <span className="flex items-center gap-1 text-foreground/70">
+                  <Clock className={`w-3 h-3 ${colorSet.text}`} />
                   {access.time_from.slice(0, 5)} - {access.time_to.slice(0, 5)}
                 </span>
                 
                 {access.days_of_week && access.days_of_week.length < 7 && (
-                  <span className="text-muted-foreground">
+                  <span className="text-foreground/70">
                     {access.days_of_week.map(d => DAYS_FR[d]).join(', ')}
                   </span>
                 )}
 
                 {access.valid_until && (
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Calendar className={`w-3 h-3 text-${color}-500`} />
+                  <span className="flex items-center gap-1 text-foreground/70">
+                    <Calendar className={`w-3 h-3 ${colorSet.text}`} />
                     Jusqu'au {format(new Date(access.valid_until), 'dd MMM yyyy', { locale: fr })}
                   </span>
                 )}
@@ -128,12 +136,12 @@ const GrantedAccessSection = () => {
               </div>
 
               {access.instructions_for_visitor && (
-                <p className={`text-xs text-muted-foreground mt-2 italic border-l-2 border-${color}-500/30 pl-2`}>
+                <p className={`text-xs text-foreground/70 mt-2 italic border-l-2 ${colorSet.borderLeft} pl-2`}>
                   {access.instructions_for_visitor}
                 </p>
               )}
 
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-foreground/70 mt-2">
                 Accordé par {access.grantor?.first_name} {access.grantor?.last_name}
               </p>
             </div>
