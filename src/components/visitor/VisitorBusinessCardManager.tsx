@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useVisitorBusinessCard, VisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { User, Building2, Loader2, Save, Trash2, CreditCard } from "lucide-react";
 
 interface VisitorBusinessCardManagerProps {
@@ -26,9 +28,11 @@ const VisitorBusinessCardManager = ({
   onCardSaved,
 }: VisitorBusinessCardManagerProps) => {
   const { card, saveCard, deleteCard, loading } = useVisitorBusinessCard();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [userAnrCode, setUserAnrCode] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     card_type: "individual" as "individual" | "company",
@@ -41,7 +45,35 @@ const VisitorBusinessCardManager = ({
     visitor_anr_code: "",
   });
 
-  // Populate form when card loads
+  // Fetch user's ANR code if authenticated
+  useEffect(() => {
+    const fetchUserAnr = async () => {
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from("residents")
+        .select(`
+          habitation:habitations (
+            anr:anrs (code)
+          )
+        `)
+        .eq("user_id", user.id)
+        .eq("status", "verified")
+        .limit(1)
+        .maybeSingle();
+      
+      if (data?.habitation) {
+        const anrCode = (data.habitation as any)?.anr?.code;
+        if (anrCode) {
+          setUserAnrCode(anrCode);
+        }
+      }
+    };
+    
+    fetchUserAnr();
+  }, [user]);
+
+  // Populate form when card loads or when userAnrCode is available
   useEffect(() => {
     if (card) {
       setFormData({
@@ -52,10 +84,13 @@ const VisitorBusinessCardManager = ({
         job_title: card.job_title || "",
         phone: card.phone || "",
         email: card.email || "",
-        visitor_anr_code: card.visitor_anr_code || "",
+        visitor_anr_code: card.visitor_anr_code || userAnrCode || "",
       });
+    } else if (userAnrCode && !formData.visitor_anr_code) {
+      // Pre-fill ANR code for new cards
+      setFormData(prev => ({ ...prev, visitor_anr_code: userAnrCode }));
     }
-  }, [card]);
+  }, [card, userAnrCode]);
 
   const handleSubmit = async () => {
     // Validation
