@@ -55,9 +55,9 @@ const CGU = () => {
           Retour
         </Button>
 
-        <div className="bg-card rounded-lg p-6 shadow-sm border-2 border-blue-500">
+        <div className="bg-card rounded-lg p-6 shadow-sm border border-blue-500">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center border-2 border-blue-500">
+            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
               <FileText className="w-6 h-6 text-blue-500" />
             </div>
             <h1 className="text-2xl font-bold">Conditions Générales d'Utilisation</h1>

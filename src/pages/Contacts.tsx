@@ -145,7 +145,7 @@ const Contacts = () => {
             variant={filter === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("all")}
-            className={filter !== "all" ? "border-2 border-blue-500" : ""}
+            className={filter !== "all" ? "border border-blue-500" : ""}
           >
             <Users className="w-4 h-4 mr-1" />
             Tous
@@ -154,7 +154,7 @@ const Contacts = () => {
             variant={filter === "favorites" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("favorites")}
-            className={filter !== "favorites" ? "border-2 border-yellow-500" : ""}
+            className={filter !== "favorites" ? "border border-yellow-500" : ""}
           >
             <Star className="w-4 h-4 mr-1 text-yellow-500" />
             Favoris
@@ -163,7 +163,7 @@ const Contacts = () => {
             variant={filter === "companies" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("companies")}
-            className={filter !== "companies" ? "border-2 border-orange-500" : ""}
+            className={filter !== "companies" ? "border border-orange-500" : ""}
           >
             <Building2 className="w-4 h-4 mr-1 text-orange-500" />
             Entreprises
@@ -172,7 +172,7 @@ const Contacts = () => {
             variant={filter === "individuals" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("individuals")}
-            className={filter !== "individuals" ? "border-2 border-purple-500" : ""}
+            className={filter !== "individuals" ? "border border-purple-500" : ""}
           >
             <User className="w-4 h-4 mr-1 text-purple-500" />
             Particuliers
@@ -181,7 +181,7 @@ const Contacts = () => {
 
         {/* Contacts List */}
         {filteredContacts.length === 0 ? (
-          <Card className="p-8 text-center border-2 border-blue-500">
+          <Card className="p-8 text-center border border-blue-500">
             <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
               <Users className="w-8 h-8 text-blue-500" />
             </div>
@@ -201,7 +201,7 @@ const Contacts = () => {
               const colorCycle = ["border-blue-500", "border-orange-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
               const borderColor = colorCycle[index % colorCycle.length];
               return (
-              <Card key={contact.id} className={`p-4 border-2 ${borderColor}`}>
+              <Card key={contact.id} className={`p-4 border ${borderColor}`}>
                 <div className="flex items-start gap-3">
                   {/* Avatar */}
                   <button
