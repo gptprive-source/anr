@@ -42,6 +42,7 @@ import CGU from "./pages/CGU";
 import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import NoHabitation from "./pages/NoHabitation";
+import Shop from "./pages/Shop";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -189,6 +190,14 @@ const AppContent = () => {
           <Route path="/cgu" element={<CGU />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/contact" element={<Contact />} />
+          <Route
+            path="/shop"
+            element={
+              <ProtectedRoute>
+                <Shop />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/no-habitation"
             element={
