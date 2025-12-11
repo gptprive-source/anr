@@ -28,6 +28,14 @@ const PLAN_FEATURES = [
   { key: 'members_included', label: 'Membres inclus', type: 'number', suffix: '' },
   { key: 'max_extra_members', label: 'Membres supplémentaires max', type: 'number', suffix: '' },
   { key: 'extra_member_price', label: 'Tarif/Membre supplémentaire', type: 'number', suffix: '€/mois' },
+  // Communication features
+  { key: 'interphone_incoming', label: 'Interphone appels entrants', type: 'boolean', icon: Phone },
+  { key: 'video_calls', label: 'Appels visio', type: 'boolean', icon: Video },
+  { key: 'text_messages', label: 'Messages texte', type: 'boolean', icon: MessageSquare },
+  { key: 'voice_messages', label: 'Messages vocaux', type: 'boolean', icon: Mic },
+  { key: 'video_messages', label: 'Messages vidéo', type: 'boolean', icon: Video },
+  { key: 'instant_chat', label: 'Messagerie chat instantanée', type: 'boolean', icon: MessageSquare },
+  // Advanced features
   { key: 'copilot', label: 'Co-Pilot IA', type: 'boolean', icon: Bot },
   { key: 'geolocation', label: 'Géofencing avancé', type: 'boolean', icon: MapPin },
   { key: 'scheduling', label: 'Planification accès', type: 'boolean', icon: Calendar },
