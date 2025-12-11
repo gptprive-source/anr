@@ -646,59 +646,14 @@ const Conversation = () => {
             audioBlob={audioBlob}
           />
         ) : (
-          <div className="flex items-center gap-2">
-            {/* Attachment Button */}
-            <button 
-              className="p-2 text-muted-foreground hover:text-blue-500 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip className="w-6 h-6" />
-            </button>
-
-            {/* Camera Button for video selfie */}
-            <button 
-              className="p-2 text-muted-foreground hover:text-pink-500 transition-colors"
-              onClick={() => setShowVideoRecorder(true)}
-            >
-              <Camera className="w-6 h-6" />
-            </button>
-
-            {/* Emoji Picker */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
-                  <Smile className="w-6 h-6" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-2 max-h-72 overflow-y-auto" side="top" align="start">
-                <div className="space-y-3">
-                  {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
-                    <div key={category}>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
-                      <div className="grid grid-cols-8 gap-1">
-                        {emojis.map((emoji, index) => (
-                          <button
-                            key={index}
-                            className="text-xl p-1 hover:bg-muted rounded transition-colors"
-                            onClick={() => setReplyText(prev => prev + emoji)}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-
-            {/* Input Field - Expandable like WhatsApp */}
-            <div className="flex-1 bg-background/50 rounded-2xl px-4 py-2 flex items-end border border-purple-500">
+          <div className="space-y-2">
+            {/* Input Field - Full width, Expandable like WhatsApp */}
+            <div className="bg-background/50 rounded-2xl px-4 py-2 border border-purple-500">
               <Textarea
                 placeholder="Entrez un message"
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
-                className="border-0 p-0 min-h-[24px] max-h-32 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto"
+                className="w-full border-0 p-0 min-h-[24px] max-h-32 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto"
                 rows={1}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
@@ -718,26 +673,78 @@ const Conversation = () => {
               />
             </div>
 
-            {/* Mic/Send button - changes based on text input or media */}
-            <button 
-              className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              onClick={() => {
-                if (replyText.trim() || selectedMedia) {
-                  handleSend();
-                } else {
-                  setShowVoiceRecorder(true);
-                }
-              }}
-              disabled={sending}
-            >
-              {sending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (replyText.trim() || selectedMedia) ? (
-                <Send className="w-5 h-5" />
-              ) : (
-                <Mic className="w-5 h-5" />
-              )}
-            </button>
+            {/* Action buttons row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                {/* Attachment Button */}
+                <button 
+                  className="p-2 text-muted-foreground hover:text-blue-500 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
+
+                {/* Camera Button for video selfie */}
+                <button 
+                  className="p-2 text-muted-foreground hover:text-pink-500 transition-colors"
+                  onClick={() => setShowVideoRecorder(true)}
+                >
+                  <Camera className="w-5 h-5" />
+                </button>
+
+                {/* Emoji Picker */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
+                      <Smile className="w-5 h-5" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-2 max-h-72 overflow-y-auto" side="top" align="start">
+                    <div className="space-y-3">
+                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
+                        <div key={category}>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
+                          <div className="grid grid-cols-8 gap-1">
+                            {emojis.map((emoji, index) => (
+                              <button
+                                key={index}
+                                className="text-xl p-1 hover:bg-muted rounded transition-colors"
+                                onClick={() => setReplyText(prev => prev + emoji)}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Mic button */}
+                <button 
+                  className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                  onClick={() => setShowVoiceRecorder(true)}
+                >
+                  <Mic className="w-5 h-5" />
+                </button>
+
+                {/* Send button */}
+                <button 
+                  className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  onClick={handleSend}
+                  disabled={sending || (!replyText.trim() && !selectedMedia)}
+                >
+                  {sending ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Send className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
