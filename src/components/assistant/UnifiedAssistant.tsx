@@ -639,7 +639,7 @@ const UnifiedAssistant = () => {
           <Sparkles className="h-5 w-5 text-white" />
         </Button>
         <Button
-          onClick={() => navigate("/contacts")}
+          onClick={() => navigate("/contact")}
           className={cn(
             "h-12 w-12 rounded-full shadow-lg",
             "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
