@@ -79,7 +79,7 @@ const Shop = () => {
         });
       }
       
-      if (doorModuleQuantity > 0 && flags.doorOpeningEnabled) {
+      if (doorModuleQuantity > 0 && flags.scheduledAccessEnabled) {
         items.push({
           priceId: doorModulePriceId,
           quantity: doorModuleQuantity,
@@ -180,7 +180,7 @@ const Shop = () => {
             </div>
 
             {/* Door Module - Only show if feature enabled */}
-            {flags.doorOpeningEnabled && (
+            {flags.scheduledAccessEnabled && (
               <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-purple-500">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-purple-500/10">
@@ -317,7 +317,7 @@ const Shop = () => {
               </div>
             )}
             
-            {doorModuleQuantity > 0 && flags.doorOpeningEnabled && (
+            {doorModuleQuantity > 0 && flags.scheduledAccessEnabled && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Boîtier Gâche x{doorModuleQuantity}</span>
                 <span className="font-medium">{doorModuleTotal}€</span>
