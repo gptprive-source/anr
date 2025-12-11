@@ -74,9 +74,9 @@ const HeroSection = () => {
         <div className="grid md:grid-cols-3 gap-6 animate-fade-in" style={{
         animationDelay: "0.5s"
       }}>
-          <FeatureCard icon={<QrCode className="w-6 h-6" />} title="QR Code & NFC" description="Scannez ou approchez votre téléphone pour sonner instantanément" />
-          <FeatureCard icon={<Smartphone className="w-6 h-6" />} title="Vidéo HD" description="Voyez votre visiteur avant de répondre, où que vous soyez" />
-          <FeatureCard icon={<Shield className="w-6 h-6" />} title="Sécurisé" description="Validation GPS et cryptographie avancée pour votre sécurité" />
+          <FeatureCard icon={<QrCode className="w-6 h-6" />} title="QR Code & NFC" description="Scannez ou approchez votre téléphone pour sonner instantanément" color="blue" />
+          <FeatureCard icon={<Smartphone className="w-6 h-6" />} title="Vidéo HD" description="Voyez votre visiteur avant de répondre, où que vous soyez" color="orange" />
+          <FeatureCard icon={<Shield className="w-6 h-6" />} title="Sécurisé" description="Validation GPS et cryptographie avancée pour votre sécurité" color="green" />
         </div>
       </div>
     </section>;
@@ -84,16 +84,32 @@ const HeroSection = () => {
 const FeatureCard = ({
   icon,
   title,
-  description
+  description,
+  color = "blue"
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
-}) => <div className="glass-effect rounded-2xl p-6 card-shadow hover:border-primary/30 transition-colors text-center">
-    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4 mx-auto">
-      {icon}
+  color?: "blue" | "orange" | "green" | "purple" | "cyan" | "rose";
+}) => {
+  const colorClasses = {
+    blue: { border: "border-blue-500", bg: "bg-blue-500/10", text: "text-blue-500" },
+    orange: { border: "border-orange-500", bg: "bg-orange-500/10", text: "text-orange-500" },
+    green: { border: "border-green-500", bg: "bg-green-500/10", text: "text-green-500" },
+    purple: { border: "border-purple-500", bg: "bg-purple-500/10", text: "text-purple-500" },
+    cyan: { border: "border-cyan-500", bg: "bg-cyan-500/10", text: "text-cyan-500" },
+    rose: { border: "border-rose-500", bg: "bg-rose-500/10", text: "text-rose-500" },
+  };
+  const c = colorClasses[color];
+  
+  return (
+    <div className={`glass-effect rounded-2xl p-6 card-shadow transition-colors text-center border ${c.border}`}>
+      <div className={`w-12 h-12 rounded-xl ${c.bg} flex items-center justify-center ${c.text} mb-4 mx-auto`}>
+        {icon}
+      </div>
+      <h3 className="text-lg font-semibold mb-2">{title}</h3>
+      <p className="text-muted-foreground text-sm">{description}</p>
     </div>
-    <h3 className="text-lg font-semibold mb-2">{title}</h3>
-    <p className="text-muted-foreground text-sm">{description}</p>
-  </div>;
+  );
+};
 export default HeroSection;

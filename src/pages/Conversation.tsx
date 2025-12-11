@@ -261,22 +261,22 @@ const Conversation = () => {
 
       {/* Contact Info Expandable */}
       {card && (card.phone || card.email || card.visitor_anr_code) && (
-        <div className="mx-3 mt-3 p-3 bg-card rounded-lg border shadow-sm">
+        <div className="mx-3 mt-3 p-3 bg-card rounded-lg border border-purple-500 shadow-sm">
           <div className="flex flex-wrap gap-3 text-sm">
             {card.phone && (
-              <a href={`tel:${card.phone}`} className="flex items-center gap-1 text-primary hover:underline">
+              <a href={`tel:${card.phone}`} className="flex items-center gap-1 text-blue-500 hover:underline">
                 <Phone className="w-4 h-4" />
                 {card.phone}
               </a>
             )}
             {card.email && (
-              <a href={`mailto:${card.email}`} className="flex items-center gap-1 text-primary hover:underline">
+              <a href={`mailto:${card.email}`} className="flex items-center gap-1 text-orange-500 hover:underline">
                 <Mail className="w-4 h-4" />
                 {card.email}
               </a>
             )}
             {card.visitor_anr_code && (
-              <span className="flex items-center gap-1 text-muted-foreground">
+              <span className="flex items-center gap-1 text-green-500">
                 <MapPin className="w-4 h-4" />
                 ANR: {card.visitor_anr_code}
               </span>
