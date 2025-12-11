@@ -269,7 +269,7 @@ const Messages = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-4">
             {filteredConversations.map((conv, index) => {
               const preview = conv.lastMessage 
                 ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "")
