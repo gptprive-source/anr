@@ -43,7 +43,7 @@ const UnifiedAssistant = () => {
   const location = useLocation();
   const { isOpen: supportIsOpen, setIsOpen: setSupportIsOpen, rgpdRequest, clearRGPDRequest } = useSupportChat();
   
-  const [isOpen, setIsOpen] = useState(() => location.pathname === "/");
+  const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"copilot" | "support">("copilot");
   
   // CoPilot state
@@ -89,14 +89,6 @@ const UnifiedAssistant = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const rgpdProcessedRef = useRef<string | null>(null);
-
-  // Auto-open on homepage
-  useEffect(() => {
-    if (location.pathname === "/") {
-      setIsOpen(true);
-      setActiveTab("copilot");
-    }
-  }, [location.pathname]);
 
   // Sync with SupportChatContext
   useEffect(() => {
