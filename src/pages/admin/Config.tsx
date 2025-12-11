@@ -81,7 +81,7 @@ const Config = () => {
   };
 
   const saveConfigWithStripeSync = async (planId: string, price: number, configKey: string, productType?: string) => {
-    setSyncingStripe(planId);
+    setSyncingStripe(configKey);
     try {
       // First save the config locally
       await updateConfig({ key: configKey, value: price });
@@ -90,9 +90,10 @@ const Config = () => {
       let stripePlanId = planId;
       let stripeProductType = productType;
       
-      // Handle doming and door module prices (they're not plan-specific)
-      if (configKey.endsWith('_doming_price') || configKey === 'doming_price') {
-        stripePlanId = 'doming';
+      // Handle doming prices - they ARE plan-specific (pro_doming, entreprise_doming, etc.)
+      if (configKey.endsWith('_doming_price')) {
+        // Extract plan from configKey: "pro_doming_price" -> "pro_doming"
+        stripePlanId = configKey.replace('_price', '');
         stripeProductType = 'one_time';
       } else if (configKey.endsWith('_door_module_price') || configKey === 'door_module_price') {
         stripePlanId = 'door_module';
@@ -238,7 +239,7 @@ const Config = () => {
               setLocalValue(configKey, storeValue);
             };
 
-            const isSyncingThisPlan = syncingStripe === planId;
+            const isSyncingThis = syncingStripe === configKey;
 
             return (
               <div key={feature.key} className="space-y-2">
@@ -274,9 +275,9 @@ const Config = () => {
                           saveConfig(configKey);
                         }
                       }}
-                      disabled={isUpdating || isSyncingThisPlan}
+                      disabled={isUpdating || isSyncingThis}
                     >
-                      {isSyncingThisPlan ? (
+                      {isSyncingThis ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />
                       ) : (
                         <Save className="w-4 h-4" />

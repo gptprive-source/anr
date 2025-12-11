@@ -15,9 +15,13 @@ const PLAN_PRODUCT_IDS: Record<string, string> = {
   collectivites: "prod_TaQmqPcFg83tyH",
 };
 
-// Product IDs for one-time purchases
+// Product IDs for one-time purchases - separate products per plan for domings
 const PRODUCT_IDS: Record<string, string> = {
   doming: "prod_TaRUttFGQVbh4L",
+  particulier_doming: "prod_TaSKkFa6uuiRN2",
+  pro_doming: "prod_TaSK3u2QeOjkKc",
+  entreprise_doming: "prod_TaSK8fFvBtbupo",
+  collectivites_doming: "prod_TaSKOciTJXE9xm",
   door_module: "prod_TaRk72XZTmH8eD",
 };
 
@@ -117,7 +121,8 @@ serve(async (req) => {
     console.log("[SYNC-STRIPE-PRICE] Created new Stripe price:", newPrice.id);
 
     // Update app_config with new price ID
-    const configKey = isOneTimeProduct ? `${planId}_stripe_price_id` : `${planId}_stripe_price_id`;
+    // For plan-specific domings (e.g., pro_doming), the config key should be pro_doming_stripe_price_id
+    const configKey = `${planId}_stripe_price_id`;
     
     // First, get old price ID for deactivation later
     const { data: existingConfig } = await supabaseClient
