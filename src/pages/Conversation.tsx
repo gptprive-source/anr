@@ -230,68 +230,70 @@ const Conversation = () => {
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-[hsl(30,25%,92%)] pb-20">
-      {/* Header - WhatsApp style */}
-      <div className="sticky top-0 z-10 bg-[hsl(168,76%,36%)] text-white px-2 py-2">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/messages")} className="text-white hover:bg-white/10">
+    <div className="min-h-screen flex flex-col pb-20">
+      {/* Header */}
+      <div className="max-w-2xl mx-auto w-full p-4">
+        <div className="flex items-center gap-3 pt-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           
-          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}`}>
             {isCompany ? (
-              <Building2 className="w-5 h-5" />
+              <Building2 className="w-5 h-5 text-orange-500" />
             ) : (
-              <User className="w-5 h-5" />
+              <User className="w-5 h-5 text-purple-500" />
             )}
           </div>
 
           <div className="flex-1 min-w-0">
             <p className="font-semibold truncate">{displayName}</p>
             {card?.job_title && (
-              <p className="text-xs opacity-80 truncate">{card.job_title}</p>
+              <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
             )}
           </div>
 
           {card && (
-            <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />
+            <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" />
           )}
         </div>
       </div>
 
-      {/* Contact Info Expandable */}
+      {/* Contact Info */}
       {card && (card.phone || card.email || card.visitor_anr_code) && (
-        <div className="mx-3 mt-3 p-3 bg-card rounded-lg border border-purple-500 shadow-sm">
-          <div className="flex flex-wrap gap-3 text-sm">
-            {card.phone && (
-              <a href={`tel:${card.phone}`} className="flex items-center gap-1 text-blue-500 hover:underline">
-                <Phone className="w-4 h-4" />
-                {card.phone}
-              </a>
-            )}
-            {card.email && (
-              <a href={`mailto:${card.email}`} className="flex items-center gap-1 text-orange-500 hover:underline">
-                <Mail className="w-4 h-4" />
-                {card.email}
-              </a>
-            )}
-            {card.visitor_anr_code && (
-              <span className="flex items-center gap-1 text-green-500">
-                <MapPin className="w-4 h-4" />
-                ANR: {card.visitor_anr_code}
-              </span>
-            )}
+        <div className="max-w-2xl mx-auto w-full px-4">
+          <div className="p-3 bg-background/50 rounded-lg border border-purple-500">
+            <div className="flex flex-wrap gap-3 text-sm">
+              {card.phone && (
+                <a href={`tel:${card.phone}`} className="flex items-center gap-1 text-blue-500 hover:underline">
+                  <Phone className="w-4 h-4" />
+                  {card.phone}
+                </a>
+              )}
+              {card.email && (
+                <a href={`mailto:${card.email}`} className="flex items-center gap-1 text-orange-500 hover:underline">
+                  <Mail className="w-4 h-4" />
+                  {card.email}
+                </a>
+              )}
+              {card.visitor_anr_code && (
+                <span className="flex items-center gap-1 text-green-500">
+                  <MapPin className="w-4 h-4" />
+                  ANR: {card.visitor_anr_code}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Messages Area - WhatsApp style background */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-2">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 max-w-2xl mx-auto w-full">
         {messagesWithDateSeparators.map((item, index) => {
           if (item.type === 'separator') {
             return (
               <div key={`sep-${index}`} className="flex justify-center my-3">
-                <span className="bg-white/80 text-muted-foreground text-xs px-3 py-1 rounded-lg shadow-sm">
+                <span className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-lg">
                   {item.data.label}
                 </span>
               </div>
@@ -315,7 +317,7 @@ const Conversation = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="bg-card rounded-xl rounded-tl-sm px-3 py-2 shadow-sm border">
+                    <div className="bg-background/50 rounded-xl rounded-tl-sm px-3 py-2 border border-blue-500">
                       <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
                       <p className="text-xs text-muted-foreground mt-1 text-right">
                         {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
@@ -349,16 +351,16 @@ const Conversation = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-[hsl(142,70%,85%)] rounded-xl rounded-tr-sm px-3 py-2 shadow-sm">
-                      <p className="text-sm whitespace-pre-wrap text-[hsl(142,30%,20%)]">{reply.reply_text}</p>
+                    <div className="bg-green-500/10 rounded-xl rounded-tr-sm px-3 py-2 border border-green-500">
+                      <p className="text-sm whitespace-pre-wrap">{reply.reply_text}</p>
                       <div className="flex items-center justify-end gap-1 mt-1">
-                        <span className="text-xs text-[hsl(142,30%,40%)]">
+                        <span className="text-xs text-muted-foreground">
                           {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                         </span>
                         {reply.is_read ? (
-                          <CheckCheck className="w-4 h-4 text-primary" />
+                          <CheckCheck className="w-4 h-4 text-green-500" />
                         ) : (
-                          <Check className="w-4 h-4 text-[hsl(142,30%,50%)]" />
+                          <Check className="w-4 h-4 text-muted-foreground" />
                         )}
                       </div>
                     </div>
@@ -372,8 +374,8 @@ const Conversation = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - WhatsApp style */}
-      <div className="sticky bottom-20 bg-[hsl(30,15%,88%)] px-2 py-2">
+      {/* Input Area */}
+      <div className="sticky bottom-20 bg-background px-4 py-3 max-w-2xl mx-auto w-full">
         {showVoiceRecorder ? (
           <VoiceRecorder 
             onRecordingComplete={(blob) => setAudioBlob(blob)}
@@ -387,13 +389,13 @@ const Conversation = () => {
           />
         ) : (
           <div className="flex items-center gap-2">
-            {/* Emoji/Chatbot icon */}
+            {/* Emoji icon */}
             <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
               <Smile className="w-6 h-6" />
             </button>
 
             {/* Input Field */}
-            <div className="flex-1 bg-card rounded-full px-4 py-2 flex items-center border shadow-sm">
+            <div className="flex-1 bg-background/50 rounded-full px-4 py-2 flex items-center border border-purple-500">
               <Input
                 placeholder="Entrez un message"
                 value={replyText}
@@ -408,9 +410,9 @@ const Conversation = () => {
               />
             </div>
 
-            {/* Mic button - main action when no text */}
+            {/* Mic/Send button */}
             <button 
-              className="p-3 rounded-full bg-[hsl(168,76%,36%)] text-white hover:bg-[hsl(168,76%,30%)] transition-colors shadow-lg"
+              className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               onClick={() => {
                 if (replyText.trim()) {
                   handleSend();
