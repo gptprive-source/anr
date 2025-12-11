@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate, Link } from "react-router-dom";
@@ -14,6 +14,8 @@ import RGPDRequestDialog from "@/components/account/RGPDRequestDialog";
 import VisitorModeSection from "@/components/account/VisitorModeSection";
 import LeaveHabitationDialog from "@/components/account/LeaveHabitationDialog";
 import GrantedAccessSection from "@/components/resident/GrantedAccessSection";
+import ChangePlanDialog from "@/components/account/ChangePlanDialog";
+import ChangeEmailDialog from "@/components/account/ChangeEmailDialog";
 interface ProfileData {
   first_name: string | null;
   last_name: string | null;
@@ -43,6 +45,8 @@ const Account = () => {
   const [showChangeAddressDialog, setShowChangeAddressDialog] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showRGPDDialog, setShowRGPDDialog] = useState(false);
+  const [showChangePlanDialog, setShowChangePlanDialog] = useState(false);
+  const [showChangeEmailDialog, setShowChangeEmailDialog] = useState(false);
   const navigate = useNavigate();
   const {
     user,
@@ -281,7 +285,7 @@ const Account = () => {
                 </p>
               </div>
 
-              <Button variant="outline" className="w-full gap-2" onClick={handleManageSubscription} disabled={portalLoading}>
+              <Button variant="outline" className="w-full gap-2" onClick={() => setShowChangePlanDialog(true)} disabled={portalLoading}>
                 {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>
                     <ExternalLink className="w-4 h-4" />
                     Gérer mon abonnement
@@ -318,7 +322,10 @@ const Account = () => {
             </div>}
 
           {/* Email section */}
-          <div className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-yellow-500">
+          <div 
+            className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-yellow-500 cursor-pointer hover:bg-yellow-500/5 transition-colors"
+            onClick={() => setShowChangeEmailDialog(true)}
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
                 <Mail className="w-5 h-5 text-yellow-500" />
@@ -328,7 +335,7 @@ const Account = () => {
                 <p className="font-medium">{user?.email}</p>
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            <Pencil className="w-5 h-5 text-yellow-500" />
           </div>
 
           {/* Phone number editable */}
@@ -437,6 +444,10 @@ const Account = () => {
     }} />
 
       <RGPDRequestDialog open={showRGPDDialog} onOpenChange={setShowRGPDDialog} />
+
+      <ChangePlanDialog open={showChangePlanDialog} onOpenChange={setShowChangePlanDialog} />
+
+      <ChangeEmailDialog open={showChangeEmailDialog} onOpenChange={setShowChangeEmailDialog} currentEmail={user?.email} />
 
       <BottomNav />
     </div>;
