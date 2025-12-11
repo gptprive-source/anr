@@ -157,7 +157,7 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
         return (
           <div
             key={call.id}
-            className={`flex items-center justify-between p-3 rounded-xl border-2 ${colorSet.border}`}
+            className={`flex items-center justify-between p-3 rounded-xl border ${colorSet.border}`}
           >
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-full ${colorSet.bg} flex items-center justify-center`}>

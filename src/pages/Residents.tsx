@@ -204,7 +204,7 @@ const Residents = () => {
             return (
               <div
                 key={resident.id}
-                className={`glass-effect rounded-xl p-4 card-shadow border-2 ${colorSet.border}`}
+                className={`bg-background/50 rounded-xl p-4 card-shadow border ${colorSet.border}`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">

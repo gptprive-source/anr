@@ -69,9 +69,9 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
   };
 
   return (
-    <div className="glass-effect rounded-2xl p-4 card-shadow space-y-4 border-2 border-indigo-500">
+    <div className="bg-background/50 rounded-2xl p-4 card-shadow space-y-4 border border-indigo-500">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center border-2 border-indigo-500">
+        <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center">
           <User className="w-5 h-5 text-indigo-500" />
         </div>
         <div className="flex-1">
@@ -81,7 +81,7 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
       </div>
 
       {/* Business Card */}
-      <div className="border-2 border-purple-500 rounded-lg p-3 space-y-2">
+      <div className="border border-purple-500 rounded-lg p-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-purple-500/10 flex items-center justify-center">
@@ -115,7 +115,7 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
       </div>
 
       {/* Custom Templates */}
-      <div className="border-2 border-cyan-500 rounded-lg p-3 space-y-2">
+      <div className="border border-cyan-500 rounded-lg p-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-cyan-500/10 flex items-center justify-center">
