@@ -100,12 +100,12 @@ const Shop = () => {
   const doorModuleTotal = doorModuleQuantity * doorModulePrice;
   const totalAmount = domingTotal + doorModuleTotal;
 
+  // For ANR address, we only need firstName/lastName. For custom, we need full address
   const canCheckout = (domingQuantity > 0 || doorModuleQuantity > 0) && 
     shippingInfo.firstName && 
     shippingInfo.lastName && 
-    shippingInfo.address && 
-    shippingInfo.postalCode && 
-    shippingInfo.city;
+    (addressChoice === "anr" && anrAddress ? true : 
+      (shippingInfo.address && shippingInfo.postalCode && shippingInfo.city));
 
   const handleCheckout = async () => {
     if (!user) {
@@ -333,39 +333,6 @@ const Shop = () => {
                 />
               </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="address">Adresse *</Label>
-              <Input
-                id="address"
-                value={shippingInfo.address}
-                onChange={(e) => setShippingInfo({ ...shippingInfo, address: e.target.value })}
-                placeholder="21 avenue des Champs-Élysées"
-                disabled={addressChoice === "anr" && !!anrAddress}
-                className={addressChoice === "anr" && anrAddress ? "bg-muted" : ""}
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="postalCode">Code postal *</Label>
-                <Input
-                  id="postalCode"
-                  value={shippingInfo.postalCode}
-                  onChange={(e) => setShippingInfo({ ...shippingInfo, postalCode: e.target.value })}
-                  placeholder="75008"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="city">Ville *</Label>
-                <Input
-                  id="city"
-                  value={shippingInfo.city}
-                  onChange={(e) => setShippingInfo({ ...shippingInfo, city: e.target.value })}
-                  placeholder="Paris"
-                />
-              </div>
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="phone">Téléphone (optionnel)</Label>
@@ -377,6 +344,42 @@ const Shop = () => {
                 placeholder="06 12 34 56 78"
               />
             </div>
+            
+            {/* Show address fields only for custom address */}
+            {(addressChoice === "custom" || !anrAddress) && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Adresse *</Label>
+                  <Input
+                    id="address"
+                    value={shippingInfo.address}
+                    onChange={(e) => setShippingInfo({ ...shippingInfo, address: e.target.value })}
+                    placeholder="21 avenue des Champs-Élysées"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="postalCode">Code postal *</Label>
+                    <Input
+                      id="postalCode"
+                      value={shippingInfo.postalCode}
+                      onChange={(e) => setShippingInfo({ ...shippingInfo, postalCode: e.target.value })}
+                      placeholder="75008"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Ville *</Label>
+                    <Input
+                      id="city"
+                      value={shippingInfo.city}
+                      onChange={(e) => setShippingInfo({ ...shippingInfo, city: e.target.value })}
+                      placeholder="Paris"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
