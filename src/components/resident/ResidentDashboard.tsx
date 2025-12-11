@@ -261,7 +261,7 @@ const ResidentDashboard = () => {
         </div>
 
         {/* ANR Card */}
-        <div className="glass-effect rounded-3xl p-6 card-shadow">
+        <div className="glass-effect rounded-3xl p-6 card-shadow border border-primary/50">
           <div className="flex flex-col md:flex-row gap-6 items-center">
             {/* ANR Logo */}
             <div className="w-20 h-20 flex-shrink-0">
@@ -297,17 +297,17 @@ const ResidentDashboard = () => {
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <QuickAction icon={<Users className="w-6 h-6" />} label="Résidents" count={habitationData.residents.length} onClick={() => navigate("/residents")} />
+          <QuickAction icon={<Users className="w-6 h-6" />} label="Résidents" count={habitationData.residents.length} onClick={() => navigate("/residents")} color="blue" />
           {flags.visitorTextMessagesEnabled && (
-            <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" badge={unreadMessagesCount} onClick={() => navigate("/messages")} />
+            <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" badge={unreadMessagesCount} onClick={() => navigate("/messages")} color="purple" />
           )}
-          <QuickAction icon={<History className="w-6 h-6" />} label="Historique" onClick={() => navigate("/call-history")} />
-          <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Notifications"} onClick={toggleMute} active={isMuted} />
-          <QuickAction icon={<HelpCircle className="w-6 h-6" />} label="FAQ" onClick={() => navigate("/faq")} />
+          <QuickAction icon={<History className="w-6 h-6" />} label="Historique" onClick={() => navigate("/call-history")} color="cyan" />
+          <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Notifications"} onClick={toggleMute} active={isMuted} color="orange" />
+          <QuickAction icon={<HelpCircle className="w-6 h-6" />} label="FAQ" onClick={() => navigate("/faq")} color="green" />
           {flags.doorOpeningEnabled && (
-            <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} />
+            <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />
           )}
-          {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} />}
+          {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} color="cyan" />}
         </div>
 
         {/* Test Call Button (DEV) */}
@@ -330,7 +330,8 @@ const QuickAction = ({
   count,
   badge,
   onClick,
-  active
+  active,
+  color = "blue"
 }: {
   icon: React.ReactNode;
   label: string;
@@ -338,8 +339,22 @@ const QuickAction = ({
   badge?: number;
   onClick: () => void;
   active?: boolean;
-}) => <button onClick={onClick} className={`glass-effect rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors relative ${active ? "border-primary bg-primary/5" : "hover:border-primary/30"}`}>
-    <div className={`w-12 h-12 rounded-xl flex items-center justify-center relative ${active ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"}`}>
+  color?: "blue" | "orange" | "green" | "purple" | "cyan" | "rose";
+}) => {
+  const colorClasses = {
+    blue: "border-blue-500/50 bg-blue-500/10 text-blue-500",
+    orange: "border-orange-500/50 bg-orange-500/10 text-orange-500",
+    green: "border-green-500/50 bg-green-500/10 text-green-500",
+    purple: "border-purple-500/50 bg-purple-500/10 text-purple-500",
+    cyan: "border-cyan-500/50 bg-cyan-500/10 text-cyan-500",
+    rose: "border-rose-500/50 bg-rose-500/10 text-rose-500",
+  };
+  const borderClass = colorClasses[color].split(" ")[0];
+  const bgClass = colorClasses[color].split(" ")[1];
+  const textClass = colorClasses[color].split(" ")[2];
+  
+  return <button onClick={onClick} className={`glass-effect rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors relative border ${active ? "border-primary bg-primary/5" : borderClass + " hover:border-primary/50"}`}>
+    <div className={`w-12 h-12 rounded-xl flex items-center justify-center relative ${active ? "bg-primary text-primary-foreground" : bgClass + " " + textClass}`}>
       {icon}
       {badge !== undefined && badge > 0 && (
         <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center px-1">
@@ -350,4 +365,5 @@ const QuickAction = ({
     <span className="text-sm font-medium">{label}</span>
     {count !== undefined && <span className="text-xs text-muted-foreground">{count}</span>}
   </button>;
+};
 export default ResidentDashboard;

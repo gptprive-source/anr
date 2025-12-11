@@ -194,7 +194,7 @@ const FAQ = () => {
                   <AccordionItem
                     key={questionIndex}
                     value={`${sectionIndex}-${questionIndex}`}
-                    className="border border-border rounded-lg px-4 bg-card"
+                    className="border border-blue-500/50 rounded-lg px-4 bg-card"
                   >
                     <AccordionTrigger className="text-left hover:no-underline">
                       {item.q}
@@ -216,7 +216,7 @@ const FAQ = () => {
           )}
 
           {/* Contact section */}
-          <div className="mt-8 p-6 bg-primary/10 rounded-lg text-center">
+          <div className="mt-8 p-6 bg-green-500/10 rounded-lg text-center border border-green-500/50">
             <h3 className="font-semibold mb-2">Vous n'avez pas trouvé votre réponse ?</h3>
             <p className="text-muted-foreground text-sm mb-4">
               Contactez notre support à l'adresse suivante :
