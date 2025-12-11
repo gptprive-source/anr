@@ -356,47 +356,135 @@ const Config = () => {
               </CardContent>
             </Card>
 
-            {/* Stripe Price IDs */}
+            {/* Stripe Price IDs - Récapitulatif complet */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="w-5 h-5" />
-                  Intégration Stripe
+                  Récapitulatif Stripe Price IDs
                 </CardTitle>
                 <CardDescription>
-                  Configurez les Price IDs Stripe pour chaque offre. Créez de nouveaux prix dans le dashboard Stripe puis collez les IDs ici.
+                  Tous les IDs Stripe configurés dans l'application avec les prix associés
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {PLANS.map((plan) => {
-                  const configKey = `${plan.id}_stripe_price_id`;
-                  const value = getValue(configKey) || '';
-                  const PlanIcon = plan.icon;
-                  
-                  return (
-                    <div key={plan.id} className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <PlanIcon className={`w-4 h-4 ${plan.color}`} />
-                        {plan.name} - Stripe Price ID
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={localChanges[configKey] ?? value}
-                          onChange={(e) => setLocalValue(configKey, e.target.value)}
-                          placeholder="price_xxxxxxxxxxxxx"
-                          className="font-mono text-sm"
-                        />
-                        {hasChanges(configKey) && (
-                          <Button size="icon" variant="default" onClick={() => saveConfig(configKey)} disabled={isUpdating}>
-                            <Save className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+              <CardContent className="space-y-6">
+                {/* Abonnements */}
+                <div>
+                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <Key className="w-4 h-4" />
+                    Abonnements (récurrents)
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 font-medium">Plan</th>
+                          <th className="text-left py-2 font-medium">Clé Config</th>
+                          <th className="text-left py-2 font-medium font-mono">Stripe Price ID</th>
+                          <th className="text-right py-2 font-medium">Prix Config</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {PLANS.map((plan) => {
+                          const priceIdKey = `${plan.id}_stripe_price_id`;
+                          const annualPriceKey = `${plan.id}_annual_price`;
+                          const priceId = getValue(priceIdKey) || '-';
+                          const annualPrice = getValue(annualPriceKey) || 0;
+                          const PlanIcon = plan.icon;
+                          return (
+                            <tr key={plan.id} className="border-b border-border/50">
+                              <td className="py-2 flex items-center gap-2">
+                                <PlanIcon className={`w-4 h-4 ${plan.color}`} />
+                                {plan.name}
+                              </td>
+                              <td className="py-2 text-muted-foreground text-xs">{priceIdKey}</td>
+                              <td className="py-2 font-mono text-xs">{priceId}</td>
+                              <td className="py-2 text-right font-medium">{annualPrice}€/an</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Domings par plan */}
+                <div>
+                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    Domings QR/NFC (par plan)
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 font-medium">Plan</th>
+                          <th className="text-left py-2 font-medium">Clé Config</th>
+                          <th className="text-left py-2 font-medium font-mono">Stripe Price ID</th>
+                          <th className="text-right py-2 font-medium">Prix Config</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {PLANS.map((plan) => {
+                          const priceIdKey = `${plan.id}_doming_stripe_price_id`;
+                          const priceKey = `${plan.id}_doming_price`;
+                          const priceId = getValue(priceIdKey) || '-';
+                          const price = getValue(priceKey) || 0;
+                          const PlanIcon = plan.icon;
+                          return (
+                            <tr key={plan.id} className="border-b border-border/50">
+                              <td className="py-2 flex items-center gap-2">
+                                <PlanIcon className={`w-4 h-4 ${plan.color}`} />
+                                Doming {plan.name}
+                              </td>
+                              <td className="py-2 text-muted-foreground text-xs">{priceIdKey}</td>
+                              <td className="py-2 font-mono text-xs">{priceId}</td>
+                              <td className="py-2 text-right font-medium">{price}€</td>
+                            </tr>
+                          );
+                        })}
+                        {/* Doming générique */}
+                        <tr className="border-b border-border/50">
+                          <td className="py-2 text-muted-foreground">Doming (legacy)</td>
+                          <td className="py-2 text-muted-foreground text-xs">doming_stripe_price_id</td>
+                          <td className="py-2 font-mono text-xs">{getValue('doming_stripe_price_id') || '-'}</td>
+                          <td className="py-2 text-right font-medium">{getValue('doming_price') || 0}€</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Modules Porte */}
+                <div>
+                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <DoorOpen className="w-4 h-4" />
+                    Modules Porte
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 font-medium">Produit</th>
+                          <th className="text-left py-2 font-medium">Clé Config</th>
+                          <th className="text-left py-2 font-medium font-mono">Stripe Price ID</th>
+                          <th className="text-right py-2 font-medium">Prix Config</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-border/50">
+                          <td className="py-2">Boîtier Gâche Électrique</td>
+                          <td className="py-2 text-muted-foreground text-xs">door_module_stripe_price_id</td>
+                          <td className="py-2 font-mono text-xs">{getValue('door_module_stripe_price_id') || '-'}</td>
+                          <td className="py-2 text-right font-medium">{getValue('door_module_price') || 0}€</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
                 <p className="text-xs text-muted-foreground mt-4">
-                  💡 Pour créer de nouveaux prix : Dashboard Stripe → Produits → Créer un prix → Copier l'ID (format: price_xxx)
+                  💡 Les prix sont synchronisés automatiquement avec Stripe lorsque vous modifiez les tarifs ci-dessus et cliquez sur Enregistrer.
                 </p>
               </CardContent>
             </Card>
