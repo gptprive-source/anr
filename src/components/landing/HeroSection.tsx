@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Smartphone, QrCode, Shield, LogIn, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import logoAnr from "@/assets/logo-anr.png";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 const HeroSection = () => {
   const navigate = useNavigate();
@@ -31,10 +30,6 @@ const HeroSection = () => {
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
 
       <div className="relative z-10 max-w-5xl mx-auto text-center">
-        {/* Large Logo */}
-        <div className="mb-8 animate-fade-in">
-          <img src={logoAnr} alt="ANR - Adresse Numérique Résidentielle" className="w-32 h-32 md:w-40 md:h-40 mx-auto object-contain drop-shadow-2xl" />
-        </div>
 
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 border border-border mb-6 animate-fade-in" style={{
         animationDelay: "0.1s"
