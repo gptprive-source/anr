@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, Eye, EyeOff } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +15,19 @@ interface ChangeEmailDialogProps {
 
 const ChangeEmailDialog = ({ open, onOpenChange, currentEmail }: ChangeEmailDialogProps) => {
   const [newEmail, setNewEmail] = useState("");
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [showNewEmail, setShowNewEmail] = useState(false);
+  const [showConfirmEmail, setShowConfirmEmail] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleChangeEmail = async () => {
     if (!newEmail.trim()) {
       toast.error("Veuillez entrer un email");
+      return;
+    }
+
+    if (newEmail !== confirmEmail) {
+      toast.error("Les emails ne correspondent pas");
       return;
     }
 
@@ -39,6 +47,7 @@ const ChangeEmailDialog = ({ open, onOpenChange, currentEmail }: ChangeEmailDial
       toast.success("Un email de confirmation a été envoyé à votre nouvelle adresse");
       onOpenChange(false);
       setNewEmail("");
+      setConfirmEmail("");
     } catch (error: any) {
       console.error("Error changing email:", error);
       toast.error(error.message || "Impossible de changer l'email");
@@ -47,8 +56,18 @@ const ChangeEmailDialog = ({ open, onOpenChange, currentEmail }: ChangeEmailDial
     }
   };
 
+  const handleClose = (isOpen: boolean) => {
+    if (!isOpen) {
+      setNewEmail("");
+      setConfirmEmail("");
+      setShowNewEmail(false);
+      setShowConfirmEmail(false);
+    }
+    onOpenChange(isOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Changer d'email</DialogTitle>
@@ -68,21 +87,58 @@ const ChangeEmailDialog = ({ open, onOpenChange, currentEmail }: ChangeEmailDial
 
           <div className="space-y-2">
             <Label htmlFor="newEmail">Nouvel email</Label>
-            <Input
-              id="newEmail"
-              type="email"
-              placeholder="nouveau@email.com"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-            />
+            <div className="relative">
+              <Input
+                id="newEmail"
+                type={showNewEmail ? "text" : "email"}
+                placeholder="nouveau@email.com"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewEmail(!showNewEmail)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showNewEmail ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirmEmail">Confirmer le nouvel email</Label>
+            <div className="relative">
+              <Input
+                id="confirmEmail"
+                type={showConfirmEmail ? "text" : "email"}
+                placeholder="nouveau@email.com"
+                value={confirmEmail}
+                onChange={(e) => setConfirmEmail(e.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmEmail(!showConfirmEmail)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showConfirmEmail ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {confirmEmail && newEmail !== confirmEmail && (
+              <p className="text-xs text-destructive">Les emails ne correspondent pas</p>
+            )}
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleClose(false)}>
             Annuler
           </Button>
-          <Button onClick={handleChangeEmail} disabled={loading || !newEmail.trim()}>
+          <Button 
+            onClick={handleChangeEmail} 
+            disabled={loading || !newEmail.trim() || newEmail !== confirmEmail}
+          >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (

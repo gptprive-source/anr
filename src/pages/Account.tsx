@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, Save, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText, Pencil } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -16,6 +15,7 @@ import LeaveHabitationDialog from "@/components/account/LeaveHabitationDialog";
 import GrantedAccessSection from "@/components/resident/GrantedAccessSection";
 import ChangePlanDialog from "@/components/account/ChangePlanDialog";
 import ChangeEmailDialog from "@/components/account/ChangeEmailDialog";
+import ChangePhoneDialog from "@/components/account/ChangePhoneDialog";
 interface ProfileData {
   first_name: string | null;
   last_name: string | null;
@@ -34,8 +34,6 @@ interface HabitationData {
 }
 const Account = () => {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [portalLoading, setPortalLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
@@ -47,6 +45,7 @@ const Account = () => {
   const [showRGPDDialog, setShowRGPDDialog] = useState(false);
   const [showChangePlanDialog, setShowChangePlanDialog] = useState(false);
   const [showChangeEmailDialog, setShowChangeEmailDialog] = useState(false);
+  const [showChangePhoneDialog, setShowChangePhoneDialog] = useState(false);
   const navigate = useNavigate();
   const {
     user,
@@ -106,54 +105,6 @@ const Account = () => {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
-    }
-  };
-  const handleSavePhone = async () => {
-    if (!user) return;
-    setSaving(true);
-    try {
-      const {
-        error
-      } = await supabase.from("profiles").update({
-        phone_number: phoneNumber.trim() || null
-      }).eq("id", user.id);
-      if (error) throw error;
-      toast({
-        title: "Numéro enregistré",
-        description: "Votre numéro de téléphone a été mis à jour"
-      });
-    } catch (error: any) {
-      console.error("Error saving phone:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder le numéro",
-        variant: "destructive"
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-  const handleManageSubscription = async () => {
-    setPortalLoading(true);
-    try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke("customer-portal");
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      }
-    } catch (error: any) {
-      console.error("Error opening portal:", error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'ouvrir le portail de gestion",
-        variant: "destructive"
-      });
-    } finally {
-      setPortalLoading(false);
     }
   };
   const handleSignOut = async () => {
@@ -285,11 +236,9 @@ const Account = () => {
                 </p>
               </div>
 
-              <Button variant="outline" className="w-full gap-2" onClick={() => setShowChangePlanDialog(true)} disabled={portalLoading}>
-                {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>
-                    <ExternalLink className="w-4 h-4" />
-                    Gérer mon abonnement
-                  </>}
+              <Button variant="outline" className="w-full gap-2" onClick={() => setShowChangePlanDialog(true)}>
+                <ExternalLink className="w-4 h-4" />
+                Gérer mon abonnement
               </Button>
             </div>}
 
@@ -338,35 +287,36 @@ const Account = () => {
             <Pencil className="w-5 h-5 text-yellow-500" />
           </div>
 
-          {/* Phone number editable */}
-          <div className="bg-background/50 rounded-xl p-4 border border-cyan-500">
-            <div className="flex items-center gap-3 mb-3">
+          {/* Phone number section */}
+          <div 
+            className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-cyan-500 cursor-pointer hover:bg-cyan-500/5 transition-colors"
+            onClick={() => setShowChangePhoneDialog(true)}
+          >
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center">
                 <Phone className="w-5 h-5 text-cyan-500" />
               </div>
-              <p className="text-sm text-muted-foreground">Numéro de téléphone</p>
+              <div>
+                <p className="text-sm text-muted-foreground">Numéro de téléphone</p>
+                <p className="font-medium">{phoneNumber || "Non renseigné"}</p>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Input type="tel" placeholder="Ex: +33 6 12 34 56 78" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="flex-1" />
-              <Button onClick={handleSavePhone} disabled={saving} size="icon">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              </Button>
-            </div>
+            <Pencil className="w-5 h-5 text-cyan-500" />
           </div>
 
           {/* Admin link */}
           {isAdmin && <Link to="/admin" className="block">
-              <div className="glass-effect rounded-xl p-4 flex items-center justify-between bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors h-full">
+              <div className="glass-effect rounded-xl p-4 flex items-center justify-between bg-blue-500/5 border-2 border-blue-500 hover:bg-blue-500/10 transition-colors h-full">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-primary" />
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-blue-500" />
                   </div>
                   <div>
-                    <p className="font-medium text-primary">Panel Admin</p>
+                    <p className="font-medium text-blue-500">Panel Admin</p>
                     <p className="text-xs text-muted-foreground">Accéder à l'administration</p>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-primary" />
+                <ChevronRight className="w-5 h-5 text-blue-500" />
               </div>
             </Link>}
 
@@ -448,6 +398,8 @@ const Account = () => {
       <ChangePlanDialog open={showChangePlanDialog} onOpenChange={setShowChangePlanDialog} />
 
       <ChangeEmailDialog open={showChangeEmailDialog} onOpenChange={setShowChangeEmailDialog} currentEmail={user?.email} />
+
+      <ChangePhoneDialog open={showChangePhoneDialog} onOpenChange={setShowChangePhoneDialog} currentPhone={phoneNumber} onPhoneChanged={fetchData} />
 
       <BottomNav />
     </div>;
