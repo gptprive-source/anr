@@ -159,7 +159,7 @@ const Contact = () => {
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-3">
-              <X onClick={() => navigate(-1)} className="w-6 h-6 text-orange-500 cursor-pointer mr-0 pr-[7px]" />
+              <X onClick={() => window.history.back()} className="w-6 h-6 text-orange-500 cursor-pointer mr-0 pr-[7px]" />
               <h1 className="text-3xl font-bold">Contactez-nous</h1>
             </div>
             <p className="text-muted-foreground mt-2">
