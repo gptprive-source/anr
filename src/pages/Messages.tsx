@@ -174,42 +174,53 @@ const Messages = () => {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="max-w-2xl mx-auto p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center gap-3 pt-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="font-bold text-xl flex items-center gap-2">
-              <MessageSquare className="w-6 h-6 text-primary" />
-              Messages
-            </h1>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-pink-500 text-white p-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} className="text-white hover:bg-white/20">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="flex-1">
+              <h1 className="font-bold text-xl flex items-center gap-2">
+                <MessageSquare className="w-6 h-6" />
+                Messages
+              </h1>
+            </div>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto p-4 space-y-4">
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <Card className="p-3 text-center">
-            <div className="flex items-center justify-center gap-2 text-muted-foreground mb-1">
-              <Inbox className="w-4 h-4" />
-              <span className="text-xs">Conversations</span>
+          <Card className="p-3 text-center border border-blue-500/50">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <Inbox className="w-4 h-4 text-blue-500" />
+              </div>
             </div>
             <p className="text-2xl font-bold">{totalConversations}</p>
+            <span className="text-xs text-muted-foreground">Conversations</span>
           </Card>
-          <Card className="p-3 text-center">
-            <div className="flex items-center justify-center gap-2 text-destructive mb-1">
-              <MailClosed className="w-4 h-4" />
-              <span className="text-xs">Non lus</span>
+          <Card className="p-3 text-center border border-red-500/50">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
+                <MailClosed className="w-4 h-4 text-red-500" />
+              </div>
             </div>
-            <p className="text-2xl font-bold text-destructive">{unreadCount}</p>
+            <p className="text-2xl font-bold text-red-500">{unreadCount}</p>
+            <span className="text-xs text-muted-foreground">Non lus</span>
           </Card>
-          <Card className="p-3 text-center">
-            <div className="flex items-center justify-center gap-2 text-success mb-1">
-              <MailOpen className="w-4 h-4" />
-              <span className="text-xs">Total msgs</span>
+          <Card className="p-3 text-center border border-green-500/50">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                <MailOpen className="w-4 h-4 text-green-500" />
+              </div>
             </div>
-            <p className="text-2xl font-bold text-success">{totalMessages}</p>
+            <p className="text-2xl font-bold text-green-500">{totalMessages}</p>
+            <span className="text-xs text-muted-foreground">Total msgs</span>
           </Card>
         </div>
 
@@ -272,17 +283,17 @@ const Messages = () => {
               return (
                 <Card
                   key={conv.visitorId}
-                  className={`cursor-pointer transition-all hover:bg-accent/50 ${conv.unreadCount > 0 ? "border-primary/50 bg-primary/5" : ""}`}
+                  className={`cursor-pointer transition-all hover:bg-accent/50 ${conv.unreadCount > 0 ? "border-primary bg-primary/5" : "border-purple-500/50"}`}
                   onClick={() => navigate(`/conversation/${conv.visitorId}`)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
                       {/* Avatar */}
-                      <div className={`p-2 rounded-full flex-shrink-0 ${conv.unreadCount > 0 ? "bg-primary/20" : "bg-muted"}`}>
+                      <div className={`p-2 rounded-full flex-shrink-0 ${conv.isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}`}>
                         {conv.isCompany ? (
-                          <Building2 className={`w-5 h-5 ${conv.unreadCount > 0 ? "text-primary" : "text-muted-foreground"}`} />
+                          <Building2 className="w-5 h-5 text-orange-500" />
                         ) : (
-                          <User className={`w-5 h-5 ${conv.unreadCount > 0 ? "text-primary" : "text-muted-foreground"}`} />
+                          <User className="w-5 h-5 text-purple-500" />
                         )}
                       </div>
 

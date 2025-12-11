@@ -151,11 +151,11 @@ const Login = () => {
       <>
         <div className="min-h-screen flex items-center justify-center p-4 pb-20">
           <div className="w-full max-w-md">
-            <div className="glass-effect rounded-3xl p-8 card-shadow">
+            <div className="glass-effect rounded-3xl p-8 card-shadow border border-purple-500/50">
               <div className="space-y-6">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <Lock className="w-8 h-8 text-primary" />
+                  <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mx-auto mb-4">
+                    <Lock className="w-8 h-8 text-purple-500" />
                   </div>
                   <h2 className="text-2xl font-bold mb-2">Mot de passe oublié</h2>
                   <p className="text-muted-foreground">
@@ -208,11 +208,11 @@ const Login = () => {
     <>
       <div className="min-h-screen flex items-center justify-center p-4 pb-20">
         <div className="w-full max-w-md">
-          <div className="glass-effect rounded-3xl p-8 card-shadow">
+          <div className="glass-effect rounded-3xl p-8 card-shadow border border-blue-500/50">
             <div className="space-y-6">
               <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-primary" />
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
+                  <Mail className="w-8 h-8 text-blue-500" />
                 </div>
                 <h2 className="text-2xl font-bold mb-2">Connexion</h2>
                 <p className="text-muted-foreground">

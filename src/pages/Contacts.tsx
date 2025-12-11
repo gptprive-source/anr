@@ -117,12 +117,12 @@ const Contacts = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <div className="bg-primary text-primary-foreground p-6">
+      <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Users className="w-6 h-6" />
           Mes contacts ANR
         </h1>
-        <p className="text-primary-foreground/80 text-sm mt-1">
+        <p className="text-white/80 text-sm mt-1">
           {contacts.length} contact{contacts.length !== 1 ? "s" : ""} enregistré{contacts.length !== 1 ? "s" : ""}
         </p>
       </div>
@@ -176,7 +176,7 @@ const Contacts = () => {
 
         {/* Contacts List */}
         {filteredContacts.length === 0 ? (
-          <Card className="p-8 text-center">
+          <Card className="p-8 text-center border border-gray-300/50">
             <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
               {searchQuery || filter !== "all"
@@ -190,17 +190,17 @@ const Contacts = () => {
         ) : (
           <div className="space-y-3">
             {filteredContacts.map((contact) => (
-              <Card key={contact.id} className="p-4">
+              <Card key={contact.id} className={`p-4 ${contact.contact_type === "company" ? "border-orange-500/50" : "border-blue-500/50"}`}>
                 <div className="flex items-start gap-3">
                   {/* Avatar */}
                   <button
                     onClick={() => handleToggleFavorite(contact)}
-                    className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors relative"
+                    className={`p-2 rounded-full transition-colors relative ${contact.contact_type === "company" ? "bg-orange-500/10 hover:bg-orange-500/20" : "bg-blue-500/10 hover:bg-blue-500/20"}`}
                   >
                     {contact.contact_type === "company" ? (
-                      <Building2 className="w-5 h-5 text-primary" />
+                      <Building2 className="w-5 h-5 text-orange-500" />
                     ) : (
-                      <User className="w-5 h-5 text-primary" />
+                      <User className="w-5 h-5 text-blue-500" />
                     )}
                     {contact.is_favorite && (
                       <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 absolute -top-1 -right-1" />
