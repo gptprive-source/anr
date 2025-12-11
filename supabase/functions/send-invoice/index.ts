@@ -33,6 +33,14 @@ interface InvoiceRequest {
   orderId?: string;
 }
 
+interface CompanyInfo {
+  name: string;
+  siret: string;
+  tva: string;
+  address: string;
+  email: string;
+}
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[SEND-INVOICE] ${step}${detailsStr}`);
@@ -51,7 +59,8 @@ const generateInvoiceHtml = (
   paymentMethod: string,
   billingAddress: string | undefined,
   shippingAddress: string | undefined,
-  orderType: string
+  orderType: string,
+  companyInfo: CompanyInfo
 ) => {
   const orderTypeLabels: Record<string, string> = {
     subscription: "Abonnement ANR",
@@ -132,7 +141,7 @@ const generateInvoiceHtml = (
       <div style="background: #f8fafc; border-radius: 8px; padding: 15px;">
         <table style="width: 100%;">
           <tr>
-            <td style="padding: 5px 0; color: #666;">Sous-total</td>
+            <td style="padding: 5px 0; color: #666;">Sous-total HT</td>
             <td style="padding: 5px 0; text-align: right; color: #333;">${subtotal.toFixed(2)} €</td>
           </tr>
           <tr>
@@ -161,15 +170,16 @@ const generateInvoiceHtml = (
       </div>
       
       <p style="font-size: 14px; color: #666; margin-top: 30px; text-align: center;">
-        Des questions ? Contactez-nous à <a href="mailto:contact@soqotomobil.com" style="color: #0ea5e9;">contact@soqotomobil.com</a>
+        Des questions ? Contactez-nous à <a href="mailto:${companyInfo.email}" style="color: #0ea5e9;">${companyInfo.email}</a>
       </p>
     </div>
     
     <!-- Footer -->
     <div style="text-align: center; margin-top: 20px; padding: 20px;">
       <p style="font-size: 12px; color: #999; margin: 0;">
-        ANR - Adresse Numérique Résidentielle<br>
-        SIRET: 123 456 789 00000 | TVA: FR12345678900<br>
+        ${companyInfo.name}<br>
+        ${companyInfo.address}<br>
+        SIRET: ${companyInfo.siret} | TVA: ${companyInfo.tva}<br>
         Cet email fait office de facture pour votre commande.
       </p>
     </div>
@@ -177,6 +187,28 @@ const generateInvoiceHtml = (
 </body>
 </html>
   `;
+};
+
+// Helper to fetch company info from app_config
+const fetchCompanyInfo = async (supabase: any): Promise<CompanyInfo> => {
+  const keys = ['invoice_company_name', 'invoice_siret', 'invoice_tva', 'invoice_address', 'invoice_contact_email'];
+  const { data: configs } = await supabase
+    .from('app_config')
+    .select('key, value')
+    .in('key', keys);
+  
+  const configMap: Record<string, string> = {};
+  configs?.forEach((c: any) => {
+    configMap[c.key] = typeof c.value === 'string' ? c.value : String(c.value);
+  });
+  
+  return {
+    name: configMap['invoice_company_name'] || 'ANR - Adresse Numérique Résidentielle',
+    siret: configMap['invoice_siret'] || '123 456 789 00000',
+    tva: configMap['invoice_tva'] || 'FR12345678900',
+    address: configMap['invoice_address'] || '1 rue de l\'Innovation, 75001 Paris',
+    email: configMap['invoice_contact_email'] || 'contact@soqotomobil.com',
+  };
 };
 
 serve(async (req) => {
@@ -189,13 +221,17 @@ serve(async (req) => {
 
     const requestData: InvoiceRequest = await req.json();
     
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Fetch company info from app_config
+    const companyInfo = await fetchCompanyInfo(supabase);
+    logStep("Company info fetched", companyInfo);
+    
     // Check if this is a view-only request to fetch order details
     if (requestData.viewOnly && requestData.orderId) {
       logStep("View-only mode for order", { orderId: requestData.orderId, orderType: requestData.orderType });
-      
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
       
       let invoiceData: {
         email: string;
@@ -225,7 +261,7 @@ serve(async (req) => {
           throw new Error('Subscription not found');
         }
         
-        logStep("Subscription found", { subId: sub.id, userId: sub.user_id });
+        logStep("Subscription found", { subId: sub.id, userId: sub.user_id, planType: sub.plan_type });
         
         // Fetch user profile
         const { data: profile } = await supabase
@@ -243,20 +279,38 @@ serve(async (req) => {
         
         const createdDate = new Date(sub.created_at);
         
-        // Fetch plan price from app_config
+        // Fetch plan price from app_config - use the actual plan type
+        const planType = sub.plan_type || 'particulier';
+        const priceKey = planType === 'particulier' ? 'particulier_plan_price' : `${planType}_plan_price`;
+        
         const { data: priceConfig } = await supabase
           .from('app_config')
           .select('value')
-          .eq('key', `${sub.plan_type}_plan_price`)
+          .eq('key', priceKey)
           .single();
         
-        const planPrice = priceConfig?.value as number || 12;
+        // Default prices per plan
+        const defaultPrices: Record<string, number> = {
+          particulier: 12,
+          pro: 29,
+          entreprise: 99,
+          collectivites: 199
+        };
+        
+        const planPrice = (priceConfig?.value as number) || defaultPrices[planType] || 12;
+        
+        // For monthly plans, show annual amount
+        const annualPrice = planType === 'particulier' ? planPrice : planPrice * 12;
+        const displayPeriod = planType === 'particulier' ? '12 mois' : '12 mois';
+        
         const planLabels: Record<string, string> = {
           particulier: "Particulier",
           pro: "Professionnel", 
           entreprise: "Entreprise",
           collectivites: "Collectivités"
         };
+        
+        logStep("Plan pricing", { planType, priceKey, planPrice, annualPrice });
         
         invoiceData = {
           email: user?.email || '',
@@ -265,14 +319,14 @@ serve(async (req) => {
           invoiceNumber: `ANR-SUB-${sub.id.substring(0, 8).toUpperCase()}`,
           invoiceDate: createdDate.toLocaleDateString('fr-FR'),
           items: [{
-            description: `Abonnement ANR ${planLabels[sub.plan_type] || sub.plan_type} (12 mois)`,
+            description: `Abonnement ANR ${planLabels[planType] || planType} (${displayPeriod})`,
             quantity: 1,
-            unitPrice: planPrice,
-            total: planPrice
+            unitPrice: annualPrice,
+            total: annualPrice
           }],
-          subtotal: planPrice / 1.2,
-          tax: planPrice - (planPrice / 1.2),
-          total: planPrice,
+          subtotal: annualPrice / 1.2,
+          tax: annualPrice - (annualPrice / 1.2),
+          total: annualPrice,
           paymentMethod: 'Carte bancaire (Stripe)',
           orderType: 'subscription'
         };
@@ -300,6 +354,10 @@ serve(async (req) => {
         
         const createdDate = new Date(order.created_at);
         
+        // Convert cents to euros for display
+        const unitPriceEuros = order.is_free ? 0 : order.unit_price / 100;
+        const totalPriceEuros = order.total_price / 100;
+        
         invoiceData = {
           email: user?.email || '',
           firstName: profile?.first_name || '',
@@ -309,12 +367,12 @@ serve(async (req) => {
           items: [{
             description: `Doming QR/NFC${order.is_free ? ' (Gratuit)' : ''}`,
             quantity: order.quantity,
-            unitPrice: order.is_free ? 0 : order.unit_price,
-            total: order.total_price
+            unitPrice: unitPriceEuros,
+            total: totalPriceEuros
           }],
-          subtotal: order.total_price / 1.2,
-          tax: order.total_price - (order.total_price / 1.2),
-          total: order.total_price,
+          subtotal: totalPriceEuros / 1.2,
+          tax: totalPriceEuros - (totalPriceEuros / 1.2),
+          total: totalPriceEuros,
           paymentMethod: order.is_free ? 'Gratuit (inclus)' : 'Carte bancaire (Stripe)',
           shippingAddress: order.shipping_address || undefined,
           orderType: 'doming'
@@ -334,7 +392,8 @@ serve(async (req) => {
         invoiceData.paymentMethod,
         undefined,
         invoiceData.shippingAddress,
-        invoiceData.orderType
+        invoiceData.orderType,
+        companyInfo
       );
       
       return new Response(JSON.stringify({ success: true, invoiceHtml }), {
@@ -400,7 +459,8 @@ serve(async (req) => {
       paymentMethod || 'Carte bancaire',
       billingAddress,
       shippingAddress,
-      orderType || 'shop'
+      orderType || 'shop',
+      companyInfo
     );
 
     await client.send({
