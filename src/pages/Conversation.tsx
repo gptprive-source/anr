@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -243,10 +243,13 @@ const Conversation = () => {
     fetchVisitorMessages();
   }, [visitorId, user]);
 
-  // Scroll to bottom when new messages arrive
+  // Scroll to bottom when new messages arrive or on initial load
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [visitorMessages, replies]);
+    // Use setTimeout to ensure DOM is updated before scrolling
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  }, [visitorMessages, replies, loading]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -689,18 +692,28 @@ const Conversation = () => {
               </PopoverContent>
             </Popover>
 
-            {/* Input Field */}
-            <div className="flex-1 bg-background/50 rounded-full px-4 py-2 flex items-center border border-purple-500">
-              <Input
+            {/* Input Field - Expandable like WhatsApp */}
+            <div className="flex-1 bg-background/50 rounded-2xl px-4 py-2 flex items-end border border-purple-500">
+              <Textarea
                 placeholder="Entrez un message"
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
-                className="border-0 p-0 h-auto bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="border-0 p-0 min-h-[24px] max-h-32 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto"
+                rows={1}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
                     e.preventDefault();
                     handleSend();
                   }
+                }}
+                style={{
+                  height: 'auto',
+                  minHeight: '24px',
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = Math.min(target.scrollHeight, 128) + 'px';
                 }}
               />
             </div>
