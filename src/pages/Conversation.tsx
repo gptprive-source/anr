@@ -231,31 +231,33 @@ const Conversation = () => {
 
   return (
     <div className="min-h-screen flex flex-col pb-20">
-      {/* Header */}
-      <div className="max-w-2xl mx-auto w-full p-4">
-        <div className="flex items-center gap-3 pt-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}`}>
-            {isCompany ? (
-              <Building2 className="w-5 h-5 text-orange-500" />
-            ) : (
-              <User className="w-5 h-5 text-purple-500" />
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-background border-b">
+        <div className="max-w-2xl mx-auto w-full p-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}`}>
+              {isCompany ? (
+                <Building2 className="w-5 h-5 text-orange-500" />
+              ) : (
+                <User className="w-5 h-5 text-purple-500" />
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold truncate">{displayName}</p>
+              {card?.job_title && (
+                <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
+              )}
+            </div>
+
+            {card && (
+              <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" />
             )}
           </div>
-
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold truncate">{displayName}</p>
-            {card?.job_title && (
-              <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
-            )}
-          </div>
-
-          {card && (
-            <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" />
-          )}
         </div>
       </div>
 
