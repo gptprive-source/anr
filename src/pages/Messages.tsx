@@ -287,7 +287,7 @@ const Messages = () => {
               return (
                 <Card
                   key={conv.visitorId}
-                  className={`cursor-pointer transition-all hover:bg-accent/50 border ${conv.unreadCount > 0 ? "border-primary bg-primary/5" : borderColor}`}
+                  className={`cursor-pointer transition-all hover:bg-accent/50 border-2 ${conv.unreadCount > 0 ? "border-primary bg-primary/5" : borderColor}`}
                   onClick={() => navigate(`/conversation/${conv.visitorId}`)}
                 >
                   <CardContent className="p-4">
@@ -304,10 +304,10 @@ const Messages = () => {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <p className={`font-medium truncate ${conv.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                          <p className="font-medium truncate text-foreground">
                             {conv.displayName}
                           </p>
-                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                          <span className="text-xs text-foreground/70 flex-shrink-0">
                             {formatDistanceToNow(conv.lastMessageDate, {
                               addSuffix: false,
                               locale: fr,
@@ -316,7 +316,7 @@ const Messages = () => {
                         </div>
                         
                         <div className="flex items-center gap-2 mt-1">
-                          <p className={`text-sm truncate ${conv.unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                          <p className="text-sm truncate text-foreground/80">
                             {conv.hasReply && (
                               <span className="text-primary mr-1">↩</span>
                             )}

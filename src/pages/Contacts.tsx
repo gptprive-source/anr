@@ -145,45 +145,52 @@ const Contacts = () => {
             variant={filter === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("all")}
+            className={filter !== "all" ? "border-2 border-blue-500" : ""}
           >
+            <Users className="w-4 h-4 mr-1" />
             Tous
           </Button>
           <Button
             variant={filter === "favorites" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("favorites")}
+            className={filter !== "favorites" ? "border-2 border-yellow-500" : ""}
           >
-            <Star className="w-4 h-4 mr-1" />
+            <Star className="w-4 h-4 mr-1 text-yellow-500" />
             Favoris
           </Button>
           <Button
             variant={filter === "companies" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("companies")}
+            className={filter !== "companies" ? "border-2 border-orange-500" : ""}
           >
-            <Building2 className="w-4 h-4 mr-1" />
+            <Building2 className="w-4 h-4 mr-1 text-orange-500" />
             Entreprises
           </Button>
           <Button
             variant={filter === "individuals" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("individuals")}
+            className={filter !== "individuals" ? "border-2 border-purple-500" : ""}
           >
-            <User className="w-4 h-4 mr-1" />
+            <User className="w-4 h-4 mr-1 text-purple-500" />
             Particuliers
           </Button>
         </div>
 
         {/* Contacts List */}
         {filteredContacts.length === 0 ? (
-          <Card className="p-8 text-center border border-gray-400">
-            <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
+          <Card className="p-8 text-center border-2 border-blue-500">
+            <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
+              <Users className="w-8 h-8 text-blue-500" />
+            </div>
+            <p className="text-foreground font-medium">
               {searchQuery || filter !== "all"
                 ? "Aucun contact trouvé"
                 : "Aucun contact enregistré"}
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-foreground/70 mt-1">
               Ajoutez des contacts depuis vos messages visiteurs
             </p>
           </Card>
@@ -194,7 +201,7 @@ const Contacts = () => {
               const colorCycle = ["border-blue-500", "border-orange-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
               const borderColor = colorCycle[index % colorCycle.length];
               return (
-              <Card key={contact.id} className={`p-4 border ${borderColor}`}>
+              <Card key={contact.id} className={`p-4 border-2 ${borderColor}`}>
                 <div className="flex items-start gap-3">
                   {/* Avatar */}
                   <button

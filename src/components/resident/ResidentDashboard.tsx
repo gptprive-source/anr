@@ -353,7 +353,7 @@ const QuickAction = ({
   const bgClass = colorClasses[color].split(" ")[1];
   const textClass = colorClasses[color].split(" ")[2];
   
-  return <button onClick={onClick} className={`glass-effect rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors relative border ${active ? "border-primary bg-primary/5" : borderClass + " hover:border-primary"}`}>
+  return <button onClick={onClick} className={`glass-effect rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors relative border-2 ${active ? "border-primary bg-primary/5" : borderClass + " hover:border-primary"}`}>
     <div className={`w-12 h-12 rounded-xl flex items-center justify-center relative ${active ? "bg-primary text-primary-foreground" : bgClass + " " + textClass}`}>
       {icon}
       {badge !== undefined && badge > 0 && (
