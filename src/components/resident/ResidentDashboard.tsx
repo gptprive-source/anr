@@ -45,12 +45,20 @@ const ResidentDashboard = () => {
   const [togglingMute, setTogglingMute] = useState(false);
   const [currentUserName, setCurrentUserName] = useState("");
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const { flags } = useFeatureFlags();
-  
+  const {
+    user
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    flags
+  } = useFeatureFlags();
+
   // Get unread messages count for the badge
-  const { unreadCount: unreadMessagesCount } = useVisitorMessages(habitationData?.id || "");
+  const {
+    unreadCount: unreadMessagesCount
+  } = useVisitorMessages(habitationData?.id || "");
   useEffect(() => {
     if (user) {
       fetchHabitationData();
@@ -298,16 +306,12 @@ const ResidentDashboard = () => {
         {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <QuickAction icon={<Users className="w-6 h-6" />} label="Résidents" count={habitationData.residents.length} onClick={() => navigate("/residents")} color="blue" />
-          {flags.visitorTextMessagesEnabled && (
-            <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" badge={unreadMessagesCount} onClick={() => navigate("/messages")} color="purple" />
-          )}
+          {flags.visitorTextMessagesEnabled && <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" badge={unreadMessagesCount} onClick={() => navigate("/messages")} color="purple" />}
           <QuickAction icon={<History className="w-6 h-6" />} label="Historique" onClick={() => navigate("/call-history")} color="yellow" />
           <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Notifications"} onClick={toggleMute} active={isMuted} color="orange" />
           <QuickAction icon={<HelpCircle className="w-6 h-6" />} label="FAQ" onClick={() => navigate("/faq")} color="cyan" />
-          {flags.doorOpeningEnabled && (
-            <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />
-          )}
-          {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} color="cyan" />}
+          {flags.doorOpeningEnabled && <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />}
+          {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} color="cyan" className="border border-solid border-[#00ff04]" />}
         </div>
 
         {/* Test Call Button (DEV) */}
@@ -348,20 +352,17 @@ const QuickAction = ({
     green: "border-green-500 bg-green-500/10 text-green-500",
     purple: "border-purple-500 bg-purple-500/10 text-purple-500",
     cyan: "border-cyan-500 bg-cyan-500/10 text-cyan-500",
-    rose: "border-rose-500 bg-rose-500/10 text-rose-500",
+    rose: "border-rose-500 bg-rose-500/10 text-rose-500"
   };
   const borderClass = colorClasses[color].split(" ")[0];
   const bgClass = colorClasses[color].split(" ")[1];
   const textClass = colorClasses[color].split(" ")[2];
-  
   return <button onClick={onClick} className={`bg-background/50 rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors relative border ${active ? "border-primary bg-primary/5" : borderClass + " hover:bg-muted/50"}`}>
     <div className={`w-12 h-12 rounded-xl flex items-center justify-center relative ${active ? "bg-primary text-primary-foreground" : bgClass + " " + textClass}`}>
       {icon}
-      {badge !== undefined && badge > 0 && (
-        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center px-1">
+      {badge !== undefined && badge > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center px-1">
           {badge > 99 ? "99+" : badge}
-        </span>
-      )}
+        </span>}
     </div>
     <span className="text-sm font-medium">{label}</span>
     {count !== undefined && <span className="text-xs text-muted-foreground">{count}</span>}
