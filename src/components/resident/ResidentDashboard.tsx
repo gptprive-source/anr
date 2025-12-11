@@ -261,7 +261,7 @@ const ResidentDashboard = () => {
         </div>
 
         {/* ANR Card */}
-        <div className="glass-effect rounded-3xl p-6 card-shadow border-2 border-primary">
+        <div className="glass-effect rounded-3xl p-6 card-shadow border border-primary">
           <div className="flex flex-col md:flex-row gap-6 items-center">
             {/* ANR Logo */}
             <div className="w-20 h-20 flex-shrink-0">
@@ -353,7 +353,7 @@ const QuickAction = ({
   const bgClass = colorClasses[color].split(" ")[1];
   const textClass = colorClasses[color].split(" ")[2];
   
-  return <button onClick={onClick} className={`glass-effect rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors relative border-2 ${active ? "border-primary bg-primary/5" : borderClass + " hover:border-primary"}`}>
+  return <button onClick={onClick} className={`glass-effect rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors relative border ${active ? "border-primary bg-primary/5" : borderClass + " hover:border-primary"}`}>
     <div className={`w-12 h-12 rounded-xl flex items-center justify-center relative ${active ? "bg-primary text-primary-foreground" : bgClass + " " + textClass}`}>
       {icon}
       {badge !== undefined && badge > 0 && (

@@ -88,7 +88,7 @@ export default function DoorAccess() {
     return (
       <div className="min-h-screen bg-background pb-20">
         <div className="container max-w-2xl mx-auto p-4">
-          <Card className="mt-8">
+          <Card className="mt-8 border border-yellow-500">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-yellow-500" />

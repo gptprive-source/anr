@@ -41,7 +41,14 @@ const HowItWorks = () => {
         </div>
         
         <div className="grid md:grid-cols-4 gap-8">
-          {steps.map((step, index) => (
+          {steps.map((step, index) => {
+            // Cycle through colors
+            const colorCycle = ["border-blue-500 text-blue-500", "border-orange-500 text-orange-500", "border-purple-500 text-purple-500", "border-green-500 text-green-500"];
+            const colorClass = colorCycle[index % colorCycle.length];
+            const borderColor = colorClass.split(" ")[0];
+            const textColor = colorClass.split(" ")[1];
+            
+            return (
             <div key={index} className="relative">
               {/* Connector line */}
               {index < steps.length - 1 && (
@@ -49,7 +56,7 @@ const HowItWorks = () => {
               )}
               
               <div className="relative flex flex-col items-center text-center">
-                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 border border-border flex items-center justify-center text-primary mb-6 relative z-10">
+                <div className={`w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 border ${borderColor} flex items-center justify-center ${textColor} mb-6 relative z-10`}>
                   {step.icon}
                   <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
                     {index + 1}
@@ -59,7 +66,8 @@ const HowItWorks = () => {
                 <p className="text-muted-foreground text-sm">{step.description}</p>
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
 
         {/* FAQ Section - Prominent */}

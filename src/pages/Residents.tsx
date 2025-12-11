@@ -184,16 +184,20 @@ const Residents = () => {
 
         {/* Residents List */}
         <div className="space-y-3">
-          {residents.map((resident) => {
+          {residents.map((resident, index) => {
             const name = resident.profile 
               ? `${resident.profile.first_name || ""} ${resident.profile.last_name || ""}`.trim() || "Sans nom"
               : "Sans nom";
             const canDelete = isOwner && !resident.is_owner && resident.user_id !== user?.id;
             
+            // Cycle through colors
+            const colorCycle = ["border-blue-500", "border-orange-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
+            const borderColor = colorCycle[index % colorCycle.length];
+            
             return (
               <div
                 key={resident.id}
-                className="glass-effect rounded-xl p-4 card-shadow"
+                className={`glass-effect rounded-xl p-4 card-shadow border ${borderColor}`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
