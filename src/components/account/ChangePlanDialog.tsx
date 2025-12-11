@@ -101,7 +101,7 @@ const ChangePlanDialog = ({ open, onOpenChange, currentPlan }: ChangePlanDialogP
       return;
     }
     
-    // Sinon, changer de plan directement
+    // Sinon, changer de plan via Stripe Checkout (paiement requis)
     setLoading(planId);
     try {
       const { data, error } = await supabase.functions.invoke("create-plan-change", {
@@ -116,15 +116,7 @@ const ChangePlanDialog = ({ open, onOpenChange, currentPlan }: ChangePlanDialogP
         return;
       }
       
-      if (data?.updated || data?.success) {
-        toast.success(`Votre abonnement a été mis à jour vers le plan ${planId.charAt(0).toUpperCase() + planId.slice(1)} !`);
-        onOpenChange(false);
-        // Refresh the page to update subscription status
-        window.location.reload();
-        return;
-      }
-      
-      // Si pas de subscription existante, rediriger vers Stripe checkout
+      // Rediriger vers Stripe Checkout pour payer
       if (data?.url) {
         window.open(data.url, "_blank");
         onOpenChange(false);

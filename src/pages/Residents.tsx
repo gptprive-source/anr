@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAppConfig } from "@/hooks/useAppConfig";
 import InviteResidentDialog from "@/components/resident/InviteResidentDialog";
 import BottomNav from "@/components/layout/BottomNav";
 
@@ -35,6 +36,10 @@ const Residents = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { getConfig } = useAppConfig();
+
+  // Get max residents from global config
+  const maxResidents = getConfig("max_residents_per_habitation") || 7;
 
   useEffect(() => {
     if (user) {
@@ -167,13 +172,13 @@ const Residents = () => {
           </Button>
           <div className="flex-1">
             <h1 className="text-xl font-bold">Résidents</h1>
-            <p className="text-sm text-muted-foreground">{residents.length}/7 résidents</p>
+            <p className="text-sm text-muted-foreground">{residents.length}/{maxResidents} résidents</p>
           </div>
           {isOwner && (
             <Button 
               variant="outline" 
               size="sm" 
-              disabled={residents.length >= 7}
+              disabled={residents.length >= maxResidents}
               onClick={() => setInviteDialogOpen(true)}
             >
               <UserPlus className="w-4 h-4 mr-2" />
