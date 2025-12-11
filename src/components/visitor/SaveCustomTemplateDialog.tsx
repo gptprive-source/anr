@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Save, Loader2 } from "lucide-react";
 
 const ICON_OPTIONS = ["📝", "📦", "📬", "🚚", "🔔", "✉️", "🏠", "👋", "⏰", "📋"];
@@ -16,27 +17,35 @@ const ICON_OPTIONS = ["📝", "📦", "📬", "🚚", "🔔", "✉️", "🏠", 
 interface SaveCustomTemplateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  messageContent: string;
+  messageContent?: string;
   onSave: (name: string, content: string, icon: string) => Promise<void>;
 }
 
 export default function SaveCustomTemplateDialog({
   open,
   onOpenChange,
-  messageContent,
+  messageContent = "",
   onSave,
 }: SaveCustomTemplateDialogProps) {
   const [name, setName] = useState("");
+  const [content, setContent] = useState(messageContent);
   const [selectedIcon, setSelectedIcon] = useState("📝");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (open) {
+      setContent(messageContent);
+    }
+  }, [open, messageContent]);
+
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !content.trim()) return;
     
     setSaving(true);
     try {
-      await onSave(name.trim(), messageContent, selectedIcon);
+      await onSave(name.trim(), content.trim(), selectedIcon);
       setName("");
+      setContent("");
       setSelectedIcon("📝");
       onOpenChange(false);
     } catch (error) {
@@ -52,7 +61,7 @@ export default function SaveCustomTemplateDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Save className="w-5 h-5" />
-            Sauvegarder comme template
+            Créer un template
           </DialogTitle>
         </DialogHeader>
 
@@ -90,12 +99,17 @@ export default function SaveCustomTemplateDialog({
             </div>
           </div>
 
-          {/* Preview */}
+          {/* Message content */}
           <div className="space-y-2">
-            <Label>Aperçu du message</Label>
-            <div className="p-3 rounded-lg bg-muted text-sm text-muted-foreground max-h-24 overflow-y-auto">
-              {messageContent}
-            </div>
+            <Label htmlFor="template-content">Message</Label>
+            <Textarea
+              id="template-content"
+              placeholder="Écrivez votre message template ici..."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={4}
+              maxLength={500}
+            />
           </div>
         </div>
 
@@ -103,7 +117,7 @@ export default function SaveCustomTemplateDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
-          <Button onClick={handleSave} disabled={!name.trim() || saving}>
+          <Button onClick={handleSave} disabled={!name.trim() || !content.trim() || saving}>
             {saving ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
