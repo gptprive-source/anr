@@ -48,7 +48,15 @@ const Contacts = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [editingContact, setEditingContact] = useState<ResidentContact | null>(null);
-  const [editNotes, setEditNotes] = useState("");
+  const [editForm, setEditForm] = useState({
+    first_name: "",
+    last_name: "",
+    company_name: "",
+    job_title: "",
+    phone: "",
+    email: "",
+    notes: "",
+  });
   const [deletingContact, setDeletingContact] = useState<ResidentContact | null>(null);
 
   const filteredContacts = contacts.filter((contact) => {
@@ -85,9 +93,17 @@ const Contacts = () => {
 
   const handleEditSave = async () => {
     if (!editingContact) return;
-    const result = await updateContact(editingContact.id, { notes: editNotes });
+    const result = await updateContact(editingContact.id, {
+      first_name: editForm.first_name || null,
+      last_name: editForm.last_name || null,
+      company_name: editForm.company_name || null,
+      job_title: editForm.job_title || null,
+      phone: editForm.phone || null,
+      email: editForm.email || null,
+      notes: editForm.notes || null,
+    });
     if (result.success) {
-      toast({ title: "Notes mises à jour" });
+      toast({ title: "Contact mis à jour" });
       setEditingContact(null);
     }
   };
@@ -102,7 +118,15 @@ const Contacts = () => {
   };
 
   const openEdit = (contact: ResidentContact) => {
-    setEditNotes(contact.notes || "");
+    setEditForm({
+      first_name: contact.first_name || "",
+      last_name: contact.last_name || "",
+      company_name: contact.company_name || "",
+      job_title: contact.job_title || "",
+      phone: contact.phone || "",
+      email: contact.email || "",
+      notes: contact.notes || "",
+    });
     setEditingContact(contact);
   };
 
@@ -312,18 +336,72 @@ const Contacts = () => {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingContact} onOpenChange={(open) => !open && setEditingContact(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Modifier les notes</DialogTitle>
+            <DialogTitle>Modifier le contact</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label>Notes personnelles</Label>
-            <Textarea
-              value={editNotes}
-              onChange={(e) => setEditNotes(e.target.value)}
-              rows={4}
-              placeholder="Ajoutez des notes sur ce contact..."
-            />
+          <div className="space-y-4">
+            {editingContact?.contact_type === "company" && (
+              <div className="space-y-2">
+                <Label>Nom de l'entreprise</Label>
+                <Input
+                  value={editForm.company_name}
+                  onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
+                  placeholder="Nom de l'entreprise"
+                />
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Prénom</Label>
+                <Input
+                  value={editForm.first_name}
+                  onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                  placeholder="Prénom"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Nom</Label>
+                <Input
+                  value={editForm.last_name}
+                  onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                  placeholder="Nom"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Poste / Fonction</Label>
+              <Input
+                value={editForm.job_title}
+                onChange={(e) => setEditForm({ ...editForm, job_title: e.target.value })}
+                placeholder="Ex: Livreur, Plombier..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Téléphone</Label>
+              <Input
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                placeholder="Numéro de téléphone"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                placeholder="Adresse email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Notes personnelles</Label>
+              <Textarea
+                value={editForm.notes}
+                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                rows={3}
+                placeholder="Ajoutez des notes sur ce contact..."
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingContact(null)}>
