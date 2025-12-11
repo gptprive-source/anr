@@ -287,7 +287,7 @@ const Messages = () => {
               return (
                 <Card
                   key={conv.visitorId}
-                  className={`cursor-pointer transition-all hover:bg-accent/50 border-2 ${conv.unreadCount > 0 ? "border-primary bg-primary/5" : borderColor}`}
+                  className={`cursor-pointer transition-all border ${conv.unreadCount > 0 ? "border-primary bg-primary/5" : borderColor}`}
                   onClick={() => navigate(`/conversation/${conv.visitorId}`)}
                 >
                   <CardContent className="p-4">
