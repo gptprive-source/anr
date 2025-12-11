@@ -23,6 +23,7 @@ import {
   Edit,
   MoreVertical,
   Loader2,
+  MessageSquare,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -317,6 +318,27 @@ const Contacts = () => {
                       </p>
                     )}
                   </div>
+
+                  {/* Message Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                    onClick={() => {
+                      const conversationId = contact.source_business_card_id || contact.phone || contact.anr_code;
+                      if (conversationId) {
+                        navigate(`/conversation/${conversationId}`);
+                      } else {
+                        toast({
+                          title: "Conversation introuvable",
+                          description: "Aucun identifiant de conversation disponible",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                  </Button>
 
                   {/* Actions Menu */}
                   <DropdownMenu>
