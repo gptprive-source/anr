@@ -78,19 +78,49 @@ const ChangePlanDialog = ({ open, onOpenChange, currentPlan }: ChangePlanDialogP
   };
 
   const handleSelectPlan = async (planId: string) => {
+    const isCurrent = currentPlan?.toLowerCase().includes(planId);
+    
+    // Si c'est le plan actuel, ouvrir le portail de gestion
+    if (isCurrent) {
+      setLoading(planId);
+      try {
+        const { data, error } = await supabase.functions.invoke("customer-portal");
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        
+        if (data?.url) {
+          window.open(data.url, "_blank");
+          onOpenChange(false);
+        }
+      } catch (error: any) {
+        console.error("Error opening portal:", error);
+        toast.error(error.message || "Impossible d'ouvrir le portail de gestion");
+      } finally {
+        setLoading(null);
+      }
+      return;
+    }
+    
+    // Sinon, changer de plan directement
     setLoading(planId);
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
+      const { data, error } = await supabase.functions.invoke("create-plan-change", {
+        body: { newPlan: planId }
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      
+      if (data?.updated) {
+        toast.success("Votre abonnement a été mis à jour !");
+      }
       
       if (data?.url) {
         window.open(data.url, "_blank");
         onOpenChange(false);
       }
     } catch (error: any) {
-      console.error("Error opening portal:", error);
-      toast.error(error.message || "Impossible d'ouvrir le portail de gestion");
+      console.error("Error changing plan:", error);
+      toast.error(error.message || "Impossible de changer de plan");
     } finally {
       setLoading(null);
     }
