@@ -167,20 +167,20 @@ const Contact = () => {
       <main className="flex-1 py-8 px-4">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Contactez-nous</h1>
-            <p className="text-muted-foreground">
+            <div className="flex items-center justify-center gap-3">
+              <X 
+                className="w-6 h-6 text-orange-500 cursor-pointer" 
+                onClick={() => navigate(-1)} 
+              />
+              <h1 className="text-3xl font-bold">Contactez-nous</h1>
+            </div>
+            <p className="text-muted-foreground mt-2">
               Nous sommes à votre écoute pour toute question ou demande
             </p>
           </div>
 
-          <Card className="border-2 border-blue-500 relative">
-            <button
-              onClick={() => navigate(-1)}
-              className="absolute top-4 left-4 w-8 h-8 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4 text-white" />
-            </button>
-            <CardHeader className="pt-12">
+          <Card className="border-2 border-blue-500">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
                   <Send className="w-4 h-4 text-blue-500" />
