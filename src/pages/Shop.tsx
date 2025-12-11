@@ -14,8 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import BottomNav from "@/components/layout/BottomNav";
 
-const DOMING_PRICE_ID = "price_1SdGbkEDmI80OIpdI5a5sjf2"; // 7€
-const DOOR_MODULE_PRICE_ID = "price_1SdGr2EDmI80OIpd91Jb96nN"; // 149€
+// Price IDs will be fetched from app_config dynamically
 
 const Shop = () => {
   const navigate = useNavigate();
@@ -38,7 +37,11 @@ const Shop = () => {
   });
 
   const domingPrice = getConfig("doming_price") || 7;
-  const doorModulePrice = 149;
+  const doorModulePrice = getConfig("door_module_price") || 149;
+  
+  // Get Stripe price IDs from app_config (fallback to hardcoded if not set)
+  const domingPriceId = getConfig("doming_stripe_price_id") || "price_1SdGbkEDmI80OIpdI5a5sjf2";
+  const doorModulePriceId = getConfig("door_module_stripe_price_id") || "price_1SdGr2EDmI80OIpd91Jb96nN";
 
   const domingTotal = domingQuantity * domingPrice;
   const doorModuleTotal = doorModuleQuantity * doorModulePrice;
@@ -70,7 +73,7 @@ const Shop = () => {
       
       if (domingQuantity > 0) {
         items.push({
-          priceId: DOMING_PRICE_ID,
+          priceId: domingPriceId,
           quantity: domingQuantity,
           name: "Doming QR/NFC"
         });
@@ -78,7 +81,7 @@ const Shop = () => {
       
       if (doorModuleQuantity > 0 && flags.doorOpeningEnabled) {
         items.push({
-          priceId: DOOR_MODULE_PRICE_ID,
+          priceId: doorModulePriceId,
           quantity: doorModuleQuantity,
           name: "Boîtier Gâche Électrique"
         });

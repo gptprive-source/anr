@@ -7,12 +7,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Product IDs for each plan (from Stripe)
+// Product IDs for each plan (from Stripe) - recurring subscriptions
 const PLAN_PRODUCT_IDS: Record<string, string> = {
   particulier: "prod_TaQmGPTf56GNWg",
   pro: "prod_TaQmcaz98bAfb7",
   entreprise: "prod_TaQmQwyLudSVGN",
   collectivites: "prod_TaQmqPcFg83tyH",
+};
+
+// Product IDs for one-time purchases
+const PRODUCT_IDS: Record<string, string> = {
+  doming: "prod_TaRUttFGQVbh4L",
+  door_module: "prod_TaRk72XZTmH8eD",
 };
 
 serve(async (req) => {
@@ -49,16 +55,26 @@ serve(async (req) => {
     const isAdmin = roles?.some(r => r.role === "admin" || r.role === "super_admin");
     if (!isAdmin) throw new Error("Unauthorized: Admin access required");
 
-    const { planId, annualPrice } = await req.json();
+    const { planId, annualPrice, productType } = await req.json();
     if (!planId || annualPrice === undefined) {
       throw new Error("Missing planId or annualPrice");
     }
 
-    console.log("[SYNC-STRIPE-PRICE] Plan:", planId, "Annual price:", annualPrice, "€");
+    // Determine if this is a subscription plan or a one-time product
+    const isOneTimeProduct = productType === 'one_time' || planId === 'doming' || planId === 'door_module';
+    
+    console.log("[SYNC-STRIPE-PRICE] Product:", planId, "Price:", annualPrice, "€", "Type:", isOneTimeProduct ? "one-time" : "subscription");
 
-    const productId = PLAN_PRODUCT_IDS[planId];
+    let productId: string | undefined;
+    
+    if (isOneTimeProduct) {
+      productId = PRODUCT_IDS[planId];
+    } else {
+      productId = PLAN_PRODUCT_IDS[planId];
+    }
+    
     if (!productId) {
-      throw new Error(`No Stripe product configured for plan: ${planId}`);
+      throw new Error(`No Stripe product configured for: ${planId}`);
     }
 
     // Initialize Stripe
@@ -69,23 +85,39 @@ serve(async (req) => {
     // Create new price in Stripe (prices are immutable, so we create a new one)
     const amountInCents = Math.round(annualPrice * 100);
     
-    const newPrice = await stripe.prices.create({
-      product: productId,
-      unit_amount: amountInCents,
-      currency: "eur",
-      recurring: {
-        interval: "year",
-      },
-      metadata: {
-        plan: planId,
-        created_from: "admin_sync",
-      },
-    });
+    let newPrice;
+    
+    if (isOneTimeProduct) {
+      // One-time payment price (no recurring)
+      newPrice = await stripe.prices.create({
+        product: productId,
+        unit_amount: amountInCents,
+        currency: "eur",
+        metadata: {
+          product: planId,
+          created_from: "admin_sync",
+        },
+      });
+    } else {
+      // Recurring subscription price
+      newPrice = await stripe.prices.create({
+        product: productId,
+        unit_amount: amountInCents,
+        currency: "eur",
+        recurring: {
+          interval: "year",
+        },
+        metadata: {
+          plan: planId,
+          created_from: "admin_sync",
+        },
+      });
+    }
 
     console.log("[SYNC-STRIPE-PRICE] Created new Stripe price:", newPrice.id);
 
     // Update app_config with new price ID
-    const configKey = `${planId}_stripe_price_id`;
+    const configKey = isOneTimeProduct ? `${planId}_stripe_price_id` : `${planId}_stripe_price_id`;
     
     // First, get old price ID for deactivation later
     const { data: existingConfig } = await supabaseClient
