@@ -104,7 +104,7 @@ const FeatureCard = ({
   const c = colorClasses[color];
   
   return (
-    <div className={`glass-effect rounded-2xl p-6 card-shadow transition-colors text-center border ${c.border}`}>
+    <div className={`glass-effect rounded-2xl p-6 card-shadow transition-colors text-center border-2 ${c.border}`}>
       <div className={`w-12 h-12 rounded-xl ${c.bg} flex items-center justify-center ${c.text} mb-4 mx-auto`}>
         {icon}
       </div>
