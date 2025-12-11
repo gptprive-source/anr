@@ -111,6 +111,30 @@ const formatDateSeparator = (date: Date) => {
   return format(date, "EEEE d MMMM", { locale: fr });
 };
 
+// Function to render text with clickable links
+const renderTextWithLinks = (text: string) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a 
+          key={index} 
+          href={part} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-500 underline hover:text-blue-600 break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
+
 const Conversation = () => {
   const { visitorId } = useParams<{ visitorId: string }>();
   const navigate = useNavigate();
@@ -459,7 +483,7 @@ const Conversation = () => {
                     </div>
                   ) : (
                     <div className="bg-background/50 rounded-xl rounded-tl-sm px-3 py-2 border border-blue-500">
-                      <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                      <p className="text-sm whitespace-pre-wrap">{renderTextWithLinks(msg.message || "")}</p>
                       <p className="text-xs text-muted-foreground mt-1 text-right">
                         {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
                       </p>
@@ -492,7 +516,7 @@ const Conversation = () => {
                           />
                         )}
                         {reply.reply_text && (
-                          <p className="text-sm whitespace-pre-wrap px-2 py-1">{reply.reply_text}</p>
+                          <p className="text-sm whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(reply.reply_text)}</p>
                         )}
                         <div className="flex items-center justify-end gap-1 px-2 py-1">
                           <span className="text-xs text-muted-foreground">
@@ -527,10 +551,9 @@ const Conversation = () => {
                       </div>
                     </div>
                   )}
-                  {/* Text only message */}
                   {!reply.reply_voice_url && !reply.reply_media_url && reply.reply_text && (
                     <div className="bg-green-500/10 rounded-xl rounded-tr-sm px-3 py-2 border border-green-500">
-                      <p className="text-sm whitespace-pre-wrap">{reply.reply_text}</p>
+                      <p className="text-sm whitespace-pre-wrap">{renderTextWithLinks(reply.reply_text)}</p>
                       <div className="flex items-center justify-end gap-1 mt-1">
                         <span className="text-xs text-muted-foreground">
                           {format(new Date(reply.created_at), "HH:mm", { locale: fr })}

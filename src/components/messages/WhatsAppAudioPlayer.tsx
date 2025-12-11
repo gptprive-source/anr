@@ -93,7 +93,7 @@ const WhatsAppAudioPlayer = ({
       {/* Audio Player Bubble */}
       <div
         className={cn(
-          "flex items-center gap-3 px-3 py-2 rounded-2xl min-w-[200px] max-w-[280px]",
+          "flex items-center gap-2 px-2 py-1.5 rounded-xl min-w-[160px] max-w-[220px]",
           isOwn
             ? "bg-[hsl(142,70%,85%)] order-1" // WhatsApp green for sent
             : "bg-card border order-1" // White/card for received
@@ -103,30 +103,30 @@ const WhatsAppAudioPlayer = ({
         <button
           onClick={togglePlayPause}
           className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
+            "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
             isOwn
               ? "bg-[hsl(142,60%,75%)] text-[hsl(142,50%,30%)] hover:bg-[hsl(142,60%,70%)]"
               : "bg-muted text-foreground hover:bg-muted/80"
           )}
         >
           {isPlaying ? (
-            <Pause className="w-5 h-5 fill-current" />
+            <Pause className="w-4 h-4 fill-current" />
           ) : (
-            <Play className="w-5 h-5 fill-current ml-0.5" />
+            <Play className="w-4 h-4 fill-current ml-0.5" />
           )}
         </button>
 
         {/* Waveform */}
-        <div className="flex-1 flex flex-col gap-1">
-          <div className="flex items-center h-6 gap-[2px]">
-            {waveformBars.map((height, index) => {
-              const barProgress = (index / waveformBars.length) * 100;
+        <div className="flex-1 flex flex-col gap-0.5">
+          <div className="flex items-center h-4 gap-[1px]">
+            {waveformBars.slice(0, 25).map((height, index) => {
+              const barProgress = (index / 25) * 100;
               const isActive = barProgress <= progress;
               return (
                 <div
                   key={index}
                   className={cn(
-                    "w-[3px] rounded-full transition-colors",
+                    "w-[2px] rounded-full transition-colors",
                     isOwn
                       ? isActive
                         ? "bg-primary"
@@ -142,16 +142,14 @@ const WhatsAppAudioPlayer = ({
           </div>
 
           {/* Duration */}
-          <div className="flex items-center justify-between">
-            <span
-              className={cn(
-                "text-xs",
-                isOwn ? "text-[hsl(142,40%,35%)]" : "text-muted-foreground"
-              )}
-            >
-              {formatTime(isPlaying ? currentTime : duration || 0)}
-            </span>
-          </div>
+          <span
+            className={cn(
+              "text-[10px]",
+              isOwn ? "text-[hsl(142,40%,35%)]" : "text-muted-foreground"
+            )}
+          >
+            {formatTime(isPlaying ? currentTime : duration || 0)}
+          </span>
         </div>
       </div>
 
