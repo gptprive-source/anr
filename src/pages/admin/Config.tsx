@@ -327,6 +327,7 @@ const Config = () => {
             <TabsTrigger value="features">Fonctionnalités</TabsTrigger>
             <TabsTrigger value="limits">Limites</TabsTrigger>
             <TabsTrigger value="content">Contenu</TabsTrigger>
+            <TabsTrigger value="facturation">Facturation</TabsTrigger>
           </TabsList>
 
           {/* PLANS & TARIFS TAB */}
@@ -943,6 +944,117 @@ const Config = () => {
                   <Button variant="outline" onClick={() => navigate('/admin/privacy')}>
                     Éditer la Politique de Confidentialité
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* FACTURATION TAB */}
+          <TabsContent value="facturation" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="w-5 h-5" />
+                  Informations entreprise sur les factures
+                </CardTitle>
+                <CardDescription>
+                  Ces informations apparaîtront sur toutes les factures générées
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <Label>Nom de l'entreprise</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="text"
+                      value={getValue('invoice_company_name') || ''}
+                      onChange={(e) => setLocalValue('invoice_company_name', e.target.value)}
+                      placeholder="ANR - Adresse Numérique Résidentielle"
+                      className="flex-1"
+                    />
+                    {hasChanges('invoice_company_name') && (
+                      <Button size="sm" onClick={() => saveConfig('invoice_company_name')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Numéro SIRET</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="text"
+                      value={getValue('invoice_siret') || ''}
+                      onChange={(e) => setLocalValue('invoice_siret', e.target.value)}
+                      placeholder="123 456 789 00000"
+                      className="flex-1"
+                    />
+                    {hasChanges('invoice_siret') && (
+                      <Button size="sm" onClick={() => saveConfig('invoice_siret')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Numéro TVA</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="text"
+                      value={getValue('invoice_tva') || ''}
+                      onChange={(e) => setLocalValue('invoice_tva', e.target.value)}
+                      placeholder="FR12345678900"
+                      className="flex-1"
+                    />
+                    {hasChanges('invoice_tva') && (
+                      <Button size="sm" onClick={() => saveConfig('invoice_tva')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Adresse de l'entreprise</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="text"
+                      value={getValue('invoice_address') || ''}
+                      onChange={(e) => setLocalValue('invoice_address', e.target.value)}
+                      placeholder="1 rue de l'Innovation, 75001 Paris"
+                      className="flex-1"
+                    />
+                    {hasChanges('invoice_address') && (
+                      <Button size="sm" onClick={() => saveConfig('invoice_address')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Email de contact (factures)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="email"
+                      value={getValue('invoice_contact_email') || ''}
+                      onChange={(e) => setLocalValue('invoice_contact_email', e.target.value)}
+                      placeholder="contact@anr.fr"
+                      className="flex-1"
+                    />
+                    {hasChanges('invoice_contact_email') && (
+                      <Button size="sm" onClick={() => saveConfig('invoice_contact_email')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
