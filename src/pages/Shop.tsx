@@ -11,6 +11,7 @@ import { ArrowLeft, Package, Minus, Plus, CreditCard, Truck, QrCode, DoorOpen, L
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useAppConfig } from "@/hooks/useAppConfig";
+import { useUserPlan } from "@/hooks/useUserPlan";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import BottomNav from "@/components/layout/BottomNav";
@@ -20,6 +21,7 @@ const Shop = () => {
   const { user } = useAuth();
   const { flags, loading: flagsLoading } = useFeatureFlags();
   const { getConfig } = useAppConfig();
+  const { planType, loading: planLoading } = useUserPlan();
   
   const [domingQuantity, setDomingQuantity] = useState(1);
   const [doorModuleQuantity, setDoorModuleQuantity] = useState(0);
@@ -89,11 +91,12 @@ const Shop = () => {
     }
   }, [addressChoice, anrAddress]);
 
-  const domingPrice = getConfig("doming_price") || 7;
+  // Get prices based on user's plan
+  const domingPrice = getConfig(`${planType}_doming_price`) || getConfig("doming_price") || 7;
   const doorModulePrice = getConfig("door_module_price") || 149;
   
-  // Get Stripe price IDs from app_config (fallback to hardcoded if not set)
-  const domingPriceId = getConfig("doming_stripe_price_id") || "price_1SdGbkEDmI80OIpdI5a5sjf2";
+  // Get Stripe price IDs based on user's plan
+  const domingPriceId = getConfig(`${planType}_doming_stripe_price_id`) || getConfig("doming_stripe_price_id") || "price_1SdGbkEDmI80OIpdI5a5sjf2";
   const doorModulePriceId = getConfig("door_module_stripe_price_id") || "price_1SdGr2EDmI80OIpd91Jb96nN";
 
   const domingTotal = domingQuantity * domingPrice;
@@ -160,7 +163,7 @@ const Shop = () => {
     }
   };
 
-  if (flagsLoading) {
+  if (flagsLoading || planLoading) {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
