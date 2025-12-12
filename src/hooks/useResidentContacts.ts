@@ -12,6 +12,7 @@ export interface ResidentContact {
   phone: string | null;
   email: string | null;
   anr_code: string | null;
+  avatar_url: string | null;
   notes: string | null;
   source_business_card_id: string | null;
   source_message_id: string | null;
@@ -30,6 +31,7 @@ interface BusinessCard {
   phone: string | null;
   email: string | null;
   visitor_anr_code?: string | null;
+  avatar_url?: string | null;
 }
 
 export const useResidentContacts = () => {

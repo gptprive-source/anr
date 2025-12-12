@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import AvatarUpload from "@/components/ui/AvatarUpload";
 import {
   Users,
   Search,
@@ -60,6 +61,7 @@ const Contacts = () => {
     phone: "",
     email: "",
     notes: "",
+    avatar_url: null as string | null,
   });
   const [deletingContact, setDeletingContact] = useState<ResidentContact | null>(null);
   const contactRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -127,6 +129,7 @@ const Contacts = () => {
       phone: editForm.phone || null,
       email: editForm.email || null,
       notes: editForm.notes || null,
+      avatar_url: editForm.avatar_url,
     });
     if (result.success) {
       toast({ title: "Contact mis à jour" });
@@ -152,6 +155,7 @@ const Contacts = () => {
       phone: contact.phone || "",
       email: contact.email || "",
       notes: contact.notes || "",
+      avatar_url: contact.avatar_url || null,
     });
     setEditingContact(contact);
   };
@@ -407,6 +411,17 @@ const Contacts = () => {
             <DialogTitle>Modifier le contact</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Avatar upload */}
+            <div className="flex justify-center">
+              <AvatarUpload
+                currentUrl={editForm.avatar_url}
+                onUpload={(url) => setEditForm({ ...editForm, avatar_url: url })}
+                onRemove={() => setEditForm({ ...editForm, avatar_url: null })}
+                fallbackText={editingContact?.contact_type === "company" ? editForm.company_name : `${editForm.first_name} ${editForm.last_name}`}
+                size="lg"
+              />
+            </div>
+
             {editingContact?.contact_type === "company" && (
               <div className="space-y-2">
                 <Label>Nom de l'entreprise</Label>

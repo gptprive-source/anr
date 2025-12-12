@@ -1859,6 +1859,7 @@ export type Database = {
       resident_contacts: {
         Row: {
           anr_code: string | null
+          avatar_url: string | null
           company_name: string | null
           contact_type: string | null
           created_at: string | null
@@ -1877,6 +1878,7 @@ export type Database = {
         }
         Insert: {
           anr_code?: string | null
+          avatar_url?: string | null
           company_name?: string | null
           contact_type?: string | null
           created_at?: string | null
@@ -1895,6 +1897,7 @@ export type Database = {
         }
         Update: {
           anr_code?: string | null
+          avatar_url?: string | null
           company_name?: string | null
           contact_type?: string | null
           created_at?: string | null
@@ -2601,6 +2604,7 @@ export type Database = {
       }
       visitor_business_cards: {
         Row: {
+          avatar_url: string | null
           card_type: string
           company_name: string | null
           created_at: string | null
@@ -2616,6 +2620,7 @@ export type Database = {
           visitor_anr_code: string | null
         }
         Insert: {
+          avatar_url?: string | null
           card_type?: string
           company_name?: string | null
           created_at?: string | null
@@ -2631,6 +2636,7 @@ export type Database = {
           visitor_anr_code?: string | null
         }
         Update: {
+          avatar_url?: string | null
           card_type?: string
           company_name?: string | null
           created_at?: string | null

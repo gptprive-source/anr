@@ -38,6 +38,7 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
         company_name: null,
         job_title: null,
         visitor_anr_code: null,
+        avatar_url: null,
       });
     }
     setShowCardManager(true);
