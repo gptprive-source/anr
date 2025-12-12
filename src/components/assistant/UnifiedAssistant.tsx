@@ -619,6 +619,13 @@ const UnifiedAssistant = () => {
 
   const lastSupportMessageIsFaq = supportMessages.length > 0 && supportMessages[supportMessages.length - 1].source === "faq";
 
+  // Hide on messaging pages
+  const isMessagingPage = location.pathname === "/messages" || location.pathname.startsWith("/conversation");
+  
+  if (isMessagingPage) {
+    return null;
+  }
+
   return (
     <>
       {/* Toggle Buttons - Top Right */}
