@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera } from "lucide-react";
+import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useMessageReplies } from "@/hooks/useMessageReplies";
+import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
 import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
@@ -106,6 +107,13 @@ interface VisitorMessage {
   created_at: string;
   business_card_id: string | null;
   business_card?: BusinessCard | null;
+  // E2E Encryption fields
+  encrypted_message?: string | null;
+  message_nonce?: string | null;
+  visitor_public_key?: string | null;
+  is_encrypted?: boolean;
+  // Decrypted content (client-side only)
+  decrypted_message?: string | null;
 }
 
 const formatDateSeparator = (date: Date) => {
@@ -161,6 +169,9 @@ const Conversation = () => {
   // Get the first message ID for replies hook
   const firstMessageId = visitorMessages[0]?.id || "";
   const { replies, sendReply, loading: repliesLoading } = useMessageReplies(firstMessageId);
+  
+  // E2E Encryption hook
+  const { isSupported: encryptionSupported } = useEncryptedMessages(habitationId || undefined);
 
   // Fetch all messages from this visitor
   useEffect(() => {
@@ -551,6 +562,7 @@ const Conversation = () => {
                     <div className="bg-green-500/10 rounded-xl rounded-tr-sm px-3 py-2 border border-green-500">
                       <p className="text-sm whitespace-pre-wrap">{renderTextWithLinks(reply.reply_text)}</p>
                       <div className="flex items-center justify-end gap-1 mt-1">
+                        {(reply as any).is_encrypted && <Lock className="w-3 h-3 text-green-500" />}
                         <span className="text-xs text-muted-foreground">
                           {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                         </span>

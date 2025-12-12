@@ -431,6 +431,44 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_keys: {
+        Row: {
+          conversation_id: string
+          created_at: string | null
+          habitation_id: string | null
+          id: string
+          resident_public_key: string | null
+          updated_at: string | null
+          visitor_public_key: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string | null
+          habitation_id?: string | null
+          id?: string
+          resident_public_key?: string | null
+          updated_at?: string | null
+          visitor_public_key?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string | null
+          habitation_id?: string | null
+          id?: string
+          resident_public_key?: string | null
+          updated_at?: string | null
+          visitor_public_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_keys_habitation_id_fkey"
+            columns: ["habitation_id"]
+            isOneToOne: false
+            referencedRelation: "habitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       copilot_sessions: {
         Row: {
           active_guide_id: string | null
@@ -1337,39 +1375,48 @@ export type Database = {
       message_replies: {
         Row: {
           created_at: string | null
+          encrypted_reply: string | null
           habitation_id: string
           id: string
+          is_encrypted: boolean | null
           is_read: boolean | null
           original_message_id: string
           read_at: string | null
           reply_media_type: string | null
           reply_media_url: string | null
+          reply_nonce: string | null
           reply_text: string | null
           reply_voice_url: string | null
           resident_id: string
         }
         Insert: {
           created_at?: string | null
+          encrypted_reply?: string | null
           habitation_id: string
           id?: string
+          is_encrypted?: boolean | null
           is_read?: boolean | null
           original_message_id: string
           read_at?: string | null
           reply_media_type?: string | null
           reply_media_url?: string | null
+          reply_nonce?: string | null
           reply_text?: string | null
           reply_voice_url?: string | null
           resident_id: string
         }
         Update: {
           created_at?: string | null
+          encrypted_reply?: string | null
           habitation_id?: string
           id?: string
+          is_encrypted?: boolean | null
           is_read?: boolean | null
           original_message_id?: string
           read_at?: string | null
           reply_media_type?: string | null
           reply_media_url?: string | null
+          reply_nonce?: string | null
           reply_text?: string | null
           reply_voice_url?: string | null
           resident_id?: string
@@ -2721,48 +2768,60 @@ export type Database = {
           business_card_id: string | null
           conversation_token: string | null
           created_at: string | null
+          encrypted_message: string | null
           habitation_id: string
           has_reply: boolean | null
           id: string
+          is_encrypted: boolean | null
           is_read: boolean | null
           message: string | null
+          message_nonce: string | null
           read_at: string | null
           replied_at: string | null
           visitor_latitude: number | null
           visitor_longitude: number | null
           visitor_phone: string | null
+          visitor_public_key: string | null
           voice_message_url: string | null
         }
         Insert: {
           business_card_id?: string | null
           conversation_token?: string | null
           created_at?: string | null
+          encrypted_message?: string | null
           habitation_id: string
           has_reply?: boolean | null
           id?: string
+          is_encrypted?: boolean | null
           is_read?: boolean | null
           message?: string | null
+          message_nonce?: string | null
           read_at?: string | null
           replied_at?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
+          visitor_public_key?: string | null
           voice_message_url?: string | null
         }
         Update: {
           business_card_id?: string | null
           conversation_token?: string | null
           created_at?: string | null
+          encrypted_message?: string | null
           habitation_id?: string
           has_reply?: boolean | null
           id?: string
+          is_encrypted?: boolean | null
           is_read?: boolean | null
           message?: string | null
+          message_nonce?: string | null
           read_at?: string | null
           replied_at?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
+          visitor_public_key?: string | null
           voice_message_url?: string | null
         }
         Relationships: [
