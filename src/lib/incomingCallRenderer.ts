@@ -460,19 +460,46 @@ export const showIncomingCall = (data: IncomingCallData) => {
         .update({ status: "declined", left_at: new Date().toISOString() })
         .eq("id", data.participantId);
       
+      // Check for other active residents (not the one we just declined)
       const { data: activeResidents } = await supabase
+        .from("call_participants")
+        .select("id, user_id, created_at")
+        .eq("call_id", data.callId)
+        .eq("role", "resident")
+        .in("status", ["ringing", "answered", "in_group"])
+        .neq("id", data.participantId);
+      
+      console.log("[CALL] Active residents after decline:", activeResidents?.length || 0);
+      
+      // Also mark as stale any ringing participants older than 60 seconds (likely not responsive)
+      const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString();
+      if (activeResidents && activeResidents.length > 0) {
+        const staleParticipants = activeResidents.filter(p => p.created_at && p.created_at < sixtySecondsAgo);
+        if (staleParticipants.length > 0) {
+          console.log("[CALL] Marking stale participants as timed_out:", staleParticipants.length);
+          await supabase
+            .from("call_participants")
+            .update({ status: "timed_out", left_at: new Date().toISOString() })
+            .in("id", staleParticipants.map(p => p.id));
+        }
+      }
+      
+      // Re-check after cleanup
+      const { data: remainingActive } = await supabase
         .from("call_participants")
         .select("id")
         .eq("call_id", data.callId)
         .eq("role", "resident")
         .in("status", ["ringing", "answered", "in_group"]);
       
-      if (!activeResidents || activeResidents.length === 0) {
+      if (!remainingActive || remainingActive.length === 0) {
         console.log("[CALL] No other residents, marking call as declined");
         await supabase
           .from("call_logs")
           .update({ status: "declined", ended_at: new Date().toISOString() })
           .eq("id", data.callId);
+      } else {
+        console.log("[CALL] Other residents still active:", remainingActive.length);
       }
       
       hideIncomingCall();
