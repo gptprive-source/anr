@@ -153,6 +153,7 @@ const Conversation = () => {
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  // ALL useState hooks FIRST - unconditionally
   const [visitorMessages, setVisitorMessages] = useState<VisitorMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [replyText, setReplyText] = useState("");
@@ -166,11 +167,9 @@ const Conversation = () => {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get the first message ID for replies hook
+  // Custom hooks - ALWAYS called unconditionally (before any early returns)
   const firstMessageId = visitorMessages[0]?.id || "";
   const { replies, sendReply, loading: repliesLoading } = useMessageReplies(firstMessageId);
-  
-  // E2E Encryption hook
   const { isSupported: encryptionSupported } = useEncryptedMessages(habitationId || undefined);
 
   // Fetch all messages from this visitor
