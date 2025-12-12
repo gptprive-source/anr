@@ -485,9 +485,15 @@ const Conversation = () => {
                   <span className="text-xs bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full">Bloqué</span>
                 )}
               </div>
-              {card?.job_title && (
-                <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
-              )}
+              <div className="flex items-center gap-2">
+                {card?.job_title && (
+                  <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
+                )}
+                <div className="flex items-center gap-1 text-xs text-green-600">
+                  <Lock className="w-3 h-3" />
+                  <span>Chiffré</span>
+                </div>
+              </div>
             </div>
 
             {/* Block/Unblock button */}
