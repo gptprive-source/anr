@@ -30,6 +30,11 @@ interface VisitorMessage {
   has_reply?: boolean;
   replied_at?: string | null;
   conversation_token?: string | null;
+  // E2E Encryption fields
+  encrypted_message?: string | null;
+  message_nonce?: string | null;
+  visitor_public_key?: string | null;
+  is_encrypted?: boolean;
 }
 
 interface MessageTemplate {
@@ -113,7 +118,12 @@ export const useVisitorMessages = (habitationId?: string) => {
     visitorPhone?: string,
     _templateId?: string,
     businessCardId?: string,
-    audioBase64?: string
+    audioBase64?: string,
+    encryptionData?: {
+      encrypted_message: string;
+      message_nonce: string;
+      visitor_public_key: string;
+    }
   ) => {
     try {
       // If audio is provided, upload to storage first
@@ -147,15 +157,26 @@ export const useVisitorMessages = (habitationId?: string) => {
         }
       }
 
+      // Prepare insert data with optional encryption
+      const insertData: Record<string, any> = {
+        habitation_id: targetHabitationId,
+        message: encryptionData ? null : (message || null), // Clear text only if not encrypted
+        voice_message_url: voiceMessageUrl,
+        visitor_phone: visitorPhone || null,
+        business_card_id: businessCardId || null,
+      };
+
+      // Add encryption fields if provided
+      if (encryptionData) {
+        insertData.encrypted_message = encryptionData.encrypted_message;
+        insertData.message_nonce = encryptionData.message_nonce;
+        insertData.visitor_public_key = encryptionData.visitor_public_key;
+        insertData.is_encrypted = true;
+      }
+
       const { error } = await (supabase
         .from("visitor_messages" as any)
-        .insert({
-          habitation_id: targetHabitationId,
-          message: message || null,
-          voice_message_url: voiceMessageUrl,
-          visitor_phone: visitorPhone || null,
-          business_card_id: businessCardId || null,
-        }) as any);
+        .insert(insertData) as any);
       
       if (error) throw error;
 

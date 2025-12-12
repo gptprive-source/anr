@@ -13,6 +13,10 @@ interface MessageReply {
   is_read: boolean;
   read_at: string | null;
   created_at: string;
+  // E2E Encryption fields
+  encrypted_reply?: string | null;
+  reply_nonce?: string | null;
+  is_encrypted?: boolean;
 }
 
 export const useMessageReplies = (messageId?: string) => {
@@ -42,7 +46,11 @@ export const useMessageReplies = (messageId?: string) => {
     habitationId: string,
     replyText?: string,
     audioBase64?: string,
-    mediaFile?: File
+    mediaFile?: File,
+    encryptionData?: {
+      encrypted_reply: string;
+      reply_nonce: string;
+    }
   ) => {
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -105,17 +113,27 @@ export const useMessageReplies = (messageId?: string) => {
         }
       }
 
+      // Prepare insert data with optional encryption
+      const insertData: Record<string, any> = {
+        original_message_id: originalMessageId,
+        resident_id: userData.user.id,
+        habitation_id: habitationId,
+        reply_text: encryptionData ? null : (replyText || null), // Clear text only if not encrypted
+        reply_voice_url: replyVoiceUrl,
+        reply_media_url: replyMediaUrl,
+        reply_media_type: replyMediaType,
+      };
+
+      // Add encryption fields if provided
+      if (encryptionData) {
+        insertData.encrypted_reply = encryptionData.encrypted_reply;
+        insertData.reply_nonce = encryptionData.reply_nonce;
+        insertData.is_encrypted = true;
+      }
+
       const { data, error } = await (supabase
         .from("message_replies" as any)
-        .insert({
-          original_message_id: originalMessageId,
-          resident_id: userData.user.id,
-          habitation_id: habitationId,
-          reply_text: replyText || null,
-          reply_voice_url: replyVoiceUrl,
-          reply_media_url: replyMediaUrl,
-          reply_media_type: replyMediaType,
-        })
+        .insert(insertData)
         .select()
         .single() as any);
       
