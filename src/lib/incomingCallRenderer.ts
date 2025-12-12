@@ -21,6 +21,7 @@ let ringtoneInterval: NodeJS.Timeout | null = null;
 let vibrationInterval: NodeJS.Timeout | null = null;
 let prefetchedRoomUrl: string | null = null;
 let preCreatedCallObject: DailyCall | null = null;
+let isMuted = false;
 
 const startRingtone = () => {
   try {
@@ -194,7 +195,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
       <p id="preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #64748b; font-size: 14px;">Connexion...</p>
     </div>
 
-    <div style="display: flex; gap: 32px; position: relative; z-index: 10;">
+    <div style="display: flex; gap: 24px; position: relative; z-index: 10;">
       <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
         <button type="button" id="decline-call-btn" style="
           width: 72px;
@@ -216,6 +217,32 @@ export const showIncomingCall = (data: IncomingCallData) => {
           </svg>
         </button>
         <span style="font-size: 13px; color: #94a3b8;">Refuser</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <button type="button" id="mute-call-btn" style="
+          width: 72px;
+          height: 72px;
+          border-radius: 50%;
+          background: #6b7280;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          pointer-events: auto;
+          position: relative;
+          z-index: 20;
+        ">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <line x1="1" y1="1" x2="23" y2="23"/>
+            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+            <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+        <span id="mute-label" style="font-size: 13px; color: #94a3b8;">Silence</span>
       </div>
 
       <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -272,11 +299,37 @@ export const showIncomingCall = (data: IncomingCallData) => {
   
   startRingtone();
   startVibration();
+  isMuted = false;
   
   const answerBtn = document.getElementById('answer-call-btn');
   const declineBtn = document.getElementById('decline-call-btn');
+  const muteBtn = document.getElementById('mute-call-btn');
+  const muteLabel = document.getElementById('mute-label');
   const previewBtn = document.getElementById('preview-call-btn');
   const previewContainer = document.getElementById('preview-container');
+  
+  // Mute button - silences ringtone/vibration but keeps call ringing
+  if (muteBtn && muteLabel) {
+    muteBtn.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      console.log("[CALL] Mute clicked, current state:", isMuted);
+      
+      isMuted = !isMuted;
+      
+      if (isMuted) {
+        stopRingtone();
+        stopVibration();
+        muteBtn.style.background = '#22c55e';
+        muteLabel.textContent = 'Son activé';
+      } else {
+        startRingtone();
+        startVibration();
+        muteBtn.style.background = '#6b7280';
+        muteLabel.textContent = 'Silence';
+      }
+    };
+  }
   
   // OPTIMISÉ: Preview utilisant le callObject pré-créé
   if (previewBtn && previewContainer) {
@@ -415,10 +468,10 @@ export const showIncomingCall = (data: IncomingCallData) => {
         .in("status", ["ringing", "answered", "in_group"]);
       
       if (!activeResidents || activeResidents.length === 0) {
-        console.log("[CALL] No other residents, ending call");
+        console.log("[CALL] No other residents, marking call as declined");
         await supabase
           .from("call_logs")
-          .update({ status: "ended", ended_at: new Date().toISOString() })
+          .update({ status: "declined", ended_at: new Date().toISOString() })
           .eq("id", data.callId);
       }
       
