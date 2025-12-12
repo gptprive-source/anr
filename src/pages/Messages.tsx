@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
+import { useBlockedVisitors } from "@/hooks/useBlockedVisitors";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow, isToday, isThisWeek, isThisMonth } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -63,6 +64,7 @@ const Messages = () => {
   }, [user]);
 
   const { messages, unreadCount, loading } = useVisitorMessages(habitationId || "");
+  const { isBlocked, blockedVisitors } = useBlockedVisitors();
 
   // Group messages by visitor
   const groupedConversations = useMemo(() => {
@@ -125,6 +127,9 @@ const Messages = () => {
   // Filter conversations
   const filteredConversations = useMemo(() => {
     return groupedConversations.filter((conv) => {
+      // Filter out blocked visitors
+      if (isBlocked(conv.visitorId)) return false;
+
       // Status filter
       if (statusFilter === "unread" && conv.unreadCount === 0) return false;
       if (statusFilter === "read" && conv.unreadCount > 0) return false;
@@ -148,7 +153,7 @@ const Messages = () => {
 
       return true;
     });
-  }, [groupedConversations, statusFilter, dateFilter, searchQuery]);
+  }, [groupedConversations, statusFilter, dateFilter, searchQuery, isBlocked]);
 
   if (loadingHabitation || loading) {
     return (
