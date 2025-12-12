@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText, Pencil, Lock } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText, Pencil, Lock, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -414,6 +414,22 @@ const Account = () => {
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-purple-500" />
+            </div>
+          </Link>
+
+          {/* Referral Program section */}
+          <Link to="/referral" className="block">
+            <div className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-pink-500 hover:bg-pink-500/5 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-pink-500/10 flex items-center justify-center">
+                  <Gift className="w-5 h-5 text-pink-500" />
+                </div>
+                <div>
+                  <p className="font-medium">Programme Parrainage</p>
+                  <p className="text-xs text-muted-foreground">Gagnez 5€ par filleul</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-pink-500" />
             </div>
           </Link>
         </div>

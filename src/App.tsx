@@ -46,6 +46,7 @@ import NoHabitation from "./pages/NoHabitation";
 import Shop from "./pages/Shop";
 import ShopSuccess from "./pages/ShopSuccess";
 import Orders from "./pages/Orders";
+import Referral from "./pages/Referral";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -77,6 +78,7 @@ import AdminRGPDConsents from "./pages/admin/RGPDConsents";
 import AdminRGPDIncidents from "./pages/admin/RGPDIncidents";
 import AdminDailyUsage from "./pages/admin/DailyUsage";
 import AdminDoorModules from "./pages/admin/DoorModules";
+import AdminReferrals from "./pages/admin/Referrals";
 
 const queryClient = new QueryClient();
 
@@ -226,6 +228,14 @@ const AppContent = () => {
             }
           />
           <Route
+            path="/referral"
+            element={
+              <ProtectedRoute>
+                <Referral />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/no-habitation"
             element={
               <ProtectedRoute>
@@ -264,6 +274,7 @@ const AppContent = () => {
           <Route path="/admin/rgpd/requests" element={<AdminRGPDRequests />} />
           <Route path="/admin/rgpd/consents" element={<AdminRGPDConsents />} />
           <Route path="/admin/rgpd/incidents" element={<AdminRGPDIncidents />} />
+          <Route path="/admin/referrals" element={<AdminReferrals />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>
