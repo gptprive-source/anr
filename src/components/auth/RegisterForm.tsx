@@ -513,18 +513,18 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
     }
   };
 
+  // Show loading while verifying payment - MUST BE FIRST to prevent auth blocking
+  if (isProcessingPayment || searchParams.get("payment") === "success") {
+    return <div className="min-h-screen flex items-center justify-center flex-col gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Vérification du paiement...</p>
+      </div>;
+  }
+
   // Show loading while checking user state
   if (!initialCheckDone && authLoading) {
     return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>;
-  }
-
-  // Show loading while verifying payment
-  if (isProcessingPayment || (loading && searchParams.get("payment") === "success")) {
-    return <div className="min-h-screen flex items-center justify-center flex-col gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Vérification du paiement...</p>
       </div>;
   }
   return <div className="min-h-screen flex items-center justify-center p-4">
