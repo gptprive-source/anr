@@ -82,8 +82,7 @@ export function useReferralCode() {
 
   const getReferralLink = () => {
     if (!referralCode) return "";
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/register?ref=${referralCode.code}`;
+    return `https://anr.lovable.app/register?ref=${referralCode.code}`;
   };
 
   const getShareMessage = () => {
