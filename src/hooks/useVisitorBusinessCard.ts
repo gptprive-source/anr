@@ -62,7 +62,16 @@ export const useVisitorBusinessCard = () => {
     cardData: Omit<VisitorBusinessCard, "id" | "device_id" | "created_at" | "updated_at">
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      if (card) {
+      // Always check if card exists for this device to prevent duplicates (race condition fix)
+      const { data: existingCard } = await (supabase as any)
+        .from("visitor_business_cards")
+        .select("id")
+        .eq("device_id", deviceId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingCard) {
         // Update existing card
         const { error } = await (supabase as any)
           .from("visitor_business_cards")
@@ -70,7 +79,7 @@ export const useVisitorBusinessCard = () => {
             ...cardData,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", card.id);
+          .eq("id", existingCard.id);
 
         if (error) throw error;
       } else {
