@@ -47,6 +47,7 @@ import Shop from "./pages/Shop";
 import ShopSuccess from "./pages/ShopSuccess";
 import Orders from "./pages/Orders";
 import Referral from "./pages/Referral";
+import RegistrationSuccess from "./pages/RegistrationSuccess";
 import NotFound from "./pages/NotFound";
 
 // Admin pages
@@ -124,6 +125,7 @@ const AppContent = () => {
           <Route path="/multi-habitat/:anrId" element={<MultiHabitat />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/invitation" element={<Invitation />} />
+          <Route path="/registration-success" element={<RegistrationSuccess />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/update-gps"
