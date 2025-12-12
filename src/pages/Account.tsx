@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText, Pencil } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText, Pencil, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -400,6 +400,22 @@ const Account = () => {
               </Button>
             </div>
           </div>
+
+          {/* Message Backup section */}
+          <Link to="/message-backup" className="block">
+            <div className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-purple-500 hover:bg-purple-500/5 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                  <Lock className="w-5 h-5 text-purple-500" />
+                </div>
+                <div>
+                  <p className="font-medium">Sauvegarde des messages</p>
+                  <p className="text-xs text-muted-foreground">Messages chiffrés E2E</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-purple-500" />
+            </div>
+          </Link>
         </div>
 
         {/* Granted Access Section - full width */}
