@@ -1,4 +1,4 @@
-import { QrCode, Bell, Video, DoorOpen, HelpCircle, ArrowRight } from "lucide-react";
+import { QrCode, Bell, Video, DoorOpen, MessageSquare, HelpCircle, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +22,11 @@ const steps = [
     icon: <DoorOpen className="w-8 h-8" />,
     title: "Communiquez",
     description: "Parlez avec votre visiteur, transférez l'appel ou créez une conférence avec les autres résidents",
+  },
+  {
+    icon: <MessageSquare className="w-8 h-8" />,
+    title: "Messagerie sécurisée",
+    description: "Échangez des messages chiffrés avec vos visiteurs, même après l'appel. Texte et vocal inclus",
   },
 ];
 
