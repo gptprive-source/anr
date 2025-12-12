@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMessageReplies } from "@/hooks/useMessageReplies";
+import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
-import { Send, Mic, MessageSquare, Building2, User, Phone, Mail, Clock, Check, CheckCheck } from "lucide-react";
+import { Send, Mic, MessageSquare, Building2, User, Phone, Mail, Clock, Check, CheckCheck, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -45,6 +46,7 @@ export const ReplyMessageDialog = ({
 }: ReplyMessageDialogProps) => {
   const { toast } = useToast();
   const { replies, sendReply, loading } = useMessageReplies(message.id);
+  const { encryptReplyForVisitor, isReady: encryptionReady } = useEncryptedMessages(message.habitation_id);
   const [replyText, setReplyText] = useState("");
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [sending, setSending] = useState(false);
@@ -71,11 +73,23 @@ export const ReplyMessageDialog = ({
         audioBase64 = btoa(String.fromCharCode(...bytes));
       }
 
+      // Encrypt reply if encryption is ready
+      let encryptionData: { encrypted_reply: string; reply_nonce: string } | undefined;
+      if (encryptionReady && replyText.trim()) {
+        try {
+          encryptionData = await encryptReplyForVisitor(replyText.trim(), message.id);
+        } catch (error) {
+          console.warn('Encryption failed, sending unencrypted:', error);
+        }
+      }
+
       const result = await sendReply(
         message.id,
         message.habitation_id,
         replyText.trim() || undefined,
-        audioBase64
+        audioBase64,
+        undefined, // mediaFile
+        encryptionData
       );
 
       if (result.success) {
@@ -246,6 +260,14 @@ export const ReplyMessageDialog = ({
             )}
           </div>
         )}
+
+        {/* E2E Encryption Notice */}
+        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+          <Lock className="w-4 h-4 text-green-600" />
+          <p className="text-xs text-green-700 dark:text-green-400">
+            🔐 Réponse chiffrée de bout en bout
+          </p>
+        </div>
 
         {/* Send Button */}
         <Button

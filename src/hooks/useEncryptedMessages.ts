@@ -233,10 +233,133 @@ export const useEncryptedMessages = (habitationId?: string) => {
     [getResidentConversationKeys, getVisitorConversationKeys]
   );
 
+  /**
+   * Convenience method for visitors to encrypt messages for residents
+   * Returns encryption data in format expected by sendMessage
+   */
+  const encryptMessageForResident = useCallback(
+    async (message: string): Promise<{ encrypted_message: string; message_nonce: string; visitor_public_key: string }> => {
+      if (!habitationId || !isEncryptionSupported()) {
+        throw new Error("Encryption not available");
+      }
+
+      // Use habitation ID as conversation ID for initial messages
+      const conversationId = `hab-${habitationId}`;
+      
+      const { keyPair, publicKeyExport } = await getOrCreateVisitorKeys(conversationId);
+      
+      // Fetch resident's public key if available
+      const { data: convKey } = await (supabase
+        .from("conversation_keys" as any)
+        .select("*")
+        .eq("habitation_id", habitationId)
+        .maybeSingle() as any);
+
+      if (convKey?.resident_public_key) {
+        try {
+          const residentPublicKey = await importPublicKey(convKey.resident_public_key);
+          const sharedKey = await deriveSharedKey(keyPair.privateKey, residentPublicKey);
+          const { encrypted, nonce } = await encryptMessage(message, sharedKey);
+          
+          return {
+            encrypted_message: encrypted,
+            message_nonce: nonce,
+            visitor_public_key: publicKeyExport,
+          };
+        } catch (error) {
+          console.error("[Encryption] Failed to encrypt for resident:", error);
+        }
+      }
+
+      // No resident key yet - store visitor's public key for future exchange
+      if (!convKey) {
+        await (supabase
+          .from("conversation_keys" as any)
+          .insert({
+            conversation_id: conversationId,
+            habitation_id: habitationId,
+            visitor_public_key: publicKeyExport,
+          }) as any);
+      } else if (!convKey.visitor_public_key) {
+        await (supabase
+          .from("conversation_keys" as any)
+          .update({ visitor_public_key: publicKeyExport })
+          .eq("id", convKey.id) as any);
+      }
+
+      throw new Error("Resident public key not available for encryption");
+    },
+    [habitationId]
+  );
+
+  /**
+   * Convenience method for residents to encrypt replies for visitors
+   * Returns encryption data in format expected by sendReply
+   */
+  const encryptReplyForVisitor = useCallback(
+    async (reply: string, originalMessageId: string): Promise<{ encrypted_reply: string; reply_nonce: string }> => {
+      if (!habitationId || !isEncryptionSupported()) {
+        throw new Error("Encryption not available");
+      }
+
+      // Use message ID to find the conversation and visitor's public key
+      const { data: message } = await (supabase
+        .from("visitor_messages" as any)
+        .select("visitor_public_key, business_card_id")
+        .eq("id", originalMessageId)
+        .single() as any);
+
+      if (!message?.visitor_public_key) {
+        throw new Error("Visitor public key not available for encryption");
+      }
+
+      const conversationId = message.business_card_id || `msg-${originalMessageId}`;
+      const { keyPair, publicKeyExport } = await getOrCreateResidentKeys(conversationId);
+
+      // Store resident's public key for future decryption by visitor
+      const { data: convKey } = await (supabase
+        .from("conversation_keys" as any)
+        .select("*")
+        .eq("habitation_id", habitationId)
+        .eq("conversation_id", conversationId)
+        .maybeSingle() as any);
+
+      if (!convKey) {
+        await (supabase
+          .from("conversation_keys" as any)
+          .insert({
+            conversation_id: conversationId,
+            habitation_id: habitationId,
+            resident_public_key: publicKeyExport,
+            visitor_public_key: message.visitor_public_key,
+          }) as any);
+      } else if (!convKey.resident_public_key) {
+        await (supabase
+          .from("conversation_keys" as any)
+          .update({ resident_public_key: publicKeyExport })
+          .eq("id", convKey.id) as any);
+      }
+
+      // Derive shared key and encrypt
+      const visitorPublicKey = await importPublicKey(message.visitor_public_key);
+      const sharedKey = await deriveSharedKey(keyPair.privateKey, visitorPublicKey);
+      const { encrypted, nonce } = await encryptMessage(reply, sharedKey);
+
+      return {
+        encrypted_reply: encrypted,
+        reply_nonce: nonce,
+      };
+    },
+    [habitationId]
+  );
+
   return {
     encryptForSending,
     decryptReceived,
     initializeConversation,
+    encryptMessageForResident,
+    encryptReplyForVisitor,
     isSupported: isEncryptionSupported(),
+    isReady: isEncryptionSupported() && !!habitationId,
   };
 };
