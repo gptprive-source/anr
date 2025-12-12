@@ -4,6 +4,7 @@ import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -92,6 +93,7 @@ interface BusinessCard {
   phone: string | null;
   email: string | null;
   visitor_anr_code: string | null;
+  avatar_url: string | null;
 }
 
 interface VisitorMessage {
@@ -416,15 +418,20 @@ const Conversation = () => {
               />
             )}
             
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}`}>
-              {isCompany ? (
-                <Building2 className="w-5 h-5 text-orange-500" />
-              ) : (
-                <User className="w-5 h-5 text-purple-500" />
-              )}
-            </div>
+            <Avatar className="w-10 h-10 flex-shrink-0">
+              {card?.avatar_url ? (
+                <AvatarImage src={card.avatar_url} alt={displayName || "Visiteur"} />
+              ) : null}
+              <AvatarFallback className={isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}>
+                {isCompany ? (
+                  <Building2 className="w-5 h-5 text-orange-500" />
+                ) : (
+                  <User className="w-5 h-5 text-purple-500" />
+                )}
+              </AvatarFallback>
+            </Avatar>
 
-            <div 
+            <div
               className="flex-1 min-w-0 cursor-pointer hover:opacity-70 transition-opacity"
               onClick={() => {
                 // Navigate to contacts page with scroll to this contact

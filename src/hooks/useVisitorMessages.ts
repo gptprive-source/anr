@@ -11,6 +11,7 @@ interface BusinessCard {
   phone: string | null;
   email: string | null;
   visitor_anr_code: string | null;
+  avatar_url: string | null;
 }
 
 interface VisitorMessage {

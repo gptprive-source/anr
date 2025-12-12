@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,7 @@ interface GroupedConversation {
   totalMessages: number;
   hasReply: boolean;
   businessCard: any | null;
+  avatarUrl: string | null;
 }
 
 const Messages = () => {
@@ -109,6 +111,7 @@ const Messages = () => {
           totalMessages: 1,
           hasReply: msg.has_reply || false,
           businessCard: card || null,
+          avatarUrl: card?.avatar_url || null,
         });
       }
     });
@@ -288,13 +291,18 @@ const Messages = () => {
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
                       {/* Avatar */}
-                      <div className={`p-2 rounded-full flex-shrink-0 ${conv.isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}`}>
-                        {conv.isCompany ? (
-                          <Building2 className="w-5 h-5 text-orange-500" />
-                        ) : (
-                          <User className="w-5 h-5 text-purple-500" />
-                        )}
-                      </div>
+                      <Avatar className="h-11 w-11 flex-shrink-0">
+                        {conv.avatarUrl ? (
+                          <AvatarImage src={conv.avatarUrl} alt={conv.displayName} />
+                        ) : null}
+                        <AvatarFallback className={conv.isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}>
+                          {conv.isCompany ? (
+                            <Building2 className="w-5 h-5 text-orange-500" />
+                          ) : (
+                            <User className="w-5 h-5 text-purple-500" />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
