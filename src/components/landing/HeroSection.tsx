@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Smartphone, QrCode, Shield, LogIn, Download } from "lucide-react";
+import { Smartphone, QrCode, Shield, LogIn, Download, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 const HeroSection = () => {
@@ -71,11 +71,12 @@ const HeroSection = () => {
         </div>
 
         {/* Feature cards */}
-        <div className="grid md:grid-cols-3 gap-6 animate-fade-in" style={{
+        <div className="grid md:grid-cols-4 gap-4 animate-fade-in" style={{
         animationDelay: "0.5s"
       }}>
           <FeatureCard icon={<QrCode className="w-6 h-6" />} title="QR Code & NFC" description="Scannez ou approchez votre téléphone pour sonner instantanément" color="blue" />
           <FeatureCard icon={<Smartphone className="w-6 h-6" />} title="Vidéo HD" description="Voyez votre visiteur avant de répondre, où que vous soyez" color="orange" />
+          <FeatureCard icon={<MessageSquare className="w-6 h-6" />} title="Messagerie" description="Échangez des messages chiffrés avec vos visiteurs, texte et vocal" color="purple" />
           <FeatureCard icon={<Shield className="w-6 h-6" />} title="Sécurisé" description="Validation GPS et cryptographie avancée pour votre sécurité" color="green" />
         </div>
       </div>
