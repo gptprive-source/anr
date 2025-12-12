@@ -156,11 +156,17 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
       localStorage.removeItem("anr_register_address_data");
       localStorage.removeItem("anr_register_step");
       localStorage.removeItem("anr_pending_session_id");
+      sessionStorage.removeItem("anr_referral_code");
+      
       toast({
         title: data.alreadyProcessed ? "Inscription déjà finalisée" : data.isNewAnr ? "ANR créé avec succès !" : "Habitation ajoutée !",
-        description: "Votre paiement a été validé"
+        description: "Votre paiement a été validé. Redirection..."
       });
-      setStep("success");
+      
+      // Redirect to dashboard after short delay
+      setTimeout(() => {
+        navigate("/dashboard", { replace: true });
+      }, 1500);
     } catch (error: any) {
       console.error("Payment verification error:", error);
 
