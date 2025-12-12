@@ -93,11 +93,14 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
   // Lock to prevent multiple verify calls
   const isVerifyingRef = useRef(false);
   const hasProcessedSessionRef = useRef<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  // Handle Stripe return
+  // CRITICAL: Handle Stripe return - runs FIRST before any other effect
   useEffect(() => {
     const paymentStatus = searchParams.get("payment");
     const sessionId = searchParams.get("session_id");
+
+    console.log("[RegisterForm] Payment check - status:", paymentStatus, "sessionId:", sessionId);
 
     // Skip if already processing or already processed this session
     if (isVerifyingRef.current) {
@@ -108,11 +111,21 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
       console.log("[RegisterForm] Session already processed locally, skipping");
       return;
     }
+
     if (paymentStatus === "success" && sessionId) {
+      console.log("[RegisterForm] Payment success detected, starting verification");
       // Mark as processing immediately
       hasProcessedSessionRef.current = sessionId;
-      // Clear URL params immediately to prevent re-triggers on refresh
+      setIsProcessingPayment(true);
+      
+      // Store session ID BEFORE clearing URL (recovery mechanism)
+      localStorage.setItem("anr_pending_session_id", sessionId);
+      console.log("[RegisterForm] Stored pending session ID:", sessionId);
+      
+      // Clear URL params to prevent re-triggers on refresh
       window.history.replaceState({}, "", "/register");
+      
+      // Call verify function
       verifyPaymentAndFinalize(sessionId);
     } else if (paymentStatus === "cancelled") {
       window.history.replaceState({}, "", "/register");
@@ -124,6 +137,20 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
       setStep("payment");
     }
   }, [searchParams]);
+
+  // Check for pending payment on mount (recovery mechanism)
+  useEffect(() => {
+    if (isVerifyingRef.current || isProcessingPayment) return;
+    
+    const pendingSessionId = localStorage.getItem("anr_pending_session_id");
+    if (pendingSessionId && !hasProcessedSessionRef.current) {
+      console.log("[RegisterForm] Found pending session ID on mount:", pendingSessionId);
+      hasProcessedSessionRef.current = pendingSessionId;
+      setIsProcessingPayment(true);
+      verifyPaymentAndFinalize(pendingSessionId);
+    }
+  }, [isProcessingPayment]);
+
   const verifyPaymentAndFinalize = async (sessionId: string, retryCount = 0) => {
     // Prevent multiple simultaneous calls
     if (isVerifyingRef.current) {
@@ -132,27 +159,37 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
     }
     isVerifyingRef.current = true;
     setLoading(true);
+    setIsProcessingPayment(true);
+    
+    console.log("[RegisterForm] ========== VERIFY PAYMENT START ==========");
+    console.log("[RegisterForm] Session ID:", sessionId);
+    console.log("[RegisterForm] Retry count:", retryCount);
+    
     try {
       // Try to get session, but don't fail if not available
       // The verify-payment function can work without auth using Stripe metadata
-      const {
-        data: {
-          session
-        }
-      } = await supabase.auth.getSession();
-      console.log("[RegisterForm] Verifying payment, session available:", !!session);
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke("verify-payment", {
-        body: {
-          sessionId
-        }
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("[RegisterForm] Auth session available:", !!session);
+      console.log("[RegisterForm] Calling verify-payment edge function...");
+      
+      const { data, error } = await supabase.functions.invoke("verify-payment", {
+        body: { sessionId }
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      
+      console.log("[RegisterForm] verify-payment response:", { data, error });
+      
+      if (error) {
+        console.error("[RegisterForm] Edge function error:", error);
+        throw error;
+      }
+      if (data?.error) {
+        console.error("[RegisterForm] Data error:", data.error);
+        throw new Error(data.error);
+      }
 
-      // Clear localStorage data
+      console.log("[RegisterForm] Payment verified successfully!");
+      
+      // Clear localStorage data on SUCCESS only
       localStorage.removeItem("anr_register_address_data");
       localStorage.removeItem("anr_register_step");
       localStorage.removeItem("anr_pending_session_id");
@@ -168,7 +205,9 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
         navigate("/dashboard", { replace: true });
       }, 1500);
     } catch (error: any) {
-      console.error("Payment verification error:", error);
+      console.error("[RegisterForm] ========== VERIFY PAYMENT ERROR ==========");
+      console.error("[RegisterForm] Error:", error);
+      console.error("[RegisterForm] Error message:", error?.message);
 
       // If it's a session/auth error and we haven't retried, try to refresh auth
       if (retryCount === 0 && (error.message?.includes("Session") || error.message?.includes("Auth"))) {
@@ -179,28 +218,32 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
           // Retry once after refresh
           return verifyPaymentAndFinalize(sessionId, 1);
         } catch (refreshError) {
-          console.error("Session refresh failed:", refreshError);
+          console.error("[RegisterForm] Session refresh failed:", refreshError);
         }
       }
+      
+      // Keep session ID in localStorage for manual recovery
+      console.log("[RegisterForm] Keeping pending session ID for recovery:", sessionId);
+      
       toast({
         title: "Erreur de vérification",
-        description: error.message || "Impossible de vérifier le paiement. Contactez le support avec votre numéro de session.",
+        description: error.message || "Impossible de vérifier le paiement. Contactez le support.",
         variant: "destructive"
       });
 
-      // Store session ID for manual recovery if needed
-      localStorage.setItem("anr_pending_session_id", sessionId);
       setStep("payment");
     } finally {
       setLoading(false);
+      setIsProcessingPayment(false);
       isVerifyingRef.current = false;
+      console.log("[RegisterForm] ========== VERIFY PAYMENT END ==========");
     }
   };
 
   // Check if user is returning after email verification
   useEffect(() => {
     if (authLoading || initialCheckDone) return;
-    if (searchParams.get("payment")) return; // Don't check if handling payment return
+    if (searchParams.get("payment") || isProcessingPayment) return; // Don't check if handling payment return
 
     const checkUserState = async () => {
       const savedStep = localStorage.getItem("anr_register_step") as Step | null;
@@ -240,7 +283,7 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
       setInitialCheckDone(true);
     };
     checkUserState();
-  }, [user, authLoading, initialCheckDone, navigate, searchParams]);
+  }, [user, authLoading, initialCheckDone, navigate, searchParams, isProcessingPayment]);
   const handleCredentialsSubmit = async () => {
     const emailValidation = emailSchema.safeParse(email.trim());
     const passwordValidation = passwordSchema.safeParse(password);
@@ -471,7 +514,7 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
   }
 
   // Show loading while verifying payment
-  if (loading && searchParams.get("payment") === "success") {
+  if (isProcessingPayment || (loading && searchParams.get("payment") === "success")) {
     return <div className="min-h-screen flex items-center justify-center flex-col gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
         <p className="text-muted-foreground">Vérification du paiement...</p>

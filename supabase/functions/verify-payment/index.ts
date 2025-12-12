@@ -34,7 +34,10 @@ serve(async (req) => {
   );
 
   try {
+    console.log("=====================================");
     console.log("[VERIFY-PAYMENT] Starting payment verification");
+    console.log("[VERIFY-PAYMENT] Timestamp:", new Date().toISOString());
+    console.log("=====================================");
 
     const { sessionId } = await req.json();
     if (!sessionId) throw new Error("Session ID is required");
@@ -598,7 +601,10 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[VERIFY-PAYMENT] ERROR:", errorMessage);
+    console.log("=====================================");
+    console.error("[VERIFY-PAYMENT] CRITICAL ERROR:", errorMessage);
+    console.error("[VERIFY-PAYMENT] Stack:", error instanceof Error ? error.stack : "N/A");
+    console.log("=====================================");
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
