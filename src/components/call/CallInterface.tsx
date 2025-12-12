@@ -122,13 +122,23 @@ const CallInterface = memo(({
         },
         (payload) => {
           const callLog = payload.new as any;
+          
+          // Handle declined status - show message and redirect to messaging
+          if (callLog.status === "declined" && !isResident) {
+            logger.log("[CallInterface] Call was declined by all residents");
+            setCallWasDeclined(true);
+            setShowMessageDialog(true);
+            setCallState("ended");
+            leaveCall();
+            return;
+          }
+          
           if (callLog.status === "ended") {
             logger.log("[CallInterface] Call ended by other party");
             
-            // If visitor and call ended without being answered - resident declined
+            // If visitor and call ended without being answered
             if (!isResident && !callLog.answered_by && !callWasAnswered) {
-              logger.log("[CallInterface] Call was declined by resident(s)");
-              setCallWasDeclined(true);
+              logger.log("[CallInterface] Call ended without answer - showing message dialog");
               setShowMessageDialog(true);
             }
             
@@ -229,7 +239,14 @@ const CallInterface = memo(({
         logger.log("[CallInterface] Other residents still in call:", activeResidents.length);
       }
     } else if (callId && !isResident) {
-      // Visitor hanging up - end the entire call
+      // Visitor hanging up - check if call was answered
+      if (!callWasAnswered && habitationId) {
+        // Call wasn't answered - show message dialog instead of just ending
+        logger.log("[CallInterface] Visitor hangup without answer - showing message dialog");
+        setShowMessageDialog(true);
+      }
+      
+      // End the entire call
       await supabase
         .from("call_logs")
         .update({ status: "ended", ended_at: new Date().toISOString() })
@@ -333,7 +350,14 @@ const CallInterface = memo(({
       {callState === "ended" && (
         <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
           <div className="px-6 py-4 rounded-lg bg-secondary border border-border text-center">
-            <p className="text-foreground font-medium mb-4">Appel terminé</p>
+            <p className="text-foreground font-medium mb-4">
+              {callWasDeclined ? "Appel refusé" : "Appel terminé"}
+            </p>
+            {callWasDeclined && (
+              <p className="text-muted-foreground text-sm mb-4">
+                Le résident n'est pas disponible. Laissez-lui un message.
+              </p>
+            )}
             <Button variant="glass" onClick={() => window.history.back()}>
               Retour
             </Button>

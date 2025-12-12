@@ -41,8 +41,8 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
             .single()
         ]);
         
-        // If call ended (visitor hung up) or participant no longer ringing, hide screen
-        const callEnded = !callLog || callLog.status === "ended" || callLog.status === "missed";
+        // If call ended (visitor hung up) or declined, or participant no longer ringing, hide screen
+        const callEnded = !callLog || callLog.status === "ended" || callLog.status === "missed" || callLog.status === "declined";
         const notRinging = !participant || participant.status !== "ringing";
         
         // Also check if another resident answered
