@@ -167,8 +167,9 @@ serve(async (req) => {
     const isNewAnr = metadata.is_new_anr === "true";
     const extraDomings = parseInt(metadata.extra_domings) || 0;
     const existingAnrId = metadata.existing_anr_id || null;
+    const referralCode = metadata.referral_code || null;
 
-    console.log("[VERIFY-PAYMENT] Creating ANR/habitation:", { isNewAnr, habitationName, extraDomings });
+    console.log("[VERIFY-PAYMENT] Creating ANR/habitation:", { isNewAnr, habitationName, extraDomings, referralCode });
 
     let anrId: string;
     let actuallyNewAnr = isNewAnr; // Track if we actually created a new ANR
@@ -478,6 +479,109 @@ serve(async (req) => {
       } catch (emailError) {
         console.error("[VERIFY-PAYMENT] Error sending confirmation email/invoice:", emailError);
         // Don't fail the whole process if email fails
+      }
+    }
+
+    // ============================================
+    // REFERRAL SYSTEM: Credit referrer if applicable
+    // ============================================
+    if (referralCode) {
+      try {
+        console.log("[VERIFY-PAYMENT] Processing referral code:", referralCode);
+        
+        // Find the referral code record
+        const { data: referralCodeRecord, error: refCodeError } = await supabaseAdmin
+          .from("referral_codes")
+          .select("id, user_id, is_active")
+          .eq("code", referralCode)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (refCodeError) {
+          console.error("[VERIFY-PAYMENT] Error fetching referral code:", refCodeError);
+        } else if (referralCodeRecord && referralCodeRecord.user_id !== userId) {
+          // Don't allow self-referral
+          const referrerId = referralCodeRecord.user_id;
+          
+          // Check if this user was already referred (avoid duplicates)
+          const { data: existingReferral } = await supabaseAdmin
+            .from("referrals")
+            .select("id")
+            .eq("referred_id", userId)
+            .maybeSingle();
+
+          if (!existingReferral) {
+            // Create the referral record
+            const { error: referralError } = await supabaseAdmin
+              .from("referrals")
+              .insert({
+                referrer_id: referrerId,
+                referred_id: userId,
+                referral_code_id: referralCodeRecord.id,
+                status: "paid",
+                subscription_paid_at: new Date().toISOString(),
+                reward_amount: 5.00, // 5€ per referral
+              });
+
+            if (referralError) {
+              console.error("[VERIFY-PAYMENT] Error creating referral:", referralError);
+            } else {
+              console.log("[VERIFY-PAYMENT] Referral created for referrer:", referrerId);
+              
+              // Credit the referrer's balance (+5€)
+              const { error: balanceError } = await supabaseAdmin.rpc(
+                "increment_referral_balance",
+                { user_uuid: referrerId, amount: 5.00 }
+              );
+
+              if (balanceError) {
+                // Fallback: manual update if RPC doesn't exist
+                console.log("[VERIFY-PAYMENT] RPC not found, using manual balance update");
+                const { data: currentProfile } = await supabaseAdmin
+                  .from("profiles")
+                  .select("referral_balance")
+                  .eq("id", referrerId)
+                  .single();
+
+                const currentBalance = currentProfile?.referral_balance || 0;
+                const newBalance = currentBalance + 5;
+
+                await supabaseAdmin
+                  .from("profiles")
+                  .update({ referral_balance: newBalance })
+                  .eq("id", referrerId);
+
+                console.log("[VERIFY-PAYMENT] Referrer balance updated:", currentBalance, "->", newBalance);
+
+                // Check if auto-payout should trigger (>= 50€)
+                if (newBalance >= 50) {
+                  console.log("[VERIFY-PAYMENT] Balance >= 50€, triggering auto-payout check");
+                  // Trigger payout processing (fire and forget)
+                  fetch(
+                    `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-referral-payout`,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                      },
+                      body: JSON.stringify({ userId: referrerId }),
+                    }
+                  ).catch(err => console.error("[VERIFY-PAYMENT] Payout trigger error:", err));
+                }
+              }
+            }
+          } else {
+            console.log("[VERIFY-PAYMENT] User already has a referrer, skipping");
+          }
+        } else if (referralCodeRecord?.user_id === userId) {
+          console.log("[VERIFY-PAYMENT] Self-referral attempted, ignoring");
+        } else {
+          console.log("[VERIFY-PAYMENT] Referral code not found or inactive:", referralCode);
+        }
+      } catch (refError) {
+        console.error("[VERIFY-PAYMENT] Error processing referral:", refError);
+        // Don't fail the whole process if referral processing fails
       }
     }
 
