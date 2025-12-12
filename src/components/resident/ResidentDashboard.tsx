@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, HelpCircle, MessageSquare, DoorOpen, ShoppingCart, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -44,7 +44,9 @@ const ResidentDashboard = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [togglingMute, setTogglingMute] = useState(false);
   const [currentUserName, setCurrentUserName] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     user
   } = useAuth();
@@ -59,11 +61,12 @@ const ResidentDashboard = () => {
   const {
     unreadCount: unreadMessagesCount
   } = useVisitorMessages(habitationData?.id || "");
+  
   useEffect(() => {
     if (user) {
       fetchHabitationData();
     }
-  }, [user]);
+  }, [user, retryCount]);
   const fetchHabitationData = async () => {
     try {
       // Get user's resident record
@@ -78,6 +81,13 @@ const ResidentDashboard = () => {
         `).eq("user_id", user?.id).eq("status", "verified").maybeSingle();
       if (residentError) throw residentError;
       if (!residentData) {
+        // If we just came from payment and data is not ready yet, retry a few times
+        if (retryCount < 5) {
+          console.log(`[Dashboard] Resident not found, retrying (${retryCount + 1}/5)...`);
+          setTimeout(() => setRetryCount(prev => prev + 1), 1000);
+          return;
+        }
+        
         // Check if user has an active subscription
         const {
           data: subscription
