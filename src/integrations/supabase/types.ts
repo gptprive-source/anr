@@ -1367,6 +1367,39 @@ export type Database = {
         }
         Relationships: []
       }
+      google_drive_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          google_email: string | null
+          id: string
+          refresh_token: string
+          token_expires_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          google_email?: string | null
+          id?: string
+          refresh_token: string
+          token_expires_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          google_email?: string | null
+          id?: string
+          refresh_token?: string
+          token_expires_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       habitations: {
         Row: {
           anr_id: string

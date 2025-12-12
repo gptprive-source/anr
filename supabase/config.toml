@@ -130,3 +130,6 @@ verify_jwt = true
 
 [functions.create-shop-checkout]
 verify_jwt = true
+
+[functions.google-drive-backup]
+verify_jwt = false
