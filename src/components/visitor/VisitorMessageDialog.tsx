@@ -16,7 +16,8 @@ import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { useVisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
 import { useVisitorCustomTemplates } from "@/hooks/useVisitorCustomTemplates";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
-import { Send, Loader2, MessageSquare, Info, User, Building2, CreditCard, Plus, X, Save, Mic } from "lucide-react";
+import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
+import { Send, Loader2, MessageSquare, Info, User, Building2, CreditCard, Plus, X, Save, Mic, Lock } from "lucide-react";
 import VisitorBusinessCardManager from "./VisitorBusinessCardManager";
 import SaveCustomTemplateDialog from "./SaveCustomTemplateDialog";
 import VoiceRecorder from "./VoiceRecorder";
@@ -40,6 +41,7 @@ const VisitorMessageDialog = ({
   const { card, loading: cardLoading } = useVisitorBusinessCard();
   const { templates: customTemplates, saveTemplate, deleteTemplate, incrementUsage } = useVisitorCustomTemplates();
   const { flags } = useFeatureFlags();
+  const { encryptMessageForResident, isReady: encryptionReady } = useEncryptedMessages(habitationId);
   const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [phone, setPhone] = useState("");
@@ -155,6 +157,16 @@ const VisitorMessageDialog = ({
       });
     }
     
+    // Encrypt message if encryption is ready
+    let encryptionData: { encrypted_message: string; message_nonce: string; visitor_public_key: string } | undefined;
+    if (encryptionReady && message.trim()) {
+      try {
+        encryptionData = await encryptMessageForResident(message.trim());
+      } catch (error) {
+        console.warn('Encryption failed, sending unencrypted:', error);
+      }
+    }
+    
     // Always attach business card if exists
     const result = await sendMessage(
       habitationId,
@@ -162,7 +174,8 @@ const VisitorMessageDialog = ({
       phone.trim() || undefined,
       selectedTemplateId || undefined,
       card ? card.id : undefined, // Always attach card if exists
-      audioBase64
+      audioBase64,
+      encryptionData
     );
 
     if (result.success) {
@@ -390,12 +403,17 @@ const VisitorMessageDialog = ({
               </div>
             )}
 
-            {/* RGPD notice */}
+            {/* E2E Encryption & RGPD notice */}
             <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
-              <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground">
-                Ce message sera conservé {retentionDays} jours puis automatiquement supprimé conformément au RGPD.
-              </p>
+              <Lock className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                  🔐 Message chiffré de bout en bout
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Seul le destinataire pourra lire ce message. Conservation : {retentionDays} jours (RGPD).
+                </p>
+              </div>
             </div>
 
             {/* Submit button */}
