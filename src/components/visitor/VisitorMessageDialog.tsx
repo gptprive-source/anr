@@ -38,7 +38,7 @@ const VisitorMessageDialog = ({
   onMessageSent,
 }: VisitorMessageDialogProps) => {
   const { templates: adminTemplates, retentionDays, sendMessage } = useVisitorMessages();
-  const { card, loading: cardLoading } = useVisitorBusinessCard();
+  const { card, loading: cardLoading, refetch: refetchCard } = useVisitorBusinessCard();
   const { templates: customTemplates, saveTemplate, deleteTemplate, incrementUsage } = useVisitorCustomTemplates();
   const { flags } = useFeatureFlags();
   const { encryptMessageForResident, isReady: encryptionReady } = useEncryptedMessages(habitationId);
@@ -448,7 +448,10 @@ const VisitorMessageDialog = ({
       <VisitorBusinessCardManager
         open={showCardManager}
         onOpenChange={setShowCardManager}
-        onCardSaved={() => setShowCardManager(false)}
+        onCardSaved={() => {
+          refetchCard();
+          setShowCardManager(false);
+        }}
       />
     </>
   );
