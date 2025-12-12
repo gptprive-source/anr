@@ -489,9 +489,9 @@ const Conversation = () => {
                 {card?.job_title && (
                   <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
                 )}
-                <div className="flex items-center gap-1 text-xs text-green-600">
+                <div className="flex items-center gap-1 text-xs text-green-600" title="Vos messages sont protégés par un chiffrement de bout en bout. Seuls vous et votre correspondant pouvez les lire.">
                   <Lock className="w-3 h-3" />
-                  <span>Chiffré</span>
+                  <span>Chiffrement de bout en bout</span>
                 </div>
               </div>
             </div>
