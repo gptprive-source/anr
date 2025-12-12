@@ -1911,30 +1911,36 @@ export type Database = {
           allow_emergency_access: boolean | null
           created_at: string | null
           first_name: string | null
+          iban: string | null
           id: string
           last_name: string | null
           phone_number: string | null
           phone_verified: boolean | null
+          referral_balance: number | null
           updated_at: string | null
         }
         Insert: {
           allow_emergency_access?: boolean | null
           created_at?: string | null
           first_name?: string | null
+          iban?: string | null
           id: string
           last_name?: string | null
           phone_number?: string | null
           phone_verified?: boolean | null
+          referral_balance?: number | null
           updated_at?: string | null
         }
         Update: {
           allow_emergency_access?: boolean | null
           created_at?: string | null
           first_name?: string | null
+          iban?: string | null
           id?: string
           last_name?: string | null
           phone_number?: string | null
           phone_verified?: boolean | null
+          referral_balance?: number | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1965,6 +1971,140 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_codes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_payouts: {
+        Row: {
+          amount: number
+          created_at: string | null
+          iban: string | null
+          id: string
+          payout_method: string | null
+          processed_at: string | null
+          referrals_count: number
+          status: string | null
+          stripe_transfer_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          iban?: string | null
+          id?: string
+          payout_method?: string | null
+          processed_at?: string | null
+          referrals_count: number
+          status?: string | null
+          stripe_transfer_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          iban?: string | null
+          id?: string
+          payout_method?: string | null
+          processed_at?: string | null
+          referrals_count?: number
+          status?: string | null
+          stripe_transfer_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_payouts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          created_at: string | null
+          id: string
+          referral_code_id: string
+          referred_id: string
+          referrer_id: string
+          reward_amount: number | null
+          status: string | null
+          subscription_paid_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          referral_code_id: string
+          referred_id: string
+          referrer_id: string
+          reward_amount?: number | null
+          status?: string | null
+          subscription_paid_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          referral_code_id?: string
+          referred_id?: string
+          referrer_id?: string
+          reward_amount?: number | null
+          status?: string | null
+          subscription_paid_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referral_code_id_fkey"
+            columns: ["referral_code_id"]
+            isOneToOne: false
+            referencedRelation: "referral_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resident_contacts: {
         Row: {
