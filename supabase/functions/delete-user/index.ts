@@ -208,11 +208,31 @@ serve(async (req) => {
       console.error("[delete-user] Call participant delete error:", participantError);
     }
 
+    // Check if user still exists before attempting deletion
+    const { data: existingUser, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
+    
+    if (getUserError || !existingUser?.user) {
+      // User already deleted - this is fine (idempotent operation)
+      console.log("[delete-user] ℹ️ User already deleted or not found:", targetUserId);
+      return new Response(
+        JSON.stringify({ success: true, message: "Utilisateur déjà supprimé" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Delete from auth.users (this will cascade delete profiles)
     // NOTE: ANR and habitations are NOT deleted - they remain permanently attached to the address
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
 
     if (authError) {
+      // Handle "user not found" gracefully (race condition)
+      if (authError.message?.includes("not found") || authError.status === 404) {
+        console.log("[delete-user] ℹ️ User already deleted (race condition):", targetUserId);
+        return new Response(
+          JSON.stringify({ success: true, message: "Utilisateur déjà supprimé" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       console.error("[delete-user] Auth delete error:", authError);
       throw new Error("Erreur lors de la suppression du compte: " + authError.message);
     }
