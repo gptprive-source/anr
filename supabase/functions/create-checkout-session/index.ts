@@ -128,7 +128,7 @@ serve(async (req) => {
         plan_type: planType,
         referral_code: referralCode || "",
       },
-      success_url: `${origin}/register?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/registration-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/register?payment=cancelled`,
       subscription_data: {
         metadata: {
