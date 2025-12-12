@@ -64,7 +64,8 @@ const Messages = () => {
   }, [user]);
 
   const { messages, unreadCount, loading } = useVisitorMessages(habitationId || "");
-  const { isBlocked, blockedVisitors } = useBlockedVisitors();
+  const { isBlocked, blockedVisitors, unblockVisitor } = useBlockedVisitors();
+  const [showBlocked, setShowBlocked] = useState(false);
 
   // Group messages by visitor
   const groupedConversations = useMemo(() => {
@@ -265,8 +266,56 @@ const Messages = () => {
                 <SelectItem value="month">Ce mois</SelectItem>
               </SelectContent>
             </Select>
+
+            {blockedVisitors.length > 0 && (
+              <Button
+                variant={showBlocked ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowBlocked(!showBlocked)}
+                className="gap-2"
+              >
+                <Ban className="w-4 h-4" />
+                Bloqués ({blockedVisitors.length})
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Blocked visitors section */}
+        {showBlocked && blockedVisitors.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Ban className="w-4 h-4" />
+              Visiteurs bloqués
+            </h3>
+            {blockedVisitors.map((blocked) => (
+              <Card key={blocked.id} className="border border-red-500/50 bg-red-500/5">
+                <CardContent className="p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                      <Ban className="w-5 h-5 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {blocked.visitor_name || "Visiteur anonyme"}
+                      </p>
+                      {blocked.reason && (
+                        <p className="text-xs text-muted-foreground">{blocked.reason}</p>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => unblockVisitor(blocked.visitor_identifier)}
+                  >
+                    Débloquer
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Conversations list */}
         {filteredConversations.length === 0 ? (
