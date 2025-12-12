@@ -47,7 +47,10 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
   const [loading, setLoading] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [addressData, setAddressData] = useState<AddressData | null>(null);
-  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(() => {
+    // Initialize from sessionStorage on mount
+    return sessionStorage.getItem("anr_referral_code") || null;
+  });
   const navigate = useNavigate();
   const {
     toast
