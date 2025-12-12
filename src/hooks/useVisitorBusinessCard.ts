@@ -11,6 +11,7 @@ export interface VisitorBusinessCard {
   phone: string | null;
   email: string | null;
   visitor_anr_code: string | null;
+  avatar_url: string | null;
   device_id: string;
   created_at: string;
   updated_at: string;

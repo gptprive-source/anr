@@ -15,6 +15,7 @@ import { useVisitorBusinessCard, VisitorBusinessCard } from "@/hooks/useVisitorB
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Building2, Loader2, Save, Trash2, CreditCard } from "lucide-react";
+import AvatarUpload from "@/components/ui/AvatarUpload";
 
 interface VisitorBusinessCardManagerProps {
   open: boolean;
@@ -43,6 +44,7 @@ const VisitorBusinessCardManager = ({
     phone: "",
     email: "",
     visitor_anr_code: "",
+    avatar_url: null as string | null,
   });
 
   // Fetch user's ANR code if authenticated
@@ -85,6 +87,7 @@ const VisitorBusinessCardManager = ({
         phone: card.phone || "",
         email: card.email || "",
         visitor_anr_code: card.visitor_anr_code || userAnrCode || "",
+        avatar_url: card.avatar_url || null,
       });
     } else if (userAnrCode && !formData.visitor_anr_code) {
       // Pre-fill ANR code for new cards
@@ -143,6 +146,7 @@ const VisitorBusinessCardManager = ({
         phone: "",
         email: "",
         visitor_anr_code: "",
+        avatar_url: null,
       });
     } else {
       toast({
@@ -180,6 +184,17 @@ const VisitorBusinessCardManager = ({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Avatar upload */}
+          <div className="flex justify-center">
+            <AvatarUpload
+              currentUrl={formData.avatar_url}
+              onUpload={(url) => setFormData({ ...formData, avatar_url: url })}
+              onRemove={() => setFormData({ ...formData, avatar_url: null })}
+              fallbackText={formData.card_type === "company" ? formData.company_name : `${formData.first_name} ${formData.last_name}`}
+              size="lg"
+            />
+          </div>
+
           {/* Type selection */}
           <div className="space-y-2">
             <Label>Type</Label>
