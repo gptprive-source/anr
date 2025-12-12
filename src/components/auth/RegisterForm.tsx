@@ -100,41 +100,61 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
   // Lock to prevent multiple verify calls
   const isVerifyingRef = useRef(false);
   const hasProcessedSessionRef = useRef<string | null>(null);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(() => {
+    // Initialize as true if we detect payment params in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get("payment") === "success" && !!urlParams.get("session_id");
+  });
 
-  // CRITICAL: Handle Stripe return - runs FIRST before any other effect
+  // CRITICAL: Runs ONCE on mount - checks URL and localStorage for pending payment
   useEffect(() => {
-    const paymentStatus = searchParams.get("payment");
-    const sessionId = searchParams.get("session_id");
-
-    console.log("[RegisterForm] Payment check - status:", paymentStatus, "sessionId:", sessionId);
-
-    // Skip if already processing or already processed this session
+    // Read directly from window.location to avoid React state timing issues
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get("payment");
+    const sessionIdFromUrl = urlParams.get("session_id");
+    const pendingSessionId = localStorage.getItem("anr_pending_session_id");
+    
+    console.log("[RegisterForm] MOUNT CHECK - paymentStatus:", paymentStatus, "sessionIdFromUrl:", sessionIdFromUrl, "pendingSessionId:", pendingSessionId);
+    
+    // Determine which session ID to use (URL takes priority)
+    const sessionToVerify = sessionIdFromUrl || pendingSessionId;
+    
+    if (!sessionToVerify) {
+      console.log("[RegisterForm] No session to verify");
+      return;
+    }
+    
+    // Skip if already processing
     if (isVerifyingRef.current) {
       console.log("[RegisterForm] Already verifying, skipping");
       return;
     }
-    if (sessionId && hasProcessedSessionRef.current === sessionId) {
-      console.log("[RegisterForm] Session already processed locally, skipping");
+    if (hasProcessedSessionRef.current === sessionToVerify) {
+      console.log("[RegisterForm] Session already processed:", sessionToVerify);
       return;
     }
-
-    if (paymentStatus === "success" && sessionId) {
-      console.log("[RegisterForm] Payment success detected, starting verification");
-      // Mark as processing immediately
-      hasProcessedSessionRef.current = sessionId;
-      setIsProcessingPayment(true);
-      
-      // Store session ID BEFORE clearing URL (recovery mechanism)
-      localStorage.setItem("anr_pending_session_id", sessionId);
-      console.log("[RegisterForm] Stored pending session ID:", sessionId);
-      
-      // Clear URL params to prevent re-triggers on refresh
+    
+    console.log("[RegisterForm] Starting payment verification for:", sessionToVerify);
+    
+    // Mark as processing
+    hasProcessedSessionRef.current = sessionToVerify;
+    setIsProcessingPayment(true);
+    
+    // Store in localStorage for recovery
+    localStorage.setItem("anr_pending_session_id", sessionToVerify);
+    
+    // Clear URL immediately to prevent re-triggers
+    if (paymentStatus) {
       window.history.replaceState({}, "", "/register");
-      
-      // Call verify function
-      verifyPaymentAndFinalize(sessionId);
-    } else if (paymentStatus === "cancelled") {
+    }
+    
+    // Call verify function
+    verifyPaymentAndFinalize(sessionToVerify);
+  }, []); // Empty deps = runs ONCE on mount
+
+  // Handle cancelled payment (separate effect for searchParams changes)
+  useEffect(() => {
+    if (searchParams.get("payment") === "cancelled") {
       window.history.replaceState({}, "", "/register");
       toast({
         title: "Paiement annulé",
@@ -143,20 +163,7 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
       });
       setStep("payment");
     }
-  }, [searchParams]);
-
-  // Check for pending payment on mount (recovery mechanism)
-  useEffect(() => {
-    if (isVerifyingRef.current || isProcessingPayment) return;
-    
-    const pendingSessionId = localStorage.getItem("anr_pending_session_id");
-    if (pendingSessionId && !hasProcessedSessionRef.current) {
-      console.log("[RegisterForm] Found pending session ID on mount:", pendingSessionId);
-      hasProcessedSessionRef.current = pendingSessionId;
-      setIsProcessingPayment(true);
-      verifyPaymentAndFinalize(pendingSessionId);
-    }
-  }, [isProcessingPayment]);
+  }, [searchParams, toast]);
 
   const verifyPaymentAndFinalize = async (sessionId: string, retryCount = 0) => {
     // Prevent multiple simultaneous calls
