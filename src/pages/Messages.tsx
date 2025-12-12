@@ -15,6 +15,7 @@ import { formatDistanceToNow, isToday, isThisWeek, isThisMonth } from "date-fns"
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
 import { Loader2 } from "lucide-react";
+import { SystemNotificationsSection } from "@/components/messages/SystemNotificationsSection";
 
 type StatusFilter = "all" | "unread" | "read";
 type DateFilter = "all" | "today" | "week" | "month";
@@ -316,6 +317,9 @@ const Messages = () => {
             ))}
           </div>
         )}
+
+        {/* System notifications section */}
+        <SystemNotificationsSection />
 
         {/* Conversations list */}
         {filteredConversations.length === 0 ? (
