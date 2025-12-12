@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera, Lock } from "lucide-react";
+import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera, Lock, Ban, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useMessageReplies } from "@/hooks/useMessageReplies";
 import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
+import { useBlockedVisitors } from "@/hooks/useBlockedVisitors";
 import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
@@ -17,6 +18,17 @@ import VideoRecorder from "@/components/messages/VideoRecorder";
 import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const EMOJI_CATEGORIES = {
   "😊 Smileys": [
@@ -256,12 +268,30 @@ const Conversation = () => {
   }, [visitorId, user]);
 
   // Scroll to bottom when new messages arrive or on initial load
+  // Blocked visitors hook
+  const { isBlocked, blockVisitor, unblockVisitor } = useBlockedVisitors();
+
+  // Check if current visitor is blocked
+  const currentVisitorBlocked = visitorId ? isBlocked(visitorId) : false;
+
+  // Scroll to bottom IMMEDIATELY on load (not smooth) using useLayoutEffect
+  const hasScrolledRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!loading && visitorMessages.length > 0 && !hasScrolledRef.current) {
+      // Instant scroll on first load
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      hasScrolledRef.current = true;
+    }
+  }, [loading, visitorMessages.length]);
+
+  // Smooth scroll when new messages arrive AFTER initial load
   useEffect(() => {
-    // Use setTimeout to ensure DOM is updated before scrolling
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
-  }, [visitorMessages, replies, loading]);
+    if (hasScrolledRef.current) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [replies.length]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -449,11 +479,56 @@ const Conversation = () => {
                 navigate(`/contacts?scrollTo=${encodeURIComponent(contactIdentifier || '')}`);
               }}
             >
-              <p className="font-semibold truncate">{displayName}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold truncate">{displayName}</p>
+                {currentVisitorBlocked && (
+                  <span className="text-xs bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full">Bloqué</span>
+                )}
+              </div>
               {card?.job_title && (
                 <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
               )}
             </div>
+
+            {/* Block/Unblock button */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={currentVisitorBlocked ? "text-green-500 hover:text-green-600 hover:bg-green-50" : "text-red-500 hover:text-red-600 hover:bg-red-50"}
+                >
+                  {currentVisitorBlocked ? <ShieldCheck className="w-5 h-5" /> : <Ban className="w-5 h-5" />}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {currentVisitorBlocked ? "Débloquer ce visiteur ?" : "Bloquer ce visiteur ?"}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {currentVisitorBlocked 
+                      ? "Vous pourrez à nouveau recevoir des messages de ce visiteur."
+                      : "Vous ne recevrez plus de messages de ce visiteur. Cette action est réversible."}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    className={currentVisitorBlocked ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
+                    onClick={() => {
+                      if (currentVisitorBlocked) {
+                        unblockVisitor(visitorId || "");
+                      } else {
+                        blockVisitor(visitorId || "", displayName);
+                      }
+                    }}
+                  >
+                    {currentVisitorBlocked ? "Débloquer" : "Bloquer"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>
