@@ -531,47 +531,120 @@ serve(async (req) => {
             } else {
               console.log("[VERIFY-PAYMENT] Referral created for referrer:", referrerId);
               
-              // Credit the referrer's balance (+5€)
-              const { error: balanceError } = await supabaseAdmin.rpc(
-                "increment_referral_balance",
-                { user_uuid: referrerId, amount: 5.00 }
-              );
+              // Get referrer and referred user info for notifications
+              const { data: referrerProfile } = await supabaseAdmin
+                .from("profiles")
+                .select("id, first_name, last_name, referral_balance")
+                .eq("id", referrerId)
+                .single();
 
-              if (balanceError) {
-                // Fallback: manual update if RPC doesn't exist
-                console.log("[VERIFY-PAYMENT] RPC not found, using manual balance update");
-                const { data: currentProfile } = await supabaseAdmin
-                  .from("profiles")
-                  .select("referral_balance")
-                  .eq("id", referrerId)
-                  .single();
+              const { data: referredProfile } = await supabaseAdmin
+                .from("profiles")
+                .select("first_name, last_name")
+                .eq("id", userId)
+                .single();
 
-                const currentBalance = currentProfile?.referral_balance || 0;
-                const newBalance = currentBalance + 5;
+              const { data: referrerAuth } = await supabaseAdmin.auth.admin.getUserById(referrerId);
+              const referrerEmail = referrerAuth?.user?.email;
+              
+              const currentBalance = referrerProfile?.referral_balance || 0;
+              const newBalance = currentBalance + 5;
 
-                await supabaseAdmin
-                  .from("profiles")
-                  .update({ referral_balance: newBalance })
-                  .eq("id", referrerId);
+              // Update referrer's balance
+              await supabaseAdmin
+                .from("profiles")
+                .update({ referral_balance: newBalance })
+                .eq("id", referrerId);
 
-                console.log("[VERIFY-PAYMENT] Referrer balance updated:", currentBalance, "->", newBalance);
+              console.log("[VERIFY-PAYMENT] Referrer balance updated:", currentBalance, "->", newBalance);
 
-                // Check if auto-payout should trigger (>= 50€)
-                if (newBalance >= 50) {
-                  console.log("[VERIFY-PAYMENT] Balance >= 50€, triggering auto-payout check");
-                  // Trigger payout processing (fire and forget)
-                  fetch(
-                    `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-referral-payout`,
-                    {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              // Create in-app notification for referrer
+              const referredName = referredProfile 
+                ? `${referredProfile.first_name || ''} ${referredProfile.last_name || ''}`.trim() || 'Un utilisateur'
+                : 'Un utilisateur';
+
+              const { error: notifError } = await supabaseAdmin
+                .from("user_notifications")
+                .insert({
+                  user_id: referrerId,
+                  type: "referral_credited",
+                  title: "🎉 Nouveau filleul !",
+                  message: `${referredName} s'est inscrit avec votre code parrainage. +5€ crédités sur votre solde (${newBalance}€ au total).`,
+                  data: {
+                    referred_name: referredName,
+                    amount: 5,
+                    new_balance: newBalance,
+                  },
+                });
+
+              if (notifError) {
+                console.error("[VERIFY-PAYMENT] Error creating notification:", notifError);
+              } else {
+                console.log("[VERIFY-PAYMENT] In-app notification created for referrer");
+              }
+
+              // Send email notification to referrer via SMTP
+              if (referrerEmail) {
+                try {
+                  const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
+                  
+                  const smtpClient = new SMTPClient({
+                    connection: {
+                      hostname: Deno.env.get("SMTP_HOST") || "",
+                      port: parseInt(Deno.env.get("SMTP_PORT") || "465"),
+                      tls: true,
+                      auth: {
+                        username: Deno.env.get("SMTP_USER") || "",
+                        password: Deno.env.get("SMTP_PASS") || "",
                       },
-                      body: JSON.stringify({ userId: referrerId }),
-                    }
-                  ).catch(err => console.error("[VERIFY-PAYMENT] Payout trigger error:", err));
+                    },
+                  });
+
+                  const referrerFirstName = referrerProfile?.first_name || "Cher parrain";
+
+                  await smtpClient.send({
+                    from: Deno.env.get("SMTP_USER") || "noreply@anr.fr",
+                    to: referrerEmail,
+                    subject: "🎉 Nouveau filleul inscrit - +5€ crédités !",
+                    content: `Bonjour ${referrerFirstName},\n\nBonne nouvelle ! ${referredName} vient de s'inscrire sur ANR avec votre code parrainage.\n\n+5€ ont été crédités sur votre compte.\nVotre solde actuel : ${newBalance}€\n\nRappel : À partir de 50€, un virement automatique sera effectué sur votre IBAN.\n\nMerci de faire grandir la communauté ANR !\n\nL'équipe ANR`,
+                    html: `
+                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <h1 style="color: #0EA5E9;">🎉 Nouveau filleul inscrit !</h1>
+                        <p>Bonjour <strong>${referrerFirstName}</strong>,</p>
+                        <p>Bonne nouvelle ! <strong>${referredName}</strong> vient de s'inscrire sur ANR avec votre code parrainage.</p>
+                        <div style="background: linear-gradient(135deg, #0EA5E9, #06B6D4); color: white; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
+                          <p style="margin: 0; font-size: 24px; font-weight: bold;">+5€ crédités</p>
+                          <p style="margin: 10px 0 0 0; font-size: 18px;">Solde actuel : ${newBalance}€</p>
+                        </div>
+                        <p style="color: #666;">📌 <strong>Rappel :</strong> À partir de 50€, un virement automatique sera effectué sur votre IBAN.</p>
+                        <p style="margin-top: 30px;">Merci de faire grandir la communauté ANR !</p>
+                        <p style="color: #999;">L'équipe ANR</p>
+                      </div>
+                    `,
+                  });
+
+                  await smtpClient.close();
+                  console.log("[VERIFY-PAYMENT] Email notification sent to referrer:", referrerEmail);
+                } catch (emailError) {
+                  console.error("[VERIFY-PAYMENT] Error sending email notification:", emailError);
                 }
+              }
+
+              // Check if auto-payout should trigger (>= 50€)
+              if (newBalance >= 50) {
+                console.log("[VERIFY-PAYMENT] Balance >= 50€, triggering auto-payout check");
+                // Trigger payout processing (fire and forget)
+                fetch(
+                  `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-referral-payout`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                    },
+                    body: JSON.stringify({ userId: referrerId }),
+                  }
+                ).catch(err => console.error("[VERIFY-PAYMENT] Payout trigger error:", err));
               }
             }
           } else {
