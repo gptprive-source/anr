@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle, CreditCard, Plus, Minus, FileText, LogOut, Eye, EyeOff } from "lucide-react";
+import { Mail, User, MapPin, ArrowRight, ArrowLeft, Loader2, Lock, CheckCircle, CreditCard, Plus, Minus, FileText, LogOut, Eye, EyeOff, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { geocodeAddress as geocodeAddressApi } from "@/lib/geocoding";
 import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
 type Step = "credentials" | "email-sent" | "profile" | "address" | "payment" | "success";
 interface AddressData {
   address: string;
@@ -46,6 +47,7 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
   const [loading, setLoading] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [addressData, setAddressData] = useState<AddressData | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const navigate = useNavigate();
   const {
     toast
@@ -56,6 +58,23 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
     signOut
   } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Store referral code from URL
+  useEffect(() => {
+    const refCode = searchParams.get("ref");
+    if (refCode) {
+      setReferralCode(refCode);
+      sessionStorage.setItem("anr_referral_code", refCode);
+      // Clean URL but keep ref in storage
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("ref");
+      window.history.replaceState({}, "", `/register${newParams.toString() ? `?${newParams.toString()}` : ""}`);
+    } else {
+      // Check if we have a stored referral code
+      const storedRef = sessionStorage.getItem("anr_referral_code");
+      if (storedRef) setReferralCode(storedRef);
+    }
+  }, [searchParams]);
 
   const handleFinishLater = async () => {
     // Save current step to localStorage for resume
@@ -464,7 +483,7 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
           {step === "email-sent" && <EmailSentStep email={email} onResend={handleResendEmail} onBack={() => setStep("credentials")} loading={loading} />}
           {step === "profile" && <ProfileStep firstName={firstName} lastName={lastName} setFirstName={setFirstName} setLastName={setLastName} onSubmit={handleProfileSubmit} loading={loading} onFinishLater={handleFinishLater} />}
           {step === "address" && <AddressStep addressFields={addressFields} setAddressFields={setAddressFields} onSubmit={handleAddressSubmit} onBack={() => setStep("profile")} loading={loading} onFinishLater={handleFinishLater} />}
-          {step === "payment" && addressData && <PaymentStep addressData={addressData} onBack={() => setStep("address")} loading={loading} setLoading={setLoading} onFinishLater={handleFinishLater} />}
+          {step === "payment" && addressData && <PaymentStep addressData={addressData} onBack={() => setStep("address")} loading={loading} setLoading={setLoading} onFinishLater={handleFinishLater} referralCode={referralCode} />}
           {step === "success" && <SuccessStep onGoToDashboard={() => navigate("/dashboard")} />}
         </div>
 
@@ -861,13 +880,15 @@ const PaymentStep = ({
   onBack,
   loading,
   setLoading,
-  onFinishLater
+  onFinishLater,
+  referralCode
 }: {
   addressData: AddressData;
   onBack: () => void;
   loading: boolean;
   setLoading: (v: boolean) => void;
   onFinishLater: () => void;
+  referralCode?: string | null;
 }) => {
   const [extraDomings, setExtraDomings] = useState(0);
   const [acceptedCGU, setAcceptedCGU] = useState(false);
@@ -902,12 +923,15 @@ const PaymentStep = ({
             longitude: addressData.longitude
           },
           habitationName: addressData.habitationName,
-          existingAnrId: addressData.existingAnrId
+          existingAnrId: addressData.existingAnrId,
+          referralCode: referralCode || sessionStorage.getItem("anr_referral_code") || undefined
         }
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data?.url) {
+        // Clear referral code from storage after successful checkout creation
+        sessionStorage.removeItem("anr_referral_code");
         // Redirect to Stripe Checkout - use location.href for mobile compatibility
         window.location.href = data.url;
       }
@@ -932,6 +956,18 @@ const PaymentStep = ({
           Votre commande ANR
         </p>
       </div>
+
+      {/* Referral badge */}
+      {referralCode && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-purple-500/10 border border-purple-500/30">
+          <Gift className="w-5 h-5 text-purple-500" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Code parrain appliqué</p>
+            <p className="text-xs text-muted-foreground">Votre parrain sera récompensé après votre paiement</p>
+          </div>
+          <Badge className="bg-purple-500 text-white">{referralCode}</Badge>
+        </div>
+      )}
 
       {/* Order summary */}
       <div className="rounded-xl border border-border overflow-hidden">
