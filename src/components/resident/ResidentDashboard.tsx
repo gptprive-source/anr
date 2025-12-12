@@ -10,6 +10,7 @@ import ShareANRDialog from "./ShareANRDialog";
 import BottomNav from "@/components/layout/BottomNav";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import logoAnr from "@/assets/logo-anr.png";
 interface Resident {
   id: string;
@@ -273,9 +274,12 @@ const ResidentDashboard = () => {
   return <div className="min-h-screen pb-20">
       <div className="max-w-lg mx-auto p-4 space-y-6">
         {/* Header */}
-        <div className="pt-4">
-          <h1 className="font-bold text-lg text-left">Mon ANR</h1>
-          <p className="text-muted-foreground pt-[10px] text-left">{habitationData.anr.address}</p>
+        <div className="pt-4 flex items-center justify-between">
+          <div>
+            <h1 className="font-bold text-lg text-left">Mon ANR</h1>
+            <p className="text-muted-foreground pt-[10px] text-left">{habitationData.anr.address}</p>
+          </div>
+          <NotificationBell />
         </div>
 
         {/* ANR Card */}
