@@ -48,8 +48,8 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [addressData, setAddressData] = useState<AddressData | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(() => {
-    // Initialize from sessionStorage on mount
-    return sessionStorage.getItem("anr_referral_code") || null;
+    // Initialize from localStorage on mount (persists across tabs/sessions)
+    return localStorage.getItem("anr_referral_code") || null;
   });
   const navigate = useNavigate();
   const {
@@ -62,20 +62,24 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
   } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Store referral code from URL
+  // Store referral code from URL (using localStorage to persist across tabs/sessions)
   useEffect(() => {
     const refCode = searchParams.get("ref");
     if (refCode) {
       setReferralCode(refCode);
-      sessionStorage.setItem("anr_referral_code", refCode);
+      localStorage.setItem("anr_referral_code", refCode);
+      console.log("[REFERRAL] Stored referral code in localStorage:", refCode);
       // Clean URL but keep ref in storage
       const newParams = new URLSearchParams(searchParams);
       newParams.delete("ref");
       window.history.replaceState({}, "", `/register${newParams.toString() ? `?${newParams.toString()}` : ""}`);
     } else {
       // Check if we have a stored referral code
-      const storedRef = sessionStorage.getItem("anr_referral_code");
-      if (storedRef) setReferralCode(storedRef);
+      const storedRef = localStorage.getItem("anr_referral_code");
+      if (storedRef) {
+        setReferralCode(storedRef);
+        console.log("[REFERRAL] Retrieved referral code from localStorage:", storedRef);
+      }
     }
   }, [searchParams]);
 
@@ -976,14 +980,16 @@ const PaymentStep = ({
           },
           habitationName: addressData.habitationName,
           existingAnrId: addressData.existingAnrId,
-          referralCode: referralCode || sessionStorage.getItem("anr_referral_code") || undefined
+          referralCode: referralCode || localStorage.getItem("anr_referral_code") || undefined
         }
       });
+      console.log("[REFERRAL] Sent referralCode to checkout:", referralCode || localStorage.getItem("anr_referral_code"));
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data?.url) {
         // Clear referral code from storage after successful checkout creation
-        sessionStorage.removeItem("anr_referral_code");
+        localStorage.removeItem("anr_referral_code");
+        console.log("[REFERRAL] Cleared referral code from localStorage");
         // Redirect to Stripe Checkout - use location.href for mobile compatibility
         window.location.href = data.url;
       }
