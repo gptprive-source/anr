@@ -7,7 +7,6 @@ import { useUserNotifications } from "@/hooks/useUserNotifications";
 import { useUserCommunications } from "@/hooks/useAdminCommunications";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
-
 const getNotificationIcon = (type: string) => {
   switch (type) {
     case "referral_credited":
@@ -18,7 +17,6 @@ const getNotificationIcon = (type: string) => {
       return <Bell className="w-5 h-5 text-primary" />;
   }
 };
-
 const getNotificationColor = (type: string) => {
   switch (type) {
     case "referral_credited":
@@ -29,78 +27,57 @@ const getNotificationColor = (type: string) => {
       return "border-primary bg-primary/5";
   }
 };
-
 export function SystemNotificationsSection() {
   const navigate = useNavigate();
-  const { 
-    notifications, 
-    unreadCount, 
+  const {
+    notifications,
+    unreadCount,
     hasNewNotification,
-    markAsRead, 
+    markAsRead,
     markAllAsRead,
-    clearNewNotificationFlag 
+    clearNewNotificationFlag
   } = useUserNotifications();
-  const { 
-    communications, 
-    unreadCount: unreadCommsCount, 
+  const {
+    communications,
+    unreadCount: unreadCommsCount,
     hasNewCommunication,
     markAsRead: markCommAsRead,
     clearNewCommunicationFlag
   } = useUserCommunications();
-
   const totalUnread = unreadCount + unreadCommsCount;
   const hasContent = notifications.length > 0 || communications.length > 0;
-
   if (!hasContent) {
     return null;
   }
-
   const handleOpenComm = (comm: typeof communications[0]) => {
     markCommAsRead(comm.id);
     clearNewCommunicationFlag();
     navigate(`/notification/communication/${comm.id}`);
   };
-
   const handleOpenNotif = (notif: typeof notifications[0]) => {
     markAsRead(notif.id);
     clearNewNotificationFlag();
     navigate(`/notification/notification/${notif.id}`);
   };
-
-  return (
-    <div className="space-y-3">
+  return <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           <Bell className="w-4 h-4" />
           Notifications & Communications
-          {totalUnread > 0 && (
-            <Badge variant="destructive" className="text-xs h-5 ml-1">
+          {totalUnread > 0 && <Badge variant="destructive" className="text-xs h-5 ml-1">
               {totalUnread}
-            </Badge>
-          )}
+            </Badge>}
         </h3>
-        {unreadCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs h-7 gap-1"
-            onClick={() => markAllAsRead()}
-          >
+        {unreadCount > 0 && <Button variant="ghost" size="sm" className="text-xs h-7 gap-1" onClick={() => markAllAsRead()}>
             <CheckCheck className="w-3 h-3" />
             Tout marquer lu
-          </Button>
-        )}
+          </Button>}
       </div>
 
       <div className="space-y-2">
         {/* Admin Communications */}
-        {communications.map((comm) => (
-          <Card
-            key={`comm-${comm.id}`}
-            className="cursor-pointer transition-all border border-blue-500 bg-blue-500/5"
-            onClick={() => handleOpenComm(comm)}
-          >
-            <CardContent className="p-3">
+        {communications.map(comm => <Card key={`comm-${comm.id}`} onClick={() => handleOpenComm(comm)} className="cursor-pointer transition-all border bg-blue-500/5 border-[#1587f9]">
+            <CardContent className="p-3 bg-white border-solid rounded-2xl border-[#1587f9] border-2">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-500/10">
                   <MessageCircle className="w-5 h-5 text-blue-500" />
@@ -116,9 +93,9 @@ export function SystemNotificationsSection() {
                     </div>
                     <span className="text-xs text-muted-foreground flex-shrink-0">
                       {formatDistanceToNow(new Date(comm.sent_at), {
-                        addSuffix: false,
-                        locale: fr,
-                      })}
+                    addSuffix: false,
+                    locale: fr
+                  })}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
@@ -129,23 +106,13 @@ export function SystemNotificationsSection() {
                 <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-2" />
               </div>
             </CardContent>
-          </Card>
-        ))}
+          </Card>)}
 
         {/* User Notifications */}
-        {notifications.slice(0, 5).map((notif) => (
-          <Card
-            key={notif.id}
-            className={`cursor-pointer transition-all border ${
-              !notif.is_read ? getNotificationColor(notif.type) : "border-border"
-            }`}
-            onClick={() => handleOpenNotif(notif)}
-          >
-            <CardContent className="p-3">
+        {notifications.slice(0, 5).map(notif => <Card key={notif.id} className={`cursor-pointer transition-all border ${!notif.is_read ? getNotificationColor(notif.type) : "border-border"}`} onClick={() => handleOpenNotif(notif)}>
+            <CardContent className="p-3 border-2 border-solid bg-white border-[#ed1212] rounded-xl">
               <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  notif.type === "referral_credited" ? "bg-green-500/10" : "bg-primary/10"
-                }`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notif.type === "referral_credited" ? "bg-green-500/10" : "bg-primary/10"}`}>
                   {getNotificationIcon(notif.type)}
                 </div>
 
@@ -156,9 +123,9 @@ export function SystemNotificationsSection() {
                     </p>
                     <span className="text-xs text-muted-foreground flex-shrink-0">
                       {formatDistanceToNow(new Date(notif.created_at), {
-                        addSuffix: false,
-                        locale: fr,
-                      })}
+                    addSuffix: false,
+                    locale: fr
+                  })}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
@@ -169,15 +136,11 @@ export function SystemNotificationsSection() {
                 <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-2" />
               </div>
             </CardContent>
-          </Card>
-        ))}
+          </Card>)}
       </div>
 
-      {notifications.length > 5 && (
-        <p className="text-xs text-center text-muted-foreground">
+      {notifications.length > 5 && <p className="text-xs text-center text-muted-foreground">
           + {notifications.length - 5} autres notifications
-        </p>
-      )}
-    </div>
-  );
+        </p>}
+    </div>;
 }
