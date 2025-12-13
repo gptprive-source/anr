@@ -190,6 +190,26 @@ export function useUserNotifications() {
     }
   }, [stopVibrate]);
 
+  const deleteNotification = async (notificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_notifications")
+        .delete()
+        .eq("id", notificationId);
+
+      if (error) throw error;
+
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      // Update unread count if needed
+      const wasUnread = notifications.find(n => n.id === notificationId && !n.is_read);
+      if (wasUnread) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error("Error deleting notification:", err);
+    }
+  };
+
   return {
     notifications,
     unreadCount,
@@ -198,6 +218,7 @@ export function useUserNotifications() {
     markAsRead,
     markAllAsRead,
     clearNewNotificationFlag,
+    deleteNotification,
     refetch: fetchNotifications,
   };
 }

@@ -575,6 +575,30 @@ export function useUserCommunications() {
     }
   };
 
+  // Delete a communication read record (hide it from user's view)
+  const deleteCommunicationForUser = async (communicationId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Delete the read record if exists
+      await supabase
+        .from('user_communication_reads')
+        .delete()
+        .eq('communication_id', communicationId)
+        .eq('user_id', user.id);
+
+      // Remove from local state
+      const wasUnread = communications.find(c => c.id === communicationId && !c.is_read);
+      setCommunications(prev => prev.filter(c => c.id !== communicationId));
+      if (wasUnread) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Error deleting communication for user:', error);
+    }
+  };
+
   return {
     communications,
     communicationReplies,
@@ -584,6 +608,7 @@ export function useUserCommunications() {
     markAsRead,
     sendReply,
     clearNewCommunicationFlag,
+    deleteCommunicationForUser,
     refetch: fetchCommunications
   };
 }
