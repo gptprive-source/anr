@@ -58,6 +58,7 @@ const navItems = [
   { path: '/admin/users', label: 'Utilisateurs', icon: Users },
   { path: '/admin/subscriptions', label: 'Abonnements', icon: CreditCard },
   { path: '/admin/referrals', label: 'Affiliations', icon: Gift },
+  { path: '/admin/communications', label: 'Communications', icon: MessageCircle },
   { path: '/admin/messages', label: 'Messages', icon: Mail, badgeKey: 'messages' },
   { path: '/admin/support', label: 'Support', icon: MessageCircle, badgeKey: 'support' },
   { path: '/admin/chatbot', label: 'Stats Chatbot', icon: Bot },

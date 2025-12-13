@@ -53,6 +53,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_communications: {
+        Row: {
+          allow_reply: boolean
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          sender_id: string
+          sent_at: string
+          target_type: string
+          target_user_ids: string[] | null
+          title: string
+        }
+        Insert: {
+          allow_reply?: boolean
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sender_id: string
+          sent_at?: string
+          target_type?: string
+          target_user_ids?: string[] | null
+          title: string
+        }
+        Update: {
+          allow_reply?: boolean
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sender_id?: string
+          sent_at?: string
+          target_type?: string
+          target_user_ids?: string[] | null
+          title?: string
+        }
+        Relationships: []
+      }
       anrs: {
         Row: {
           address: string
@@ -385,6 +424,38 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communication_replies: {
+        Row: {
+          communication_id: string
+          created_at: string
+          id: string
+          reply_text: string
+          user_id: string
+        }
+        Insert: {
+          communication_id: string
+          created_at?: string
+          id?: string
+          reply_text: string
+          user_id: string
+        }
+        Update: {
+          communication_id?: string
+          created_at?: string
+          id?: string
+          reply_text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_replies_communication_id_fkey"
+            columns: ["communication_id"]
+            isOneToOne: false
+            referencedRelation: "admin_communications"
             referencedColumns: ["id"]
           },
         ]
@@ -2776,6 +2847,35 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_communication_reads: {
+        Row: {
+          communication_id: string
+          id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          communication_id: string
+          id?: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          communication_id?: string
+          id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_communication_reads_communication_id_fkey"
+            columns: ["communication_id"]
+            isOneToOne: false
+            referencedRelation: "admin_communications"
             referencedColumns: ["id"]
           },
         ]
