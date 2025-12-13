@@ -18,6 +18,10 @@ export interface AdminCommunication {
   reply_count?: number;
 }
 
+export interface UserCommunication extends AdminCommunication {
+  is_read: boolean;
+}
+
 export interface AdminCommunicationTyped {
   id: string;
   title: string;
@@ -336,7 +340,7 @@ export function useAdminCommunications() {
 }
 
 export function useUserCommunications() {
-  const [communications, setCommunications] = useState<AdminCommunication[]>([]);
+  const [communications, setCommunications] = useState<UserCommunication[]>([]);
   const [communicationReplies, setCommunicationReplies] = useState<CommunicationReply[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -374,9 +378,16 @@ export function useUserCommunications() {
         .eq('user_id', user.id);
 
       const readIds = new Set((reads || []).map(r => r.communication_id));
-      const unread = userComms.filter(c => !readIds.has(c.id)).length;
+      
+      // Add is_read property to each communication
+      const userCommsWithReadStatus: UserCommunication[] = userComms.map(c => ({
+        ...c,
+        is_read: readIds.has(c.id)
+      }));
+      
+      const unread = userCommsWithReadStatus.filter(c => !c.is_read).length;
 
-      setCommunications(userComms);
+      setCommunications(userCommsWithReadStatus);
       setUnreadCount(unread);
       if (unread > 0) {
         setHasNewCommunication(true);

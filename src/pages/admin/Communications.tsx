@@ -17,6 +17,7 @@ import {
   Home, MapPin, X
 } from 'lucide-react';
 import { useAdminCommunications, CommunicationReply } from '@/hooks/useAdminCommunications';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -39,7 +40,7 @@ interface ANROption {
 type TargetMode = 'all' | 'by_anr' | 'by_name';
 
 export default function Communications() {
-  const { communications, loading, sendCommunication, toggleActive, deleteCommunication, fetchReplies } = useAdminCommunications();
+  const { communications, loading, sendCommunication, toggleActive, deleteCommunication, fetchReplies, adminReplyToUser } = useAdminCommunications();
   
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [title, setTitle] = useState('');
@@ -57,6 +58,11 @@ export default function Communications() {
   const [replies, setReplies] = useState<CommunicationReply[]>([]);
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [repliesLoaded, setRepliesLoaded] = useState(false);
+  
+  // Admin reply state
+  const [replyDialogOpen, setReplyDialogOpen] = useState<string | null>(null);
+  const [adminReplyText, setAdminReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -694,6 +700,56 @@ export default function Communications() {
                           En réponse à : <span className="font-medium text-foreground">{reply.communication_title}</span>
                         </div>
                         <p className="text-sm bg-muted/50 rounded-lg p-3">{reply.reply_text}</p>
+                        
+                        {/* Admin reply button */}
+                        <div className="flex justify-end pt-2">
+                          <Dialog open={replyDialogOpen === reply.id} onOpenChange={(open) => {
+                            setReplyDialogOpen(open ? reply.id : null);
+                            if (!open) setAdminReplyText('');
+                          }}>
+                            <DialogTrigger asChild>
+                              <Button size="sm" className="gap-1">
+                                <Send className="h-3 w-3" />
+                                Répondre
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Répondre à {reply.user_name || 'Utilisateur'}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                                  <p className="text-xs text-muted-foreground mb-1">Message original :</p>
+                                  <p>{reply.reply_text}</p>
+                                </div>
+                                <Textarea
+                                  value={adminReplyText}
+                                  onChange={(e) => setAdminReplyText(e.target.value)}
+                                  placeholder="Votre réponse..."
+                                  rows={4}
+                                />
+                                <Button 
+                                  className="w-full gap-2"
+                                  disabled={!adminReplyText.trim() || sendingReply}
+                                  onClick={async () => {
+                                    setSendingReply(true);
+                                    const success = await adminReplyToUser(reply.user_id, reply.communication_id, adminReplyText);
+                                    setSendingReply(false);
+                                    if (success) {
+                                      toast({ title: "Réponse envoyée", description: `Votre réponse a été envoyée à ${reply.user_name}` });
+                                      setReplyDialogOpen(null);
+                                      setAdminReplyText('');
+                                      loadAllReplies();
+                                    }
+                                  }}
+                                >
+                                  <Send className="h-4 w-4" />
+                                  {sendingReply ? 'Envoi...' : 'Envoyer'}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                       </div>
                     ))}
                   </div>
