@@ -23,13 +23,10 @@ const Login = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Redirect if already logged in - admin-only users go to /admin
   useEffect(() => {
     const checkAndRedirect = async () => {
       if (user) {
-        // Check if user is admin-only (has admin role but no habitation)
         const isAdminOnly = user.user_metadata?.is_admin_only === true;
-        
         if (isAdminOnly) {
           navigate("/admin");
         } else {
@@ -37,7 +34,6 @@ const Login = () => {
         }
       }
     };
-    
     checkAndRedirect();
   }, [user, navigate]);
 
@@ -46,29 +42,18 @@ const Login = () => {
     const passwordValidation = passwordSchema.safeParse(password);
     
     if (!emailValidation.success) {
-      toast({
-        title: "Erreur",
-        description: emailValidation.error.errors[0].message,
-        variant: "destructive",
-      });
+      toast({ title: "Erreur", description: emailValidation.error.errors[0].message, variant: "destructive" });
       return;
     }
 
     if (!passwordValidation.success) {
-      toast({
-        title: "Erreur",
-        description: passwordValidation.error.errors[0].message,
-        variant: "destructive",
-      });
+      toast({ title: "Erreur", description: passwordValidation.error.errors[0].message, variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
         if (error.message.includes("Invalid login credentials")) {
@@ -77,12 +62,8 @@ const Login = () => {
         throw error;
       }
 
-      toast({
-        title: "Connecté",
-        description: "Bienvenue !",
-      });
+      toast({ title: "Connecté", description: "Bienvenue !" });
       
-      // Get the updated user to check metadata
       const { data: { user: loggedInUser } } = await supabase.auth.getUser();
       const isAdminOnly = loggedInUser?.user_metadata?.is_admin_only === true;
       
@@ -93,18 +74,12 @@ const Login = () => {
       }
     } catch (error: any) {
       let errorMessage = "Impossible de se connecter";
-      
       if (error.message === "Failed to fetch") {
         errorMessage = "Problème de connexion réseau. Vérifiez votre connexion internet et réessayez.";
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
-      toast({
-        title: "Erreur de connexion",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast({ title: "Erreur de connexion", description: errorMessage, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -114,11 +89,7 @@ const Login = () => {
     const emailValidation = emailSchema.safeParse(email);
     
     if (!emailValidation.success) {
-      toast({
-        title: "Erreur",
-        description: emailValidation.error.errors[0].message,
-        variant: "destructive",
-      });
+      toast({ title: "Erreur", description: emailValidation.error.errors[0].message, variant: "destructive" });
       return;
     }
 
@@ -130,17 +101,10 @@ const Login = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Email envoyé",
-        description: "Vérifiez votre boîte mail pour réinitialiser votre mot de passe",
-      });
+      toast({ title: "Email envoyé", description: "Vérifiez votre boîte mail pour réinitialiser votre mot de passe" });
       setResetMode(false);
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'envoyer l'email",
-        variant: "destructive",
-      });
+      toast({ title: "Erreur", description: error.message || "Impossible d'envoyer l'email", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -149,15 +113,15 @@ const Login = () => {
   if (resetMode) {
     return (
       <>
-        <div className="min-h-screen flex items-center justify-center p-4 pb-20">
+        <div className="min-h-screen flex items-center justify-center p-4 pb-20 bg-background">
           <div className="w-full max-w-md">
-            <div className="glass-effect rounded-3xl p-8 card-shadow border border-purple-500">
+            <div className="bg-card rounded-3xl p-8 shadow-neumorphic">
               <div className="space-y-6">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mx-auto mb-4">
-                    <Lock className="w-8 h-8 text-purple-500" />
+                  <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center mx-auto mb-4 shadow-neumorphic-sm">
+                    <Lock className="w-8 h-8 text-purple-600" />
                   </div>
-                  <h2 className="text-2xl font-bold mb-2">Mot de passe oublié</h2>
+                  <h2 className="text-2xl font-bold mb-2 text-foreground">Mot de passe oublié</h2>
                   <p className="text-muted-foreground">
                     Entrez votre email pour recevoir un lien de réinitialisation
                   </p>
@@ -206,15 +170,15 @@ const Login = () => {
 
   return (
     <>
-      <div className="min-h-screen flex items-center justify-center p-4 pb-20">
+      <div className="min-h-screen flex items-center justify-center p-4 pb-20 bg-background">
         <div className="w-full max-w-md">
-          <div className="glass-effect rounded-3xl p-8 card-shadow border border-blue-500">
+          <div className="bg-card rounded-3xl p-8 shadow-neumorphic">
             <div className="space-y-6">
               <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-blue-500" />
+                <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mx-auto mb-4 shadow-neumorphic-sm">
+                  <Mail className="w-8 h-8 text-blue-600" />
                 </div>
-                <h2 className="text-2xl font-bold mb-2">Connexion</h2>
+                <h2 className="text-2xl font-bold mb-2 text-foreground">Connexion</h2>
                 <p className="text-muted-foreground">
                   Entrez votre email et mot de passe
                 </p>

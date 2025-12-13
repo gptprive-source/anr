@@ -20,7 +20,18 @@ import {
   Shield,
   Package,
   MapPin,
-  Phone
+  Phone,
+  ShieldCheck, 
+  Bot, 
+  Mail, 
+  Scale, 
+  BookOpen, 
+  Building2, 
+  UserCheck, 
+  AlertTriangle, 
+  ClipboardList, 
+  DoorOpen, 
+  Gift
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -32,8 +43,6 @@ import { cn } from "@/lib/utils";
 interface AdminLayoutProps {
   children: ReactNode;
 }
-
-import { ShieldCheck, Bot, Mail, Scale, BookOpen, Building2, UserCheck, AlertTriangle, ClipboardList, DoorOpen, Gift } from "lucide-react";
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -56,7 +65,6 @@ const navItems = [
   { path: '/admin/team', label: 'Équipe', icon: UserCog },
   { path: '/admin/audit', label: 'Journal d\'audit', icon: ScrollText },
   { path: '/admin/security', label: 'Sécurité', icon: ShieldCheck },
-  // RGPD Section
   { path: '/admin/rgpd', label: 'RGPD', icon: Scale },
   { path: '/admin/rgpd/registry', label: 'Registre', icon: BookOpen },
   { path: '/admin/rgpd/subprocessors', label: 'Sous-traitants', icon: Building2 },
@@ -96,7 +104,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div className={cn(
-      "flex flex-col h-full bg-card border-r border-border",
+      "flex flex-col h-full bg-card shadow-neumorphic",
       mobile ? "w-full" : "w-64"
     )}>
       <div className="p-6 border-b border-border">
@@ -104,7 +112,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <p className="text-sm text-muted-foreground capitalize">{role}</p>
       </div>
       
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
@@ -117,9 +125,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               to={item.path}
               onClick={() => mobile && setSidebarOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors relative",
+                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative",
                 isActive 
-                  ? "bg-primary text-primary-foreground" 
+                  ? "bg-primary text-primary-foreground shadow-neumorphic-sm" 
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
@@ -168,7 +176,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       {/* Mobile Header & Sidebar */}
       <div className="flex-1 flex flex-col">
-        <header className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card">
+        <header className="md:hidden flex items-center justify-between p-4 bg-card shadow-neumorphic-sm">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold text-primary">ANR Admin</h1>
             {totalBadgeCount > 0 && (

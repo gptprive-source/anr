@@ -6,58 +6,62 @@
 
 @layer base {
   :root {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    /* Neumorphic Light Theme */
+    --background: 220 20% 96%;
+    --foreground: 222 47% 11%;
 
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 199 89% 48%;
-    --primary-foreground: 222 47% 6%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 47% 14%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 222 47% 14%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 220 13% 91%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 172 66% 50%;
-    --accent-foreground: 222 47% 6%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
     --success: 142 76% 36%;
-    --success-foreground: 210 40% 98%;
+    --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 6%;
+    --warning-foreground: 222 47% 11%;
 
-    --border: 222 47% 18%;
-    --input: 222 47% 14%;
-    --ring: 199 89% 48%;
+    --border: 220 13% 91%;
+    --input: 220 14% 96%;
+    --ring: 221 83% 53%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(199, 89%, 48%) 0%, hsl(172, 66%, 50%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(222, 47%, 11%) 0%, hsl(222, 47%, 7%) 100%);
-    --gradient-glow: radial-gradient(circle at center, hsl(199, 89%, 48%, 0.15) 0%, transparent 70%);
+    /* Neumorphic shadows */
+    --shadow-neumorphic: 6px 6px 12px rgba(163, 177, 198, 0.6), -6px -6px 12px rgba(255, 255, 255, 0.8);
+    --shadow-neumorphic-sm: 4px 4px 8px rgba(163, 177, 198, 0.5), -4px -4px 8px rgba(255, 255, 255, 0.7);
+    --shadow-neumorphic-inset: inset 2px 2px 5px rgba(163, 177, 198, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 0.8);
+    --shadow-neumorphic-pressed: inset 4px 4px 8px rgba(163, 177, 198, 0.6), inset -4px -4px 8px rgba(255, 255, 255, 0.5);
     
-    --shadow-glow: 0 0 40px hsl(199, 89%, 48%, 0.3);
-    --shadow-card: 0 8px 32px hsl(222, 47%, 4%, 0.5);
-    --shadow-button: 0 4px 16px hsl(199, 89%, 48%, 0.25);
+    /* Legacy shadows for compatibility */
+    --shadow-glow: 0 4px 20px hsl(221, 83%, 53%, 0.15);
+    --shadow-card: var(--shadow-neumorphic);
+    --shadow-button: 0 4px 12px hsl(221, 83%, 53%, 0.25);
 
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 199 89% 48%;
-    --sidebar-primary-foreground: 222 47% 6%;
-    --sidebar-accent: 222 47% 14%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 47% 18%;
-    --sidebar-ring: 199 89% 48%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 221 83% 53%;
   }
 }
 
@@ -75,11 +79,28 @@
 @layer utilities {
   .gradient-text {
     @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-primary);
+    background-image: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
   }
 
   .glass-effect {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    @apply bg-card backdrop-blur-xl;
+    box-shadow: var(--shadow-neumorphic);
+  }
+
+  .neumorphic {
+    box-shadow: var(--shadow-neumorphic);
+  }
+
+  .neumorphic-sm {
+    box-shadow: var(--shadow-neumorphic-sm);
+  }
+
+  .neumorphic-inset {
+    box-shadow: var(--shadow-neumorphic-inset);
+  }
+
+  .neumorphic-pressed {
+    box-shadow: var(--shadow-neumorphic-pressed);
   }
 
   .glow-effect {
