@@ -132,12 +132,13 @@ const NotificationConversation = () => {
       date: new Date(communication.sent_at)
     });
 
-    // Add user replies
+    // Add all replies (user and admin)
     replies.forEach(reply => {
       messages.push({
-        type: 'user',
+        type: reply.is_admin ? 'anr' : 'user',
         content: reply.reply_text,
-        date: new Date(reply.created_at)
+        date: new Date(reply.created_at),
+        title: reply.is_admin ? 'Réponse de l\'équipe ANR' : undefined
       });
     });
   }
