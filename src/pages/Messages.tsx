@@ -200,31 +200,31 @@ const Messages = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <Card className="p-3 text-center border border-blue-500">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <Inbox className="w-4 h-4 text-blue-500" />
+          <Card className="p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shadow-neumorphic-inset">
+                <Inbox className="w-5 h-5 text-primary" />
               </div>
             </div>
-            <p className="text-2xl font-bold">{totalConversations}</p>
+            <p className="text-2xl font-bold text-foreground">{totalConversations}</p>
             <span className="text-xs text-muted-foreground">Conversations</span>
           </Card>
-          <Card className="p-3 text-center border border-red-500">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
-                <MailClosed className="w-4 h-4 text-red-500" />
+          <Card className="p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shadow-neumorphic-inset">
+                <MailClosed className="w-5 h-5 text-destructive" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-red-500">{unreadCount}</p>
+            <p className="text-2xl font-bold text-destructive">{unreadCount}</p>
             <span className="text-xs text-muted-foreground">Non lus</span>
           </Card>
-          <Card className="p-3 text-center border border-green-500">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                <MailOpen className="w-4 h-4 text-green-500" />
+          <Card className="p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center shadow-neumorphic-inset">
+                <MailOpen className="w-5 h-5 text-success" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-green-500">{totalMessages}</p>
+            <p className="text-2xl font-bold text-success">{totalMessages}</p>
             <span className="text-xs text-muted-foreground">Total msgs</span>
           </Card>
         </div>
@@ -290,7 +290,7 @@ const Messages = () => {
               Visiteurs bloqués
             </h3>
             {blockedVisitors.map((blocked) => (
-              <Card key={blocked.id} className="border border-red-500/50 bg-red-500/5">
+              <Card key={blocked.id} className="bg-destructive/5">
                 <CardContent className="p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
@@ -336,14 +336,10 @@ const Messages = () => {
                 ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "")
                 : "";
 
-              // Cycle through colors: blue, orange, yellow, purple, pink, green, cyan
-              const colorCycle = ["border-blue-500", "border-orange-500", "border-yellow-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
-              const borderColor = colorCycle[index % colorCycle.length];
-
               return (
                 <Card
                   key={conv.visitorId}
-                  className={`cursor-pointer transition-all border ${conv.unreadCount > 0 ? "border-primary bg-primary/5" : borderColor}`}
+                  className={`cursor-pointer transition-all hover:scale-[1.02] ${conv.unreadCount > 0 ? "ring-2 ring-primary/30" : ""}`}
                   onClick={() => navigate(`/conversation/${conv.visitorId}`)}
                 >
                   <CardContent className="p-4">
