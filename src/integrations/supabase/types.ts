@@ -2903,6 +2903,7 @@ export type Database = {
           last_name: string | null
           phone: string | null
           updated_at: string | null
+          user_id: string | null
           visitor_anr_code: string | null
         }
         Insert: {
@@ -2919,6 +2920,7 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           updated_at?: string | null
+          user_id?: string | null
           visitor_anr_code?: string | null
         }
         Update: {
@@ -2935,6 +2937,7 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           updated_at?: string | null
+          user_id?: string | null
           visitor_anr_code?: string | null
         }
         Relationships: []
@@ -2949,6 +2952,7 @@ export type Database = {
           name: string
           updated_at: string | null
           usage_count: number | null
+          user_id: string | null
         }
         Insert: {
           content: string
@@ -2959,6 +2963,7 @@ export type Database = {
           name: string
           updated_at?: string | null
           usage_count?: number | null
+          user_id?: string | null
         }
         Update: {
           content?: string
@@ -2969,6 +2974,7 @@ export type Database = {
           name?: string
           updated_at?: string | null
           usage_count?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }

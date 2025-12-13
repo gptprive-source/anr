@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./useAuth";
 
 export interface VisitorBusinessCard {
   id: string;
@@ -13,13 +14,14 @@ export interface VisitorBusinessCard {
   visitor_anr_code: string | null;
   avatar_url: string | null;
   device_id: string;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 const DEVICE_ID_KEY = "anr_visitor_device_id";
 
-// Generate or retrieve device ID
+// Generate or retrieve device ID (fallback for non-authenticated users)
 const getDeviceId = (): string => {
   let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
@@ -32,18 +34,26 @@ const getDeviceId = (): string => {
 export const useVisitorBusinessCard = () => {
   const [card, setCard] = useState<VisitorBusinessCard | null>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   const deviceId = getDeviceId();
 
   const fetchCard = useCallback(async () => {
     try {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from("visitor_business_cards")
         .select("*")
-        .eq("device_id", deviceId)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+
+      // For authenticated users, fetch by user_id; otherwise by device_id
+      if (user?.id) {
+        query = query.eq("user_id", user.id);
+      } else {
+        query = query.eq("device_id", deviceId);
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error) throw error;
       setCard(data as VisitorBusinessCard | null);
@@ -52,24 +62,30 @@ export const useVisitorBusinessCard = () => {
     } finally {
       setLoading(false);
     }
-  }, [deviceId]);
+  }, [deviceId, user?.id]);
 
   useEffect(() => {
     fetchCard();
   }, [fetchCard]);
 
   const saveCard = async (
-    cardData: Omit<VisitorBusinessCard, "id" | "device_id" | "created_at" | "updated_at">
+    cardData: Omit<VisitorBusinessCard, "id" | "device_id" | "user_id" | "created_at" | "updated_at">
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Always check if card exists for this device to prevent duplicates (race condition fix)
-      const { data: existingCard } = await (supabase as any)
+      // Check if card exists for this user (authenticated) or device (guest)
+      let existingQuery = (supabase as any)
         .from("visitor_business_cards")
         .select("id")
-        .eq("device_id", deviceId)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+
+      if (user?.id) {
+        existingQuery = existingQuery.eq("user_id", user.id);
+      } else {
+        existingQuery = existingQuery.eq("device_id", deviceId);
+      }
+
+      const { data: existingCard } = await existingQuery.maybeSingle();
 
       if (existingCard) {
         // Update existing card
@@ -77,6 +93,7 @@ export const useVisitorBusinessCard = () => {
           .from("visitor_business_cards")
           .update({
             ...cardData,
+            user_id: user?.id || null,
             updated_at: new Date().toISOString(),
           })
           .eq("id", existingCard.id);
@@ -87,6 +104,7 @@ export const useVisitorBusinessCard = () => {
         const { error } = await (supabase as any).from("visitor_business_cards").insert({
           ...cardData,
           device_id: deviceId,
+          user_id: user?.id || null,
         });
 
         if (error) throw error;

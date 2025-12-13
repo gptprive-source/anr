@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
 
 export interface VisitorCustomTemplate {
   id: string;
   device_id: string;
+  user_id: string | null;
   name: string;
   content: string;
   icon: string;
@@ -12,7 +14,7 @@ export interface VisitorCustomTemplate {
   updated_at: string;
 }
 
-// Get or create device ID (same as business cards)
+// Get or create device ID (fallback for non-authenticated users)
 const getDeviceId = (): string => {
   let deviceId = localStorage.getItem('visitor_device_id');
   if (!deviceId) {
@@ -25,15 +27,24 @@ const getDeviceId = (): string => {
 export const useVisitorCustomTemplates = () => {
   const [templates, setTemplates] = useState<VisitorCustomTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   const deviceId = getDeviceId();
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('visitor_custom_templates')
         .select('*')
-        .eq('device_id', deviceId)
         .order('usage_count', { ascending: false });
+
+      // For authenticated users, fetch by user_id; otherwise by device_id
+      if (user?.id) {
+        query = query.eq('user_id', user.id);
+      } else {
+        query = query.eq('device_id', deviceId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setTemplates((data as VisitorCustomTemplate[]) || []);
@@ -42,7 +53,7 @@ export const useVisitorCustomTemplates = () => {
     } finally {
       setLoading(false);
     }
-  }, [deviceId]);
+  }, [deviceId, user?.id]);
 
   useEffect(() => {
     fetchTemplates();
@@ -54,6 +65,7 @@ export const useVisitorCustomTemplates = () => {
         .from('visitor_custom_templates')
         .insert({
           device_id: deviceId,
+          user_id: user?.id || null,
           name,
           content,
           icon
@@ -72,11 +84,19 @@ export const useVisitorCustomTemplates = () => {
 
   const deleteTemplate = async (templateId: string) => {
     try {
-      const { error } = await supabase
+      let query = supabase
         .from('visitor_custom_templates')
         .delete()
-        .eq('id', templateId)
-        .eq('device_id', deviceId);
+        .eq('id', templateId);
+
+      // Use user_id for authenticated users, device_id for guests
+      if (user?.id) {
+        query = query.eq('user_id', user.id);
+      } else {
+        query = query.eq('device_id', deviceId);
+      }
+
+      const { error } = await query;
 
       if (error) throw error;
       setTemplates(prev => prev.filter(t => t.id !== templateId));
@@ -88,13 +108,19 @@ export const useVisitorCustomTemplates = () => {
 
   const updateTemplate = async (templateId: string, name: string, content: string, icon: string) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('visitor_custom_templates')
         .update({ name, content, icon, updated_at: new Date().toISOString() })
-        .eq('id', templateId)
-        .eq('device_id', deviceId)
-        .select()
-        .single();
+        .eq('id', templateId);
+
+      // Use user_id for authenticated users, device_id for guests
+      if (user?.id) {
+        query = query.eq('user_id', user.id);
+      } else {
+        query = query.eq('device_id', deviceId);
+      }
+
+      const { data, error } = await query.select().single();
 
       if (error) throw error;
       setTemplates(prev => prev.map(t => t.id === templateId ? (data as VisitorCustomTemplate) : t));
@@ -110,11 +136,19 @@ export const useVisitorCustomTemplates = () => {
       const template = templates.find(t => t.id === templateId);
       if (!template) return;
 
-      const { error } = await supabase
+      let query = supabase
         .from('visitor_custom_templates')
         .update({ usage_count: template.usage_count + 1 })
-        .eq('id', templateId)
-        .eq('device_id', deviceId);
+        .eq('id', templateId);
+
+      // Use user_id for authenticated users, device_id for guests
+      if (user?.id) {
+        query = query.eq('user_id', user.id);
+      } else {
+        query = query.eq('device_id', deviceId);
+      }
+
+      const { error } = await query;
 
       if (error) throw error;
       
