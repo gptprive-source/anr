@@ -41,6 +41,7 @@ export interface CommunicationReply {
   created_at: string;
   user_email?: string;
   user_name?: string;
+  communication_title?: string;
 }
 
 export function useAdminCommunications() {
@@ -137,16 +138,60 @@ export function useAdminCommunications() {
     }
   };
 
-  const fetchReplies = async (communicationId: string): Promise<CommunicationReply[]> => {
+  const fetchReplies = async (communicationId?: string): Promise<CommunicationReply[]> => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('communication_replies')
         .select('*')
-        .eq('communication_id', communicationId)
         .order('created_at', { ascending: false });
 
+      if (communicationId) {
+        query = query.eq('communication_id', communicationId);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      return data || [];
+      
+      if (!data || data.length === 0) return [];
+
+      // Fetch user profiles for all replies
+      const userIds = [...new Set(data.map(r => r.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Get communication titles
+      const commIds = [...new Set(data.map(r => r.communication_id))];
+      const commMap = new Map(communications.map(c => [c.id, c.title]));
+      
+      // If we don't have all communications in state, fetch them
+      const missingCommIds = commIds.filter(id => !commMap.has(id));
+      if (missingCommIds.length > 0) {
+        const { data: comms } = await supabase
+          .from('admin_communications')
+          .select('id, title')
+          .in('id', missingCommIds);
+        
+        comms?.forEach(c => commMap.set(c.id, c.title));
+      }
+
+      // Enrich replies with user name and communication title
+      return data.map(reply => {
+        const profile = profileMap.get(reply.user_id);
+        const userName = profile 
+          ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utilisateur inconnu'
+          : 'Utilisateur inconnu';
+        
+        return {
+          ...reply,
+          user_name: userName,
+          communication_title: commMap.get(reply.communication_id) || 'Communication supprimée'
+        };
+      });
     } catch (error) {
       console.error('Error fetching replies:', error);
       return [];
