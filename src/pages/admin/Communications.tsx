@@ -60,28 +60,37 @@ export default function Communications() {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Fetch users with their ANR info
+      // Fetch verified residents
       const { data: residentsData } = await supabase
         .from('residents')
-        .select(`
-          user_id,
-          habitation:habitations(
-            anr:anrs(code, address)
-          ),
-          profile:profiles(first_name, last_name)
-        `)
+        .select('user_id, habitation_id')
         .eq('status', 'verified');
 
-      if (residentsData) {
+      // Fetch all profiles
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name');
+
+      // Fetch habitations with ANR info
+      const { data: habitationsData } = await supabase
+        .from('habitations')
+        .select('id, anr_id, anr:anrs(code, address)');
+
+      if (residentsData && profilesData && habitationsData) {
+        const profileMap = new Map(profilesData.map((p: any) => [p.id, p]));
+        const habitationMap = new Map(habitationsData.map((h: any) => [h.id, h]));
+
         const userMap = new Map<string, UserOption>();
         residentsData.forEach((r: any) => {
-          if (r.user_id && r.profile) {
+          const profile = profileMap.get(r.user_id);
+          const habitation = habitationMap.get(r.habitation_id);
+          if (r.user_id && profile) {
             userMap.set(r.user_id, {
               id: r.user_id,
-              first_name: r.profile.first_name,
-              last_name: r.profile.last_name,
-              anr_code: r.habitation?.anr?.code,
-              anr_address: r.habitation?.anr?.address
+              first_name: profile.first_name,
+              last_name: profile.last_name,
+              anr_code: habitation?.anr?.code,
+              anr_address: habitation?.anr?.address
             });
           }
         });
