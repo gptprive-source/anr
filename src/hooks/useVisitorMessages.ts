@@ -204,44 +204,52 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
       if (error) throw error;
 
       // Create notification for the resident(s) of this habitation
+      // Only notify: owner (is_owner=true) AND invited residents with receive_visitor_messages=true
       try {
-        // Get all residents of this habitation
+        // Get residents who should receive notifications
         const { data: residents } = await supabase
           .from("residents")
-          .select("user_id")
+          .select("user_id, is_owner, receive_visitor_messages")
           .eq("habitation_id", targetHabitationId)
           .eq("status", "verified");
 
         if (residents && residents.length > 0) {
-          // Get visitor name from business card if available
-          let visitorName = "Un visiteur";
-          if (businessCardId) {
-            const { data: card } = await supabase
-              .from("visitor_business_cards")
-              .select("first_name, last_name, company_name")
-              .eq("id", businessCardId)
-              .maybeSingle();
-            
-            if (card) {
-              if (card.first_name || card.last_name) {
-                visitorName = `${card.first_name || ""} ${card.last_name || ""}`.trim();
-              } else if (card.company_name) {
-                visitorName = card.company_name;
+          // Filter: owners always receive, others only if receive_visitor_messages is true
+          const recipientResidents = residents.filter(r => 
+            r.is_owner === true || r.receive_visitor_messages === true
+          );
+
+          if (recipientResidents.length > 0) {
+            // Get visitor name from business card if available
+            let visitorName = "Un visiteur";
+            if (businessCardId) {
+              const { data: card } = await supabase
+                .from("visitor_business_cards")
+                .select("first_name, last_name, company_name")
+                .eq("id", businessCardId)
+                .maybeSingle();
+              
+              if (card) {
+                if (card.first_name || card.last_name) {
+                  visitorName = `${card.first_name || ""} ${card.last_name || ""}`.trim();
+                } else if (card.company_name) {
+                  visitorName = card.company_name;
+                }
               }
             }
+
+            // Create notifications for eligible residents only
+            const notifications = recipientResidents.map(r => ({
+              user_id: r.user_id,
+              type: "visitor_message",
+              title: "Nouveau message",
+              message: `${visitorName} vous a envoyé un message`,
+              is_read: false,
+              data: { message_id: insertedMessage.id, habitation_id: targetHabitationId },
+            }));
+
+            await supabase.from("user_notifications").insert(notifications as any);
           }
-
-          // Create notifications for each resident
-          const notifications = residents.map(r => ({
-            user_id: r.user_id,
-            type: "visitor_message",
-            title: "Nouveau message",
-            message: `${visitorName} vous a envoyé un message`,
-            is_read: false,
-            data: { message_id: insertedMessage.id, habitation_id: targetHabitationId },
-          }));
-
-          await supabase.from("user_notifications").insert(notifications as any);
         }
       } catch (notifError) {
         console.warn("[useVisitorMessages] Could not create notification:", notifError);
