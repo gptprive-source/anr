@@ -10,10 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Send, Loader2, MapPin, Home, Search, AlertCircle } from "lucide-react";
-import VisitorMessageDialog from "@/components/visitor/VisitorMessageDialog";
 
 interface NewMessageToAnrDialogProps {
   open: boolean;
@@ -28,23 +26,21 @@ interface Habitation {
 
 const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProps) => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [anrCode, setAnrCode] = useState("");
   const [searching, setSearching] = useState(false);
   const [habitations, setHabitations] = useState<Habitation[]>([]);
   const [selectedHabitation, setSelectedHabitation] = useState<Habitation | null>(null);
-  const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset on close - but only if message dialog is not open
+  // Reset on close
   useEffect(() => {
-    if (!open && !showMessageDialog) {
+    if (!open) {
       setAnrCode("");
       setHabitations([]);
       setSelectedHabitation(null);
       setError(null);
     }
-  }, [open, showMessageDialog]);
+  }, [open]);
 
   const handleSearch = async () => {
     if (!anrCode.trim()) {
@@ -112,19 +108,11 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
     setSelectedHabitation(hab);
   };
 
-  const handleOpenMessageDialog = () => {
+  const handleGoToConversation = () => {
     if (selectedHabitation) {
-      setShowMessageDialog(true);
       onOpenChange(false);
+      navigate(`/conversation-sent/${selectedHabitation.id}`);
     }
-  };
-
-  const handleMessageSent = () => {
-    setShowMessageDialog(false);
-    toast({
-      title: "Message envoyé",
-      description: "Votre message a été envoyé au résident",
-    });
   };
 
   return (
@@ -209,24 +197,14 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
 
             {/* Send button */}
             {selectedHabitation && (
-              <Button onClick={handleOpenMessageDialog} className="w-full">
+              <Button onClick={handleGoToConversation} className="w-full">
                 <Send className="w-4 h-4 mr-2" />
-                Envoyer un message à {selectedHabitation.name}
+                Écrire à {selectedHabitation.name}
               </Button>
             )}
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Message Dialog */}
-      {selectedHabitation && (
-        <VisitorMessageDialog
-          open={showMessageDialog}
-          onOpenChange={setShowMessageDialog}
-          habitationId={selectedHabitation.id}
-          onMessageSent={handleMessageSent}
-        />
-      )}
     </>
   );
 };
