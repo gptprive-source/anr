@@ -12,7 +12,6 @@ import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import logoAnr from "@/assets/logo-anr.png";
-
 interface Resident {
   id: string;
   user_id: string;
@@ -24,7 +23,6 @@ interface Resident {
     phone_number: string;
   };
 }
-
 interface HabitationData {
   id: string;
   name: string;
@@ -37,7 +35,6 @@ interface HabitationData {
   };
   residents: Resident[];
 }
-
 const ResidentDashboard = () => {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -51,43 +48,39 @@ const ResidentDashboard = () => {
   const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const { flags } = useFeatureFlags();
-
-  const { unreadCount: unreadMessagesCount } = useVisitorMessages(habitationData?.id || "");
-  
+  const {
+    user
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    flags
+  } = useFeatureFlags();
+  const {
+    unreadCount: unreadMessagesCount
+  } = useVisitorMessages(habitationData?.id || "");
   useEffect(() => {
     if (user) {
       fetchHabitationData();
     }
   }, [user, retryCount]);
-
   const fetchHabitationData = async () => {
     try {
-      const { data: residentData, error: residentError } = await supabase
-        .from("residents")
-        .select(`id, habitation_id, is_owner, is_muted`)
-        .eq("user_id", user?.id)
-        .eq("status", "verified")
-        .maybeSingle();
-
+      const {
+        data: residentData,
+        error: residentError
+      } = await supabase.from("residents").select(`id, habitation_id, is_owner, is_muted`).eq("user_id", user?.id).eq("status", "verified").maybeSingle();
       if (residentError) throw residentError;
-
       if (!residentData) {
         if (retryCount < 5) {
           console.log(`[Dashboard] Resident not found, retrying (${retryCount + 1}/5)...`);
           setTimeout(() => setRetryCount(prev => prev + 1), 1000);
           return;
         }
-        
-        const { data: subscription } = await supabase
-          .from("subscriptions")
-          .select("id, status")
-          .eq("user_id", user?.id)
-          .eq("status", "active")
-          .maybeSingle();
-
+        const {
+          data: subscription
+        } = await supabase.from("subscriptions").select("id, status").eq("user_id", user?.id).eq("status", "active").maybeSingle();
         if (subscription) {
           navigate("/no-habitation");
         } else {
@@ -95,48 +88,34 @@ const ResidentDashboard = () => {
         }
         return;
       }
-
       setIsOwner(residentData.is_owner || false);
       setCurrentResidentId(residentData.id);
       setIsMuted(residentData.is_muted || false);
-
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("first_name, last_name")
-        .eq("id", user?.id)
-        .single();
-
+      const {
+        data: profileData
+      } = await supabase.from("profiles").select("first_name, last_name").eq("id", user?.id).single();
       if (profileData) {
         setCurrentUserName(`${profileData.first_name || ""} ${profileData.last_name || ""}`.trim());
       }
-
-      const { data: habitation, error: habError } = await supabase
-        .from("habitations")
-        .select(`id, name, anrs (id, code, address, latitude, longitude)`)
-        .eq("id", residentData.habitation_id)
-        .single();
-
+      const {
+        data: habitation,
+        error: habError
+      } = await supabase.from("habitations").select(`id, name, anrs (id, code, address, latitude, longitude)`).eq("id", residentData.habitation_id).single();
       if (habError) throw habError;
-
-      const { data: residents, error: resError } = await supabase
-        .from("residents")
-        .select(`id, user_id, is_owner, is_muted`)
-        .eq("habitation_id", residentData.habitation_id)
-        .eq("status", "verified");
-
+      const {
+        data: residents,
+        error: resError
+      } = await supabase.from("residents").select(`id, user_id, is_owner, is_muted`).eq("habitation_id", residentData.habitation_id).eq("status", "verified");
       if (resError) throw resError;
-
-      const residentsWithProfiles: Resident[] = await Promise.all(
-        (residents || []).map(async resident => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("first_name, last_name, phone_number")
-            .eq("id", resident.user_id)
-            .single();
-          return { ...resident, profile: profile || undefined };
-        })
-      );
-
+      const residentsWithProfiles: Resident[] = await Promise.all((residents || []).map(async resident => {
+        const {
+          data: profile
+        } = await supabase.from("profiles").select("first_name, last_name, phone_number").eq("id", resident.user_id).single();
+        return {
+          ...resident,
+          profile: profile || undefined
+        };
+      }));
       setHabitationData({
         id: habitation.id,
         name: habitation.name,
@@ -153,7 +132,6 @@ const ResidentDashboard = () => {
       setLoading(false);
     }
   };
-
   const copyCode = () => {
     if (habitationData?.anr.code) {
       navigator.clipboard.writeText(habitationData.anr.code);
@@ -161,17 +139,16 @@ const ResidentDashboard = () => {
       setTimeout(() => setCopied(false), 2000);
     }
   };
-
   const toggleMute = async () => {
     if (!currentResidentId || togglingMute) return;
     setTogglingMute(true);
     try {
       const newMuteState = !isMuted;
-      const { error } = await supabase
-        .from("residents")
-        .update({ is_muted: newMuteState })
-        .eq("id", currentResidentId);
-
+      const {
+        error
+      } = await supabase.from("residents").update({
+        is_muted: newMuteState
+      }).eq("id", currentResidentId);
       if (error) throw error;
       setIsMuted(newMuteState);
       toast({
@@ -189,75 +166,73 @@ const ResidentDashboard = () => {
       setTogglingMute(false);
     }
   };
-
   const testIncomingCall = async () => {
     if (!habitationData || !user) return;
     try {
-      toast({ title: "Création appel test...", description: "Attendez quelques secondes" });
-
-      const { data: callLog, error: clError } = await supabase
-        .from("call_logs")
-        .insert({ habitation_id: habitationData.id, status: "ringing" })
-        .select()
-        .single();
-
+      toast({
+        title: "Création appel test...",
+        description: "Attendez quelques secondes"
+      });
+      const {
+        data: callLog,
+        error: clError
+      } = await supabase.from("call_logs").insert({
+        habitation_id: habitationData.id,
+        status: "ringing"
+      }).select().single();
       if (clError) throw clError;
       console.log("[TEST] Created call log:", callLog.id);
-
-      const { error: pError } = await supabase
-        .from("call_participants")
-        .insert({
-          call_id: callLog.id,
-          user_id: user.id,
-          habitation_id: habitationData.id,
-          role: "resident",
-          status: "ringing"
-        });
-
+      const {
+        error: pError
+      } = await supabase.from("call_participants").insert({
+        call_id: callLog.id,
+        user_id: user.id,
+        habitation_id: habitationData.id,
+        role: "resident",
+        status: "ringing"
+      });
       if (pError) throw pError;
       console.log("[TEST] Created participant for user:", user.id);
-      toast({ title: "Appel test créé!", description: "L'appel devrait s'afficher maintenant" });
-
+      toast({
+        title: "Appel test créé!",
+        description: "L'appel devrait s'afficher maintenant"
+      });
       setTimeout(async () => {
-        await supabase
-          .from("call_logs")
-          .update({ status: "ended", ended_at: new Date().toISOString() })
-          .eq("id", callLog.id);
+        await supabase.from("call_logs").update({
+          status: "ended",
+          ended_at: new Date().toISOString()
+        }).eq("id", callLog.id);
         console.log("[TEST] Auto-ended test call");
       }, 15000);
     } catch (error: any) {
       console.error("[TEST] Error:", error);
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+    return <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
   if (!habitationData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+    return <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Aucune habitation trouvée</p>
           <Button onClick={() => navigate("/register")}>Créer un ANR</Button>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen pb-20 bg-background">
+  return <div className="min-h-screen pb-20 bg-background">
       <div className="max-w-lg mx-auto p-4 space-y-6">
         {/* Header */}
         <div className="pt-4 flex items-center justify-between">
           <div>
-            <h1 className="font-bold text-xl text-foreground">Mon ANR</h1>
-            <p className="text-muted-foreground pt-1 text-sm">{habitationData.anr.address}</p>
+            <h1 className="font-bold text-foreground text-3xl">Mon ANR</h1>
+            <p className="text-muted-foreground pt-1 text-sm font-extrabold">{habitationData.anr.address}</p>
           </div>
           <NotificationBell />
         </div>
@@ -315,21 +290,11 @@ const ResidentDashboard = () => {
         </Button>
       </div>
 
-      <ShareANRDialog 
-        open={shareDialogOpen} 
-        onOpenChange={setShareDialogOpen} 
-        anrCode={habitationData.anr.code} 
-        anrAddress={habitationData.anr.address} 
-        latitude={habitationData.anr.latitude} 
-        longitude={habitationData.anr.longitude} 
-        ownerName={currentUserName || "Résident"} 
-      />
+      <ShareANRDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen} anrCode={habitationData.anr.code} anrAddress={habitationData.anr.address} latitude={habitationData.anr.latitude} longitude={habitationData.anr.longitude} ownerName={currentUserName || "Résident"} />
 
       <BottomNav />
-    </div>
-  );
+    </div>;
 };
-
 const QuickAction = ({
   icon,
   label,
@@ -358,27 +323,17 @@ const QuickAction = ({
     pink: "text-pink-600 bg-pink-50",
     teal: "text-teal-600 bg-teal-50"
   };
-
   const bgClass = colorClasses[color].split(" ")[1];
   const textClass = colorClasses[color].split(" ")[0];
-
-  return (
-    <button 
-      onClick={onClick} 
-      className={`bg-card rounded-2xl p-4 flex flex-col items-center gap-2 transition-all duration-200 shadow-neumorphic hover:shadow-neumorphic-pressed active:shadow-neumorphic-inset ${active ? "shadow-neumorphic-inset" : ""}`}
-    >
+  return <button onClick={onClick} className={`bg-card rounded-2xl p-4 flex flex-col items-center gap-2 transition-all duration-200 shadow-neumorphic hover:shadow-neumorphic-pressed active:shadow-neumorphic-inset ${active ? "shadow-neumorphic-inset" : ""}`}>
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center relative ${bgClass} ${textClass} shadow-neumorphic-sm`}>
         {icon}
-        {badge !== undefined && badge > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center px-1">
+        {badge !== undefined && badge > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center px-1">
             {badge > 99 ? "99+" : badge}
-          </span>
-        )}
+          </span>}
       </div>
       <span className="text-sm font-medium text-foreground">{label}</span>
       {count !== undefined && <span className="text-xs text-muted-foreground">{count}</span>}
-    </button>
-  );
+    </button>;
 };
-
 export default ResidentDashboard;
