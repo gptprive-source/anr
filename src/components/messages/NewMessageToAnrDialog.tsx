@@ -36,15 +36,15 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset on close
+  // Reset on close - but only if message dialog is not open
   useEffect(() => {
-    if (!open) {
+    if (!open && !showMessageDialog) {
       setAnrCode("");
       setHabitations([]);
       setSelectedHabitation(null);
       setError(null);
     }
-  }, [open]);
+  }, [open, showMessageDialog]);
 
   const handleSearch = async () => {
     if (!anrCode.trim()) {
