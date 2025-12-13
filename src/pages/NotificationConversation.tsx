@@ -258,8 +258,8 @@ const NotificationConversation = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area - only for communications that allow replies */}
-      {communication?.allow_reply && (
+      {/* Input area - always show for communications */}
+      {communication && (
         <div className="fixed bottom-16 left-0 right-0 bg-[#F0F0F0] p-2 border-t border-gray-200">
           <div className="flex items-end gap-2 max-w-4xl mx-auto">
             <div className="flex-1 relative">
@@ -289,8 +289,8 @@ const NotificationConversation = () => {
         </div>
       )}
 
-      {/* No reply message for notifications */}
-      {(notification || (communication && !communication.allow_reply)) && (
+      {/* No reply message for notifications only */}
+      {notification && (
         <div className="fixed bottom-16 left-0 right-0 bg-[#F0F0F0] p-3 border-t border-gray-200">
           <p className="text-center text-sm text-muted-foreground">
             Ce message ne nécessite pas de réponse
