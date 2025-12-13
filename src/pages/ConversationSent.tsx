@@ -102,12 +102,32 @@ const ConversationSent = () => {
     fetchHabitationInfo();
   }, [habitationId]);
 
-  // Mark replies as read
+  // Mark replies as read and delete corresponding notifications
   useEffect(() => {
-    conversationData.replies
-      .filter(r => !r.is_read)
-      .forEach(r => markReplyAsRead(r.id));
-  }, [conversationData.replies]);
+    const unreadReplies = conversationData.replies.filter(r => !r.is_read);
+    unreadReplies.forEach(r => markReplyAsRead(r.id));
+    
+    // Auto-delete notifications for these replies
+    if (user?.id && unreadReplies.length > 0) {
+      const replyIds = unreadReplies.map(r => r.id);
+      supabase
+        .from("user_notifications")
+        .select("id, data")
+        .eq("user_id", user.id)
+        .eq("type", "message_reply")
+        .then(({ data: notifs }) => {
+          if (notifs) {
+            const notifIdsToDelete = notifs
+              .filter(n => n.data && replyIds.includes((n.data as any).reply_id))
+              .map(n => n.id);
+            
+            if (notifIdsToDelete.length > 0) {
+              supabase.from("user_notifications").delete().in("id", notifIdsToDelete);
+            }
+          }
+        });
+    }
+  }, [conversationData.replies, user]);
 
   // Scroll handling
   const hasScrolledRef = useRef(false);

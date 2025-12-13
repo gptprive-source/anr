@@ -90,9 +90,29 @@ const NotificationConversation = () => {
       // Mark as read
       if (communication) {
         markCommAsRead(communication.id);
+        
+        // Auto-delete corresponding notifications for this communication
+        if (user?.id) {
+          supabase
+            .from("user_notifications")
+            .select("id, data")
+            .eq("user_id", user.id)
+            .in("type", ["admin_communication", "communication_reply"])
+            .then(({ data: notifs }) => {
+              if (notifs) {
+                const notifIdsToDelete = notifs
+                  .filter(n => n.data && (n.data as any).communication_id === communication.id)
+                  .map(n => n.id);
+                
+                if (notifIdsToDelete.length > 0) {
+                  supabase.from("user_notifications").delete().in("id", notifIdsToDelete);
+                }
+              }
+            });
+        }
       }
     }
-  }, [communications, communication]);
+  }, [communications, communication, user]);
 
   // Scroll to bottom
   useEffect(() => {
