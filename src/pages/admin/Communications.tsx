@@ -132,6 +132,11 @@ export default function Communications() {
 
     if (targetMode === 'all') {
       targetType = 'all';
+      // Collect ALL user IDs from all ANRs
+      anrs.forEach(anr => {
+        targetUserIds.push(...anr.user_ids);
+      });
+      targetUserIds = [...new Set(targetUserIds)];
     } else if (targetMode === 'by_anr') {
       targetType = 'specific';
       // Get all user IDs from selected ANRs
