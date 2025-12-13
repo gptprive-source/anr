@@ -108,14 +108,19 @@ const ANRScanner = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 pb-20">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold mb-2">Scanner l'ANR</h1>
-          <p className="text-muted-foreground">
+    <div className="min-h-screen flex flex-col pb-20 bg-background">
+      {/* Blue Header */}
+      <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
+        <div className="max-w-md mx-auto text-center">
+          <h1 className="text-xl font-bold">Scanner l'ANR</h1>
+          <p className="text-sm text-primary-foreground/70">
             Choisissez votre méthode pour contacter le résident
           </p>
         </div>
+      </div>
+
+      <div className="flex-1 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md">
 
         {/* Test mode toggle */}
         {DEV_MODE && (
@@ -178,6 +183,7 @@ const ANRScanner = () => {
             />
           )}
         </div>
+      </div>
       </div>
     </div>
   );

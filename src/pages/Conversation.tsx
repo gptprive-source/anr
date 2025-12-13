@@ -349,10 +349,10 @@ const Conversation = () => {
     }
     messagesWithDateSeparators.push(msg);
   });
-  return <div className="min-h-screen flex flex-col pb-16 bg-[#E5DDD5]">
-      {/* WhatsApp-style Header */}
-      <div className="sticky top-0 z-10 bg-[#075E54] shadow-md">
-        <div className="max-w-2xl mx-auto w-full px-2 py-3 bg-[#2266ba]">
+  return <div className="min-h-screen flex flex-col pb-16 bg-secondary/30">
+      {/* Blue Header */}
+      <div className="sticky top-0 z-10 bg-primary shadow-md">
+        <div className="max-w-2xl mx-auto w-full px-2 py-3">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => navigate("/messages")}>
               <ArrowLeft className="w-5 h-5" />
