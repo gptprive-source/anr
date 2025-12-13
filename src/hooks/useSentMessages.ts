@@ -85,11 +85,12 @@ export const useSentMessages = () => {
         return;
       }
 
-      // Fetch messages sent by this visitor (via business card)
+      // Fetch messages sent by this visitor (via business card) - exclude soft-deleted
       const { data: messagesData, error: messagesError } = await (supabase
         .from("visitor_messages" as any)
         .select("*")
         .eq("business_card_id", card.id)
+        .or("deleted_by_visitor.is.null,deleted_by_visitor.eq.false")
         .order("created_at", { ascending: false }) as any);
 
       if (messagesError) throw messagesError;
@@ -225,12 +226,12 @@ export const useSentMessages = () => {
     return { messages: habMessages, replies: habReplies };
   };
 
-  // Delete a sent message
+  // Soft delete a sent message (mark as deleted, don't remove from DB)
   const deleteSentMessage = async (messageId: string) => {
     try {
       const { error } = await (supabase
         .from("visitor_messages" as any)
-        .delete()
+        .update({ deleted_by_visitor: true })
         .eq("id", messageId) as any);
       
       if (error) throw error;
@@ -245,7 +246,7 @@ export const useSentMessages = () => {
     }
   };
 
-  // Delete an entire conversation (all messages to a habitation)
+  // Soft delete an entire conversation (mark all messages as deleted)
   const deleteConversation = async (habitationId: string) => {
     try {
       const habMessages = messages.filter(m => m.habitation_id === habitationId);
@@ -254,7 +255,7 @@ export const useSentMessages = () => {
       if (messageIds.length > 0) {
         const { error } = await (supabase
           .from("visitor_messages" as any)
-          .delete()
+          .update({ deleted_by_visitor: true })
           .in("id", messageIds) as any);
         
         if (error) throw error;
