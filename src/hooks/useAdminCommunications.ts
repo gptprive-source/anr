@@ -46,6 +46,7 @@ export interface CommunicationReply {
   user_email?: string;
   user_name?: string;
   communication_title?: string;
+  is_admin?: boolean;
 }
 
 export function useAdminCommunications() {
@@ -393,16 +394,21 @@ export function useUserCommunications() {
         setHasNewCommunication(true);
       }
 
-      // Fetch user's own replies to these communications
+      // Fetch ALL replies for these communications (user + admin)
       if (userComms.length > 0) {
         const { data: replies } = await supabase
           .from('communication_replies')
           .select('*')
-          .eq('user_id', user.id)
           .in('communication_id', userComms.map(c => c.id))
           .order('created_at', { ascending: true });
         
-        setCommunicationReplies(replies || []);
+        // Enrich with is_admin flag
+        const enrichedReplies = (replies || []).map(r => ({
+          ...r,
+          is_admin: r.user_id !== user.id
+        }));
+        
+        setCommunicationReplies(enrichedReplies);
       }
     } catch (error) {
       console.error('Error fetching user communications:', error);
@@ -423,6 +429,10 @@ export function useUserCommunications() {
           user_id: user.id
         }, { onConflict: 'communication_id,user_id' });
 
+      // Update local state to reflect read status
+      setCommunications(prev => prev.map(c => 
+        c.id === communicationId ? { ...c, is_read: true } : c
+      ));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Error marking as read:', error);
