@@ -91,9 +91,8 @@ export function NotificationBell() {
       navigate(`/notification/communication/${data.communication_id}`);
     } else if (notif.type === "communication_reply" && data?.communication_id) {
       navigate(`/notification/communication/${data.communication_id}`);
-    } else if (data?.conversation_id) {
-      navigate(`/conversation/${data.conversation_id}`);
     } else {
+      // System notifications - just go to messages, no dedicated page
       navigate("/messages");
     }
   };

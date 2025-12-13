@@ -55,7 +55,8 @@ export function SystemNotificationsSection() {
   const handleOpenNotif = (notif: typeof notifications[0]) => {
     markAsRead(notif.id);
     clearNewNotificationFlag();
-    navigate(`/notification/notification/${notif.id}`);
+    // System notifications don't have a dedicated page - just mark as read
+    // and stay on messages page
   };
 
   const handleDeleteComm = (e: React.MouseEvent, commId: string) => {
@@ -157,7 +158,7 @@ export function SystemNotificationsSection() {
               const notif = item.data;
               const borderClass = notif.is_read ? "border-blue-500" : "border-red-500";
               return (
-                <Card key={notif.id} className={`cursor-pointer transition-all border-2 ${borderClass}`} onClick={() => handleOpenNotif(notif)}>
+                <Card key={notif.id} className={`transition-all border-2 ${borderClass}`} onClick={() => handleOpenNotif(notif)}>
                   <CardContent className="p-3 bg-white rounded-xl">
                     <div className="flex items-start gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notif.type === "referral_credited" ? "bg-green-500/10" : "bg-primary/10"}`}>
