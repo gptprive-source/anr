@@ -33,6 +33,7 @@ import Messages from "./pages/Messages";
 import Contacts from "./pages/Contacts";
 import Conversation from "./pages/Conversation";
 import ConversationSent from "./pages/ConversationSent";
+import NotificationConversation from "./pages/NotificationConversation";
 import MessageBackup from "./pages/MessageBackup";
 import DoorAccess from "./pages/DoorAccess";
 import EmployeeScan from "./pages/EmployeeScan";
@@ -133,6 +134,9 @@ const AppContent = () => {
               </ProtectedRoute>} />
           <Route path="/conversation-sent/:recipientId" element={<ProtectedRoute>
                 <ConversationSent />
+              </ProtectedRoute>} />
+          <Route path="/notification/:type/:notificationId" element={<ProtectedRoute>
+                <NotificationConversation />
               </ProtectedRoute>} />
           <Route path="/message-backup" element={<ProtectedRoute>
                 <MessageBackup />
