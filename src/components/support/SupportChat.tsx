@@ -566,19 +566,11 @@ const SupportChat = () => {
     }
   };
 
+  // Chat is now opened from dashboard, no floating button
+  if (!isOpen) return null;
+  
   return (
     <>
-      {/* Chat Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className={cn(
-          "fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg",
-          "flex items-center justify-center hover:scale-105 transition-transform",
-          isOpen && "hidden"
-        )}
-      >
-        <MessageCircle className="w-6 h-6" />
-      </button>
 
       {/* Chat Window */}
       {isOpen && (

@@ -164,15 +164,20 @@ const Residents = () => {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="max-w-lg mx-auto p-4 space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4 pt-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/dashboard")}
+            className="text-primary-foreground hover:bg-primary-foreground/10"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold">Résidents</h1>
-            <p className="text-sm text-muted-foreground">{residents.length}/{maxResidents} résidents</p>
+            <h1 className="text-lg font-semibold">Résidents</h1>
+            <p className="text-primary-foreground/70 text-xs">{residents.length}/{maxResidents} résidents</p>
           </div>
           {isOwner && (
             <Button 
@@ -180,12 +185,16 @@ const Residents = () => {
               size="sm" 
               disabled={residents.length >= maxResidents}
               onClick={() => setInviteDialogOpen(true)}
+              className="text-primary-foreground border-primary-foreground/30 hover:bg-primary-foreground/10"
             >
               <UserPlus className="w-4 h-4 mr-2" />
               Inviter
             </Button>
           )}
         </div>
+      </div>
+      
+      <div className="max-w-lg mx-auto p-4 space-y-6">
 
         {/* Residents List */}
         <div className="space-y-3">

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import AvatarUpload from "@/components/ui/AvatarUpload";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Users,
   Search,
@@ -25,6 +26,7 @@ import {
   MoreVertical,
   Loader2,
   MessageSquare,
+  ArrowLeft,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -171,14 +173,23 @@ const Contacts = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <div className="bg-card p-6 shadow-neumorphic-sm">
-        <h1 className="text-2xl font-bold flex items-center gap-2 text-foreground">
-          <Users className="w-6 h-6 text-primary" />
-          Mes contacts ANR
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {contacts.length} contact{contacts.length !== 1 ? "s" : ""} enregistré{contacts.length !== 1 ? "s" : ""}
-        </p>
+      <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/dashboard")}
+            className="text-primary-foreground hover:bg-primary-foreground/10"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-lg font-semibold">Mes contacts ANR</h1>
+            <p className="text-primary-foreground/70 text-xs">
+              {contacts.length} contact{contacts.length !== 1 ? "s" : ""} enregistré{contacts.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="p-4 space-y-4">
@@ -257,13 +268,20 @@ const Contacts = () => {
                   {/* Avatar */}
                   <button
                     onClick={() => handleToggleFavorite(contact)}
-                    className={`p-2 rounded-full transition-colors relative ${contact.contact_type === "company" ? "bg-orange-500/10 hover:bg-orange-500/20" : "bg-blue-500/10 hover:bg-blue-500/20"}`}
+                    className="relative flex-shrink-0"
                   >
-                    {contact.contact_type === "company" ? (
-                      <Building2 className="w-5 h-5 text-orange-500" />
-                    ) : (
-                      <User className="w-5 h-5 text-blue-500" />
-                    )}
+                    <Avatar className="h-11 w-11">
+                      {contact.avatar_url ? (
+                        <AvatarImage src={contact.avatar_url} alt={contact.first_name || contact.company_name || "Contact"} />
+                      ) : null}
+                      <AvatarFallback className={contact.contact_type === "company" ? "bg-orange-500/10" : "bg-blue-500/10"}>
+                        {contact.contact_type === "company" ? (
+                          <Building2 className="w-5 h-5 text-orange-500" />
+                        ) : (
+                          <User className="w-5 h-5 text-blue-500" />
+                        )}
+                      </AvatarFallback>
+                    </Avatar>
                     {contact.is_favorite && (
                       <Star className="w-3 h-3 text-yellow-500 fill-yellow-500 absolute -top-1 -right-1" />
                     )}
