@@ -195,13 +195,60 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         insertData.is_encrypted = true;
       }
 
-      const { error } = await (supabase
+      const { data: insertedMessage, error } = await (supabase
         .from("visitor_messages" as any)
-        .insert(insertData) as any);
+        .insert(insertData)
+        .select()
+        .single() as any);
       
       if (error) throw error;
 
-      return { success: true };
+      // Create notification for the resident(s) of this habitation
+      try {
+        // Get all residents of this habitation
+        const { data: residents } = await supabase
+          .from("residents")
+          .select("user_id")
+          .eq("habitation_id", targetHabitationId)
+          .eq("status", "verified");
+
+        if (residents && residents.length > 0) {
+          // Get visitor name from business card if available
+          let visitorName = "Un visiteur";
+          if (businessCardId) {
+            const { data: card } = await supabase
+              .from("visitor_business_cards")
+              .select("first_name, last_name, company_name")
+              .eq("id", businessCardId)
+              .maybeSingle();
+            
+            if (card) {
+              if (card.first_name || card.last_name) {
+                visitorName = `${card.first_name || ""} ${card.last_name || ""}`.trim();
+              } else if (card.company_name) {
+                visitorName = card.company_name;
+              }
+            }
+          }
+
+          // Create notifications for each resident
+          const notifications = residents.map(r => ({
+            user_id: r.user_id,
+            type: "visitor_message",
+            title: "Nouveau message",
+            message: `${visitorName} vous a envoyé un message`,
+            is_read: false,
+            data: { message_id: insertedMessage.id, habitation_id: targetHabitationId },
+          }));
+
+          await supabase.from("user_notifications").insert(notifications as any);
+        }
+      } catch (notifError) {
+        console.warn("[useVisitorMessages] Could not create notification:", notifError);
+        // Don't fail the message send if notification fails
+      }
+
+      return { success: true, message: insertedMessage };
     } catch (error: any) {
       console.error("[useVisitorMessages] Error sending message:", error);
       return { success: false, error: error.message };
