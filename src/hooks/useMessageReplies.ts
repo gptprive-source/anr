@@ -166,6 +166,23 @@ export const useMessageReplies = (messageId?: string) => {
     }
   };
 
+  const deleteReply = async (replyId: string) => {
+    try {
+      const { error } = await (supabase
+        .from("message_replies" as any)
+        .delete()
+        .eq("id", replyId) as any);
+      
+      if (error) throw error;
+      
+      setReplies(prev => prev.filter(r => r.id !== replyId));
+      return { success: true };
+    } catch (error: any) {
+      console.error("[useMessageReplies] Error deleting reply:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
   useEffect(() => {
     if (messageId) {
       fetchReplies(messageId);
@@ -203,6 +220,7 @@ export const useMessageReplies = (messageId?: string) => {
     loading,
     sendReply,
     markAsRead,
+    deleteReply,
     refetch: () => messageId && fetchReplies(messageId),
   };
 };

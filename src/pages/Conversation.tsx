@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera, Lock, Ban, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera, Lock, Ban, ShieldCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -116,6 +116,7 @@ const Conversation = () => {
   const {
     replies,
     sendReply,
+    deleteReply,
     loading: repliesLoading
   } = useMessageReplies(firstMessageId);
   const {
@@ -441,7 +442,7 @@ const Conversation = () => {
         }
         if (item.type === 'visitor') {
           const msg = item.data;
-          return <div key={`visitor-${msg.id}`} className="flex justify-start">
+          return <div key={`visitor-${msg.id}`} className="flex justify-start group">
                 <div className="max-w-[85%]">
                   {msg.voice_message_url ? <div className="mb-1">
                       <WhatsAppAudioPlayer audioUrl={msg.voice_message_url} isOwn={false} showAvatar={true} />
@@ -462,7 +463,14 @@ const Conversation = () => {
               </div>;
         } else {
           const reply = item.data;
-          return <div key={`reply-${reply.id}`} className="flex justify-end">
+          return <div key={`reply-${reply.id}`} className="flex justify-end group">
+                <button 
+                  onClick={() => deleteReply(reply.id)} 
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-destructive hover:bg-destructive/10 rounded self-center mr-1"
+                  title="Supprimer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
                 <div className="max-w-[85%]">
                   {/* Media message */}
                   {reply.reply_media_url && <div className="mb-1">

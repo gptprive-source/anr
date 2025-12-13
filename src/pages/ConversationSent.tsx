@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Home, Lock, Loader2, Smile, Send, Mic, Paperclip, X, Image, Video, Camera, Check, CheckCheck } from "lucide-react";
+import { ArrowLeft, Home, Lock, Loader2, Smile, Send, Mic, Paperclip, X, Image, Video, Camera, Check, CheckCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -66,7 +66,7 @@ const ConversationSent = () => {
   const [sending, setSending] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
 
-  const { messages, replies, getConversationMessages, markReplyAsRead, businessCard } = useSentMessages();
+  const { messages, replies, getConversationMessages, markReplyAsRead, businessCard, deleteSentMessage } = useSentMessages();
   const { sendMessage } = useVisitorMessages();
   const { encryptMessageForResident, isReady: encryptionReady } = useEncryptedMessages(habitationId || undefined);
 
@@ -262,7 +262,7 @@ const ConversationSent = () => {
           if (item.type === 'sent') {
             const msg = item.data;
             return (
-              <div key={`sent-${msg.id}`} className="flex justify-end">
+              <div key={`sent-${msg.id}`} className="flex justify-end group">
                 <div className="max-w-[85%]">
                   {msg.voice_message_url ? (
                     <div className="mb-1">
@@ -299,6 +299,13 @@ const ConversationSent = () => {
                     </div>
                   )}
                 </div>
+                <button 
+                  onClick={() => deleteSentMessage(msg.id)} 
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-destructive hover:bg-destructive/10 rounded self-center ml-1"
+                  title="Supprimer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             );
           }
