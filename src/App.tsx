@@ -80,6 +80,7 @@ import AdminRGPDIncidents from "./pages/admin/RGPDIncidents";
 import AdminDailyUsage from "./pages/admin/DailyUsage";
 import AdminDoorModules from "./pages/admin/DoorModules";
 import AdminReferrals from "./pages/admin/Referrals";
+import AdminCommunications from "./pages/admin/Communications";
 const queryClient = new QueryClient();
 const AppContent = () => {
   useAudioUnlock();
@@ -195,6 +196,7 @@ const AppContent = () => {
           <Route path="/admin/rgpd/consents" element={<AdminRGPDConsents />} />
           <Route path="/admin/rgpd/incidents" element={<AdminRGPDIncidents />} />
           <Route path="/admin/referrals" element={<AdminReferrals />} />
+          <Route path="/admin/communications" element={<AdminCommunications />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>
