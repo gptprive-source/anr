@@ -133,7 +133,7 @@ const AppContent = () => {
           <Route path="/conversation/:visitorId" element={<ProtectedRoute>
                 <Conversation />
               </ProtectedRoute>} />
-          <Route path="/conversation-sent/:recipientId" element={<ProtectedRoute>
+          <Route path="/conversation-sent/:habitationId" element={<ProtectedRoute>
                 <ConversationSent />
               </ProtectedRoute>} />
           <Route path="/notification/communication/:communicationId" element={<ProtectedRoute>
