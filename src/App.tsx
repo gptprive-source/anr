@@ -33,6 +33,7 @@ import CallHistory from "./pages/CallHistory";
 import Messages from "./pages/Messages";
 import Contacts from "./pages/Contacts";
 import Conversation from "./pages/Conversation";
+import ConversationSent from "./pages/ConversationSent";
 import MessageBackup from "./pages/MessageBackup";
 import DoorAccess from "./pages/DoorAccess";
 import EmployeeScan from "./pages/EmployeeScan";
@@ -172,6 +173,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <Conversation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/conversation-sent/:recipientId"
+            element={
+              <ProtectedRoute>
+                <ConversationSent />
               </ProtectedRoute>
             }
           />
