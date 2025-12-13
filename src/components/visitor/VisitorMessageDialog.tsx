@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -17,10 +18,12 @@ import { useVisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
 import { useVisitorCustomTemplates } from "@/hooks/useVisitorCustomTemplates";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
+import { useAuth } from "@/hooks/useAuth";
 import { Send, Loader2, MessageSquare, Info, User, Building2, CreditCard, Plus, X, Save, Mic, Lock } from "lucide-react";
 import VisitorBusinessCardManager from "./VisitorBusinessCardManager";
 import SaveCustomTemplateDialog from "./SaveCustomTemplateDialog";
 import VoiceRecorder from "./VoiceRecorder";
+import AccountIncentiveDialog from "./AccountIncentiveDialog";
 
 interface VisitorMessageDialogProps {
   open: boolean;
@@ -37,6 +40,8 @@ const VisitorMessageDialog = ({
   callId,
   onMessageSent,
 }: VisitorMessageDialogProps) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { templates: adminTemplates, retentionDays, sendMessage } = useVisitorMessages();
   const { card, loading: cardLoading, refetch: refetchCard } = useVisitorBusinessCard();
   const { templates: customTemplates, saveTemplate, deleteTemplate, incrementUsage } = useVisitorCustomTemplates();
@@ -51,6 +56,7 @@ const VisitorMessageDialog = ({
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
   const [isCustomMessage, setIsCustomMessage] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [showAccountIncentive, setShowAccountIncentive] = useState(false);
 
   // Reset on open
   useEffect(() => {
@@ -62,6 +68,7 @@ const VisitorMessageDialog = ({
       setShowSaveTemplateDialog(false);
       setIsCustomMessage(false);
       setAudioBlob(null);
+      setShowAccountIncentive(false);
     }
   }, [open]);
 
@@ -185,6 +192,14 @@ const VisitorMessageDialog = ({
       });
       onOpenChange(false);
       onMessageSent?.();
+      
+      // If user is connected, redirect to messages
+      // If not connected, show account incentive dialog
+      if (user) {
+        navigate("/messages");
+      } else {
+        setShowAccountIncentive(true);
+      }
     } else {
       toast({
         title: "Erreur",
@@ -443,6 +458,11 @@ const VisitorMessageDialog = ({
         onOpenChange={setShowSaveTemplateDialog}
         messageContent={message}
         onSave={handleSaveTemplate}
+      />
+
+      <AccountIncentiveDialog
+        open={showAccountIncentive}
+        onOpenChange={setShowAccountIncentive}
       />
 
       <VisitorBusinessCardManager
