@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Phone, PhoneOff, PhoneIncoming, PhoneMissed, Clock, Loader2 } from "lucide-react";
+import { Phone, PhoneOff, PhoneIncoming, PhoneMissed, Clock, Loader2, MapPin, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -11,7 +11,10 @@ interface CallLog {
   answered_at: string | null;
   ended_at: string | null;
   answered_by: string | null;
+  visitor_phone: string | null;
   answeredByName?: string;
+  anrCode?: string;
+  anrAddress?: string;
 }
 
 interface CallHistorySectionProps {
@@ -28,9 +31,19 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
 
   const fetchCallHistory = async () => {
     try {
+      // Fetch calls with habitation and ANR info
       const { data, error } = await supabase
         .from("call_logs")
-        .select("*")
+        .select(`
+          *,
+          habitations:habitation_id (
+            name,
+            anrs:anr_id (
+              code,
+              address
+            )
+          )
+        `)
         .eq("habitation_id", habitationId)
         .order("started_at", { ascending: false })
         .limit(20);
@@ -38,8 +51,10 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
       if (error) throw error;
 
       // Fetch answered_by names
-      const callsWithNames = await Promise.all(
-        (data || []).map(async (call) => {
+      const callsWithDetails = await Promise.all(
+        (data || []).map(async (call: any) => {
+          let answeredByName = "";
+          
           if (call.answered_by) {
             const { data: profile } = await supabase
               .from("profiles")
@@ -47,18 +62,21 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
               .eq("id", call.answered_by)
               .single();
             
-            return {
-              ...call,
-              answeredByName: profile 
-                ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Inconnu"
-                : "Inconnu",
-            };
+            answeredByName = profile 
+              ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Inconnu"
+              : "Inconnu";
           }
-          return call;
+
+          return {
+            ...call,
+            answeredByName,
+            anrCode: call.habitations?.anrs?.code || "",
+            anrAddress: call.habitations?.anrs?.address || "",
+          };
         })
       );
 
-      setCalls(callsWithNames);
+      setCalls(callsWithDetails);
     } catch (error) {
       console.error("[CallHistory] Error fetching:", error);
     } finally {
@@ -70,12 +88,12 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
     switch (status) {
       case "answered":
       case "ended":
-        return <PhoneIncoming className="w-4 h-4 text-success" />;
+        return <PhoneIncoming className="w-4 h-4 text-green-500" />;
       case "missed":
       case "declined":
         return <PhoneMissed className="w-4 h-4 text-destructive" />;
       case "ringing":
-        return <Phone className="w-4 h-4 text-warning animate-pulse" />;
+        return <Phone className="w-4 h-4 text-yellow-500 animate-pulse" />;
       default:
         return <PhoneOff className="w-4 h-4 text-muted-foreground" />;
     }
@@ -100,10 +118,10 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
     }
   };
 
-  const formatCallTime = (dateStr: string | null) => {
+  const formatCallDate = (dateStr: string | null) => {
     if (!dateStr) return "";
     try {
-      return format(new Date(dateStr), "dd MMM à HH:mm", { locale: fr });
+      return format(new Date(dateStr), "EEEE dd MMM yyyy 'à' HH:mm", { locale: fr });
     } catch {
       return "";
     }
@@ -140,43 +158,62 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
     );
   }
 
-  const colorCycle = [
-    { border: "border-blue-500", bg: "bg-blue-500/10", text: "text-blue-500" },
-    { border: "border-orange-500", bg: "bg-orange-500/10", text: "text-orange-500" },
-    { border: "border-yellow-500", bg: "bg-yellow-500/10", text: "text-yellow-500" },
-    { border: "border-purple-500", bg: "bg-purple-500/10", text: "text-purple-500" },
-    { border: "border-pink-500", bg: "bg-pink-500/10", text: "text-pink-500" },
-    { border: "border-green-500", bg: "bg-green-500/10", text: "text-green-500" },
-    { border: "border-cyan-500", bg: "bg-cyan-500/10", text: "text-cyan-500" },
-  ];
-
   return (
-    <div className="space-y-2">
-      {calls.map((call, index) => {
+    <div className="space-y-3">
+      {calls.map((call) => {
         const duration = getCallDuration(call);
-        const colorSet = colorCycle[index % colorCycle.length];
+        const isAnswered = call.status === "answered" || call.status === "ended";
+        const isMissed = call.status === "missed" || call.status === "declined";
+        
         return (
           <div
             key={call.id}
-            className={`flex items-center justify-between p-3 rounded-xl border ${colorSet.border}`}
+            className={`p-4 rounded-xl border bg-card shadow-sm ${
+              isAnswered ? "border-green-500/30" : isMissed ? "border-destructive/30" : "border-border"
+            }`}
           >
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full ${colorSet.bg} flex items-center justify-center`}>
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                isAnswered ? "bg-green-500/10" : isMissed ? "bg-destructive/10" : "bg-muted"
+              }`}>
                 {getCallIcon(call.status)}
               </div>
-              <div>
-                <p className="font-medium text-sm text-foreground">{getCallStatusLabel(call)}</p>
-                <p className="text-xs text-foreground/70">
-                  {formatCallTime(call.started_at)}
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-sm text-foreground">
+                    {getCallStatusLabel(call)}
+                  </p>
+                  {duration && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      {duration}
+                    </div>
+                  )}
+                </div>
+                
+                {/* ANR Info */}
+                {call.anrCode && (
+                  <div className="flex items-center gap-1 mt-1 text-xs text-primary">
+                    <MapPin className="w-3 h-3" />
+                    <span className="font-medium">ANR: {call.anrCode}</span>
+                  </div>
+                )}
+                
+                {/* Visitor Phone */}
+                {call.visitor_phone && (
+                  <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                    <User className="w-3 h-3" />
+                    <span>Appelant: {call.visitor_phone}</span>
+                  </div>
+                )}
+                
+                {/* Date */}
+                <p className="text-xs text-muted-foreground mt-2">
+                  {formatCallDate(call.started_at)}
                 </p>
               </div>
             </div>
-            {duration && (
-              <div className="flex items-center gap-1 text-xs text-foreground/70">
-                <Clock className="w-3 h-3" />
-                {duration}
-              </div>
-            )}
           </div>
         );
       })}
