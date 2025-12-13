@@ -71,12 +71,29 @@ export function useAdminCommunications() {
     targetType: 'all' | 'specific',
     targetUserIds: string[],
     allowReply: boolean
-  ) => {
+  ): Promise<boolean> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { error } = await supabase
+      // Determine final target user IDs
+      let finalTargetUserIds = targetUserIds;
+      
+      if (targetType === 'all') {
+        // Fetch all verified residents' user IDs
+        const { data: residents, error: residentsError } = await supabase
+          .from('residents')
+          .select('user_id')
+          .eq('status', 'verified');
+        
+        if (residentsError) throw residentsError;
+        
+        // Get unique user IDs
+        finalTargetUserIds = [...new Set(residents?.map(r => r.user_id).filter(Boolean) || [])];
+      }
+
+      // Insert the communication
+      const { data: commData, error } = await supabase
         .from('admin_communications')
         .insert({
           title,
@@ -85,15 +102,36 @@ export function useAdminCommunications() {
           target_type: targetType,
           target_user_ids: targetType === 'specific' ? targetUserIds : [],
           allow_reply: allowReply
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
 
+      // Create user_notifications for EACH targeted user
+      if (finalTargetUserIds.length > 0) {
+        const notifications = finalTargetUserIds.map(userId => ({
+          user_id: userId,
+          type: 'admin_communication',
+          title: `📢 ${title}`,
+          message: content.substring(0, 150) + (content.length > 150 ? '...' : ''),
+          data: { communication_id: commData.id },
+          is_read: false,
+        }));
+
+        const { error: notifError } = await supabase
+          .from('user_notifications')
+          .insert(notifications);
+
+        if (notifError) {
+          console.error("Error creating notifications:", notifError);
+          // Don't fail the whole operation, communication was sent
+        }
+      }
+
       toast({
         title: "Communication envoyée",
-        description: targetType === 'all' 
-          ? "Message envoyé à tous les utilisateurs" 
-          : `Message envoyé à ${targetUserIds.length} utilisateur(s)`
+        description: `Message envoyé à ${finalTargetUserIds.length} utilisateur(s)`
       });
 
       await fetchCommunications();

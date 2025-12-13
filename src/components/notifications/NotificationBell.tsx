@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, Check, Gift, MessageCircle } from "lucide-react";
+import { Bell, Check, Gift, MessageCircle, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -35,6 +35,8 @@ export function NotificationBell() {
         return <Gift className="h-4 w-4 text-green-500" />;
       case "communication_reply":
         return <MessageCircle className="h-4 w-4 text-blue-500" />;
+      case "admin_communication":
+        return <Megaphone className="h-4 w-4 text-orange-500" />;
       default:
         return <Bell className="h-4 w-4 text-primary" />;
     }
