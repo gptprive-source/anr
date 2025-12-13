@@ -3119,6 +3119,7 @@ export type Database = {
           business_card_id: string | null
           conversation_token: string | null
           created_at: string | null
+          deleted_by_visitor: boolean | null
           encrypted_message: string | null
           habitation_id: string
           has_reply: boolean | null
@@ -3139,6 +3140,7 @@ export type Database = {
           business_card_id?: string | null
           conversation_token?: string | null
           created_at?: string | null
+          deleted_by_visitor?: boolean | null
           encrypted_message?: string | null
           habitation_id: string
           has_reply?: boolean | null
@@ -3159,6 +3161,7 @@ export type Database = {
           business_card_id?: string | null
           conversation_token?: string | null
           created_at?: string | null
+          deleted_by_visitor?: boolean | null
           encrypted_message?: string | null
           habitation_id?: string
           has_reply?: boolean | null
