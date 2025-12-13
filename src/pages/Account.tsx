@@ -411,10 +411,10 @@ const Account = () => {
         <GrantedAccessSection />
 
         {/* Visitor Mode Section */}
-        <VisitorModeSection />
+        <VisitorModeSection className="bg-white" />
 
         {/* Danger zone */}
-        <Card className="p-4 space-y-4 py-[18px] pt-[4px]">
+        <Card className="p-4 space-y-4 py-[18px] pt-[18px]">
           
           <div className="flex flex-col sm:flex-row gap-2">
             <Button variant="outline" className="flex-1 gap-2" onClick={handleSignOut}>
