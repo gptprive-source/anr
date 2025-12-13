@@ -56,6 +56,38 @@ export const useVisitorBusinessCard = () => {
       const { data, error } = await query.maybeSingle();
 
       if (error) throw error;
+      
+      // Auto-create business card for authenticated users if they don't have one
+      if (!data && user?.id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("id", user.id)
+          .maybeSingle();
+        
+        const visitorAnrCode = `ANR-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
+        
+        const { data: newCard, error: insertError } = await (supabase as any)
+          .from("visitor_business_cards")
+          .insert({
+            user_id: user.id,
+            device_id: deviceId,
+            first_name: profile?.first_name || "Utilisateur",
+            last_name: profile?.last_name || "",
+            card_type: "individual",
+            visitor_anr_code: visitorAnrCode,
+          })
+          .select()
+          .single();
+        
+        if (insertError) {
+          console.error("[useVisitorBusinessCard] Error creating card:", insertError);
+        } else {
+          setCard(newCard as VisitorBusinessCard);
+          return;
+        }
+      }
+      
       setCard(data as VisitorBusinessCard | null);
     } catch (err) {
       console.error("[useVisitorBusinessCard] Error fetching card:", err);
