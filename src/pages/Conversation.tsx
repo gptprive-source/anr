@@ -377,7 +377,7 @@ const Conversation = () => {
                 {card?.job_title && <p className="text-xs text-white/70 truncate">{card.job_title}</p>}
                 <div className="flex items-center gap-1 text-[10px] text-white/60" title="Chiffrement E2E">
                   <Lock className="w-2.5 h-2.5" />
-                  <span>E2E</span>
+                  <span>Chiffrement E2E de bout en bout </span>
                 </div>
               </div>
             </div>
