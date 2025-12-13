@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, Gift, MessageCircle, Megaphone } from "lucide-react";
+import { Bell, Check, Gift, MessageCircle, Megaphone, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -21,7 +21,8 @@ export function NotificationBell() {
     hasNewNotification,
     markAsRead, 
     markAllAsRead,
-    clearNewNotificationFlag 
+    clearNewNotificationFlag,
+    deleteNotification
   } = useUserNotifications();
   const [open, setOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -146,16 +147,21 @@ export function NotificationBell() {
               {notifications.map((notif) => (
                 <div
                   key={notif.id}
-                  className={`p-3 hover:bg-muted/50 transition-colors cursor-pointer ${
+                  className={`p-3 hover:bg-muted/50 transition-colors ${
                     !notif.is_read ? "bg-primary/5" : ""
                   }`}
-                  onClick={() => handleNotificationClick(notif)}
                 >
                   <div className="flex gap-3">
-                    <div className="mt-0.5">
+                    <div 
+                      className="mt-0.5 cursor-pointer"
+                      onClick={() => handleNotificationClick(notif)}
+                    >
                       {getNotificationIcon(notif.type)}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div 
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => handleNotificationClick(notif)}
+                    >
                       <p className="font-medium text-sm">{notif.title}</p>
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                         {notif.message}
@@ -167,9 +173,22 @@ export function NotificationBell() {
                         })}
                       </p>
                     </div>
-                    {!notif.is_read && (
-                      <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2" />
-                    )}
+                    <div className="flex items-center gap-1">
+                      {!notif.is_read && (
+                        <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(notif.id);
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

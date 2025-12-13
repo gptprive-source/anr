@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, Gift, ChevronRight, CheckCheck, MessageCircle } from "lucide-react";
+import { Bell, Gift, ChevronRight, CheckCheck, MessageCircle, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { useUserNotifications } from "@/hooks/useUserNotifications";
 import { useUserCommunications, UserCommunication } from "@/hooks/useAdminCommunications";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+
 const getNotificationIcon = (type: string) => {
   switch (type) {
     case "referral_credited":
@@ -17,16 +18,7 @@ const getNotificationIcon = (type: string) => {
       return <Bell className="w-5 h-5 text-primary" />;
   }
 };
-const getNotificationColor = (type: string) => {
-  switch (type) {
-    case "referral_credited":
-      return "border-green-500 bg-green-500/5";
-    case "admin_communication":
-      return "border-blue-500 bg-blue-500/5";
-    default:
-      return "border-primary bg-primary/5";
-  }
-};
+
 export function SystemNotificationsSection() {
   const navigate = useNavigate();
   const {
@@ -35,47 +27,68 @@ export function SystemNotificationsSection() {
     hasNewNotification,
     markAsRead,
     markAllAsRead,
-    clearNewNotificationFlag
+    clearNewNotificationFlag,
+    deleteNotification
   } = useUserNotifications();
   const {
     communications,
     unreadCount: unreadCommsCount,
     hasNewCommunication,
     markAsRead: markCommAsRead,
-    clearNewCommunicationFlag
+    clearNewCommunicationFlag,
+    deleteCommunicationForUser
   } = useUserCommunications();
+
   const totalUnread = unreadCount + unreadCommsCount;
   const hasContent = notifications.length > 0 || communications.length > 0;
+
   if (!hasContent) {
     return null;
   }
+
   const handleOpenComm = (comm: typeof communications[0]) => {
     markCommAsRead(comm.id);
     clearNewCommunicationFlag();
     navigate(`/notification/communication/${comm.id}`);
   };
+
   const handleOpenNotif = (notif: typeof notifications[0]) => {
     markAsRead(notif.id);
     clearNewNotificationFlag();
     navigate(`/notification/notification/${notif.id}`);
   };
-  return <div className="space-y-3">
+
+  const handleDeleteComm = (e: React.MouseEvent, commId: string) => {
+    e.stopPropagation();
+    deleteCommunicationForUser(commId);
+  };
+
+  const handleDeleteNotif = (e: React.MouseEvent, notifId: string) => {
+    e.stopPropagation();
+    deleteNotification(notifId);
+  };
+
+  return (
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
           <Bell className="w-4 h-4" />
           Notifications & Communications
-          {totalUnread > 0 && <Badge variant="destructive" className="text-xs h-5 ml-1">
+          {totalUnread > 0 && (
+            <Badge variant="destructive" className="text-xs h-5 ml-1">
               {totalUnread}
-            </Badge>}
+            </Badge>
+          )}
         </h3>
-        {unreadCount > 0 && <Button variant="ghost" size="sm" className="text-xs h-7 gap-1" onClick={() => markAllAsRead()}>
-            <CheckCheck className="w-3 h-3" />
+        {unreadCount > 0 && (
+          <Button variant="ghost" size="sm" className="text-xs h-7 gap-1" onClick={() => markAllAsRead()}>
+            <CheckCheck className="w-3 w-3" />
             Tout marquer lu
-          </Button>}
+          </Button>
+        )}
       </div>
 
       <div className="space-y-2">
-        {/* All items sorted: unread first, then by date (newest first) */}
         {[
           ...communications.map(comm => ({ 
             type: 'comm' as const, 
@@ -91,10 +104,8 @@ export function SystemNotificationsSection() {
           }))
         ]
           .sort((a, b) => {
-            // Unread first
             if (!a.isRead && b.isRead) return -1;
             if (a.isRead && !b.isRead) return 1;
-            // Then by date (newest first)
             return b.date.getTime() - a.date.getTime();
           })
           .map((item) => {
@@ -130,7 +141,14 @@ export function SystemNotificationsSection() {
                         </p>
                       </div>
 
-                      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-2" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 flex-shrink-0"
+                        onClick={(e) => handleDeleteComm(e, comm.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -166,18 +184,27 @@ export function SystemNotificationsSection() {
                         </p>
                       </div>
 
-                      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-2" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 flex-shrink-0"
+                        onClick={(e) => handleDeleteNotif(e, notif.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
               );
             }
           })}
-
       </div>
 
-      {notifications.length > 5 && <p className="text-xs text-center text-muted-foreground">
+      {notifications.length > 5 && (
+        <p className="text-xs text-center text-muted-foreground">
           + {notifications.length - 5} autres notifications
-        </p>}
-    </div>;
+        </p>
+      )}
+    </div>
+  );
 }
