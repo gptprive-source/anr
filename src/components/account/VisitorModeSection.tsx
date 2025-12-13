@@ -8,7 +8,6 @@ import VisitorBusinessCardManager from "@/components/visitor/VisitorBusinessCard
 import SaveCustomTemplateDialog from "@/components/visitor/SaveCustomTemplateDialog";
 import EditCustomTemplateDialog from "@/components/visitor/EditCustomTemplateDialog";
 import { toast } from "sonner";
-
 interface VisitorModeSectionProps {
   userProfile?: {
     first_name: string | null;
@@ -17,10 +16,22 @@ interface VisitorModeSectionProps {
   } | null;
   userEmail?: string;
 }
-
-const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps) => {
-  const { card, loading: cardLoading, saveCard } = useVisitorBusinessCard();
-  const { templates, loading: templatesLoading, saveTemplate, updateTemplate, deleteTemplate } = useVisitorCustomTemplates();
+const VisitorModeSection = ({
+  userProfile,
+  userEmail
+}: VisitorModeSectionProps) => {
+  const {
+    card,
+    loading: cardLoading,
+    saveCard
+  } = useVisitorBusinessCard();
+  const {
+    templates,
+    loading: templatesLoading,
+    saveTemplate,
+    updateTemplate,
+    deleteTemplate
+  } = useVisitorCustomTemplates();
   const [showCardManager, setShowCardManager] = useState(false);
   const [showNewTemplateDialog, setShowNewTemplateDialog] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<VisitorCustomTemplate | null>(null);
@@ -38,12 +49,11 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
         company_name: null,
         job_title: null,
         visitor_anr_code: null,
-        avatar_url: null,
+        avatar_url: null
       });
     }
     setShowCardManager(true);
   };
-
   const handleDeleteTemplate = async (templateId: string, templateName: string) => {
     try {
       await deleteTemplate(templateId);
@@ -52,7 +62,6 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
       toast.error("Erreur lors de la suppression");
     }
   };
-
   const handleSaveNewTemplate = async (name: string, content: string, icon: string) => {
     try {
       await saveTemplate(name, content, icon);
@@ -61,7 +70,6 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
       toast.error("Erreur lors de la création");
     }
   };
-
   const handleUpdateTemplate = async (templateId: string, name: string, content: string, icon: string) => {
     try {
       await updateTemplate(templateId, name, content, icon);
@@ -70,7 +78,6 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
       toast.error("Erreur lors de la mise à jour");
     }
   };
-
   const getCardSummary = () => {
     if (!card) return "Non configurée";
     if (card.card_type === "company") {
@@ -79,9 +86,7 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
     const name = [card.first_name, card.last_name].filter(Boolean).join(" ");
     return name || "Particulier";
   };
-
-  return (
-    <div className="bg-background/50 rounded-2xl p-4 card-shadow space-y-4 border border-indigo-500">
+  return <div className="bg-background/50 rounded-2xl p-4 card-shadow space-y-4 border border-indigo-500">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center">
           <User className="w-5 h-5 text-indigo-500" />
@@ -95,7 +100,7 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
       {/* Grid for Business Card and Templates side by side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Business Card */}
-        <div className="border border-purple-500 rounded-lg p-3 space-y-2">
+        <div className="border rounded-lg p-3 space-y-2 shadow-neumorphic-sm border-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-purple-500/10 flex items-center justify-center">
@@ -108,28 +113,18 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
             </Button>
           </div>
           
-          {cardLoading ? (
-            <p className="text-xs text-muted-foreground">Chargement...</p>
-          ) : card ? (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {card.card_type === "company" ? (
-                <Building2 className="w-3 h-3 text-purple-500" />
-              ) : (
-                <User className="w-3 h-3 text-purple-500" />
-              )}
+          {cardLoading ? <p className="text-xs text-muted-foreground">Chargement...</p> : card ? <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {card.card_type === "company" ? <Building2 className="w-3 h-3 text-purple-500" /> : <User className="w-3 h-3 text-purple-500" />}
               <span>{getCardSummary()}</span>
               {card.email && <span>• {card.email}</span>}
               {card.phone && <span>• {card.phone}</span>}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">
+            </div> : <p className="text-xs text-muted-foreground">
               Créez une carte pour vous présenter rapidement aux résidents
-            </p>
-          )}
+            </p>}
         </div>
 
         {/* Custom Templates */}
-        <div className="border border-yellow-500 rounded-lg p-3 space-y-2">
+        <div className="border rounded-lg p-3 space-y-2 border-white shadow-neumorphic-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-yellow-500/10 flex items-center justify-center">
@@ -142,15 +137,8 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
             </Button>
           </div>
 
-          {templatesLoading ? (
-            <p className="text-xs text-muted-foreground">Chargement...</p>
-          ) : templates.length > 0 ? (
-            <div className="space-y-2">
-              {templates.map((template) => (
-                <div 
-                  key={template.id} 
-                  className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-yellow-500/30"
-                >
+          {templatesLoading ? <p className="text-xs text-muted-foreground">Chargement...</p> : templates.length > 0 ? <div className="space-y-2">
+              {templates.map(template => <div key={template.id} className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-yellow-500/30">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-yellow-500/10 flex items-center justify-center">
                       <span className="text-sm">{template.icon}</span>
@@ -161,55 +149,26 @@ const VisitorModeSection = ({ userProfile, userEmail }: VisitorModeSectionProps)
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() => setEditingTemplate(template)}
-                    >
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditingTemplate(template)}>
                       <Pencil className="w-3.5 h-3.5 text-yellow-500" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() => handleDeleteTemplate(template.id, template.name)}
-                    >
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleDeleteTemplate(template.id, template.name)}>
                       <Trash2 className="w-3.5 h-3.5 text-destructive" />
                     </Button>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">
+                </div>)}
+            </div> : <p className="text-xs text-muted-foreground">
               Créez des templates pour laisser des messages rapidement
-            </p>
-          )}
+            </p>}
         </div>
       </div>
 
       {/* Dialogs */}
-      <VisitorBusinessCardManager
-        open={showCardManager}
-        onOpenChange={setShowCardManager}
-      />
+      <VisitorBusinessCardManager open={showCardManager} onOpenChange={setShowCardManager} />
 
-      <SaveCustomTemplateDialog
-        open={showNewTemplateDialog}
-        onOpenChange={setShowNewTemplateDialog}
-        messageContent=""
-        onSave={handleSaveNewTemplate}
-      />
+      <SaveCustomTemplateDialog open={showNewTemplateDialog} onOpenChange={setShowNewTemplateDialog} messageContent="" onSave={handleSaveNewTemplate} />
 
-      <EditCustomTemplateDialog
-        open={!!editingTemplate}
-        onOpenChange={(open) => !open && setEditingTemplate(null)}
-        template={editingTemplate}
-        onSave={handleUpdateTemplate}
-      />
-    </div>
-  );
+      <EditCustomTemplateDialog open={!!editingTemplate} onOpenChange={open => !open && setEditingTemplate(null)} template={editingTemplate} onSave={handleUpdateTemplate} />
+    </div>;
 };
-
 export default VisitorModeSection;

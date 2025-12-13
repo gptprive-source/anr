@@ -411,7 +411,7 @@ const Account = () => {
         <GrantedAccessSection />
 
         {/* Visitor Mode Section */}
-        <VisitorModeSection className="bg-white" />
+        <VisitorModeSection className="bg-white border-white" />
 
         {/* Danger zone */}
         <Card className="p-4 space-y-4 py-[18px] pt-[18px]">
