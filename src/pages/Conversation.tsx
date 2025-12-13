@@ -352,7 +352,7 @@ const Conversation = () => {
   return <div className="min-h-screen flex flex-col pb-16 bg-[#E5DDD5]">
       {/* WhatsApp-style Header */}
       <div className="sticky top-0 z-10 bg-[#075E54] shadow-md">
-        <div className="max-w-2xl mx-auto w-full px-2 py-3">
+        <div className="max-w-2xl mx-auto w-full px-2 py-3 bg-[#2266ba]">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => navigate("/messages")}>
               <ArrowLeft className="w-5 h-5" />
@@ -366,9 +366,9 @@ const Conversation = () => {
             </Avatar>
 
             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
-              const contactIdentifier = card?.email || card?.phone || visitorId;
-              navigate(`/contacts?scrollTo=${encodeURIComponent(contactIdentifier || '')}`);
-            }}>
+            const contactIdentifier = card?.email || card?.phone || visitorId;
+            navigate(`/contacts?scrollTo=${encodeURIComponent(contactIdentifier || '')}`);
+          }}>
               <div className="flex items-center gap-2">
                 <p className="font-semibold text-white truncate">{displayName}</p>
                 {currentVisitorBlocked && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">Bloqué</span>}
@@ -384,16 +384,16 @@ const Conversation = () => {
 
             {/* Add to contacts */}
             {card ? <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" /> : <AddToContactsButton businessCard={{
-              id: visitorId || "",
-              card_type: "individual",
-              first_name: displayName !== "Visiteur" ? displayName : null,
-              last_name: null,
-              company_name: null,
-              job_title: null,
-              phone: visitorMessages[0]?.visitor_phone || null,
-              email: null,
-              visitor_anr_code: null
-            }} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />}
+            id: visitorId || "",
+            card_type: "individual",
+            first_name: displayName !== "Visiteur" ? displayName : null,
+            last_name: null,
+            company_name: null,
+            job_title: null,
+            phone: visitorMessages[0]?.visitor_phone || null,
+            email: null,
+            visitor_anr_code: null
+          }} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />}
 
             {/* Block/Unblock button */}
             <AlertDialog>
@@ -414,12 +414,12 @@ const Conversation = () => {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annuler</AlertDialogCancel>
                   <AlertDialogAction className={currentVisitorBlocked ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"} onClick={() => {
-                    if (currentVisitorBlocked) {
-                      unblockVisitor(visitorId || "");
-                    } else {
-                      blockVisitor(visitorId || "", displayName);
-                    }
-                  }}>
+                  if (currentVisitorBlocked) {
+                    unblockVisitor(visitorId || "");
+                  } else {
+                    blockVisitor(visitorId || "", displayName);
+                  }
+                }}>
                     {currentVisitorBlocked ? "Débloquer" : "Bloquer"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -446,12 +446,16 @@ const Conversation = () => {
                   {msg.voice_message_url ? <div className="mb-1">
                       <WhatsAppAudioPlayer audioUrl={msg.voice_message_url} isOwn={false} showAvatar={true} />
                       <p className="text-xs text-[#667781] mt-1 ml-2">
-                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                        {format(new Date(msg.created_at), "HH:mm", {
+                    locale: fr
+                  })}
                       </p>
                     </div> : <div className="bg-white rounded-lg rounded-tl-none px-3 py-2 shadow-sm">
                       <p className="text-sm text-[#111B21] whitespace-pre-wrap">{renderTextWithLinks(msg.message || "")}</p>
                       <p className="text-[11px] text-[#667781] mt-1 text-right">
-                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                        {format(new Date(msg.created_at), "HH:mm", {
+                    locale: fr
+                  })}
                       </p>
                     </div>}
                 </div>
@@ -467,7 +471,9 @@ const Conversation = () => {
                         {reply.reply_text && <p className="text-sm text-[#111B21] whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(reply.reply_text)}</p>}
                         <div className="flex items-center justify-end gap-1 px-2 py-1">
                           <span className="text-[11px] text-[#667781]">
-                            {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                            {format(new Date(reply.created_at), "HH:mm", {
+                        locale: fr
+                      })}
                           </span>
                           {reply.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />}
                         </div>
@@ -478,7 +484,9 @@ const Conversation = () => {
                       <WhatsAppAudioPlayer audioUrl={reply.reply_voice_url} isOwn={true} showAvatar={true} />
                       <div className="flex items-center justify-end gap-1 mt-1 mr-2">
                         <span className="text-[11px] text-[#667781]">
-                          {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                          {format(new Date(reply.created_at), "HH:mm", {
+                      locale: fr
+                    })}
                         </span>
                         {reply.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />}
                       </div>
@@ -489,7 +497,9 @@ const Conversation = () => {
                       <div className="flex items-center justify-end gap-1 mt-1">
                         {(reply as any).is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
                         <span className="text-[11px] text-[#667781]">
-                          {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                          {format(new Date(reply.created_at), "HH:mm", {
+                      locale: fr
+                    })}
                         </span>
                         {reply.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />}
                       </div>
@@ -563,27 +573,26 @@ const Conversation = () => {
             {/* Input Field */}
             <div className="flex-1 bg-white rounded-full px-4 py-2 shadow-sm">
               <Textarea placeholder="Message" value={replyText} onChange={e => setReplyText(e.target.value)} className="w-full border-0 p-0 min-h-[24px] max-h-24 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto text-[#111B21]" rows={1} onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }} style={{ height: 'auto', minHeight: '24px' }} onInput={e => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = 'auto';
-                target.style.height = Math.min(target.scrollHeight, 96) + 'px';
-              }} />
+              if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
+                e.preventDefault();
+                handleSend();
+              }
+            }} style={{
+              height: 'auto',
+              minHeight: '24px'
+            }} onInput={e => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = 'auto';
+              target.style.height = Math.min(target.scrollHeight, 96) + 'px';
+            }} />
             </div>
 
             {/* Send/Mic button */}
-            {replyText.trim() || selectedMedia ? (
-              <button className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md" onClick={handleSend} disabled={sending}>
+            {replyText.trim() || selectedMedia ? <button className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md" onClick={handleSend} disabled={sending}>
                 {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              </button>
-            ) : (
-              <button className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md" onClick={() => setShowVoiceRecorder(true)}>
+              </button> : <button onClick={() => setShowVoiceRecorder(true)} className="p-3 rounded-full text-white transition-colors shadow-md bg-[#2266ba]">
                 <Mic className="w-5 h-5" />
-              </button>
-            )}
+              </button>}
           </div>}
         </div>
       </div>
