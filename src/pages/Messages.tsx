@@ -261,12 +261,13 @@ const Messages = () => {
           </div>
           {/* New message button */}
           <Button 
-            variant="ghost" 
-            size="icon" 
+            variant="secondary" 
+            size="sm" 
             onClick={() => setShowNewMessageDialog(true)}
-            className="text-primary-foreground hover:bg-primary-foreground/10"
+            className="gap-1"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
+            <span className="text-xs">Nouveau</span>
           </Button>
         </div>
       </div>
