@@ -487,6 +487,7 @@ export function useUserCommunications() {
             data: { 
               communication_id: communicationId,
               reply_id: data.id,
+              user_id: user.id, // Add user_id so admin can open the right conversation
               user_name: userName
             }
           });
