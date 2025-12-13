@@ -11,7 +11,6 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallListener";
 import UnifiedAssistant from "@/components/assistant/UnifiedAssistant";
-
 import { SupportAlertOverlay } from "@/components/admin/SupportAlertOverlay";
 import { useAudioUnlock } from "@/hooks/useAudioUnlock";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -81,16 +80,11 @@ import AdminRGPDIncidents from "./pages/admin/RGPDIncidents";
 import AdminDailyUsage from "./pages/admin/DailyUsage";
 import AdminDoorModules from "./pages/admin/DoorModules";
 import AdminReferrals from "./pages/admin/Referrals";
-
 const queryClient = new QueryClient();
-
 const AppContent = () => {
   useAudioUnlock();
-  
   console.log("[APP] 🚀 AppContent rendering");
-  
-  return (
-    <>
+  return <>
       <Toaster />
       <Sonner />
       <InstallPrompt />
@@ -106,154 +100,69 @@ const AppContent = () => {
           <Route path="/anr/:code" element={<ANRLanding />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
+          <Route path="/dashboard" element={<ProtectedRoute>
                 <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/account"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/account" element={<ProtectedRoute>
                 <Account />
-              </ProtectedRoute>
-            }
-          />
+              </ProtectedRoute>} />
           <Route path="/call/:anrId" element={<Call />} />
           <Route path="/multi-habitat/:anrId" element={<MultiHabitat />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/invitation" element={<Invitation />} />
           <Route path="/registration-success" element={<RegistrationSuccess />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route
-            path="/update-gps"
-            element={
-              <ProtectedRoute>
+          <Route path="/update-gps" element={<ProtectedRoute>
                 <UpdateGPS />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/residents"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/residents" element={<ProtectedRoute>
                 <Residents />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/call-history"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/call-history" element={<ProtectedRoute>
                 <CallHistory />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/messages"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/messages" element={<ProtectedRoute>
                 <Messages />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/contacts"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/contacts" element={<ProtectedRoute>
                 <Contacts />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/conversation/:visitorId"
-            element={
-              <ProtectedRoute>
-                <Conversation />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/conversation-sent/:recipientId"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/conversation/:visitorId" element={<ProtectedRoute>
+                <Conversation className="bg-white" />
+              </ProtectedRoute>} />
+          <Route path="/conversation-sent/:recipientId" element={<ProtectedRoute>
                 <ConversationSent />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/message-backup"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/message-backup" element={<ProtectedRoute>
                 <MessageBackup />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/door-access"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/door-access" element={<ProtectedRoute>
                 <DoorAccess />
-              </ProtectedRoute>
-            }
-          />
+              </ProtectedRoute>} />
           <Route path="/employee-scan" element={<EmployeeScan />} />
-          <Route
-            path="/pro"
-            element={
-              <ProtectedRoute>
+          <Route path="/pro" element={<ProtectedRoute>
                 <ProDashboard />
-              </ProtectedRoute>
-            }
-          />
+              </ProtectedRoute>} />
           <Route path="/pro/registration-success" element={<ProRegistrationSuccess />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/cgu" element={<CGU />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/contact" element={<Contact />} />
-          <Route
-            path="/shop"
-            element={
-              <ProtectedRoute>
+          <Route path="/shop" element={<ProtectedRoute>
                 <Shop />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/shop-success"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/shop-success" element={<ProtectedRoute>
                 <ShopSuccess />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/orders"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute>
                 <Orders />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/referral"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/referral" element={<ProtectedRoute>
                 <Referral />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/no-habitation"
-            element={
-              <ProtectedRoute>
+              </ProtectedRoute>} />
+          <Route path="/no-habitation" element={<ProtectedRoute>
                 <NoHabitation />
-              </ProtectedRoute>
-            }
-          />
+              </ProtectedRoute>} />
           
           {/* Public legal pages */}
           <Route path="/mentions-legales" element={<MentionsLegales />} />
@@ -290,12 +199,9 @@ const AppContent = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
-    </>
-  );
+    </>;
 };
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const App = () => <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
         <IncomingCallProvider>
@@ -307,7 +213,5 @@ const App = () => (
         </IncomingCallProvider>
       </AuthProvider>
     </TooltipProvider>
-  </QueryClientProvider>
-);
-
+  </QueryClientProvider>;
 export default App;

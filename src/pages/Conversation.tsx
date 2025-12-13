@@ -18,84 +18,19 @@ import VideoRecorder from "@/components/messages/VideoRecorder";
 import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 const EMOJI_CATEGORIES = {
-  "😊 Smileys": [
-    "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩",
-    "😘", "😗", "☺️", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔",
-    "🤐", "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤", "😴", "😷",
-    "🤒", "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "🥸", "😎", "🤓", "🧐",
-    "😕", "😟", "🙁", "☹️", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰", "😥", "😢", "😭",
-    "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "☠️",
-    "💩", "🤡", "👹", "👺", "👻", "👽", "👾", "🤖", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾"
-  ],
-  "👋 Gestes": [
-    "👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆",
-    "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️",
-    "💅", "🤳", "💪", "🦾", "🦿", "🦵", "🦶", "👂", "🦻", "👃", "🧠", "🫀", "🫁", "🦷", "🦴", "👀",
-    "👁️", "👅", "👄", "💋", "🩸"
-  ],
-  "👨 Personnes": [
-    "👶", "👧", "🧒", "👦", "👩", "🧑", "👨", "👩‍🦱", "🧑‍🦱", "👨‍🦱", "👩‍🦰", "🧑‍🦰", "👨‍🦰", "👱‍♀️", "👱", "👱‍♂️",
-    "👩‍🦳", "🧑‍🦳", "👨‍🦳", "👩‍🦲", "🧑‍🦲", "👨‍🦲", "🧔‍♀️", "🧔", "🧔‍♂️", "👵", "🧓", "👴", "👲", "👳‍♀️", "👳", "👳‍♂️",
-    "🧕", "👮‍♀️", "👮", "👮‍♂️", "👷‍♀️", "👷", "👷‍♂️", "💂‍♀️", "💂", "💂‍♂️", "🕵️‍♀️", "🕵️", "🕵️‍♂️", "👩‍⚕️", "🧑‍⚕️", "👨‍⚕️"
-  ],
-  "❤️ Coeurs": [
-    "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖",
-    "💘", "💝", "💟", "❤️‍🔥", "❤️‍🩹", "💌", "💤", "💢", "💥", "💦", "💨", "🕳️", "💣", "💬", "👁️‍🗨️", "🗨️"
-  ],
-  "🐶 Animaux": [
-    "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐻‍❄️", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵",
-    "🙈", "🙉", "🙊", "🐒", "🐔", "🐧", "🐦", "🐤", "🐣", "🐥", "🦆", "🦅", "🦉", "🦇", "🐺", "🐗",
-    "🐴", "🦄", "🐝", "🪱", "🐛", "🦋", "🐌", "🐞", "🐜", "🪰", "🪲", "🪳", "🦟", "🦗", "🕷️", "🕸️",
-    "🦂", "🐢", "🐍", "🦎", "🦖", "🦕", "🐙", "🦑", "🦐", "🦞", "🦀", "🐡", "🐠", "🐟", "🐬", "🐳"
-  ],
-  "🍔 Nourriture": [
-    "🍏", "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑", "🥭", "🍍", "🥥",
-    "🥝", "🍅", "🍆", "🥑", "🥦", "🥬", "🥒", "🌶️", "🫑", "🌽", "🥕", "🫒", "🧄", "🧅", "🥔", "🍠",
-    "🥐", "🥖", "🍞", "🥨", "🥯", "🧀", "🥚", "🍳", "🧈", "🥞", "🧇", "🥓", "🥩", "🍗", "🍖", "🦴",
-    "🌭", "🍔", "🍟", "🍕", "🫓", "🥪", "🥙", "🧆", "🌮", "🌯", "🫔", "🥗", "🥘", "🫕", "🍝", "🍜",
-    "🍲", "🍛", "🍣", "🍱", "🥟", "🦪", "🍤", "🍙", "🍚", "🍘", "🍥", "🥠", "🥮", "🍢", "🍡", "🍧",
-    "🍨", "🍦", "🥧", "🧁", "🍰", "🎂", "🍮", "🍭", "🍬", "🍫", "🍿", "🍩", "🍪", "🌰", "🥜", "🍯"
-  ],
-  "⚽ Sports": [
-    "⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍",
-    "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌",
-    "🎿", "⛷️", "🏂", "🪂", "🏋️‍♀️", "🏋️", "🏋️‍♂️", "🤼‍♀️", "🤼", "🤼‍♂️", "🤸‍♀️", "🤸", "🤸‍♂️", "⛹️‍♀️", "⛹️", "⛹️‍♂️"
-  ],
-  "🚗 Transport": [
-    "🚗", "🚕", "🚙", "🚌", "🚎", "🏎️", "🚓", "🚑", "🚒", "🚐", "🛻", "🚚", "🚛", "🚜", "🦯", "🦽",
-    "🦼", "🛴", "🚲", "🛵", "🏍️", "🛺", "🚨", "🚔", "🚍", "🚘", "🚖", "🚡", "🚠", "🚟", "🚃", "🚋",
-    "🚞", "🚝", "🚄", "🚅", "🚈", "🚂", "🚆", "🚇", "🚊", "🚉", "✈️", "🛫", "🛬", "🛩️", "💺", "🛰️",
-    "🚀", "🛸", "🚁", "🛶", "⛵", "🚤", "🛥️", "🛳️", "⛴️", "🚢", "⚓", "🪝", "⛽", "🚧", "🚦", "🚥"
-  ],
-  "⭐ Symboles": [
-    "⭐", "🌟", "💫", "✨", "⚡", "☄️", "💥", "🔥", "🌈", "☀️", "🌤️", "⛅", "🌥️", "☁️", "🌦️", "🌧️",
-    "⛈️", "🌩️", "🌨️", "❄️", "☃️", "⛄", "🌬️", "💨", "💧", "💦", "☔", "☂️", "🌊", "🌫️", "✅", "❌",
-    "❓", "❔", "❕", "❗", "⭕", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤", "⚫", "⚪", "🟥", "🟧",
-    "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "◼️", "◻️", "◾", "◽", "▪️", "▫️", "🔶", "🔷", "🔸",
-    "🔹", "🔺", "🔻", "💠", "🔘", "🔳", "🔲", "🏁", "🚩", "🎌", "🏴", "🏳️", "💯", "🔢", "🔣", "🔤"
-  ],
-  "🎉 Objets": [
-    "🎉", "🎊", "🎈", "🎁", "🎀", "🎗️", "🎟️", "🎫", "🎖️", "🏆", "🏅", "🥇", "🥈", "🥉", "⚽", "🎯",
-    "🎮", "🕹️", "🎰", "🎲", "🧩", "🎭", "🖼️", "🎨", "🧵", "🪡", "🧶", "🪢", "👓", "🕶️", "🥽", "🥼",
-    "🦺", "👔", "👕", "👖", "🧣", "🧤", "🧥", "🧦", "👗", "👘", "🥻", "🩱", "🩲", "🩳", "👙", "👚",
-    "👛", "👜", "👝", "🛍️", "🎒", "🩴", "👞", "👟", "🥾", "🥿", "👠", "👡", "🩰", "👢", "👑", "👒",
-    "🎩", "🎓", "🧢", "🪖", "⛑️", "📿", "💄", "💍", "💎", "📱", "📲", "💻", "🖥️", "🖨️", "⌨️", "🖱️"
-  ]
+  "😊 Smileys": ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "☺️", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🤐", "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "🥸", "😎", "🤓", "🧐", "😕", "😟", "🙁", "☹️", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "☠️", "💩", "🤡", "👹", "👺", "👻", "👽", "👾", "🤖", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾"],
+  "👋 Gestes": ["👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦿", "🦵", "🦶", "👂", "🦻", "👃", "🧠", "🫀", "🫁", "🦷", "🦴", "👀", "👁️", "👅", "👄", "💋", "🩸"],
+  "👨 Personnes": ["👶", "👧", "🧒", "👦", "👩", "🧑", "👨", "👩‍🦱", "🧑‍🦱", "👨‍🦱", "👩‍🦰", "🧑‍🦰", "👨‍🦰", "👱‍♀️", "👱", "👱‍♂️", "👩‍🦳", "🧑‍🦳", "👨‍🦳", "👩‍🦲", "🧑‍🦲", "👨‍🦲", "🧔‍♀️", "🧔", "🧔‍♂️", "👵", "🧓", "👴", "👲", "👳‍♀️", "👳", "👳‍♂️", "🧕", "👮‍♀️", "👮", "👮‍♂️", "👷‍♀️", "👷", "👷‍♂️", "💂‍♀️", "💂", "💂‍♂️", "🕵️‍♀️", "🕵️", "🕵️‍♂️", "👩‍⚕️", "🧑‍⚕️", "👨‍⚕️"],
+  "❤️ Coeurs": ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "❤️‍🔥", "❤️‍🩹", "💌", "💤", "💢", "💥", "💦", "💨", "🕳️", "💣", "💬", "👁️‍🗨️", "🗨️"],
+  "🐶 Animaux": ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐻‍❄️", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🙈", "🙉", "🙊", "🐒", "🐔", "🐧", "🐦", "🐤", "🐣", "🐥", "🦆", "🦅", "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🪱", "🐛", "🦋", "🐌", "🐞", "🐜", "🪰", "🪲", "🪳", "🦟", "🦗", "🕷️", "🕸️", "🦂", "🐢", "🐍", "🦎", "🦖", "🦕", "🐙", "🦑", "🦐", "🦞", "🦀", "🐡", "🐠", "🐟", "🐬", "🐳"],
+  "🍔 Nourriture": ["🍏", "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🍆", "🥑", "🥦", "🥬", "🥒", "🌶️", "🫑", "🌽", "🥕", "🫒", "🧄", "🧅", "🥔", "🍠", "🥐", "🥖", "🍞", "🥨", "🥯", "🧀", "🥚", "🍳", "🧈", "🥞", "🧇", "🥓", "🥩", "🍗", "🍖", "🦴", "🌭", "🍔", "🍟", "🍕", "🫓", "🥪", "🥙", "🧆", "🌮", "🌯", "🫔", "🥗", "🥘", "🫕", "🍝", "🍜", "🍲", "🍛", "🍣", "🍱", "🥟", "🦪", "🍤", "🍙", "🍚", "🍘", "🍥", "🥠", "🥮", "🍢", "🍡", "🍧", "🍨", "🍦", "🥧", "🧁", "🍰", "🎂", "🍮", "🍭", "🍬", "🍫", "🍿", "🍩", "🍪", "🌰", "🥜", "🍯"],
+  "⚽ Sports": ["⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "🛹", "🛼", "🛷", "⛸️", "🥌", "🎿", "⛷️", "🏂", "🪂", "🏋️‍♀️", "🏋️", "🏋️‍♂️", "🤼‍♀️", "🤼", "🤼‍♂️", "🤸‍♀️", "🤸", "🤸‍♂️", "⛹️‍♀️", "⛹️", "⛹️‍♂️"],
+  "🚗 Transport": ["🚗", "🚕", "🚙", "🚌", "🚎", "🏎️", "🚓", "🚑", "🚒", "🚐", "🛻", "🚚", "🚛", "🚜", "🦯", "🦽", "🦼", "🛴", "🚲", "🛵", "🏍️", "🛺", "🚨", "🚔", "🚍", "🚘", "🚖", "🚡", "🚠", "🚟", "🚃", "🚋", "🚞", "🚝", "🚄", "🚅", "🚈", "🚂", "🚆", "🚇", "🚊", "🚉", "✈️", "🛫", "🛬", "🛩️", "💺", "🛰️", "🚀", "🛸", "🚁", "🛶", "⛵", "🚤", "🛥️", "🛳️", "⛴️", "🚢", "⚓", "🪝", "⛽", "🚧", "🚦", "🚥"],
+  "⭐ Symboles": ["⭐", "🌟", "💫", "✨", "⚡", "☄️", "💥", "🔥", "🌈", "☀️", "🌤️", "⛅", "🌥️", "☁️", "🌦️", "🌧️", "⛈️", "🌩️", "🌨️", "❄️", "☃️", "⛄", "🌬️", "💨", "💧", "💦", "☔", "☂️", "🌊", "🌫️", "✅", "❌", "❓", "❔", "❕", "❗", "⭕", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤", "⚫", "⚪", "🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "◼️", "◻️", "◾", "◽", "▪️", "▫️", "🔶", "🔷", "🔸", "🔹", "🔺", "🔻", "💠", "🔘", "🔳", "🔲", "🏁", "🚩", "🎌", "🏴", "🏳️", "💯", "🔢", "🔣", "🔤"],
+  "🎉 Objets": ["🎉", "🎊", "🎈", "🎁", "🎀", "🎗️", "🎟️", "🎫", "🎖️", "🏆", "🏅", "🥇", "🥈", "🥉", "⚽", "🎯", "🎮", "🕹️", "🎰", "🎲", "🧩", "🎭", "🖼️", "🎨", "🧵", "🪡", "🧶", "🪢", "👓", "🕶️", "🥽", "🥼", "🦺", "👔", "👕", "👖", "🧣", "🧤", "🧥", "🧦", "👗", "👘", "🥻", "🩱", "🩲", "🩳", "👙", "👚", "👛", "👜", "👝", "🛍️", "🎒", "🩴", "👞", "👟", "🥾", "🥿", "👠", "👡", "🩰", "👢", "👑", "👒", "🎩", "🎓", "🧢", "🪖", "⛑️", "📿", "💄", "💍", "💎", "📱", "📲", "💻", "🖥️", "🖨️", "⌨️", "🖱️"]
 };
-
 interface BusinessCard {
   id: string;
   card_type: string;
@@ -108,7 +43,6 @@ interface BusinessCard {
   visitor_anr_code: string | null;
   avatar_url: string | null;
 }
-
 interface VisitorMessage {
   id: string;
   habitation_id: string;
@@ -127,44 +61,42 @@ interface VisitorMessage {
   // Decrypted content (client-side only)
   decrypted_message?: string | null;
 }
-
 const formatDateSeparator = (date: Date) => {
   if (isToday(date)) return "Aujourd'hui";
   if (isYesterday(date)) return "Hier";
-  return format(date, "EEEE d MMMM", { locale: fr });
+  return format(date, "EEEE d MMMM", {
+    locale: fr
+  });
 };
 
 // Function to render text with clickable links
 const renderTextWithLinks = (text: string) => {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
-  
   return parts.map((part, index) => {
     if (urlRegex.test(part)) {
-      return (
-        <a 
-          key={index} 
-          href={part} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-blue-500 underline hover:text-blue-600 break-all"
-          onClick={(e) => e.stopPropagation()}
-        >
+      return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline hover:text-blue-600 break-all" onClick={e => e.stopPropagation()}>
           {part}
-        </a>
-      );
+        </a>;
     }
     return <span key={index}>{part}</span>;
   });
 };
-
 const Conversation = () => {
-  const { visitorId } = useParams<{ visitorId: string }>();
+  const {
+    visitorId
+  } = useParams<{
+    visitorId: string;
+  }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const {
+    user
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // ALL useState hooks FIRST - unconditionally
   const [visitorMessages, setVisitorMessages] = useState<VisitorMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,41 +113,38 @@ const Conversation = () => {
 
   // Custom hooks - ALWAYS called unconditionally (before any early returns)
   const firstMessageId = visitorMessages[0]?.id || "";
-  const { replies, sendReply, loading: repliesLoading } = useMessageReplies(firstMessageId);
-  const { isSupported: encryptionSupported } = useEncryptedMessages(habitationId || undefined);
+  const {
+    replies,
+    sendReply,
+    loading: repliesLoading
+  } = useMessageReplies(firstMessageId);
+  const {
+    isSupported: encryptionSupported
+  } = useEncryptedMessages(habitationId || undefined);
 
   // Fetch all messages from this visitor
   useEffect(() => {
     const fetchVisitorMessages = async () => {
       if (!visitorId || !user) return;
-
       try {
         // First get user's habitation
-        const { data: residentData } = await supabase
-          .from("residents")
-          .select("habitation_id")
-          .eq("user_id", user.id)
-          .eq("status", "verified")
-          .maybeSingle();
-
+        const {
+          data: residentData
+        } = await supabase.from("residents").select("habitation_id").eq("user_id", user.id).eq("status", "verified").maybeSingle();
         if (!residentData?.habitation_id) {
           navigate("/messages");
           return;
         }
-
         setHabitationId(residentData.habitation_id);
 
         // Determine if visitorId is a business_card_id, message ID (anon-xxx), or visitor_phone
-        let query = supabase
-          .from("visitor_messages" as any)
-          .select("*, business_card:visitor_business_cards(*)")
-          .eq("habitation_id", residentData.habitation_id)
-          .order("created_at", { ascending: true });
+        let query = supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).order("created_at", {
+          ascending: true
+        });
 
         // Check if visitorId is an anon-{messageId} pattern
         const isAnonId = visitorId.startsWith("anon-");
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(visitorId);
-        
         if (isAnonId) {
           // Extract the message ID and fetch that specific message
           const messageId = visitorId.replace("anon-", "");
@@ -226,50 +155,52 @@ const Conversation = () => {
           // It's a phone number or device ID
           query = query.eq("visitor_phone", visitorId);
         }
-
-        const { data, error } = await (query as any);
-
+        const {
+          data,
+          error
+        } = await (query as any);
         if (error) throw error;
-
         if (!data || data.length === 0) {
           toast({
             title: "Erreur",
             description: "Conversation introuvable",
-            variant: "destructive",
+            variant: "destructive"
           });
           navigate("/messages");
           return;
         }
-
         setVisitorMessages(data as VisitorMessage[]);
 
         // Mark all as read
         const unreadIds = data.filter((m: any) => !m.is_read).map((m: any) => m.id);
         if (unreadIds.length > 0) {
-          await supabase
-            .from("visitor_messages" as any)
-            .update({ is_read: true, read_at: new Date().toISOString() })
-            .in("id", unreadIds);
+          await supabase.from("visitor_messages" as any).update({
+            is_read: true,
+            read_at: new Date().toISOString()
+          }).in("id", unreadIds);
         }
       } catch (error) {
         console.error("[Conversation] Error:", error);
         toast({
           title: "Erreur",
           description: "Impossible de charger la conversation",
-          variant: "destructive",
+          variant: "destructive"
         });
         navigate("/messages");
       } finally {
         setLoading(false);
       }
     };
-
     fetchVisitorMessages();
   }, [visitorId, user]);
 
   // Scroll to bottom when new messages arrive or on initial load
   // Blocked visitors hook
-  const { isBlocked, blockVisitor, unblockVisitor } = useBlockedVisitors();
+  const {
+    isBlocked,
+    blockVisitor,
+    unblockVisitor
+  } = useBlockedVisitors();
 
   // Check if current visitor is blocked
   const currentVisitorBlocked = visitorId ? isBlocked(visitorId) : false;
@@ -279,7 +210,9 @@ const Conversation = () => {
   useLayoutEffect(() => {
     if (!loading && visitorMessages.length > 0 && !hasScrolledRef.current) {
       // Instant scroll on first load
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      messagesEndRef.current?.scrollIntoView({
+        behavior: "auto"
+      });
       hasScrolledRef.current = true;
     }
   }, [loading, visitorMessages.length]);
@@ -288,11 +221,12 @@ const Conversation = () => {
   useEffect(() => {
     if (hasScrolledRef.current) {
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "smooth"
+        });
       }, 100);
     }
   }, [replies.length]);
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -302,7 +236,7 @@ const Conversation = () => {
       toast({
         title: "Fichier trop volumineux",
         description: "La taille maximale est de 10 Mo",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -312,15 +246,13 @@ const Conversation = () => {
       toast({
         title: "Type de fichier non supporté",
         description: "Seules les photos et vidéos sont acceptées",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setSelectedMedia(file);
     setMediaPreview(URL.createObjectURL(file));
   };
-
   const clearSelectedMedia = () => {
     setSelectedMedia(null);
     if (mediaPreview) {
@@ -331,10 +263,8 @@ const Conversation = () => {
       fileInputRef.current.value = '';
     }
   };
-
   const handleSend = async () => {
-    if (!habitationId || !firstMessageId || (!replyText.trim() && !audioBlob && !selectedMedia && !videoBlob)) return;
-
+    if (!habitationId || !firstMessageId || !replyText.trim() && !audioBlob && !selectedMedia && !videoBlob) return;
     setSending(true);
     try {
       let audioBase64: string | undefined;
@@ -347,17 +277,11 @@ const Conversation = () => {
       // Convert videoBlob to File for upload
       let mediaToSend = selectedMedia;
       if (videoBlob && !selectedMedia) {
-        mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, { type: videoBlob.type || 'video/webm' });
+        mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, {
+          type: videoBlob.type || 'video/webm'
+        });
       }
-
-      const result = await sendReply(
-        firstMessageId,
-        habitationId,
-        replyText.trim() || undefined,
-        audioBase64,
-        mediaToSend || undefined
-      );
-
+      const result = await sendReply(firstMessageId, habitationId, replyText.trim() || undefined, audioBase64, mediaToSend || undefined);
       if (result.success) {
         setReplyText("");
         setAudioBlob(null);
@@ -372,21 +296,17 @@ const Conversation = () => {
       toast({
         title: "Erreur",
         description: error.message || "Impossible d'envoyer",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setSending(false);
     }
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
+    return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
   if (visitorMessages.length === 0) {
     return null;
   }
@@ -395,100 +315,79 @@ const Conversation = () => {
   const messageWithCard = visitorMessages.find(m => m.business_card);
   const card = messageWithCard?.business_card;
   const isCompany = card?.card_type === "company";
-  const displayName = card
-    ? isCompany
-      ? card.company_name
-      : `${card.first_name || ""} ${card.last_name || ""}`.trim()
-    : visitorMessages[0]?.visitor_phone || "Visiteur";
+  const displayName = card ? isCompany ? card.company_name : `${card.first_name || ""} ${card.last_name || ""}`.trim() : visitorMessages[0]?.visitor_phone || "Visiteur";
 
   // Combine visitor messages and replies in chronological order
-  const allMessages = [
-    ...visitorMessages.map(m => ({ type: 'visitor' as const, data: m, date: new Date(m.created_at) })),
-    ...replies.map(r => ({ type: 'reply' as const, data: r, date: new Date(r.created_at) }))
-  ].sort((a, b) => a.date.getTime() - b.date.getTime());
+  const allMessages = [...visitorMessages.map(m => ({
+    type: 'visitor' as const,
+    data: m,
+    date: new Date(m.created_at)
+  })), ...replies.map(r => ({
+    type: 'reply' as const,
+    data: r,
+    date: new Date(r.created_at)
+  }))].sort((a, b) => a.date.getTime() - b.date.getTime());
 
   // Group messages by date for separators
-  const messagesWithDateSeparators: { type: 'separator' | 'visitor' | 'reply'; data: any; date: Date }[] = [];
+  const messagesWithDateSeparators: {
+    type: 'separator' | 'visitor' | 'reply';
+    data: any;
+    date: Date;
+  }[] = [];
   let lastDateStr = "";
-  
-  allMessages.forEach((msg) => {
+  allMessages.forEach(msg => {
     const dateStr = format(msg.date, "yyyy-MM-dd");
     if (dateStr !== lastDateStr) {
-      messagesWithDateSeparators.push({ type: 'separator', data: { label: formatDateSeparator(msg.date) }, date: msg.date });
+      messagesWithDateSeparators.push({
+        type: 'separator',
+        data: {
+          label: formatDateSeparator(msg.date)
+        },
+        date: msg.date
+      });
       lastDateStr = dateStr;
     }
     messagesWithDateSeparators.push(msg);
   });
-
-  return (
-    <div className="min-h-screen flex flex-col pb-16">
+  return <div className="min-h-screen flex flex-col pb-16">
       {/* Sticky Header with Contact Info */}
       <div className="sticky top-0 z-10 bg-background border-b">
-        <div className="max-w-2xl mx-auto w-full p-4 space-y-3">
+        <div className="max-w-2xl mx-auto w-full p-4 space-y-3 bg-primary">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
 
-            {card ? (
-              <AddToContactsButton 
-                businessCard={card} 
-                messageId={visitorMessages[0]?.id} 
-                size="icon" 
-                variant="ghost"
-                className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-              />
-            ) : (
-              <AddToContactsButton 
-                businessCard={{
-                  id: visitorId || "",
-                  card_type: "individual",
-                  first_name: displayName !== "Visiteur" ? displayName : null,
-                  last_name: null,
-                  company_name: null,
-                  job_title: null,
-                  phone: visitorMessages[0]?.visitor_phone || null,
-                  email: null,
-                  visitor_anr_code: null,
-                }} 
-                messageId={visitorMessages[0]?.id} 
-                size="icon" 
-                variant="ghost"
-                className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-              />
-            )}
+            {card ? <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-blue-500 hover:text-blue-600 hover:bg-blue-50" /> : <AddToContactsButton businessCard={{
+            id: visitorId || "",
+            card_type: "individual",
+            first_name: displayName !== "Visiteur" ? displayName : null,
+            last_name: null,
+            company_name: null,
+            job_title: null,
+            phone: visitorMessages[0]?.visitor_phone || null,
+            email: null,
+            visitor_anr_code: null
+          }} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-blue-500 hover:text-blue-600 hover:bg-blue-50" />}
             
             <Avatar className="w-10 h-10 flex-shrink-0">
-              {card?.avatar_url ? (
-                <AvatarImage src={card.avatar_url} alt={displayName || "Visiteur"} />
-              ) : null}
+              {card?.avatar_url ? <AvatarImage src={card.avatar_url} alt={displayName || "Visiteur"} /> : null}
               <AvatarFallback className={isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}>
-                {isCompany ? (
-                  <Building2 className="w-5 h-5 text-orange-500" />
-                ) : (
-                  <User className="w-5 h-5 text-purple-500" />
-                )}
+                {isCompany ? <Building2 className="w-5 h-5 text-orange-500" /> : <User className="w-5 h-5 text-purple-500" />}
               </AvatarFallback>
             </Avatar>
 
-            <div
-              className="flex-1 min-w-0 cursor-pointer hover:opacity-70 transition-opacity"
-              onClick={() => {
-                // Navigate to contacts page with scroll to this contact
-                const contactIdentifier = card?.email || card?.phone || visitorId;
-                navigate(`/contacts?scrollTo=${encodeURIComponent(contactIdentifier || '')}`);
-              }}
-            >
+            <div className="flex-1 min-w-0 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => {
+            // Navigate to contacts page with scroll to this contact
+            const contactIdentifier = card?.email || card?.phone || visitorId;
+            navigate(`/contacts?scrollTo=${encodeURIComponent(contactIdentifier || '')}`);
+          }}>
               <div className="flex items-center gap-2">
                 <p className="font-semibold truncate">{displayName}</p>
-                {currentVisitorBlocked && (
-                  <span className="text-xs bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full">Bloqué</span>
-                )}
+                {currentVisitorBlocked && <span className="text-xs bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full">Bloqué</span>}
               </div>
               <div className="flex items-center gap-2">
-                {card?.job_title && (
-                  <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>
-                )}
+                {card?.job_title && <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>}
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70" title="Vos messages sont protégés par un chiffrement de bout en bout. Seuls vous et votre correspondant pouvez les lire.">
                   <Lock className="w-2.5 h-2.5" />
                   <span>Chiffrement E2E de bout en bout</span>
@@ -499,11 +398,7 @@ const Conversation = () => {
             {/* Block/Unblock button */}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={currentVisitorBlocked ? "text-green-500 hover:text-green-600 hover:bg-green-50" : "text-red-500 hover:text-red-600 hover:bg-red-50"}
-                >
+                <Button variant="ghost" size="icon" className={currentVisitorBlocked ? "text-green-500 hover:text-green-600 hover:bg-green-50" : "text-red-500 hover:text-red-600 hover:bg-red-50"}>
                   {currentVisitorBlocked ? <ShieldCheck className="w-5 h-5" /> : <Ban className="w-5 h-5" />}
                 </Button>
               </AlertDialogTrigger>
@@ -513,23 +408,18 @@ const Conversation = () => {
                     {currentVisitorBlocked ? "Débloquer ce visiteur ?" : "Bloquer ce visiteur ?"}
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    {currentVisitorBlocked 
-                      ? "Vous pourrez à nouveau recevoir des messages de ce visiteur."
-                      : "Vous ne recevrez plus de messages de ce visiteur. Cette action est réversible."}
+                    {currentVisitorBlocked ? "Vous pourrez à nouveau recevoir des messages de ce visiteur." : "Vous ne recevrez plus de messages de ce visiteur. Cette action est réversible."}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction
-                    className={currentVisitorBlocked ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
-                    onClick={() => {
-                      if (currentVisitorBlocked) {
-                        unblockVisitor(visitorId || "");
-                      } else {
-                        blockVisitor(visitorId || "", displayName);
-                      }
-                    }}
-                  >
+                  <AlertDialogAction className={currentVisitorBlocked ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"} onClick={() => {
+                  if (currentVisitorBlocked) {
+                    unblockVisitor(visitorId || "");
+                  } else {
+                    blockVisitor(visitorId || "", displayName);
+                  }
+                }}>
                     {currentVisitorBlocked ? "Débloquer" : "Bloquer"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -542,123 +432,81 @@ const Conversation = () => {
       {/* Messages Area - extra padding for fixed input area + footer */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-40 space-y-3 max-w-2xl mx-auto w-full">
         {messagesWithDateSeparators.map((item, index) => {
-          if (item.type === 'separator') {
-            return (
-              <div key={`sep-${index}`} className="flex justify-center my-3">
+        if (item.type === 'separator') {
+          return <div key={`sep-${index}`} className="flex justify-center my-3">
                 <span className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-lg">
                   {item.data.label}
                 </span>
-              </div>
-            );
-          }
-
-          if (item.type === 'visitor') {
-            const msg = item.data;
-            return (
-              <div key={`visitor-${msg.id}`} className="flex justify-start">
+              </div>;
+        }
+        if (item.type === 'visitor') {
+          const msg = item.data;
+          return <div key={`visitor-${msg.id}`} className="flex justify-start">
                 <div className="max-w-[85%]">
-                  {msg.voice_message_url ? (
-                    <div className="mb-1">
-                      <WhatsAppAudioPlayer 
-                        audioUrl={msg.voice_message_url} 
-                        isOwn={false}
-                        showAvatar={true}
-                      />
+                  {msg.voice_message_url ? <div className="mb-1">
+                      <WhatsAppAudioPlayer audioUrl={msg.voice_message_url} isOwn={false} showAvatar={true} />
                       <p className="text-xs text-muted-foreground mt-1 ml-2">
-                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                        {format(new Date(msg.created_at), "HH:mm", {
+                    locale: fr
+                  })}
                       </p>
-                    </div>
-                  ) : (
-                    <div className="bg-background/50 rounded-xl rounded-tl-sm px-3 py-2 border border-blue-500">
+                    </div> : <div className="rounded-xl rounded-tl-sm px-3 py-2 border-blue-500 text-primary bg-white border-2">
                       <p className="text-sm whitespace-pre-wrap">{renderTextWithLinks(msg.message || "")}</p>
                       <p className="text-xs text-muted-foreground mt-1 text-right">
-                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                        {format(new Date(msg.created_at), "HH:mm", {
+                    locale: fr
+                  })}
                       </p>
-                    </div>
-                  )}
+                    </div>}
                 </div>
-              </div>
-            );
-          } else {
-            const reply = item.data;
-            return (
-              <div key={`reply-${reply.id}`} className="flex justify-end">
-                <div className="max-w-[85%]">
+              </div>;
+        } else {
+          const reply = item.data;
+          return <div key={`reply-${reply.id}`} className="flex justify-end">
+                <div className="max-w-[85%] bg-[#f8f9f8]">
                   {/* Media message */}
-                  {reply.reply_media_url && (
-                    <div className="mb-1">
-                      <div className="bg-green-500/10 rounded-xl rounded-tr-sm p-1 border border-green-500 overflow-hidden">
-                        {reply.reply_media_type === 'video' ? (
-                          <video 
-                            src={reply.reply_media_url} 
-                            controls 
-                            className="max-w-full rounded-lg max-h-64"
-                          />
-                        ) : (
-                          <img 
-                            src={reply.reply_media_url} 
-                            alt="Photo envoyée" 
-                            className="max-w-full rounded-lg max-h-64 cursor-pointer"
-                            onClick={() => window.open(reply.reply_media_url, '_blank')}
-                          />
-                        )}
-                        {reply.reply_text && (
-                          <p className="text-sm whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(reply.reply_text)}</p>
-                        )}
+                  {reply.reply_media_url && <div className="mb-1">
+                      <div className="rounded-xl rounded-tr-sm p-1 overflow-hidden border-2 bg-white border-[#ff0000]">
+                        {reply.reply_media_type === 'video' ? <video src={reply.reply_media_url} controls className="max-w-full rounded-lg max-h-64" /> : <img src={reply.reply_media_url} alt="Photo envoyée" className="max-w-full rounded-lg max-h-64 cursor-pointer" onClick={() => window.open(reply.reply_media_url, '_blank')} />}
+                        {reply.reply_text && <p className="text-sm whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(reply.reply_text)}</p>}
                         <div className="flex items-center justify-end gap-1 px-2 py-1">
                           <span className="text-xs text-muted-foreground">
-                            {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                            {format(new Date(reply.created_at), "HH:mm", {
+                        locale: fr
+                      })}
                           </span>
-                          {reply.is_read ? (
-                            <CheckCheck className="w-4 h-4 text-blue-500" />
-                          ) : (
-                            <Check className="w-4 h-4 text-muted-foreground" />
-                          )}
+                          {reply.is_read ? <CheckCheck className="w-4 h-4 text-blue-500" /> : <Check className="w-4 h-4 text-muted-foreground" />}
                         </div>
                       </div>
-                    </div>
-                  )}
+                    </div>}
                   {/* Voice message */}
-                  {reply.reply_voice_url && !reply.reply_media_url && (
-                    <div className="mb-1">
-                      <WhatsAppAudioPlayer 
-                        audioUrl={reply.reply_voice_url} 
-                        isOwn={true}
-                        showAvatar={true}
-                      />
+                  {reply.reply_voice_url && !reply.reply_media_url && <div className="mb-1">
+                      <WhatsAppAudioPlayer audioUrl={reply.reply_voice_url} isOwn={true} showAvatar={true} />
                       <div className="flex items-center justify-end gap-1 mt-1 mr-2">
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                          {format(new Date(reply.created_at), "HH:mm", {
+                      locale: fr
+                    })}
                         </span>
-                        {reply.is_read ? (
-                          <CheckCheck className="w-4 h-4 text-blue-500" />
-                        ) : (
-                          <Check className="w-4 h-4 text-muted-foreground" />
-                        )}
+                        {reply.is_read ? <CheckCheck className="w-4 h-4 text-blue-500" /> : <Check className="w-4 h-4 text-muted-foreground" />}
                       </div>
-                    </div>
-                  )}
-                  {!reply.reply_voice_url && !reply.reply_media_url && reply.reply_text && (
-                    <div className="bg-green-500/10 rounded-xl rounded-tr-sm px-3 py-2 border border-green-500">
+                    </div>}
+                  {!reply.reply_voice_url && !reply.reply_media_url && reply.reply_text && <div className="rounded-xl rounded-tr-sm px-3 py-2 border-[#ff0000] border-2 bg-white/10">
                       <p className="text-sm whitespace-pre-wrap">{renderTextWithLinks(reply.reply_text)}</p>
                       <div className="flex items-center justify-end gap-1 mt-1">
                         {(reply as any).is_encrypted && <Lock className="w-3 h-3 text-green-500" />}
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                          {format(new Date(reply.created_at), "HH:mm", {
+                      locale: fr
+                    })}
                         </span>
-                        {reply.is_read ? (
-                          <CheckCheck className="w-4 h-4 text-blue-500" />
-                        ) : (
-                          <Check className="w-4 h-4 text-muted-foreground" />
-                        )}
+                        {reply.is_read ? <CheckCheck className="w-4 h-4 text-blue-500" /> : <Check className="w-4 h-4 text-muted-foreground" />}
                       </div>
-                    </div>
-                  )}
+                    </div>}
                 </div>
-              </div>
-            );
-          }
-        })}
+              </div>;
+        }
+      })}
 
         <div ref={messagesEndRef} />
       </div>
@@ -667,27 +515,13 @@ const Conversation = () => {
       <div className="fixed bottom-16 left-0 right-0 bg-background px-4 py-2 border-t">
         <div className="max-w-2xl mx-auto w-full">
         {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
+        <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
 
         {/* Media Preview */}
-        {selectedMedia && mediaPreview && (
-          <div className="mb-3 relative inline-block">
+        {selectedMedia && mediaPreview && <div className="mb-3 relative inline-block">
             <div className="relative rounded-lg overflow-hidden border border-blue-500 max-w-48">
-              {selectedMedia.type.startsWith('video/') ? (
-                <video src={mediaPreview} className="max-h-32 object-cover" />
-              ) : (
-                <img src={mediaPreview} alt="Preview" className="max-h-32 object-cover" />
-              )}
-              <button
-                onClick={clearSelectedMedia}
-                className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80"
-              >
+              {selectedMedia.type.startsWith('video/') ? <video src={mediaPreview} className="max-h-32 object-cover" /> : <img src={mediaPreview} alt="Preview" className="max-h-32 object-cover" />}
+              <button onClick={clearSelectedMedia} className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80">
                 <X className="w-4 h-4" />
               </button>
               <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 rounded text-xs text-white flex items-center gap-1">
@@ -695,75 +529,42 @@ const Conversation = () => {
                 {(selectedMedia.size / 1024 / 1024).toFixed(1)} Mo
               </div>
             </div>
-          </div>
-        )}
+          </div>}
 
-        {showVideoRecorder ? (
-          <VideoRecorder
-            onRecordingComplete={(blob) => setVideoBlob(blob)}
-            onSend={handleSend}
-            onCancel={() => {
-              setShowVideoRecorder(false);
-              setVideoBlob(null);
-            }}
-            sending={sending}
-            videoBlob={videoBlob}
-          />
-        ) : showVoiceRecorder ? (
-          <VoiceRecorder 
-            onRecordingComplete={(blob) => setAudioBlob(blob)}
-            onSend={handleSend}
-            onCancel={() => {
-              setShowVoiceRecorder(false);
-              setAudioBlob(null);
-            }}
-            sending={sending}
-            audioBlob={audioBlob}
-          />
-        ) : (
-          <div className="space-y-2">
+        {showVideoRecorder ? <VideoRecorder onRecordingComplete={blob => setVideoBlob(blob)} onSend={handleSend} onCancel={() => {
+          setShowVideoRecorder(false);
+          setVideoBlob(null);
+        }} sending={sending} videoBlob={videoBlob} /> : showVoiceRecorder ? <VoiceRecorder onRecordingComplete={blob => setAudioBlob(blob)} onSend={handleSend} onCancel={() => {
+          setShowVoiceRecorder(false);
+          setAudioBlob(null);
+        }} sending={sending} audioBlob={audioBlob} /> : <div className="space-y-2">
             {/* Input Field - Full width, Expandable like WhatsApp */}
-            <div className="bg-background/50 rounded-2xl px-4 py-2 border border-purple-500">
-              <Textarea
-                placeholder="Entrez un message"
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                className="w-full border-0 p-0 min-h-[24px] max-h-32 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto"
-                rows={1}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                style={{
-                  height: 'auto',
-                  minHeight: '24px',
-                }}
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = 'auto';
-                  target.style.height = Math.min(target.scrollHeight, 128) + 'px';
-                }}
-              />
+            <div className="rounded-2xl px-4 py-2 border-black bg-white border-2">
+              <Textarea placeholder="Entrez un message" value={replyText} onChange={e => setReplyText(e.target.value)} className="w-full border-0 p-0 min-h-[24px] max-h-32 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto" rows={1} onKeyDown={e => {
+              if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
+                e.preventDefault();
+                handleSend();
+              }
+            }} style={{
+              height: 'auto',
+              minHeight: '24px'
+            }} onInput={e => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = 'auto';
+              target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+            }} />
             </div>
 
             {/* Action buttons row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 {/* Attachment Button */}
-                <button 
-                  className="p-2 text-muted-foreground hover:text-blue-500 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
+                <button className="p-2 text-muted-foreground hover:text-blue-500 transition-colors" onClick={() => fileInputRef.current?.click()}>
                   <Paperclip className="w-5 h-5" />
                 </button>
 
                 {/* Camera Button for video selfie */}
-                <button 
-                  className="p-2 text-muted-foreground hover:text-pink-500 transition-colors"
-                  onClick={() => setShowVideoRecorder(true)}
-                >
+                <button className="p-2 text-muted-foreground hover:text-pink-500 transition-colors" onClick={() => setShowVideoRecorder(true)}>
                   <Camera className="w-5 h-5" />
                 </button>
 
@@ -776,22 +577,14 @@ const Conversation = () => {
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-2 max-h-72 overflow-y-auto" side="top" align="start">
                     <div className="space-y-3">
-                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
-                        <div key={category}>
+                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => <div key={category}>
                           <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
                           <div className="grid grid-cols-8 gap-1">
-                            {emojis.map((emoji, index) => (
-                              <button
-                                key={index}
-                                className="text-xl p-1 hover:bg-muted rounded transition-colors"
-                                onClick={() => setReplyText(prev => prev + emoji)}
-                              >
+                            {emojis.map((emoji, index) => <button key={index} className="text-xl p-1 hover:bg-muted rounded transition-colors" onClick={() => setReplyText(prev => prev + emoji)}>
                                 {emoji}
-                              </button>
-                            ))}
+                              </button>)}
                           </div>
-                        </div>
-                      ))}
+                        </div>)}
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -799,35 +592,21 @@ const Conversation = () => {
 
               <div className="flex items-center gap-2">
                 {/* Mic button */}
-                <button 
-                  className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                  onClick={() => setShowVoiceRecorder(true)}
-                >
+                <button className="p-2 text-muted-foreground hover:text-primary transition-colors" onClick={() => setShowVoiceRecorder(true)}>
                   <Mic className="w-5 h-5" />
                 </button>
 
                 {/* Send button */}
-                <button 
-                  className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  onClick={handleSend}
-                  disabled={sending || (!replyText.trim() && !selectedMedia)}
-                >
-                  {sending ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Send className="w-5 h-5" />
-                  )}
+                <button className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50" onClick={handleSend} disabled={sending || !replyText.trim() && !selectedMedia}>
+                  {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          </div>}
         </div>
       </div>
 
       <BottomNav />
-    </div>
-  );
+    </div>;
 };
-
 export default Conversation;
