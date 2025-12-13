@@ -372,18 +372,23 @@ export function useUserCommunications() {
         c.target_type === 'all' || c.target_user_ids.includes(user.id)
       );
 
-      // Fetch read status
+      // Fetch read status and hidden status
       const { data: reads } = await supabase
         .from('user_communication_reads')
-        .select('communication_id')
+        .select('communication_id, is_hidden')
         .eq('user_id', user.id);
 
-      const readIds = new Set((reads || []).map(r => r.communication_id));
+      const readMap = new Map((reads || []).map(r => [r.communication_id, r]));
       
-      // Add is_read property to each communication
-      const userCommsWithReadStatus: UserCommunication[] = userComms.map(c => ({
+      // Filter out hidden communications and add is_read property
+      const visibleComms = userComms.filter(c => {
+        const readRecord = readMap.get(c.id);
+        return !readRecord?.is_hidden;
+      });
+      
+      const userCommsWithReadStatus: UserCommunication[] = visibleComms.map(c => ({
         ...c,
-        is_read: readIds.has(c.id)
+        is_read: readMap.has(c.id)
       }));
       
       const unread = userCommsWithReadStatus.filter(c => !c.is_read).length;
@@ -575,18 +580,20 @@ export function useUserCommunications() {
     }
   };
 
-  // Delete a communication read record (hide it from user's view)
+  // Hide a communication from user's view using is_hidden flag
   const deleteCommunicationForUser = async (communicationId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Delete the read record if exists
+      // Upsert the read record with is_hidden = true
       await supabase
         .from('user_communication_reads')
-        .delete()
-        .eq('communication_id', communicationId)
-        .eq('user_id', user.id);
+        .upsert({
+          communication_id: communicationId,
+          user_id: user.id,
+          is_hidden: true
+        }, { onConflict: 'communication_id,user_id' });
 
       // Remove from local state
       const wasUnread = communications.find(c => c.id === communicationId && !c.is_read);
@@ -595,7 +602,7 @@ export function useUserCommunications() {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error('Error deleting communication for user:', error);
+      console.error('Error hiding communication for user:', error);
     }
   };
 
