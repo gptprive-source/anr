@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
@@ -22,21 +21,25 @@ import { Loader2 } from "lucide-react";
 
 import NewMessageToAnrDialog from "@/components/messages/NewMessageToAnrDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 type StatusFilter = "all" | "unread" | "read";
 type DateFilter = "all" | "today" | "week" | "month";
-interface GroupedConversation {
-  visitorId: string;
+
+// Unified conversation type for merged list
+interface UnifiedConversation {
+  id: string;
+  type: 'received' | 'sent';
   displayName: string;
-  isCompany: boolean;
-  jobTitle: string | null;
+  subtitle: string | null;
   lastMessage: string | null;
   lastMessageDate: Date;
   unreadCount: number;
   totalMessages: number;
   hasReply: boolean;
-  businessCard: any | null;
   avatarUrl: string | null;
+  isCompany: boolean;
 }
+
 const Messages = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -49,7 +52,6 @@ const Messages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string; type: 'received' | 'sent' } | null>(null);
   const [showNewMessageDialog, setShowNewMessageDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
   
   // Check if user can send new messages (has active subscription)
   const canSendNewMessages = limits.hasActiveSubscription;
@@ -63,37 +65,36 @@ const Messages = () => {
       }
 
       // Check if user is a verified resident
-      const {
-        data: residentData
-      } = await supabase.from("residents").select("habitation_id").eq("user_id", user.id).eq("status", "verified").maybeSingle();
+      const { data: residentData } = await supabase
+        .from("residents")
+        .select("habitation_id")
+        .eq("user_id", user.id)
+        .eq("status", "verified")
+        .maybeSingle();
+      
       if (residentData?.habitation_id) {
         setHabitationId(residentData.habitation_id);
         setIsResident(true);
       } else {
         setIsResident(false);
-        // If not resident, default to sent tab
-        setActiveTab("sent");
       }
       setLoadingRole(false);
     };
     checkUserRole();
   }, [user]);
 
-  // Hooks for resident (received messages) - always load to get data
+  // Hooks for resident (received messages)
   const {
     messages,
     unreadCount,
     loading: loadingReceived,
     deleteConversation: deleteReceivedConversation
   } = useVisitorMessages(habitationId || "");
-  const {
-    isBlocked,
-    blockedVisitors,
-    unblockVisitor
-  } = useBlockedVisitors();
+  
+  const { isBlocked, blockedVisitors, unblockVisitor } = useBlockedVisitors();
   const [showBlocked, setShowBlocked] = useState(false);
 
-  // Hooks for visitor (sent messages) - always load for all users
+  // Hooks for visitor (sent messages)
   const {
     conversations: sentConversations,
     unreadRepliesCount,
@@ -101,20 +102,34 @@ const Messages = () => {
     businessCard,
     deleteConversation
   } = useSentMessages();
-  
-  // Check if user has both roles (resident AND has sent messages)
-  const hasBothRoles = isResident && sentConversations.length > 0;
 
-  // Group messages by visitor (for residents)
-  const groupedConversations = useMemo(() => {
+  // Group messages by visitor (for residents) - internal processing
+  const groupedReceivedConversations = useMemo(() => {
     if (!isResident) return [];
-    const groups = new Map<string, GroupedConversation>();
+    const groups = new Map<string, {
+      visitorId: string;
+      displayName: string;
+      isCompany: boolean;
+      jobTitle: string | null;
+      lastMessage: string | null;
+      lastMessageDate: Date;
+      unreadCount: number;
+      totalMessages: number;
+      hasReply: boolean;
+      avatarUrl: string | null;
+    }>();
+    
     messages.forEach(msg => {
       const visitorId = msg.business_card_id || msg.visitor_phone || `anon-${msg.id}`;
       const existing = groups.get(visitorId);
       const card = msg.business_card;
       const isCompany = card?.card_type === "company";
-      const displayName = card ? isCompany ? card.company_name || "Entreprise" : `${card.first_name || ""} ${card.last_name || ""}`.trim() || "Visiteur" : msg.visitor_phone || "Visiteur";
+      const displayName = card 
+        ? isCompany 
+          ? card.company_name || "Entreprise" 
+          : `${card.first_name || ""} ${card.last_name || ""}`.trim() || "Visiteur" 
+        : msg.visitor_phone || "Visiteur";
+      
       if (existing) {
         if (new Date(msg.created_at) > existing.lastMessageDate) {
           existing.lastMessage = msg.message || (msg.voice_message_url ? "🎤 Message vocal" : null);
@@ -125,11 +140,11 @@ const Messages = () => {
           existing.unreadCount++;
         }
         existing.totalMessages++;
-        if (card && !existing.businessCard) {
-          existing.businessCard = card;
+        if (card && !existing.avatarUrl) {
           existing.displayName = displayName;
           existing.isCompany = isCompany;
           existing.jobTitle = card.job_title;
+          existing.avatarUrl = card.avatar_url;
         }
       } else {
         groups.set(visitorId, {
@@ -142,70 +157,93 @@ const Messages = () => {
           unreadCount: msg.is_read ? 0 : 1,
           totalMessages: 1,
           hasReply: msg.has_reply || false,
-          businessCard: card || null,
           avatarUrl: card?.avatar_url || null
         });
       }
     });
-    return Array.from(groups.values()).sort((a, b) => b.lastMessageDate.getTime() - a.lastMessageDate.getTime());
+    return Array.from(groups.values());
   }, [messages, isResident]);
 
-  // Filter conversations (for residents)
+  // Create unified conversation list (merge received + sent)
+  const unifiedConversations = useMemo(() => {
+    const unified: UnifiedConversation[] = [];
+    
+    // Add received conversations (from residents)
+    groupedReceivedConversations.forEach(conv => {
+      if (!isBlocked(conv.visitorId)) {
+        unified.push({
+          id: conv.visitorId,
+          type: 'received',
+          displayName: conv.displayName,
+          subtitle: conv.jobTitle,
+          lastMessage: conv.lastMessage,
+          lastMessageDate: conv.lastMessageDate,
+          unreadCount: conv.unreadCount,
+          totalMessages: conv.totalMessages,
+          hasReply: conv.hasReply,
+          avatarUrl: conv.avatarUrl,
+          isCompany: conv.isCompany
+        });
+      }
+    });
+    
+    // Add sent conversations (to ANRs)
+    sentConversations.forEach(conv => {
+      unified.push({
+        id: conv.habitationId,
+        type: 'sent',
+        displayName: conv.habitationName,
+        subtitle: conv.anrAddress,
+        lastMessage: conv.lastMessage,
+        lastMessageDate: conv.lastMessageDate,
+        unreadCount: conv.unreadRepliesCount,
+        totalMessages: conv.totalMessages,
+        hasReply: conv.hasReplies,
+        avatarUrl: null,
+        isCompany: false
+      });
+    });
+    
+    // Sort by last message date (newest first)
+    return unified.sort((a, b) => b.lastMessageDate.getTime() - a.lastMessageDate.getTime());
+  }, [groupedReceivedConversations, sentConversations, isBlocked]);
+
+  // Filter unified conversations
   const filteredConversations = useMemo(() => {
-    return groupedConversations.filter(conv => {
-      if (isBlocked(conv.visitorId)) return false;
+    return unifiedConversations.filter(conv => {
       if (statusFilter === "unread" && conv.unreadCount === 0) return false;
       if (statusFilter === "read" && conv.unreadCount > 0) return false;
       if (dateFilter === "today" && !isToday(conv.lastMessageDate)) return false;
-      if (dateFilter === "week" && !isThisWeek(conv.lastMessageDate, {
-        weekStartsOn: 1
-      })) return false;
+      if (dateFilter === "week" && !isThisWeek(conv.lastMessageDate, { weekStartsOn: 1 })) return false;
       if (dateFilter === "month" && !isThisMonth(conv.lastMessageDate)) return false;
+      
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesName = conv.displayName.toLowerCase().includes(query);
+        const matchesSubtitle = conv.subtitle?.toLowerCase().includes(query);
         const matchesMessage = conv.lastMessage?.toLowerCase().includes(query);
-        const matchesJob = conv.jobTitle?.toLowerCase().includes(query);
-        if (!matchesName && !matchesMessage && !matchesJob) {
+        if (!matchesName && !matchesSubtitle && !matchesMessage) {
           return false;
         }
       }
       return true;
     });
-  }, [groupedConversations, statusFilter, dateFilter, searchQuery, isBlocked]);
+  }, [unifiedConversations, statusFilter, dateFilter, searchQuery]);
 
-  // Filter sent conversations (for visitors)
-  const filteredSentConversations = useMemo(() => {
-    return sentConversations.filter(conv => {
-      if (statusFilter === "unread" && conv.unreadRepliesCount === 0) return false;
-      if (statusFilter === "read" && conv.unreadRepliesCount > 0) return false;
-      if (dateFilter === "today" && !isToday(conv.lastMessageDate)) return false;
-      if (dateFilter === "week" && !isThisWeek(conv.lastMessageDate, {
-        weekStartsOn: 1
-      })) return false;
-      if (dateFilter === "month" && !isThisMonth(conv.lastMessageDate)) return false;
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesName = conv.habitationName.toLowerCase().includes(query);
-        const matchesAddress = conv.anrAddress.toLowerCase().includes(query);
-        const matchesMessage = conv.lastMessage?.toLowerCase().includes(query);
-        if (!matchesName && !matchesAddress && !matchesMessage) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [sentConversations, statusFilter, dateFilter, searchQuery]);
   const loading = loadingRole || loadingReceived || loadingSent;
+  
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">
+    return (
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>;
+      </div>
+    );
   }
 
-  // Connected visitor without messages sent yet AND not a resident
+  // Connected visitor without messages AND not a resident - empty state
   if (isResident === false && sentConversations.length === 0) {
-    return <div className="min-h-screen pb-20">
+    return (
+      <div className="min-h-screen pb-20">
         <div className="max-w-2xl mx-auto p-4 space-y-4">
           <div className="flex items-center gap-4 pt-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
@@ -224,7 +262,7 @@ const Messages = () => {
               <Send className="w-8 h-8 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-lg font-medium">Aucun message envoyé</p>
+              <p className="text-lg font-medium">Aucun message</p>
               <p className="text-muted-foreground mt-1">
                 Scannez un ANR et envoyez un message à un résident
               </p>
@@ -235,48 +273,66 @@ const Messages = () => {
           </div>
         </div>
         <BottomNav />
-      </div>;
+      </div>
+    );
   }
 
   // Resident without habitation
   if (isResident && !habitationId) {
-    return <div className="min-h-screen flex items-center justify-center p-4">
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-muted-foreground">Aucune habitation trouvée</p>
           <Button className="mt-4" onClick={() => navigate("/dashboard")}>
             Retour
           </Button>
         </div>
-      </div>;
+      </div>
+    );
   }
 
-  // Calculate stats based on active tab or combined
-  const totalReceivedMessages = messages.length;
-  const totalSentMessages = sentConversations.reduce((acc, c) => acc + c.totalMessages, 0);
-  const totalReceivedConversations = groupedConversations.length;
-  const totalSentConversations = sentConversations.length;
-  
-  const displayStats = activeTab === "received" 
-    ? { conversations: totalReceivedConversations, unread: unreadCount, total: totalReceivedMessages }
-    : { conversations: totalSentConversations, unread: unreadRepliesCount, total: totalSentMessages };
-  return <div className="min-h-screen pb-20">
+  // Calculate stats - combined
+  const totalConversations = unifiedConversations.length;
+  const totalUnread = unreadCount + unreadRepliesCount;
+  const totalMessages = messages.length + sentConversations.reduce((acc, c) => acc + c.totalMessages, 0);
+
+  const handleNavigate = (conv: UnifiedConversation) => {
+    if (conv.type === 'received') {
+      navigate(`/conversation/${conv.id}`);
+    } else {
+      navigate(`/conversation-sent/${conv.id}`);
+    }
+  };
+
+  const handleDelete = (conv: UnifiedConversation) => {
+    setDeleteConfirm({ id: conv.id, name: conv.displayName, type: conv.type });
+  };
+
+  return (
+    <div className="min-h-screen pb-20">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} className="text-primary-foreground hover:bg-primary-foreground/10">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate("/dashboard")} 
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+            >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-semibold">
-                {hasBothRoles ? "Messagerie" : (isResident ? "Messages reçus" : "Mes messages")}
-              </h1>
-              {activeTab === "sent" && businessCard && <p className="text-primary-foreground/70 text-xs">
-                  Envoyés en tant que {businessCard.first_name} {businessCard.last_name}
-                </p>}
+              <h1 className="text-lg font-semibold">Messagerie</h1>
+              {businessCard && (
+                <p className="text-primary-foreground/70 text-xs">
+                  {businessCard.first_name} {businessCard.last_name}
+                </p>
+              )}
             </div>
           </div>
-          {/* New message button - only for users with active subscription */}
+          
+          {/* New message button */}
           {canSendNewMessages ? (
             <TooltipProvider>
               <Tooltip>
@@ -320,7 +376,6 @@ const Messages = () => {
       </div>
 
       <div className="max-w-2xl mx-auto p-4 space-y-4">
-
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           <Card className="p-4 text-center">
@@ -329,7 +384,7 @@ const Messages = () => {
                 <Inbox className="w-5 h-5 text-primary" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-foreground">{displayStats.conversations}</p>
+            <p className="text-2xl font-bold text-foreground">{totalConversations}</p>
             <span className="text-xs text-muted-foreground">Conversations</span>
           </Card>
           <Card className="p-4 text-center">
@@ -338,8 +393,8 @@ const Messages = () => {
                 <MailClosed className="w-5 h-5 text-destructive" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-destructive">{displayStats.unread}</p>
-            <span className="text-xs text-muted-foreground">{activeTab === "received" ? "Non lus" : "Réponses"}</span>
+            <p className="text-2xl font-bold text-destructive">{totalUnread}</p>
+            <span className="text-xs text-muted-foreground">Non lus</span>
           </Card>
           <Card className="p-4 text-center">
             <div className="flex items-center justify-center mb-2">
@@ -347,42 +402,21 @@ const Messages = () => {
                 <MailOpen className="w-5 h-5 text-success" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-success">{displayStats.total}</p>
+            <p className="text-2xl font-bold text-success">{totalMessages}</p>
             <span className="text-xs text-muted-foreground">Total msgs</span>
           </Card>
         </div>
-
-        {/* Tabs for users with both roles */}
-        {hasBothRoles && (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "received" | "sent")} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="received" className="gap-2">
-                <Inbox className="w-4 h-4" />
-                Reçus
-                {unreadCount > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-5 text-xs">
-                    {unreadCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="sent" className="gap-2">
-                <Send className="w-4 h-4" />
-                Envoyés
-                {unreadRepliesCount > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-5 text-xs">
-                    {unreadRepliesCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
 
         {/* Filters */}
         <div className="space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+            <Input 
+              placeholder="Rechercher..." 
+              value={searchQuery} 
+              onChange={e => setSearchQuery(e.target.value)} 
+              className="pl-10" 
+            />
           </div>
 
           <div className="flex gap-2 flex-wrap">
@@ -410,20 +444,29 @@ const Messages = () => {
               </SelectContent>
             </Select>
 
-            {isResident && blockedVisitors.length > 0 && <Button variant={showBlocked ? "default" : "outline"} size="sm" onClick={() => setShowBlocked(!showBlocked)} className="gap-2">
+            {isResident && blockedVisitors.length > 0 && (
+              <Button 
+                variant={showBlocked ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setShowBlocked(!showBlocked)} 
+                className="gap-2"
+              >
                 <Ban className="w-4 h-4" />
                 Bloqués ({blockedVisitors.length})
-              </Button>}
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Blocked visitors section (residents only) */}
-        {isResident && showBlocked && blockedVisitors.length > 0 && <div className="space-y-3">
+        {/* Blocked visitors section */}
+        {isResident && showBlocked && blockedVisitors.length > 0 && (
+          <div className="space-y-3">
             <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Ban className="w-4 h-4" />
               Visiteurs bloqués
             </h3>
-            {blockedVisitors.map(blocked => <Card key={blocked.id} className="bg-destructive/5">
+            {blockedVisitors.map(blocked => (
+              <Card key={blocked.id} className="bg-destructive/5">
                 <CardContent className="p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
@@ -440,148 +483,125 @@ const Messages = () => {
                     Débloquer
                   </Button>
                 </CardContent>
-              </Card>)}
-          </div>}
+              </Card>
+            ))}
+          </div>
+        )}
 
-
-        {/* Conversations list - Received messages (Resident view) */}
-        {activeTab === "received" && isResident && (filteredConversations.length === 0 ? <div className="text-center py-12">
-              <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">
-                {groupedConversations.length === 0 ? "Aucun message reçu" : "Aucun résultat"}
-              </p>
-            </div> : <div className="space-y-4">
-              {filteredConversations.map(conv => {
-          const preview = conv.lastMessage ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "") : "";
-          return <Card key={conv.visitorId} className={`cursor-pointer transition-all hover:scale-[1.02] ${conv.unreadCount > 0 ? "ring-2 ring-primary/30" : ""}`} onClick={() => navigate(`/conversation/${conv.visitorId}`)}>
-                    <CardContent className="p-4 border-2 border-solid rounded-xl border-[#08aa13]">
-                      <div className="flex items-center gap-3">
+        {/* Unified Conversations list */}
+        {filteredConversations.length === 0 ? (
+          <div className="text-center py-12">
+            <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">
+              {unifiedConversations.length === 0 ? "Aucune conversation" : "Aucun résultat"}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredConversations.map(conv => {
+              const preview = conv.lastMessage 
+                ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "") 
+                : "";
+              
+              return (
+                <Card 
+                  key={`${conv.type}-${conv.id}`} 
+                  className={`cursor-pointer transition-all hover:scale-[1.02] ${conv.unreadCount > 0 ? "ring-2 ring-primary/30" : ""}`} 
+                  onClick={() => handleNavigate(conv)}
+                >
+                  <CardContent className={`p-4 border-2 border-solid rounded-xl ${conv.type === 'received' ? "border-[#08aa13]" : "border-primary"}`}>
+                    <div className="flex items-center gap-3">
+                      {/* Avatar with type indicator */}
+                      <div className="relative">
                         <Avatar className="h-11 w-11 flex-shrink-0">
                           {conv.avatarUrl ? <AvatarImage src={conv.avatarUrl} alt={conv.displayName} /> : null}
-                          <AvatarFallback className={conv.isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}>
-                            {conv.isCompany ? <Building2 className="w-5 h-5 text-orange-500" /> : <User className="w-5 h-5 text-purple-500" />}
+                          <AvatarFallback className={
+                            conv.type === 'sent' 
+                              ? "bg-blue-500/10" 
+                              : conv.isCompany 
+                                ? "bg-orange-500/10" 
+                                : "bg-purple-500/10"
+                          }>
+                            {conv.type === 'sent' ? (
+                              <Home className="w-5 h-5 text-blue-500" />
+                            ) : conv.isCompany ? (
+                              <Building2 className="w-5 h-5 text-orange-500" />
+                            ) : (
+                              <User className="w-5 h-5 text-purple-500" />
+                            )}
                           </AvatarFallback>
                         </Avatar>
+                        {/* Type badge */}
+                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ${
+                          conv.type === 'received' ? "bg-green-500" : "bg-primary"
+                        }`}>
+                          {conv.type === 'received' ? (
+                            <Inbox className="w-3 h-3 text-white" />
+                          ) : (
+                            <Send className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                      </div>
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-medium truncate text-foreground">
-                              {conv.displayName}
-                            </p>
-                            <span className="text-xs text-foreground/70 flex-shrink-0">
-                              {formatDistanceToNow(conv.lastMessageDate, {
-                        addSuffix: false,
-                        locale: fr
-                      })}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-sm truncate text-foreground/80">
-                              {conv.hasReply && <span className="text-primary mr-1">↩</span>}
-                              {preview}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2 mt-2">
-                            {conv.unreadCount > 0 && <Badge variant="destructive" className="text-xs h-5">
-                                {conv.unreadCount} nouveau{conv.unreadCount > 1 ? "x" : ""}
-                              </Badge>}
-                            {conv.totalMessages > 1 && <Badge variant="secondary" className="text-xs h-5">
-                                {conv.totalMessages} messages
-                              </Badge>}
-                            {conv.hasReply && <Badge variant="outline" className="text-xs h-5 text-green-600 border-green-600">
-                                Répondu
-                              </Badge>}
-                          </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium truncate text-foreground">
+                            {conv.displayName}
+                          </p>
+                          <span className="text-xs text-foreground/70 flex-shrink-0">
+                            {formatDistanceToNow(conv.lastMessageDate, { addSuffix: false, locale: fr })}
+                          </span>
+                        </div>
+                        
+                        {conv.subtitle && (
+                          <p className="text-xs text-muted-foreground truncate">{conv.subtitle}</p>
+                        )}
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm truncate text-foreground/80">
+                            {conv.hasReply && <span className={conv.type === 'received' ? "text-primary mr-1" : "text-green-500 mr-1"}>↩</span>}
+                            {preview}
+                          </p>
                         </div>
 
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="text-destructive hover:bg-destructive/10 flex-shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm({ id: conv.visitorId, name: conv.displayName, type: 'received' });
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                      </div>
-                    </CardContent>
-                  </Card>;
-        })}
-            </div>)}
-
-        {/* Conversations list - Sent messages (Visitor view) */}
-        {activeTab === "sent" && (filteredSentConversations.length === 0 ? <div className="text-center py-12">
-              <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">Aucun message envoyé</p>
-            </div> : <div className="space-y-4">
-              {filteredSentConversations.map(conv => {
-          const preview = conv.lastMessage ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "") : "";
-          return <Card key={conv.habitationId} className={`cursor-pointer transition-all hover:scale-[1.02] ${conv.unreadRepliesCount > 0 ? "ring-2 ring-primary/30" : ""}`} onClick={() => navigate(`/conversation-sent/${conv.habitationId}`)}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-11 w-11 flex-shrink-0">
-                          <AvatarFallback className="bg-blue-500/10">
-                            <Home className="w-5 h-5 text-blue-500" />
-                          </AvatarFallback>
-                        </Avatar>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-medium truncate text-foreground">
-                              {conv.habitationName}
-                            </p>
-                            <span className="text-xs text-foreground/70 flex-shrink-0">
-                              {formatDistanceToNow(conv.lastMessageDate, {
-                        addSuffix: false,
-                        locale: fr
-                      })}
-                            </span>
-                          </div>
-                          
-                          <p className="text-xs text-muted-foreground truncate">{conv.anrAddress}</p>
-                          
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-sm truncate text-foreground/80">
-                              {conv.hasReplies && <span className="text-green-500 mr-1">↩</span>}
-                              {preview}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2 mt-2">
-                            {conv.unreadRepliesCount > 0 && <Badge variant="destructive" className="text-xs h-5">
-                                {conv.unreadRepliesCount} réponse{conv.unreadRepliesCount > 1 ? "s" : ""}
-                              </Badge>}
-                            {conv.totalMessages > 1 && <Badge variant="secondary" className="text-xs h-5">
-                                {conv.totalMessages} messages
-                              </Badge>}
-                            {conv.hasReplies && <Badge variant="outline" className="text-xs h-5 text-green-600 border-green-600">
-                                Réponse reçue
-                              </Badge>}
-                          </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          {conv.unreadCount > 0 && (
+                            <Badge variant="destructive" className="text-xs h-5">
+                              {conv.unreadCount} {conv.type === 'received' ? `nouveau${conv.unreadCount > 1 ? "x" : ""}` : `réponse${conv.unreadCount > 1 ? "s" : ""}`}
+                            </Badge>
+                          )}
+                          {conv.totalMessages > 1 && (
+                            <Badge variant="secondary" className="text-xs h-5">
+                              {conv.totalMessages} messages
+                            </Badge>
+                          )}
+                          {conv.hasReply && (
+                            <Badge variant="outline" className="text-xs h-5 text-green-600 border-green-600">
+                              {conv.type === 'received' ? "Répondu" : "Réponse reçue"}
+                            </Badge>
+                          )}
                         </div>
-
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="text-destructive hover:bg-destructive/10 flex-shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm({ id: conv.habitationId, name: conv.habitationName, type: 'sent' });
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                       </div>
-                    </CardContent>
-                  </Card>;
-        })}
-            </div>)}
+
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-destructive hover:bg-destructive/10 flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(conv);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Delete confirmation dialog */}
@@ -621,6 +641,8 @@ const Messages = () => {
       />
 
       <BottomNav />
-    </div>;
+    </div>
+  );
 };
+
 export default Messages;
