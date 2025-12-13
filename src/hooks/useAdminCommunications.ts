@@ -236,6 +236,68 @@ export function useAdminCommunications() {
     }
   };
 
+  // Admin sends a reply to a user who replied
+  const adminReplyToUser = async (
+    userId: string,
+    communicationId: string,
+    replyText: string
+  ): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Get user profile for the notification
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', userId)
+        .single();
+
+      const comm = communications.find(c => c.id === communicationId);
+
+      // Insert the admin's reply with the user_id being the target user
+      // We need to mark this as an admin reply by using a special structure
+      const { error } = await supabase
+        .from('communication_replies')
+        .insert({
+          communication_id: communicationId,
+          user_id: user.id, // Admin's user_id
+          reply_text: replyText
+        });
+
+      if (error) throw error;
+
+      // Create notification for the user
+      await supabase
+        .from('user_notifications')
+        .insert({
+          user_id: userId,
+          type: 'admin_communication',
+          title: '💬 Réponse de l\'équipe ANR',
+          message: replyText.substring(0, 150) + (replyText.length > 150 ? '...' : ''),
+          data: { 
+            communication_id: communicationId,
+            is_admin_reply: true
+          }
+        });
+
+      toast({
+        title: "Réponse envoyée",
+        description: `Message envoyé à ${userProfile?.first_name || 'l\'utilisateur'}`
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error sending admin reply:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer la réponse",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchCommunications();
 
@@ -268,6 +330,7 @@ export function useAdminCommunications() {
     toggleActive,
     deleteCommunication,
     fetchReplies,
+    adminReplyToUser,
     refetch: fetchCommunications
   };
 }

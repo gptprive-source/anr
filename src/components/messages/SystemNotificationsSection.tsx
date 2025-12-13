@@ -75,68 +75,91 @@ export function SystemNotificationsSection() {
       </div>
 
       <div className="space-y-2">
-        {/* Admin Communications */}
-        {communications.map(comm => <Card key={`comm-${comm.id}`} onClick={() => handleOpenComm(comm)} className="cursor-pointer transition-all border bg-blue-500/5 border-[#1587f9]">
-            <CardContent className="p-3 bg-white border-solid rounded-2xl border-[#1587f9] border-2">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-500/10">
-                  <MessageCircle className="w-5 h-5 text-blue-500" />
-                </div>
+        {/* All items sorted by date (newest first) */}
+        {[
+          ...communications.map(comm => ({ 
+            type: 'comm' as const, 
+            data: comm, 
+            date: new Date(comm.sent_at) 
+          })),
+          ...notifications.slice(0, 5).map(notif => ({ 
+            type: 'notif' as const, 
+            data: notif, 
+            date: new Date(notif.created_at) 
+          }))
+        ]
+          .sort((a, b) => b.date.getTime() - a.date.getTime())
+          .map((item, index) => {
+            if (item.type === 'comm') {
+              const comm = item.data;
+              return (
+                <Card key={`comm-${comm.id}`} onClick={() => handleOpenComm(comm)} className="cursor-pointer transition-all border bg-blue-500/5 border-[#1587f9]">
+                  <CardContent className="p-3 bg-white border-solid rounded-2xl border-[#1587f9] border-2">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-500/10">
+                        <MessageCircle className="w-5 h-5 text-blue-500" />
+                      </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm text-foreground">
-                        {comm.title}
-                      </p>
-                      <Badge variant="secondary" className="text-xs">ANR</Badge>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm text-foreground">
+                              {comm.title}
+                            </p>
+                            <Badge variant="secondary" className="text-xs">ANR</Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            {formatDistanceToNow(new Date(comm.sent_at), {
+                              addSuffix: false,
+                              locale: fr
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {comm.content.substring(0, 100)}{comm.content.length > 100 ? "..." : ""}
+                        </p>
+                      </div>
+
+                      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-2" />
                     </div>
-                    <span className="text-xs text-muted-foreground flex-shrink-0">
-                      {formatDistanceToNow(new Date(comm.sent_at), {
-                    addSuffix: false,
-                    locale: fr
-                  })}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {comm.content.substring(0, 100)}{comm.content.length > 100 ? "..." : ""}
-                  </p>
-                </div>
+                  </CardContent>
+                </Card>
+              );
+            } else {
+              const notif = item.data;
+              return (
+                <Card key={notif.id} className={`cursor-pointer transition-all border ${!notif.is_read ? getNotificationColor(notif.type) : "border-border"}`} onClick={() => handleOpenNotif(notif)}>
+                  <CardContent className="p-3 border-2 border-solid bg-white border-[#ed1212] rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notif.type === "referral_credited" ? "bg-green-500/10" : "bg-primary/10"}`}>
+                        {getNotificationIcon(notif.type)}
+                      </div>
 
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-2" />
-              </div>
-            </CardContent>
-          </Card>)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium text-sm text-foreground">
+                            {notif.title}
+                          </p>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            {formatDistanceToNow(new Date(notif.created_at), {
+                              addSuffix: false,
+                              locale: fr
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {notif.message}
+                        </p>
+                      </div>
 
-        {/* User Notifications */}
-        {notifications.slice(0, 5).map(notif => <Card key={notif.id} className={`cursor-pointer transition-all border ${!notif.is_read ? getNotificationColor(notif.type) : "border-border"}`} onClick={() => handleOpenNotif(notif)}>
-            <CardContent className="p-3 border-2 border-solid bg-white border-[#ed1212] rounded-xl">
-              <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notif.type === "referral_credited" ? "bg-green-500/10" : "bg-primary/10"}`}>
-                  {getNotificationIcon(notif.type)}
-                </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-2" />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }
+          })}
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium text-sm text-foreground">
-                      {notif.title}
-                    </p>
-                    <span className="text-xs text-muted-foreground flex-shrink-0">
-                      {formatDistanceToNow(new Date(notif.created_at), {
-                    addSuffix: false,
-                    locale: fr
-                  })}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {notif.message}
-                  </p>
-                </div>
-
-                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-2" />
-              </div>
-            </CardContent>
-          </Card>)}
       </div>
 
       {notifications.length > 5 && <p className="text-xs text-center text-muted-foreground">

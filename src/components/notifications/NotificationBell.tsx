@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell, Check, Gift, MessageCircle, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export function NotificationBell() {
+  const navigate = useNavigate();
   const { 
     notifications, 
     unreadCount, 
@@ -39,6 +41,27 @@ export function NotificationBell() {
         return <Megaphone className="h-4 w-4 text-orange-500" />;
       default:
         return <Bell className="h-4 w-4 text-primary" />;
+    }
+  };
+
+  const handleNotificationClick = (notif: typeof notifications[0]) => {
+    if (!notif.is_read) {
+      markAsRead(notif.id);
+    }
+    setOpen(false);
+    
+    // Navigate based on notification type and data
+    const data = notif.data as Record<string, unknown> | null;
+    
+    if (notif.type === "admin_communication" && data?.communication_id) {
+      navigate(`/notification/communication/${data.communication_id}`);
+    } else if (notif.type === "communication_reply" && data?.communication_id) {
+      navigate(`/notification/communication/${data.communication_id}`);
+    } else if (data?.conversation_id) {
+      navigate(`/conversation/${data.conversation_id}`);
+    } else {
+      // Default: go to messages
+      navigate("/messages");
     }
   };
 
@@ -94,11 +117,7 @@ export function NotificationBell() {
                   className={`p-3 hover:bg-muted/50 transition-colors cursor-pointer ${
                     !notif.is_read ? "bg-primary/5" : ""
                   }`}
-                  onClick={() => {
-                    if (!notif.is_read) {
-                      markAsRead(notif.id);
-                    }
-                  }}
+                  onClick={() => handleNotificationClick(notif)}
                 >
                   <div className="flex gap-3">
                     <div className="mt-0.5">

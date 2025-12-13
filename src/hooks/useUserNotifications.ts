@@ -92,14 +92,27 @@ export function useUserNotifications() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          console.log("[Notification] New notification received:", payload.new);
           const newNotif = payload.new as unknown as UserNotification;
           setNotifications((prev) => [newNotif, ...prev]);
           setUnreadCount((prev) => prev + 1);
           setHasNewNotification(true);
           
           // Play sound and vibrate for new notification
-          playNotificationSound();
-          vibrate([200, 100, 200, 100, 200]);
+          // Sound needs user interaction first on mobile, so we try anyway
+          try {
+            playNotificationSound();
+            console.log("[Notification] Sound played");
+          } catch (e) {
+            console.error("[Notification] Sound error:", e);
+          }
+          
+          try {
+            vibrate([200, 100, 200, 100, 200]);
+            console.log("[Notification] Vibration triggered");
+          } catch (e) {
+            console.error("[Notification] Vibration error:", e);
+          }
         }
       )
       .subscribe();

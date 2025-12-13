@@ -1,7 +1,42 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useEffect } from "react";
 
 export function useNotificationSound() {
   const audioContextRef = useRef<AudioContext | null>(null);
+  const isUnlockedRef = useRef(false);
+
+  // Unlock audio context on first user interaction
+  useEffect(() => {
+    const unlockAudio = () => {
+      if (isUnlockedRef.current) return;
+      
+      try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        
+        const ctx = audioContextRef.current;
+        if (ctx.state === "suspended") {
+          ctx.resume().then(() => {
+            console.log("[Audio] Context unlocked");
+            isUnlockedRef.current = true;
+          });
+        } else {
+          isUnlockedRef.current = true;
+        }
+      } catch (e) {
+        console.error("[Audio] Failed to unlock:", e);
+      }
+    };
+
+    // Listen for any user interaction to unlock audio
+    document.addEventListener("click", unlockAudio, { once: false });
+    document.addEventListener("touchstart", unlockAudio, { once: false });
+
+    return () => {
+      document.removeEventListener("click", unlockAudio);
+      document.removeEventListener("touchstart", unlockAudio);
+    };
+  }, []);
 
   const playNotificationSound = useCallback(() => {
     try {
@@ -40,6 +75,8 @@ export function useNotificationSound() {
         oscillator.start(now + (index * 0.1));
         oscillator.stop(now + (index * 0.1) + 0.35);
       });
+      
+      console.log("[Audio] Notification sound played");
     } catch (err) {
       console.error("Error playing notification sound:", err);
     }
