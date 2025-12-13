@@ -9,11 +9,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Send, Users, User, MessageSquare, Eye, Trash2, 
-  ToggleLeft, ToggleRight, Plus, Search, Mail, Calendar
+  ToggleLeft, ToggleRight, Plus, Search, Mail, Calendar,
+  Home, MapPin, X
 } from 'lucide-react';
 import { useAdminCommunications, CommunicationReply } from '@/hooks/useAdminCommunications';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,10 +23,20 @@ import { fr } from 'date-fns/locale';
 
 interface UserOption {
   id: string;
-  email: string;
   first_name: string | null;
   last_name: string | null;
+  anr_code?: string;
+  anr_address?: string;
 }
+
+interface ANROption {
+  id: string;
+  code: string;
+  address: string;
+  user_ids: string[];
+}
+
+type TargetMode = 'all' | 'by_anr' | 'by_name';
 
 export default function Communications() {
   const { communications, loading, sendCommunication, toggleActive, deleteCommunication, fetchReplies } = useAdminCommunications();
@@ -33,11 +44,14 @@ export default function Communications() {
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [targetType, setTargetType] = useState<'all' | 'specific'>('all');
+  const [targetMode, setTargetMode] = useState<TargetMode>('all');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedAnrs, setSelectedAnrs] = useState<string[]>([]);
   const [allowReply, setAllowReply] = useState(false);
   const [users, setUsers] = useState<UserOption[]>([]);
+  const [anrs, setAnrs] = useState<ANROption[]>([]);
   const [userSearch, setUserSearch] = useState('');
+  const [anrSearch, setAnrSearch] = useState('');
   const [sending, setSending] = useState(false);
   
   const [selectedComm, setSelectedComm] = useState<string | null>(null);
@@ -45,38 +59,104 @@ export default function Communications() {
   const [loadingReplies, setLoadingReplies] = useState(false);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .limit(100);
-      
-      if (data) {
-        // Get emails from auth via admin (simplified - just use profiles)
-        setUsers(data.map(p => ({
-          id: p.id,
-          email: '',
-          first_name: p.first_name,
-          last_name: p.last_name
-        })));
+    const fetchData = async () => {
+      // Fetch users with their ANR info
+      const { data: residentsData } = await supabase
+        .from('residents')
+        .select(`
+          user_id,
+          habitation:habitations(
+            anr:anrs(code, address)
+          ),
+          profile:profiles(first_name, last_name)
+        `)
+        .eq('status', 'verified');
+
+      if (residentsData) {
+        const userMap = new Map<string, UserOption>();
+        residentsData.forEach((r: any) => {
+          if (r.user_id && r.profile) {
+            userMap.set(r.user_id, {
+              id: r.user_id,
+              first_name: r.profile.first_name,
+              last_name: r.profile.last_name,
+              anr_code: r.habitation?.anr?.code,
+              anr_address: r.habitation?.anr?.address
+            });
+          }
+        });
+        setUsers(Array.from(userMap.values()));
+      }
+
+      // Fetch ANRs with their residents
+      const { data: anrsData } = await supabase
+        .from('anrs')
+        .select(`
+          id,
+          code,
+          address,
+          habitations(
+            residents(user_id)
+          )
+        `)
+        .order('code');
+
+      if (anrsData) {
+        const anrOptions: ANROption[] = anrsData.map((anr: any) => {
+          const userIds: string[] = [];
+          anr.habitations?.forEach((h: any) => {
+            h.residents?.forEach((r: any) => {
+              if (r.user_id) userIds.push(r.user_id);
+            });
+          });
+          return {
+            id: anr.id,
+            code: anr.code,
+            address: anr.address,
+            user_ids: [...new Set(userIds)]
+          };
+        });
+        setAnrs(anrOptions);
       }
     };
-    fetchUsers();
+    fetchData();
   }, []);
 
   const handleSend = async () => {
     if (!title.trim() || !content.trim()) return;
     
     setSending(true);
-    const success = await sendCommunication(title, content, targetType, selectedUsers, allowReply);
+    
+    let targetUserIds: string[] = [];
+    let targetType: 'all' | 'specific' = 'all';
+
+    if (targetMode === 'all') {
+      targetType = 'all';
+    } else if (targetMode === 'by_anr') {
+      targetType = 'specific';
+      // Get all user IDs from selected ANRs
+      selectedAnrs.forEach(anrId => {
+        const anr = anrs.find(a => a.id === anrId);
+        if (anr) {
+          targetUserIds.push(...anr.user_ids);
+        }
+      });
+      targetUserIds = [...new Set(targetUserIds)];
+    } else if (targetMode === 'by_name') {
+      targetType = 'specific';
+      targetUserIds = selectedUsers;
+    }
+
+    const success = await sendCommunication(title, content, targetType, targetUserIds, allowReply);
     setSending(false);
     
     if (success) {
       setShowNewDialog(false);
       setTitle('');
       setContent('');
-      setTargetType('all');
+      setTargetMode('all');
       setSelectedUsers([]);
+      setSelectedAnrs([]);
       setAllowReply(false);
     }
   };
@@ -92,7 +172,14 @@ export default function Communications() {
   const filteredUsers = users.filter(u => 
     !userSearch || 
     (u.first_name?.toLowerCase().includes(userSearch.toLowerCase())) ||
-    (u.last_name?.toLowerCase().includes(userSearch.toLowerCase()))
+    (u.last_name?.toLowerCase().includes(userSearch.toLowerCase())) ||
+    (u.anr_code?.toLowerCase().includes(userSearch.toLowerCase()))
+  );
+
+  const filteredAnrs = anrs.filter(a => 
+    !anrSearch || 
+    a.code.toLowerCase().includes(anrSearch.toLowerCase()) ||
+    a.address.toLowerCase().includes(anrSearch.toLowerCase())
   );
 
   const toggleUserSelection = (userId: string) => {
@@ -103,11 +190,38 @@ export default function Communications() {
     );
   };
 
+  const toggleAnrSelection = (anrId: string) => {
+    setSelectedAnrs(prev => 
+      prev.includes(anrId) 
+        ? prev.filter(id => id !== anrId)
+        : [...prev, anrId]
+    );
+  };
+
+  const getSelectedCount = () => {
+    if (targetMode === 'all') return users.length;
+    if (targetMode === 'by_anr') {
+      const userIds = new Set<string>();
+      selectedAnrs.forEach(anrId => {
+        const anr = anrs.find(a => a.id === anrId);
+        if (anr) anr.user_ids.forEach(id => userIds.add(id));
+      });
+      return userIds.size;
+    }
+    return selectedUsers.length;
+  };
+
   const stats = {
     total: communications.length,
     active: communications.filter(c => c.is_active).length,
     withReplies: communications.filter(c => c.allow_reply).length
   };
+
+  const canSend = title.trim() && content.trim() && (
+    targetMode === 'all' ||
+    (targetMode === 'by_anr' && selectedAnrs.length > 0) ||
+    (targetMode === 'by_name' && selectedUsers.length > 0)
+  );
 
   return (
     <AdminLayout>
@@ -153,64 +267,184 @@ export default function Communications() {
                   </p>
                 </div>
                 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>Destinataires</Label>
-                  <Select value={targetType} onValueChange={(v) => setTargetType(v as 'all' | 'specific')}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          Tous les utilisateurs
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="specific">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          Utilisateurs spécifiques
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {targetType === 'specific' && (
-                  <div className="space-y-2">
-                    <Label>Sélectionner les utilisateurs</Label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        value={userSearch}
-                        onChange={(e) => setUserSearch(e.target.value)}
-                        placeholder="Rechercher..."
-                        className="pl-9"
-                      />
-                    </div>
-                    <ScrollArea className="h-40 border rounded-md p-2">
-                      {filteredUsers.map(user => (
-                        <div 
-                          key={user.id}
-                          onClick={() => toggleUserSelection(user.id)}
-                          className={`p-2 rounded cursor-pointer flex items-center gap-2 ${
-                            selectedUsers.includes(user.id) 
-                              ? 'bg-primary/10 text-primary' 
-                              : 'hover:bg-muted'
-                          }`}
-                        >
-                          <User className="h-4 w-4" />
-                          <span>{user.first_name} {user.last_name}</span>
-                        </div>
-                      ))}
-                    </ScrollArea>
-                    {selectedUsers.length > 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        {selectedUsers.length} utilisateur(s) sélectionné(s)
-                      </p>
-                    )}
+                  
+                  {/* Target mode selection */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      type="button"
+                      variant={targetMode === 'all' ? 'default' : 'outline'}
+                      className="flex items-center gap-2 h-auto py-3"
+                      onClick={() => setTargetMode('all')}
+                    >
+                      <Users className="h-4 w-4" />
+                      <div className="text-left">
+                        <div className="text-sm font-medium">Tous</div>
+                        <div className="text-xs opacity-70">{users.length} abonnés</div>
+                      </div>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={targetMode === 'by_anr' ? 'default' : 'outline'}
+                      className="flex items-center gap-2 h-auto py-3"
+                      onClick={() => setTargetMode('by_anr')}
+                    >
+                      <Home className="h-4 w-4" />
+                      <div className="text-left">
+                        <div className="text-sm font-medium">Par ANR</div>
+                        <div className="text-xs opacity-70">{anrs.length} ANRs</div>
+                      </div>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={targetMode === 'by_name' ? 'default' : 'outline'}
+                      className="flex items-center gap-2 h-auto py-3"
+                      onClick={() => setTargetMode('by_name')}
+                    >
+                      <User className="h-4 w-4" />
+                      <div className="text-left">
+                        <div className="text-sm font-medium">Par nom</div>
+                        <div className="text-xs opacity-70">Sélection</div>
+                      </div>
+                    </Button>
                   </div>
-                )}
+
+                  {/* By ANR selection */}
+                  {targetMode === 'by_anr' && (
+                    <div className="space-y-2 border rounded-lg p-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          value={anrSearch}
+                          onChange={(e) => setAnrSearch(e.target.value)}
+                          placeholder="Rechercher par code ANR ou adresse..."
+                          className="pl-9"
+                        />
+                      </div>
+                      
+                      {selectedAnrs.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedAnrs.map(anrId => {
+                            const anr = anrs.find(a => a.id === anrId);
+                            return anr ? (
+                              <Badge key={anrId} variant="secondary" className="gap-1">
+                                {anr.code}
+                                <X 
+                                  className="h-3 w-3 cursor-pointer" 
+                                  onClick={() => toggleAnrSelection(anrId)}
+                                />
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                      
+                      <ScrollArea className="h-48 border rounded-md">
+                        {filteredAnrs.map(anr => (
+                          <div 
+                            key={anr.id}
+                            onClick={() => toggleAnrSelection(anr.id)}
+                            className={`p-3 cursor-pointer border-b last:border-0 flex items-start gap-3 ${
+                              selectedAnrs.includes(anr.id) 
+                                ? 'bg-primary/10' 
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            <Checkbox 
+                              checked={selectedAnrs.includes(anr.id)}
+                              className="mt-1"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-semibold text-primary">{anr.code}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {anr.user_ids.length} résident(s)
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                                <MapPin className="h-3 w-3" />
+                                {anr.address}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </ScrollArea>
+                    </div>
+                  )}
+
+                  {/* By name selection */}
+                  {targetMode === 'by_name' && (
+                    <div className="space-y-2 border rounded-lg p-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                          placeholder="Rechercher par nom, prénom ou code ANR..."
+                          className="pl-9"
+                        />
+                      </div>
+                      
+                      {selectedUsers.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedUsers.map(userId => {
+                            const user = users.find(u => u.id === userId);
+                            return user ? (
+                              <Badge key={userId} variant="secondary" className="gap-1">
+                                {user.first_name} {user.last_name}
+                                <X 
+                                  className="h-3 w-3 cursor-pointer" 
+                                  onClick={() => toggleUserSelection(userId)}
+                                />
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                      
+                      <ScrollArea className="h-48 border rounded-md">
+                        {filteredUsers.map(user => (
+                          <div 
+                            key={user.id}
+                            onClick={() => toggleUserSelection(user.id)}
+                            className={`p-3 cursor-pointer border-b last:border-0 flex items-start gap-3 ${
+                              selectedUsers.includes(user.id) 
+                                ? 'bg-primary/10' 
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            <Checkbox 
+                              checked={selectedUsers.includes(user.id)}
+                              className="mt-1"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {user.first_name} {user.last_name}
+                                </span>
+                                {user.anr_code && (
+                                  <Badge variant="outline" className="text-xs font-mono">
+                                    {user.anr_code}
+                                  </Badge>
+                                )}
+                              </div>
+                              {user.anr_address && (
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                  {user.anr_address}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </ScrollArea>
+                    </div>
+                  )}
+
+                  <p className="text-sm text-muted-foreground">
+                    {getSelectedCount()} destinataire(s) sélectionné(s)
+                  </p>
+                </div>
                 
                 <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                   <div>
@@ -227,11 +461,11 @@ export default function Communications() {
                 
                 <Button 
                   onClick={handleSend}
-                  disabled={!title.trim() || !content.trim() || sending || (targetType === 'specific' && selectedUsers.length === 0)}
+                  disabled={!canSend || sending}
                   className="w-full gap-2"
                 >
                   <Send className="h-4 w-4" />
-                  {sending ? 'Envoi en cours...' : 'Envoyer la communication'}
+                  {sending ? 'Envoi en cours...' : `Envoyer à ${getSelectedCount()} destinataire(s)`}
                 </Button>
               </div>
             </DialogContent>
