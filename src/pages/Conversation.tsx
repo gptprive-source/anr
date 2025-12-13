@@ -180,6 +180,27 @@ const Conversation = () => {
             read_at: new Date().toISOString()
           }).in("id", unreadIds);
         }
+        
+        // Auto-delete corresponding notifications for these messages
+        if (user?.id && data.length > 0) {
+          const messageIds = data.map((m: any) => m.id);
+          // Delete notifications where data contains any of these message_ids
+          const { data: notifs } = await supabase
+            .from("user_notifications")
+            .select("id, data")
+            .eq("user_id", user.id)
+            .eq("type", "visitor_message");
+          
+          if (notifs) {
+            const notifIdsToDelete = notifs
+              .filter(n => n.data && messageIds.includes((n.data as any).message_id))
+              .map(n => n.id);
+            
+            if (notifIdsToDelete.length > 0) {
+              await supabase.from("user_notifications").delete().in("id", notifIdsToDelete);
+            }
+          }
+        }
       } catch (error) {
         console.error("[Conversation] Error:", error);
         toast({
