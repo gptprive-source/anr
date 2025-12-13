@@ -15,10 +15,12 @@ interface VisitorModeSectionProps {
     phone_number: string | null;
   } | null;
   userEmail?: string;
+  className?: string;
 }
 const VisitorModeSection = ({
   userProfile,
-  userEmail
+  userEmail,
+  className
 }: VisitorModeSectionProps) => {
   const {
     card,
@@ -86,13 +88,13 @@ const VisitorModeSection = ({
     const name = [card.first_name, card.last_name].filter(Boolean).join(" ");
     return name || "Particulier";
   };
-  return <div className="bg-background/50 rounded-2xl p-4 card-shadow space-y-4 border border-indigo-500">
+  return <div className={`bg-card rounded-2xl p-4 shadow-neumorphic space-y-4 ${className || ''}`}>
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center">
-          <User className="w-5 h-5 text-indigo-500" />
+        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <User className="w-5 h-5 text-primary" />
         </div>
         <div className="flex-1">
-          <p className="font-medium">Mode visiteur</p>
+          <p className="font-medium text-foreground">Mode visiteur</p>
           <p className="text-xs text-muted-foreground">Gérez vos infos quand vous visitez d'autres résidences</p>
         </div>
       </div>
@@ -100,21 +102,21 @@ const VisitorModeSection = ({
       {/* Grid for Business Card and Templates side by side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Business Card */}
-        <div className="border rounded-lg p-3 space-y-2 shadow-neumorphic-sm border-white">
+        <div className="bg-background rounded-xl p-3 space-y-2 shadow-neumorphic-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-purple-500/10 flex items-center justify-center">
-                <CreditCard className="w-3 h-3 text-purple-500" />
+                <CreditCard className="w-3.5 h-3.5 text-purple-500" />
               </div>
-              <span className="text-sm font-medium">Ma carte de visite</span>
+              <span className="text-sm font-medium text-foreground">Ma carte de visite</span>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleOpenCardManager}>
+            <Button variant="ghost" size="sm" onClick={handleOpenCardManager} className="text-primary hover:text-primary">
               {card ? "Modifier" : "Créer"}
             </Button>
           </div>
           
           {cardLoading ? <p className="text-xs text-muted-foreground">Chargement...</p> : card ? <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {card.card_type === "company" ? <Building2 className="w-3 h-3 text-purple-500" /> : <User className="w-3 h-3 text-purple-500" />}
+              {card.card_type === "company" ? <Building2 className="w-3.5 h-3.5 text-purple-500" /> : <User className="w-3.5 h-3.5 text-purple-500" />}
               <span>{getCardSummary()}</span>
               {card.email && <span>• {card.email}</span>}
               {card.phone && <span>• {card.phone}</span>}
@@ -124,33 +126,33 @@ const VisitorModeSection = ({
         </div>
 
         {/* Custom Templates */}
-        <div className="border rounded-lg p-3 space-y-2 border-white shadow-neumorphic-sm">
+        <div className="bg-background rounded-xl p-3 space-y-2 shadow-neumorphic-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                <MessageSquare className="w-3 h-3 text-yellow-500" />
+              <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
               </div>
-              <span className="text-sm font-medium">Mes templates</span>
+              <span className="text-sm font-medium text-foreground">Mes templates</span>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setShowNewTemplateDialog(true)}>
+            <Button variant="ghost" size="sm" onClick={() => setShowNewTemplateDialog(true)} className="text-primary hover:text-primary">
               <Plus className="w-4 h-4" />
             </Button>
           </div>
 
           {templatesLoading ? <p className="text-xs text-muted-foreground">Chargement...</p> : templates.length > 0 ? <div className="space-y-2">
-              {templates.map(template => <div key={template.id} className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-yellow-500/30">
+              {templates.map(template => <div key={template.id} className="flex items-center justify-between p-2 rounded-xl bg-card shadow-neumorphic-sm">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center">
                       <span className="text-sm">{template.icon}</span>
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{template.name}</p>
+                      <p className="text-sm font-medium text-foreground">{template.name}</p>
                       <p className="text-xs text-muted-foreground truncate max-w-[150px]">{template.content}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditingTemplate(template)}>
-                      <Pencil className="w-3.5 h-3.5 text-yellow-500" />
+                      <Pencil className="w-3.5 h-3.5 text-amber-500" />
                     </Button>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleDeleteTemplate(template.id, template.name)}>
                       <Trash2 className="w-3.5 h-3.5 text-destructive" />
