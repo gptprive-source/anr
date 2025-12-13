@@ -67,6 +67,7 @@ export function SystemNotificationsSection() {
   } = useUserCommunications();
   
   const [selectedComm, setSelectedComm] = useState<typeof communications[0] | null>(null);
+  const [selectedNotif, setSelectedNotif] = useState<typeof notifications[0] | null>(null);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -172,9 +173,8 @@ export function SystemNotificationsSection() {
               !notif.is_read ? getNotificationColor(notif.type) : "border-border"
             }`}
             onClick={() => {
-              if (!notif.is_read) {
-                markAsRead(notif.id);
-              }
+              markAsRead(notif.id);
+              setSelectedNotif(notif);
             }}
           >
             <CardContent className="p-3">
@@ -202,9 +202,7 @@ export function SystemNotificationsSection() {
                   </p>
                 </div>
 
-                {!notif.is_read && (
-                  <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2" />
-                )}
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-2" />
               </div>
             </CardContent>
           </Card>
@@ -262,6 +260,31 @@ export function SystemNotificationsSection() {
                 </Button>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Notification Detail Dialog */}
+      <Dialog open={!!selectedNotif} onOpenChange={(open) => !open && setSelectedNotif(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedNotif && getNotificationIcon(selectedNotif.type)}
+              {selectedNotif?.title}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="text-xs text-muted-foreground">
+              {selectedNotif && formatDistanceToNow(new Date(selectedNotif.created_at), {
+                addSuffix: true,
+                locale: fr,
+              })}
+            </div>
+            
+            <div className="p-4 bg-muted rounded-lg whitespace-pre-wrap text-sm">
+              {selectedNotif && renderContentWithLinks(selectedNotif.message)}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
