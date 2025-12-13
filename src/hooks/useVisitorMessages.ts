@@ -253,6 +253,40 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
     }
   };
 
+  // Delete all messages from a specific visitor (conversation)
+  const deleteConversation = async (visitorId: string) => {
+    try {
+      // Get all message IDs for this visitor
+      const messagesToDelete = messages.filter(m => {
+        const msgVisitorId = m.business_card_id || m.visitor_phone || `anon-${m.id}`;
+        return msgVisitorId === visitorId;
+      });
+
+      if (messagesToDelete.length === 0) return { success: true };
+
+      // Delete all messages for this visitor
+      for (const msg of messagesToDelete) {
+        await supabase
+          .from("visitor_messages" as any)
+          .delete()
+          .eq("id", msg.id);
+      }
+
+      // Update local state
+      const unreadDeleted = messagesToDelete.filter(m => !m.is_read).length;
+      setMessages(prev => prev.filter(m => {
+        const msgVisitorId = m.business_card_id || m.visitor_phone || `anon-${m.id}`;
+        return msgVisitorId !== visitorId;
+      }));
+      setUnreadCount(prev => Math.max(0, prev - unreadDeleted));
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error("[useVisitorMessages] Error deleting conversation:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
   useEffect(() => {
     if (habitationId) {
       if (countOnly) {
@@ -301,6 +335,7 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
     sendMessage,
     markAsRead,
     deleteMessage,
+    deleteConversation,
     refetch: fetchMessages,
   };
 };

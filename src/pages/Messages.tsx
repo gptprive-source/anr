@@ -72,7 +72,8 @@ const Messages = () => {
   const {
     messages,
     unreadCount,
-    loading: loadingReceived
+    loading: loadingReceived,
+    deleteConversation: deleteReceivedConversation
   } = useVisitorMessages(habitationId || "");
   const {
     isBlocked,
@@ -408,6 +409,17 @@ const Messages = () => {
                           </div>
                         </div>
 
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive hover:bg-destructive/10 flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteReceivedConversation(conv.visitorId);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                         <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                       </div>
                     </CardContent>
