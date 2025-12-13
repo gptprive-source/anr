@@ -128,7 +128,7 @@ const AppContent = () => {
                 <Contacts />
               </ProtectedRoute>} />
           <Route path="/conversation/:visitorId" element={<ProtectedRoute>
-                <Conversation className="bg-white" />
+                <Conversation />
               </ProtectedRoute>} />
           <Route path="/conversation-sent/:recipientId" element={<ProtectedRoute>
                 <ConversationSent />
