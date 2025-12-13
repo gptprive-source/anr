@@ -19,7 +19,7 @@ import { formatDistanceToNow, isToday, isThisWeek, isThisMonth } from "date-fns"
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
 import { Loader2 } from "lucide-react";
-import { SystemNotificationsSection } from "@/components/messages/SystemNotificationsSection";
+
 import NewMessageToAnrDialog from "@/components/messages/NewMessageToAnrDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 type StatusFilter = "all" | "unread" | "read";
@@ -404,8 +404,6 @@ const Messages = () => {
               </Card>)}
           </div>}
 
-        {/* System notifications section (residents only) */}
-        {isResident && <SystemNotificationsSection />}
 
         {/* Conversations list - Resident view */}
         {isResident && (filteredConversations.length === 0 ? <div className="text-center py-12">
