@@ -22,7 +22,7 @@ const BottomNav = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-t border-border safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card shadow-[0_-4px_12px_rgba(163,177,198,0.4)] safe-area-bottom">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {navItems.map((item) => {
           const isActive = item.path === "/" 
@@ -34,13 +34,20 @@ const BottomNav = () => {
               to={item.path}
               data-copilot-id={`bottom-nav-${item.label.toLowerCase()}`}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
+                "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-all duration-200",
                 isActive 
                   ? "text-primary" 
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {item.icon}
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
+                isActive 
+                  ? "bg-primary text-primary-foreground shadow-neumorphic-sm" 
+                  : ""
+              )}>
+                {item.icon}
+              </div>
               <span className="text-xs font-medium">{item.label}</span>
             </Link>
           );
