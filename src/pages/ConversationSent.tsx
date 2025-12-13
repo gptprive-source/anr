@@ -66,12 +66,18 @@ const ConversationSent = () => {
   const [sending, setSending] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
 
-  const { messages, replies, getConversationMessages, markReplyAsRead, businessCard, deleteSentMessage } = useSentMessages();
+  const { messages, replies, getConversationMessages, markReplyAsRead, businessCard, deleteSentMessage, refetch: refetchSentMessages } = useSentMessages();
   const { sendMessage } = useVisitorMessages();
   const { encryptMessageForResident, isReady: encryptionReady } = useEncryptedMessages(habitationId || undefined);
 
+  // Local state for immediate display of sent messages
+  const [localMessages, setLocalMessages] = useState<any[]>([]);
+
   // Get conversation data for this habitation
   const conversationData = habitationId ? getConversationMessages(habitationId) : { messages: [], replies: [] };
+
+  // Combine fetched messages with local messages
+  const allSentMessages = [...conversationData.messages, ...localMessages.filter(lm => !conversationData.messages.find(m => m.id === lm.id))];
 
   // Fetch habitation info
   useEffect(() => {
@@ -123,7 +129,9 @@ const ConversationSent = () => {
   const handleSend = async () => {
     if (!habitationId || (!newMessage.trim() && !audioBlob)) return;
 
+    const messageText = newMessage.trim();
     setSending(true);
+    
     try {
       let audioBase64: string | undefined;
       if (audioBlob) {
@@ -134,9 +142,9 @@ const ConversationSent = () => {
 
       // Encrypt message if ready
       let encryptionData: { encrypted_message: string; message_nonce: string; visitor_public_key: string } | undefined;
-      if (encryptionReady && newMessage.trim()) {
+      if (encryptionReady && messageText) {
         try {
-          encryptionData = await encryptMessageForResident(newMessage.trim());
+          encryptionData = await encryptMessageForResident(messageText);
         } catch (error) {
           console.warn('Encryption failed, sending unencrypted:', error);
         }
@@ -144,7 +152,7 @@ const ConversationSent = () => {
 
       const result = await sendMessage(
         habitationId,
-        newMessage.trim() || undefined,
+        messageText || undefined,
         undefined,
         undefined,
         businessCard?.id,
@@ -153,12 +161,24 @@ const ConversationSent = () => {
       );
 
       if (result.success) {
+        // Add message to local state immediately for display
+        if (result.message) {
+          setLocalMessages(prev => [...prev, {
+            ...result.message,
+            message: messageText || null, // Show decrypted text locally
+          }]);
+        }
+        
         setNewMessage("");
         setAudioBlob(null);
         setShowVoiceRecorder(false);
+        
+        // Refetch to sync with backend
+        setTimeout(() => refetchSentMessages(), 500);
+        
         toast({
           title: "Message envoyé",
-          description: "Le résident recevra votre message",
+          description: "Le résident recevra une notification",
         });
       } else {
         throw new Error(result.error);
@@ -197,8 +217,8 @@ const ConversationSent = () => {
 
   // Combine messages and replies chronologically
   // For visitor: their sent messages are on the RIGHT (green), replies from resident on LEFT (gray)
-  const allMessages = [
-    ...conversationData.messages.map(m => ({ type: 'sent' as const, data: m, date: new Date(m.created_at) })),
+  const allMessagesInConversation = [
+    ...allSentMessages.map(m => ({ type: 'sent' as const, data: m, date: new Date(m.created_at) })),
     ...conversationData.replies.map(r => ({ type: 'reply' as const, data: r, date: new Date(r.created_at) }))
   ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
@@ -206,7 +226,7 @@ const ConversationSent = () => {
   const messagesWithDateSeparators: { type: 'separator' | 'sent' | 'reply'; data: any; date: Date }[] = [];
   let lastDateStr = "";
   
-  allMessages.forEach((msg) => {
+  allMessagesInConversation.forEach((msg) => {
     const dateStr = format(msg.date, "yyyy-MM-dd");
     if (dateStr !== lastDateStr) {
       messagesWithDateSeparators.push({ type: 'separator', data: { label: formatDateSeparator(msg.date) }, date: msg.date });
