@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Ban, Home, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Ban, Home, Send, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
 import { Loader2 } from "lucide-react";
 import { SystemNotificationsSection } from "@/components/messages/SystemNotificationsSection";
+import NewMessageToAnrDialog from "@/components/messages/NewMessageToAnrDialog";
 type StatusFilter = "all" | "unread" | "read";
 type DateFilter = "all" | "today" | "week" | "month";
 interface GroupedConversation {
@@ -46,6 +47,7 @@ const Messages = () => {
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string; type: 'received' | 'sent' } | null>(null);
+  const [showNewMessageDialog, setShowNewMessageDialog] = useState(false);
 
   // Determine if user is resident or connected visitor
   useEffect(() => {
@@ -243,18 +245,31 @@ const Messages = () => {
   return <div className="min-h-screen pb-20">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} className="text-primary-foreground hover:bg-primary-foreground/10">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h1 className="text-lg font-semibold">
-              {isResident ? "Messages reçus" : "Mes messages"}
-            </h1>
-            {!isResident && businessCard && <p className="text-primary-foreground/70 text-xs">
-                Connecté en tant que {businessCard.first_name} {businessCard.last_name}
-              </p>}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} className="text-primary-foreground hover:bg-primary-foreground/10">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-semibold">
+                {isResident ? "Messages reçus" : "Mes messages"}
+              </h1>
+              {!isResident && businessCard && <p className="text-primary-foreground/70 text-xs">
+                  Connecté en tant que {businessCard.first_name} {businessCard.last_name}
+                </p>}
+            </div>
           </div>
+          {/* New message button - only for non-residents (visitors) */}
+          {!isResident && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setShowNewMessageDialog(true)}
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -528,6 +543,12 @@ const Messages = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* New message to ANR dialog */}
+      <NewMessageToAnrDialog 
+        open={showNewMessageDialog} 
+        onOpenChange={setShowNewMessageDialog} 
+      />
 
       <BottomNav />
     </div>;
