@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUserNotifications } from "@/hooks/useUserNotifications";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 
 export function NotificationBell() {
   const navigate = useNavigate();
@@ -23,6 +24,25 @@ export function NotificationBell() {
     clearNewNotificationFlag 
   } = useUserNotifications();
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      if (roles && roles.length > 0) {
+        setIsAdmin(true);
+      }
+    };
+    checkAdminRole();
+  }, []);
 
   // When popover opens, clear the new notification flag
   useEffect(() => {
@@ -44,15 +64,28 @@ export function NotificationBell() {
     }
   };
 
-  const handleNotificationClick = (notif: typeof notifications[0]) => {
+  const handleNotificationClick = async (notif: typeof notifications[0]) => {
     if (!notif.is_read) {
       markAsRead(notif.id);
     }
     setOpen(false);
     
-    // Navigate based on notification type and data
     const data = notif.data as Record<string, unknown> | null;
     
+    // If admin and it's a communication_reply, go to admin conversation page
+    if (isAdmin && notif.type === "communication_reply" && data?.communication_id) {
+      // Get the user_id from the notification data or the reply
+      const userId = data.user_id as string;
+      if (userId) {
+        navigate(`/admin/communications/conversation/${data.communication_id}/${userId}`);
+        return;
+      }
+      // Fallback: go to admin communications
+      navigate('/admin/communications');
+      return;
+    }
+    
+    // Regular user behavior
     if (notif.type === "admin_communication" && data?.communication_id) {
       navigate(`/notification/communication/${data.communication_id}`);
     } else if (notif.type === "communication_reply" && data?.communication_id) {
@@ -60,7 +93,6 @@ export function NotificationBell() {
     } else if (data?.conversation_id) {
       navigate(`/conversation/${data.conversation_id}`);
     } else {
-      // Default: go to messages
       navigate("/messages");
     }
   };

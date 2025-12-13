@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ interface ANROption {
 type TargetMode = 'all' | 'by_anr' | 'by_name';
 
 export default function Communications() {
+  const navigate = useNavigate();
   const { communications, loading, sendCommunication, toggleActive, deleteCommunication, fetchReplies, adminReplyToUser } = useAdminCommunications();
   
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -701,54 +703,16 @@ export default function Communications() {
                         </div>
                         <p className="text-sm bg-muted/50 rounded-lg p-3">{reply.reply_text}</p>
                         
-                        {/* Admin reply button */}
+                        {/* Voir la conversation button */}
                         <div className="flex justify-end pt-2">
-                          <Dialog open={replyDialogOpen === reply.id} onOpenChange={(open) => {
-                            setReplyDialogOpen(open ? reply.id : null);
-                            if (!open) setAdminReplyText('');
-                          }}>
-                            <DialogTrigger asChild>
-                              <Button size="sm" className="gap-1">
-                                <Send className="h-3 w-3" />
-                                Répondre
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Répondre à {reply.user_name || 'Utilisateur'}</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4 py-4">
-                                <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                                  <p className="text-xs text-muted-foreground mb-1">Message original :</p>
-                                  <p>{reply.reply_text}</p>
-                                </div>
-                                <Textarea
-                                  value={adminReplyText}
-                                  onChange={(e) => setAdminReplyText(e.target.value)}
-                                  placeholder="Votre réponse..."
-                                  rows={4}
-                                />
-                                <Button 
-                                  className="w-full gap-2"
-                                  disabled={!adminReplyText.trim() || sendingReply}
-                                  onClick={async () => {
-                                    setSendingReply(true);
-                                    const success = await adminReplyToUser(reply.user_id, reply.communication_id, adminReplyText);
-                                    setSendingReply(false);
-                                    if (success) {
-                                      toast({ title: "Réponse envoyée", description: `Votre réponse a été envoyée à ${reply.user_name}` });
-                                      setReplyDialogOpen(null);
-                                      setAdminReplyText('');
-                                      loadAllReplies();
-                                    }
-                                  }}
-                                >
-                                  <Send className="h-4 w-4" />
-                                  {sendingReply ? 'Envoi...' : 'Envoyer'}
-                                </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
+                          <Button 
+                            size="sm" 
+                            className="gap-1"
+                            onClick={() => navigate(`/admin/communications/conversation/${reply.communication_id}/${reply.user_id}`)}
+                          >
+                            <Eye className="h-3 w-3" />
+                            Voir la conversation
+                          </Button>
                         </div>
                       </div>
                     ))}

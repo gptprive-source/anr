@@ -82,6 +82,7 @@ import AdminDailyUsage from "./pages/admin/DailyUsage";
 import AdminDoorModules from "./pages/admin/DoorModules";
 import AdminReferrals from "./pages/admin/Referrals";
 import AdminCommunications from "./pages/admin/Communications";
+import AdminConversation from "./pages/admin/AdminConversation";
 const queryClient = new QueryClient();
 const AppContent = () => {
   useAudioUnlock();
@@ -201,6 +202,7 @@ const AppContent = () => {
           <Route path="/admin/rgpd/incidents" element={<AdminRGPDIncidents />} />
           <Route path="/admin/referrals" element={<AdminReferrals />} />
           <Route path="/admin/communications" element={<AdminCommunications />} />
+          <Route path="/admin/communications/conversation/:communicationId/:userId" element={<AdminConversation />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>
