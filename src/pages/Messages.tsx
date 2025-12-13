@@ -49,6 +49,7 @@ const Messages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string; type: 'received' | 'sent' } | null>(null);
   const [showNewMessageDialog, setShowNewMessageDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
   
   // Check if user can send new messages (has active subscription)
   const canSendNewMessages = limits.hasActiveSubscription;
@@ -70,13 +71,15 @@ const Messages = () => {
         setIsResident(true);
       } else {
         setIsResident(false);
+        // If not resident, default to sent tab
+        setActiveTab("sent");
       }
       setLoadingRole(false);
     };
     checkUserRole();
   }, [user]);
 
-  // Hooks for resident (received messages)
+  // Hooks for resident (received messages) - always load to get data
   const {
     messages,
     unreadCount,
@@ -90,7 +93,7 @@ const Messages = () => {
   } = useBlockedVisitors();
   const [showBlocked, setShowBlocked] = useState(false);
 
-  // Hooks for visitor (sent messages)
+  // Hooks for visitor (sent messages) - always load for all users
   const {
     conversations: sentConversations,
     unreadRepliesCount,
@@ -98,6 +101,9 @@ const Messages = () => {
     businessCard,
     deleteConversation
   } = useSentMessages();
+  
+  // Check if user has both roles (resident AND has sent messages)
+  const hasBothRoles = isResident && sentConversations.length > 0;
 
   // Group messages by visitor (for residents)
   const groupedConversations = useMemo(() => {
@@ -190,14 +196,14 @@ const Messages = () => {
       return true;
     });
   }, [sentConversations, statusFilter, dateFilter, searchQuery]);
-  const loading = loadingRole || (isResident ? loadingReceived : loadingSent);
+  const loading = loadingRole || loadingReceived || loadingSent;
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>;
   }
 
-  // Connected visitor without messages sent yet
+  // Connected visitor without messages sent yet AND not a resident
   if (isResident === false && sentConversations.length === 0) {
     return <div className="min-h-screen pb-20">
         <div className="max-w-2xl mx-auto p-4 space-y-4">
@@ -243,9 +249,16 @@ const Messages = () => {
         </div>
       </div>;
   }
-  const totalMessages = isResident ? messages.length : sentConversations.reduce((acc, c) => acc + c.totalMessages, 0);
-  const totalConversations = isResident ? groupedConversations.length : sentConversations.length;
-  const displayUnreadCount = isResident ? unreadCount : unreadRepliesCount;
+
+  // Calculate stats based on active tab or combined
+  const totalReceivedMessages = messages.length;
+  const totalSentMessages = sentConversations.reduce((acc, c) => acc + c.totalMessages, 0);
+  const totalReceivedConversations = groupedConversations.length;
+  const totalSentConversations = sentConversations.length;
+  
+  const displayStats = activeTab === "received" 
+    ? { conversations: totalReceivedConversations, unread: unreadCount, total: totalReceivedMessages }
+    : { conversations: totalSentConversations, unread: unreadRepliesCount, total: totalSentMessages };
   return <div className="min-h-screen pb-20">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
@@ -256,10 +269,10 @@ const Messages = () => {
             </Button>
             <div>
               <h1 className="text-lg font-semibold">
-                {isResident ? "Messages reçus" : "Mes messages"}
+                {hasBothRoles ? "Messagerie" : (isResident ? "Messages reçus" : "Mes messages")}
               </h1>
-              {!isResident && businessCard && <p className="text-primary-foreground/70 text-xs">
-                  Connecté en tant que {businessCard.first_name} {businessCard.last_name}
+              {activeTab === "sent" && businessCard && <p className="text-primary-foreground/70 text-xs">
+                  Envoyés en tant que {businessCard.first_name} {businessCard.last_name}
                 </p>}
             </div>
           </div>
@@ -316,7 +329,7 @@ const Messages = () => {
                 <Inbox className="w-5 h-5 text-primary" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-foreground">{totalConversations}</p>
+            <p className="text-2xl font-bold text-foreground">{displayStats.conversations}</p>
             <span className="text-xs text-muted-foreground">Conversations</span>
           </Card>
           <Card className="p-4 text-center">
@@ -325,8 +338,8 @@ const Messages = () => {
                 <MailClosed className="w-5 h-5 text-destructive" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-destructive">{displayUnreadCount}</p>
-            <span className="text-xs text-muted-foreground">{isResident ? "Non lus" : "Réponses"}</span>
+            <p className="text-2xl font-bold text-destructive">{displayStats.unread}</p>
+            <span className="text-xs text-muted-foreground">{activeTab === "received" ? "Non lus" : "Réponses"}</span>
           </Card>
           <Card className="p-4 text-center">
             <div className="flex items-center justify-center mb-2">
@@ -334,10 +347,36 @@ const Messages = () => {
                 <MailOpen className="w-5 h-5 text-success" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-success">{totalMessages}</p>
+            <p className="text-2xl font-bold text-success">{displayStats.total}</p>
             <span className="text-xs text-muted-foreground">Total msgs</span>
           </Card>
         </div>
+
+        {/* Tabs for users with both roles */}
+        {hasBothRoles && (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "received" | "sent")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="received" className="gap-2">
+                <Inbox className="w-4 h-4" />
+                Reçus
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-5 text-xs">
+                    {unreadCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="sent" className="gap-2">
+                <Send className="w-4 h-4" />
+                Envoyés
+                {unreadRepliesCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-5 text-xs">
+                    {unreadRepliesCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
 
         {/* Filters */}
         <div className="space-y-3">
@@ -405,11 +444,11 @@ const Messages = () => {
           </div>}
 
 
-        {/* Conversations list - Resident view */}
-        {isResident && (filteredConversations.length === 0 ? <div className="text-center py-12">
+        {/* Conversations list - Received messages (Resident view) */}
+        {activeTab === "received" && isResident && (filteredConversations.length === 0 ? <div className="text-center py-12">
               <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground">
-                {groupedConversations.length === 0 ? "Aucun message" : "Aucun résultat"}
+                {groupedConversations.length === 0 ? "Aucun message reçu" : "Aucun résultat"}
               </p>
             </div> : <div className="space-y-4">
               {filteredConversations.map(conv => {
@@ -475,10 +514,10 @@ const Messages = () => {
         })}
             </div>)}
 
-        {/* Conversations list - Visitor view (sent messages) */}
-        {!isResident && (filteredSentConversations.length === 0 ? <div className="text-center py-12">
+        {/* Conversations list - Sent messages (Visitor view) */}
+        {activeTab === "sent" && (filteredSentConversations.length === 0 ? <div className="text-center py-12">
               <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">Aucun résultat</p>
+              <p className="text-muted-foreground">Aucun message envoyé</p>
             </div> : <div className="space-y-4">
               {filteredSentConversations.map(conv => {
           const preview = conv.lastMessage ? conv.lastMessage.substring(0, 50) + (conv.lastMessage.length > 50 ? "..." : "") : "";
