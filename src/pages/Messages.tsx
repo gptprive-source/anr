@@ -259,17 +259,15 @@ const Messages = () => {
                 </p>}
             </div>
           </div>
-          {/* New message button - only for non-residents (visitors) */}
-          {!isResident && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setShowNewMessageDialog(true)}
-              className="text-primary-foreground hover:bg-primary-foreground/10"
-            >
-              <Plus className="w-5 h-5" />
-            </Button>
-          )}
+          {/* New message button */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setShowNewMessageDialog(true)}
+            className="text-primary-foreground hover:bg-primary-foreground/10"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
         </div>
       </div>
 
