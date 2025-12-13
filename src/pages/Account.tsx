@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText, Pencil, Lock, Gift } from "lucide-react";
+import { LogOut, User, Mail, Phone, ChevronRight, Loader2, Trash2, CreditCard, Calendar, ExternalLink, MapPin, Home, Shield, Download, FileText, Pencil, Lock, Gift, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -226,11 +226,22 @@ const Account = () => {
   };
   const statusInfo = getSubscriptionStatus();
   return <div className="min-h-screen pb-20">
-      <div className="max-w-4xl mx-auto p-4 space-y-6">
-        {/* Header */}
-        <div className="pt-4">
-          <h1 className="text-2xl font-bold text-foreground">Mon compte Interphone</h1>
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/dashboard")}
+            className="text-primary-foreground hover:bg-primary-foreground/10"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="text-lg font-semibold">Mon compte</h1>
         </div>
+      </div>
+      
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
 
         {/* Profile card */}
         <Card className="p-6">

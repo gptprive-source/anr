@@ -262,24 +262,31 @@ const Messages = () => {
 
   return (
     <div className="min-h-screen pb-20">
-      <div className="max-w-2xl mx-auto p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center gap-4 pt-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/dashboard")}
+            className="text-primary-foreground hover:bg-primary-foreground/10"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-purple-500" />
+            <h1 className="text-lg font-semibold">
               {isResident ? "Messages reçus" : "Mes messages"}
             </h1>
             {!isResident && businessCard && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-primary-foreground/70 text-xs">
                 Connecté en tant que {businessCard.first_name} {businessCard.last_name}
               </p>
             )}
           </div>
         </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto p-4 space-y-4">
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">

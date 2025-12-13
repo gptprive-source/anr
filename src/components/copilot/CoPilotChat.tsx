@@ -171,23 +171,11 @@ const CoPilotChat = () => {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  if (!user) return null;
+  // CoPilot is now accessed from dashboard, not floating button
+  if (!user || !isOpen) return null;
 
   return (
     <>
-      {/* Toggle Button - Top Right */}
-      <Button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "fixed top-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg",
-          "bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600",
-          "transition-all duration-300",
-          isOpen && "scale-0 opacity-0"
-        )}
-        size="icon"
-      >
-        <Sparkles className="h-5 w-5 text-white" />
-      </Button>
 
       {/* Chat Window */}
       <div

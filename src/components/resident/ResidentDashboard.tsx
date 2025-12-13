@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, HelpCircle, MessageSquare, DoorOpen, ShoppingCart, Receipt } from "lucide-react";
+import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, HelpCircle, MessageSquare, DoorOpen, ShoppingCart, Receipt, Sparkles, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -11,6 +11,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { useSupportChat } from "@/contexts/SupportChatContext";
 import logoAnr from "@/assets/logo-anr.png";
 interface Resident {
   id: string;
@@ -46,6 +47,7 @@ const ResidentDashboard = () => {
   const [togglingMute, setTogglingMute] = useState(false);
   const [currentUserName, setCurrentUserName] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const [copilotEnabled, setCopilotEnabled] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const {
@@ -60,6 +62,23 @@ const ResidentDashboard = () => {
   const {
     unreadCount: unreadMessagesCount
   } = useVisitorMessages(habitationData?.id || "");
+  const { setIsOpen: setSupportChatOpen } = useSupportChat();
+  
+  // Check if user has copilot enabled (pro company)
+  useEffect(() => {
+    const checkCopilot = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("pro_company_roles")
+        .select("company:pro_companies(copilot_enabled)")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data?.company && (data.company as any).copilot_enabled) {
+        setCopilotEnabled(true);
+      }
+    };
+    checkCopilot();
+  }, [user]);
   useEffect(() => {
     if (user) {
       fetchHabitationData();
@@ -281,6 +300,8 @@ const ResidentDashboard = () => {
           <QuickAction icon={<ShoppingCart className="w-6 h-6" />} label="Boutique" onClick={() => navigate("/shop")} color="pink" />
           {flags.doorOpeningEnabled && <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />}
           {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} color="green" />}
+          {copilotEnabled && <QuickAction icon={<Sparkles className="w-6 h-6" />} label="Co-Pilot" onClick={() => navigate("/pro")} color="cyan" />}
+          <QuickAction icon={<Mail className="w-6 h-6" />} label="Support" onClick={() => setSupportChatOpen(true)} color="blue" />
         </div>
 
         {/* Test Call Button */}
