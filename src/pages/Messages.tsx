@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Ban, Home, Send } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Ban, Home, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +86,8 @@ const Messages = () => {
     conversations: sentConversations,
     unreadRepliesCount,
     loading: loadingSent,
-    businessCard
+    businessCard,
+    deleteConversation
   } = useSentMessages();
 
   // Group messages by visitor (for residents)
@@ -465,6 +466,17 @@ const Messages = () => {
                           </div>
                         </div>
 
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive hover:bg-destructive/10 flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteConversation(conv.habitationId);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                         <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                       </div>
                     </CardContent>

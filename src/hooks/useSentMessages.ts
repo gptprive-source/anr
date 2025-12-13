@@ -225,6 +225,50 @@ export const useSentMessages = () => {
     return { messages: habMessages, replies: habReplies };
   };
 
+  // Delete a sent message
+  const deleteSentMessage = async (messageId: string) => {
+    try {
+      const { error } = await (supabase
+        .from("visitor_messages" as any)
+        .delete()
+        .eq("id", messageId) as any);
+      
+      if (error) throw error;
+      
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      // Refresh conversations
+      fetchSentMessages();
+      return { success: true };
+    } catch (error: any) {
+      console.error("[useSentMessages] Error deleting message:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Delete an entire conversation (all messages to a habitation)
+  const deleteConversation = async (habitationId: string) => {
+    try {
+      const habMessages = messages.filter(m => m.habitation_id === habitationId);
+      const messageIds = habMessages.map(m => m.id);
+      
+      if (messageIds.length > 0) {
+        const { error } = await (supabase
+          .from("visitor_messages" as any)
+          .delete()
+          .in("id", messageIds) as any);
+        
+        if (error) throw error;
+      }
+      
+      setMessages(prev => prev.filter(m => m.habitation_id !== habitationId));
+      setConversations(prev => prev.filter(c => c.habitationId !== habitationId));
+      return { success: true };
+    } catch (error: any) {
+      console.error("[useSentMessages] Error deleting conversation:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
   useEffect(() => {
     fetchSentMessages();
   }, [user]);
@@ -271,6 +315,8 @@ export const useSentMessages = () => {
     businessCard,
     markReplyAsRead,
     getConversationMessages,
+    deleteSentMessage,
+    deleteConversation,
     refetch: fetchSentMessages,
   };
 };
