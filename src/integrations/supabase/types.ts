@@ -2855,18 +2855,21 @@ export type Database = {
         Row: {
           communication_id: string
           id: string
+          is_hidden: boolean | null
           read_at: string
           user_id: string
         }
         Insert: {
           communication_id: string
           id?: string
+          is_hidden?: boolean | null
           read_at?: string
           user_id: string
         }
         Update: {
           communication_id?: string
           id?: string
+          is_hidden?: boolean | null
           read_at?: string
           user_id?: string
         }
