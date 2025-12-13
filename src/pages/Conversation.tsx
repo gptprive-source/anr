@@ -352,7 +352,7 @@ const Conversation = () => {
   return <div className="min-h-screen flex flex-col pb-16">
       {/* Sticky Header with Contact Info */}
       <div className="sticky top-0 z-10 bg-background border-b">
-        <div className="max-w-2xl mx-auto w-full p-4 space-y-3 bg-primary">
+        <div className="max-w-2xl mx-auto w-full p-4 space-y-3 bg-[#f4e8e8]">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
               <ArrowLeft className="w-5 h-5" />
@@ -430,7 +430,7 @@ const Conversation = () => {
       </div>
 
       {/* Messages Area - extra padding for fixed input area + footer */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-40 space-y-3 max-w-2xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-40 space-y-3 max-w-2xl mx-auto w-full bg-white">
         {messagesWithDateSeparators.map((item, index) => {
         if (item.type === 'separator') {
           return <div key={`sep-${index}`} className="flex justify-center my-3">
