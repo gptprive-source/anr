@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 export interface AdminCommunication {
   id: string;
@@ -154,6 +155,27 @@ export function useAdminCommunications() {
 
   useEffect(() => {
     fetchCommunications();
+
+    // Real-time subscription for new replies
+    const channel = supabase
+      .channel("admin-communication-replies")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "communication_replies",
+        },
+        () => {
+          // Refetch communications to update reply counts
+          fetchCommunications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return {
@@ -172,12 +194,18 @@ export function useUserCommunications() {
   const [communicationReplies, setCommunicationReplies] = useState<CommunicationReply[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hasNewCommunication, setHasNewCommunication] = useState(false);
   const { toast } = useToast();
+  const { playNotificationSound, vibrate, stopVibrate } = useNotificationSound();
+  const vibrationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
 
   const fetchCommunications = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      
+      currentUserIdRef.current = user.id;
 
       // Fetch communications targeted to this user
       const { data: comms, error } = await supabase
@@ -204,6 +232,9 @@ export function useUserCommunications() {
 
       setCommunications(userComms);
       setUnreadCount(unread);
+      if (unread > 0) {
+        setHasNewCommunication(true);
+      }
 
       // Fetch user's own replies to these communications
       if (userComms.length > 0) {
@@ -246,6 +277,9 @@ export function useUserCommunications() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Get the communication to find the sender
+      const comm = communications.find(c => c.id === communicationId);
+
       const { data, error } = await supabase
         .from('communication_replies')
         .insert({
@@ -261,6 +295,34 @@ export function useUserCommunications() {
       // Add the new reply to state
       if (data) {
         setCommunicationReplies(prev => [...prev, data]);
+      }
+
+      // Create notification for the admin (sender of the communication)
+      if (comm?.sender_id && comm.sender_id !== user.id) {
+        // Get user profile for notification message
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', user.id)
+          .single();
+
+        const userName = profile 
+          ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Un utilisateur'
+          : 'Un utilisateur';
+
+        await supabase
+          .from('user_notifications')
+          .insert({
+            user_id: comm.sender_id,
+            type: 'communication_reply',
+            title: 'Nouvelle réponse',
+            message: `${userName} a répondu à votre communication "${comm.title}"`,
+            data: { 
+              communication_id: communicationId,
+              reply_id: data.id,
+              user_name: userName
+            }
+          });
       }
 
       toast({
@@ -280,17 +342,80 @@ export function useUserCommunications() {
     }
   };
 
+  // Start vibration when there are unread communications
+  useEffect(() => {
+    if (hasNewCommunication && unreadCount > 0) {
+      vibrationIntervalRef.current = setInterval(() => {
+        vibrate([100, 50, 100]);
+      }, 3000);
+
+      return () => {
+        if (vibrationIntervalRef.current) {
+          clearInterval(vibrationIntervalRef.current);
+          vibrationIntervalRef.current = null;
+        }
+        stopVibrate();
+      };
+    }
+  }, [hasNewCommunication, unreadCount, vibrate, stopVibrate]);
+
+  // Real-time subscription for new communications
   useEffect(() => {
     fetchCommunications();
-  }, []);
+
+    const channel = supabase
+      .channel("user-communications")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "admin_communications",
+        },
+        async (payload) => {
+          const newComm = payload.new as any;
+          const userId = currentUserIdRef.current;
+          
+          // Check if this communication is for this user
+          if (userId && (newComm.target_type === 'all' || newComm.target_user_ids?.includes(userId))) {
+            setCommunications(prev => [newComm, ...prev]);
+            setUnreadCount(prev => prev + 1);
+            setHasNewCommunication(true);
+            
+            // Play sound and vibrate
+            playNotificationSound();
+            vibrate([200, 100, 200, 100, 200]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      if (vibrationIntervalRef.current) {
+        clearInterval(vibrationIntervalRef.current);
+      }
+    };
+  }, [playNotificationSound, vibrate]);
+
+  const clearNewCommunicationFlag = () => {
+    setHasNewCommunication(false);
+    stopVibrate();
+    if (vibrationIntervalRef.current) {
+      clearInterval(vibrationIntervalRef.current);
+      vibrationIntervalRef.current = null;
+    }
+  };
 
   return {
     communications,
     communicationReplies,
     unreadCount,
+    hasNewCommunication,
     loading,
     markAsRead,
     sendReply,
+    clearNewCommunicationFlag,
     refetch: fetchCommunications
   };
 }

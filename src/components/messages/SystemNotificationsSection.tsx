@@ -32,11 +32,20 @@ const getNotificationColor = (type: string) => {
 
 export function SystemNotificationsSection() {
   const navigate = useNavigate();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useUserNotifications();
+  const { 
+    notifications, 
+    unreadCount, 
+    hasNewNotification,
+    markAsRead, 
+    markAllAsRead,
+    clearNewNotificationFlag 
+  } = useUserNotifications();
   const { 
     communications, 
     unreadCount: unreadCommsCount, 
-    markAsRead: markCommAsRead
+    hasNewCommunication,
+    markAsRead: markCommAsRead,
+    clearNewCommunicationFlag
   } = useUserCommunications();
 
   const totalUnread = unreadCount + unreadCommsCount;
@@ -48,11 +57,13 @@ export function SystemNotificationsSection() {
 
   const handleOpenComm = (comm: typeof communications[0]) => {
     markCommAsRead(comm.id);
+    clearNewCommunicationFlag();
     navigate(`/notification/communication/${comm.id}`);
   };
 
   const handleOpenNotif = (notif: typeof notifications[0]) => {
     markAsRead(notif.id);
+    clearNewNotificationFlag();
     navigate(`/notification/notification/${notif.id}`);
   };
 
