@@ -54,9 +54,9 @@ export default function Communications() {
   const [anrSearch, setAnrSearch] = useState('');
   const [sending, setSending] = useState(false);
   
-  const [selectedComm, setSelectedComm] = useState<string | null>(null);
   const [replies, setReplies] = useState<CommunicationReply[]>([]);
   const [loadingReplies, setLoadingReplies] = useState(false);
+  const [repliesLoaded, setRepliesLoaded] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -184,13 +184,20 @@ export default function Communications() {
     }
   };
 
-  const loadReplies = async (commId: string) => {
-    setSelectedComm(commId);
+  const loadAllReplies = async () => {
     setLoadingReplies(true);
-    const data = await fetchReplies(commId);
+    const data = await fetchReplies();
     setReplies(data);
     setLoadingReplies(false);
+    setRepliesLoaded(true);
   };
+
+  // Load all replies when switching to replies tab or when communications change
+  useEffect(() => {
+    if (!loading && communications.length > 0 && !repliesLoaded) {
+      loadAllReplies();
+    }
+  }, [loading, communications.length, repliesLoaded]);
 
   const filteredUsers = users.filter(u => 
     !userSearch || 
@@ -610,15 +617,6 @@ export default function Communications() {
                                 <ToggleLeft className="h-4 w-4" />
                               )}
                             </Button>
-                            {comm.allow_reply && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => loadReplies(comm.id)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -658,34 +656,44 @@ export default function Communications() {
           
           <TabsContent value="replies">
             <Card>
-              <CardHeader>
-                <CardTitle>Réponses reçues</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  Réponses reçues
+                  {replies.length > 0 && (
+                    <Badge variant="default" className="bg-blue-500">{replies.length}</Badge>
+                  )}
+                </CardTitle>
+                <Button variant="outline" size="sm" onClick={loadAllReplies} disabled={loadingReplies}>
+                  Actualiser
+                </Button>
               </CardHeader>
               <CardContent>
-                {!selectedComm ? (
-                  <p className="text-center py-8 text-muted-foreground">
-                    Sélectionnez une communication pour voir les réponses
-                  </p>
-                ) : loadingReplies ? (
+                {loadingReplies ? (
                   <p className="text-center py-8 text-muted-foreground">Chargement...</p>
                 ) : replies.length === 0 ? (
                   <p className="text-center py-8 text-muted-foreground">
-                    Aucune réponse pour cette communication
+                    Aucune réponse reçue
                   </p>
                 ) : (
                   <div className="space-y-4">
                     {replies.map(reply => (
-                      <div key={reply.id} className="p-4 border rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">
-                            {reply.user_name || 'Utilisateur'}
-                          </span>
+                      <div key={reply.id} className="p-4 border rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-primary" />
+                            <span className="font-medium">
+                              {reply.user_name || 'Utilisateur'}
+                            </span>
+                          </div>
                           <span className="text-xs text-muted-foreground">
                             {format(new Date(reply.created_at), 'dd MMM yyyy à HH:mm', { locale: fr })}
                           </span>
                         </div>
-                        <p className="text-sm">{reply.reply_text}</p>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          En réponse à : <span className="font-medium text-foreground">{reply.communication_title}</span>
+                        </div>
+                        <p className="text-sm bg-muted/50 rounded-lg p-3">{reply.reply_text}</p>
                       </div>
                     ))}
                   </div>
