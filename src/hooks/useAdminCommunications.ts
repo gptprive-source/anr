@@ -169,6 +169,7 @@ export function useAdminCommunications() {
 
 export function useUserCommunications() {
   const [communications, setCommunications] = useState<AdminCommunication[]>([]);
+  const [communicationReplies, setCommunicationReplies] = useState<CommunicationReply[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -203,6 +204,18 @@ export function useUserCommunications() {
 
       setCommunications(userComms);
       setUnreadCount(unread);
+
+      // Fetch user's own replies to these communications
+      if (userComms.length > 0) {
+        const { data: replies } = await supabase
+          .from('communication_replies')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('communication_id', userComms.map(c => c.id))
+          .order('created_at', { ascending: true });
+        
+        setCommunicationReplies(replies || []);
+      }
     } catch (error) {
       console.error('Error fetching user communications:', error);
     } finally {
@@ -233,15 +246,22 @@ export function useUserCommunications() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('communication_replies')
         .insert({
           communication_id: communicationId,
           user_id: user.id,
           reply_text: replyText
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Add the new reply to state
+      if (data) {
+        setCommunicationReplies(prev => [...prev, data]);
+      }
 
       toast({
         title: "Réponse envoyée",
@@ -266,6 +286,7 @@ export function useUserCommunications() {
 
   return {
     communications,
+    communicationReplies,
     unreadCount,
     loading,
     markAsRead,
