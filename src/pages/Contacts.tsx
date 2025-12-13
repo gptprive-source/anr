@@ -171,12 +171,12 @@ const Contacts = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Users className="w-6 h-6" />
+      <div className="bg-card p-6 shadow-neumorphic-sm">
+        <h1 className="text-2xl font-bold flex items-center gap-2 text-foreground">
+          <Users className="w-6 h-6 text-primary" />
           Mes contacts ANR
         </h1>
-        <p className="text-white/80 text-sm mt-1">
+        <p className="text-muted-foreground text-sm mt-1">
           {contacts.length} contact{contacts.length !== 1 ? "s" : ""} enregistré{contacts.length !== 1 ? "s" : ""}
         </p>
       </div>
@@ -199,7 +199,6 @@ const Contacts = () => {
             variant={filter === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("all")}
-            className={filter !== "all" ? "border border-blue-500" : ""}
           >
             <Users className="w-4 h-4 mr-1" />
             Tous
@@ -208,57 +207,51 @@ const Contacts = () => {
             variant={filter === "favorites" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("favorites")}
-            className={filter !== "favorites" ? "border border-yellow-500" : ""}
           >
-            <Star className="w-4 h-4 mr-1 text-yellow-500" />
+            <Star className="w-4 h-4 mr-1" />
             Favoris
           </Button>
           <Button
             variant={filter === "companies" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("companies")}
-            className={filter !== "companies" ? "border border-orange-500" : ""}
           >
-            <Building2 className="w-4 h-4 mr-1 text-orange-500" />
+            <Building2 className="w-4 h-4 mr-1" />
             Entreprises
           </Button>
           <Button
             variant={filter === "individuals" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter("individuals")}
-            className={filter !== "individuals" ? "border border-purple-500" : ""}
           >
-            <User className="w-4 h-4 mr-1 text-purple-500" />
+            <User className="w-4 h-4 mr-1" />
             Particuliers
           </Button>
         </div>
 
         {/* Contacts List */}
         {filteredContacts.length === 0 ? (
-          <Card className="p-8 text-center border border-blue-500">
-            <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-blue-500" />
+          <Card className="p-8 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 shadow-neumorphic-inset">
+              <Users className="w-8 h-8 text-primary" />
             </div>
             <p className="text-foreground font-medium">
               {searchQuery || filter !== "all"
                 ? "Aucun contact trouvé"
                 : "Aucun contact enregistré"}
             </p>
-            <p className="text-sm text-foreground/70 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Ajoutez des contacts depuis vos messages visiteurs
             </p>
           </Card>
         ) : (
           <div className="space-y-3">
-            {filteredContacts.map((contact, index) => {
-              // Cycle through colors: blue, orange, yellow, purple, pink, green, cyan
-              const colorCycle = ["border-blue-500", "border-orange-500", "border-yellow-500", "border-purple-500", "border-pink-500", "border-green-500", "border-cyan-500"];
-              const borderColor = colorCycle[index % colorCycle.length];
+            {filteredContacts.map((contact) => {
               return (
               <Card 
                 key={contact.id} 
                 ref={(el) => { contactRefs.current[contact.id] = el; }}
-                className={`p-4 border ${borderColor} transition-all`}
+                className="p-4 transition-all hover:shadow-neumorphic-pressed"
               >
                 <div className="flex items-start gap-3">
                   {/* Avatar */}

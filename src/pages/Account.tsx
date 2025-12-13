@@ -17,6 +17,8 @@ import GrantedAccessSection from "@/components/resident/GrantedAccessSection";
 import ChangePlanDialog from "@/components/account/ChangePlanDialog";
 import ChangeEmailDialog from "@/components/account/ChangeEmailDialog";
 import ChangePhoneDialog from "@/components/account/ChangePhoneDialog";
+import { Card } from "@/components/ui/card";
+
 interface ProfileData {
   first_name: string | null;
   last_name: string | null;
@@ -34,6 +36,7 @@ interface HabitationData {
   anr_address: string;
   is_owner: boolean;
 }
+
 const Account = () => {
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
@@ -50,16 +53,9 @@ const Account = () => {
   const [showChangePhoneDialog, setShowChangePhoneDialog] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const {
-    user,
-    signOut
-  } = useAuth();
-  const {
-    isAdmin
-  } = useAdminAuth();
-  const {
-    toast
-  } = useToast();
+  const { user, signOut } = useAuth();
+  const { isAdmin } = useAdminAuth();
+  const { toast } = useToast();
 
   // Handle plan change success
   useEffect(() => {
@@ -84,9 +80,7 @@ const Account = () => {
           console.error("Plan change verification error:", err);
         }
 
-        // Clear URL params
         setSearchParams({});
-        // Refresh data
         if (user) fetchData();
       } else if (planChanged === "cancelled") {
         sonnerToast.info("Changement de plan annulé");
@@ -102,36 +96,40 @@ const Account = () => {
       fetchData();
     }
   }, [user]);
+
   const fetchData = async () => {
     try {
-      // Fetch profile
-      const {
-        data: profileData,
-        error: profileError
-      } = await supabase.from("profiles").select("first_name, last_name, phone_number").eq("id", user?.id).single();
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("first_name, last_name, phone_number")
+        .eq("id", user?.id)
+        .single();
       if (profileError) throw profileError;
       setProfile(profileData);
       setPhoneNumber(profileData.phone_number || "");
 
-      // Fetch subscription
-      const {
-        data: subData
-      } = await supabase.from("subscriptions").select("status, current_period_end, cancel_at_period_end, plan_type").eq("user_id", user?.id).order("created_at", {
-        ascending: false
-      }).limit(1).maybeSingle();
+      const { data: subData } = await supabase
+        .from("subscriptions")
+        .select("status, current_period_end, cancel_at_period_end, plan_type")
+        .eq("user_id", user?.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
       setSubscription(subData);
 
-      // Fetch habitation
-      const {
-        data: residentData
-      } = await supabase.from("residents").select(`
+      const { data: residentData } = await supabase
+        .from("residents")
+        .select(`
           is_owner,
           habitation:habitations (
             id,
             name,
             anr:anrs (address)
           )
-        `).eq("user_id", user?.id).eq("status", "verified").maybeSingle();
+        `)
+        .eq("user_id", user?.id)
+        .eq("status", "verified")
+        .maybeSingle();
       if (residentData?.habitation) {
         const hab = residentData.habitation as any;
         setHabitation({
@@ -147,6 +145,7 @@ const Account = () => {
       setLoading(false);
     }
   };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
@@ -161,7 +160,6 @@ const Account = () => {
       
       if (response.error) throw response.error;
       
-      // Handle PDF binary response
       const pdfBlob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement("a");
@@ -187,12 +185,17 @@ const Account = () => {
       setExportLoading(false);
     }
   };
+
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center pb-16">
+    return (
+      <div className="min-h-screen flex items-center justify-center pb-16">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>;
+      </div>
+    );
   }
+
   const fullName = profile ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Utilisateur" : "Utilisateur";
+  
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "—";
     return new Date(dateString).toLocaleDateString("fr-FR", {
@@ -201,68 +204,57 @@ const Account = () => {
       year: "numeric"
     });
   };
+
   const getSubscriptionStatus = () => {
-    if (!subscription) return {
-      label: "Aucun abonnement",
-      color: "text-muted-foreground"
-    };
+    if (!subscription) return { label: "Aucun abonnement", color: "text-muted-foreground" };
     switch (subscription.status) {
       case "active":
-        return subscription.cancel_at_period_end ? {
-          label: "Annulé (actif jusqu'au terme)",
-          color: "text-warning"
-        } : {
-          label: "Actif",
-          color: "text-success"
-        };
+        return subscription.cancel_at_period_end 
+          ? { label: "Annulé (actif jusqu'au terme)", color: "text-warning" } 
+          : { label: "Actif", color: "text-success" };
       case "past_due":
-        return {
-          label: "Paiement en retard",
-          color: "text-destructive"
-        };
+        return { label: "Paiement en retard", color: "text-destructive" };
       case "canceled":
-        return {
-          label: "Annulé",
-          color: "text-destructive"
-        };
+        return { label: "Annulé", color: "text-destructive" };
       default:
-        return {
-          label: subscription.status,
-          color: "text-muted-foreground"
-        };
+        return { label: subscription.status, color: "text-muted-foreground" };
     }
   };
+
   const statusInfo = getSubscriptionStatus();
-  return <div className="min-h-screen pb-20">
+
+  return (
+    <div className="min-h-screen pb-20">
       <div className="max-w-4xl mx-auto p-4 space-y-6">
         {/* Header */}
         <div className="pt-4">
-          <h1 className="text-2xl font-bold">Mon compte Interphone</h1>
+          <h1 className="text-2xl font-bold text-foreground">Mon compte Interphone</h1>
         </div>
 
-        {/* Profile card - full width */}
-        <div className="bg-background/50 rounded-2xl p-6 card-shadow border border-blue-500">
+        {/* Profile card */}
+        <Card className="p-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center">
-              <User className="w-8 h-8 text-blue-500" />
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center shadow-neumorphic-inset">
+              <User className="w-8 h-8 text-primary" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold">{fullName}</h2>
+              <h2 className="text-xl font-semibold text-foreground">{fullName}</h2>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
           </div>
-        </div>
+        </Card>
 
-        {/* Grid layout - 2 columns on desktop */}
+        {/* Grid layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Subscription section */}
-          {subscription && <div className="bg-background/50 rounded-2xl p-4 card-shadow space-y-4 border border-green-500">
+          {subscription && (
+            <Card className="p-4 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-green-500" />
+                <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center shadow-neumorphic-inset">
+                  <CreditCard className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                  <p className="font-medium">Abonnement ANR</p>
+                  <p className="font-medium text-foreground">Abonnement ANR</p>
                   <p className={`text-sm ${statusInfo.color}`}>{statusInfo.label}</p>
                 </div>
               </div>
@@ -281,16 +273,18 @@ const Account = () => {
                 <ExternalLink className="w-4 h-4" />
                 Gérer mon abonnement
               </Button>
-            </div>}
+            </Card>
+          )}
 
           {/* Habitation section */}
-          {habitation && <div className="bg-background/50 rounded-2xl p-4 card-shadow space-y-4 border border-orange-500">
+          {habitation && (
+            <Card className="p-4 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
-                  <Home className="w-5 h-5 text-orange-500" />
+                <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center shadow-neumorphic-inset">
+                  <Home className="w-5 h-5 text-warning" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium">{habitation.name}</p>
+                  <p className="font-medium text-foreground">{habitation.name}</p>
                   <p className="text-sm text-muted-foreground">{habitation.is_owner ? "Propriétaire" : "Résident invité"}</p>
                 </div>
               </div>
@@ -301,74 +295,81 @@ const Account = () => {
               </div>
 
               <div className="flex gap-2">
-                {habitation.is_owner ? <Button variant="outline" className="flex-1 gap-2" onClick={() => setShowChangeAddressDialog(true)}>
+                {habitation.is_owner ? (
+                  <Button variant="outline" className="flex-1 gap-2" onClick={() => setShowChangeAddressDialog(true)}>
                     <MapPin className="w-4 h-4" />
                     Déménager
-                  </Button> : <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive" onClick={() => setShowLeaveDialog(true)}>
+                  </Button>
+                ) : (
+                  <Button variant="outline" className="flex-1 gap-2 text-destructive hover:text-destructive" onClick={() => setShowLeaveDialog(true)}>
                     <LogOut className="w-4 h-4" />
                     Quitter l'habitation
-                  </Button>}
+                  </Button>
+                )}
               </div>
-            </div>}
+            </Card>
+          )}
 
           {/* Email section */}
-          <div 
-            className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-yellow-500 cursor-pointer hover:bg-yellow-500/5 transition-colors"
+          <Card 
+            className="p-4 flex items-center justify-between cursor-pointer hover:shadow-neumorphic-pressed transition-all"
             onClick={() => setShowChangeEmailDialog(true)}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-yellow-500" />
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shadow-neumorphic-inset">
+                <Mail className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Email</p>
-                <p className="font-medium">{user?.email}</p>
+                <p className="font-medium text-foreground">{user?.email}</p>
               </div>
             </div>
-            <Pencil className="w-5 h-5 text-yellow-500" />
-          </div>
+            <Pencil className="w-5 h-5 text-muted-foreground" />
+          </Card>
 
           {/* Phone number section */}
-          <div 
-            className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-cyan-500 cursor-pointer hover:bg-cyan-500/5 transition-colors"
+          <Card 
+            className="p-4 flex items-center justify-between cursor-pointer hover:shadow-neumorphic-pressed transition-all"
             onClick={() => setShowChangePhoneDialog(true)}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center">
-                <Phone className="w-5 h-5 text-cyan-500" />
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shadow-neumorphic-inset">
+                <Phone className="w-5 h-5 text-accent" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Numéro de téléphone</p>
-                <p className="font-medium">{phoneNumber || "Non renseigné"}</p>
+                <p className="font-medium text-foreground">{phoneNumber || "Non renseigné"}</p>
               </div>
             </div>
-            <Pencil className="w-5 h-5 text-cyan-500" />
-          </div>
+            <Pencil className="w-5 h-5 text-muted-foreground" />
+          </Card>
 
           {/* Admin link */}
-          {isAdmin && <Link to="/admin" className="block">
-              <div className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-blue-500 hover:bg-blue-500/10 transition-colors h-full">
+          {isAdmin && (
+            <Link to="/admin" className="block">
+              <Card className="p-4 flex items-center justify-between hover:shadow-neumorphic-pressed transition-all h-full">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-blue-500" />
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shadow-neumorphic-inset">
+                    <Shield className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium text-blue-500">Panel Admin</p>
+                    <p className="font-medium text-primary">Panel Admin</p>
                     <p className="text-xs text-muted-foreground">Accéder à l'administration</p>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-blue-500" />
-              </div>
-            </Link>}
+                <ChevronRight className="w-5 h-5 text-primary" />
+              </Card>
+            </Link>
+          )}
 
           {/* RGPD section */}
-          <div className="bg-background/50 rounded-xl p-4 space-y-3 border border-rose-500">
+          <Card className="p-4 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-rose-500" />
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shadow-neumorphic-inset">
+                <Shield className="w-5 h-5 text-destructive" />
               </div>
               <div className="flex-1">
-                <p className="font-medium">Mes droits RGPD</p>
+                <p className="font-medium text-foreground">Mes droits RGPD</p>
                 <p className="text-xs text-muted-foreground">Protection de vos données personnelles</p>
               </div>
             </div>
@@ -399,82 +400,87 @@ const Account = () => {
                 Demande RGPD
               </Button>
             </div>
-          </div>
+          </Card>
 
           {/* Message Backup section */}
           <Link to="/message-backup" className="block">
-            <div className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-purple-500 hover:bg-purple-500/5 transition-colors">
+            <Card className="p-4 flex items-center justify-between hover:shadow-neumorphic-pressed transition-all">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-                  <Lock className="w-5 h-5 text-purple-500" />
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shadow-neumorphic-inset">
+                  <Lock className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">Sauvegarde des messages</p>
+                  <p className="font-medium text-foreground">Sauvegarde des messages</p>
                   <p className="text-xs text-muted-foreground">Messages chiffrés E2E</p>
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-purple-500" />
-            </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </Card>
           </Link>
 
           {/* Referral Program section */}
           <Link to="/referral" className="block">
-            <div className="bg-background/50 rounded-xl p-4 flex items-center justify-between border border-pink-500 hover:bg-pink-500/5 transition-colors">
+            <Card className="p-4 flex items-center justify-between hover:shadow-neumorphic-pressed transition-all">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-pink-500/10 flex items-center justify-center">
-                  <Gift className="w-5 h-5 text-pink-500" />
+                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shadow-neumorphic-inset">
+                  <Gift className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <p className="font-medium">Programme Parrainage</p>
+                  <p className="font-medium text-foreground">Programme Parrainage</p>
                   <p className="text-xs text-muted-foreground">Gagnez 5€ par filleul</p>
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-pink-500" />
-            </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </Card>
           </Link>
         </div>
 
-        {/* Granted Access Section - full width */}
+        {/* Granted Access Section */}
         <GrantedAccessSection />
 
-        {/* Visitor Mode Section - full width */}
-        <VisitorModeSection 
-          userProfile={profile}
-          userEmail={user?.email}
-        />
+        {/* Visitor Mode Section */}
+        <VisitorModeSection />
 
-        {/* Actions - full width */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Button variant="outline" className="w-full gap-2" onClick={handleSignOut}>
-            <LogOut className="w-5 h-5" />
-            Se déconnecter
-          </Button>
-
-          <Button variant="destructive" className="w-full gap-2" onClick={() => setShowDeleteDialog(true)}>
-            <Trash2 className="w-5 h-5" />
-            Supprimer mon compte
-          </Button>
-        </div>
+        {/* Danger zone */}
+        <Card className="p-4 space-y-4">
+          <h3 className="font-medium text-destructive">Zone de danger</h3>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="flex-1 gap-2" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4" />
+              Se déconnecter
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 gap-2 text-destructive hover:text-destructive"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="w-4 h-4" />
+              Supprimer mon compte
+            </Button>
+          </div>
+        </Card>
       </div>
 
-      <DeleteAccountDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} profile={profile} />
-
-      <ChangeAddressDialog open={showChangeAddressDialog} onOpenChange={setShowChangeAddressDialog} currentAddress={habitation?.anr_address} onAddressChanged={fetchData} />
-
-      <LeaveHabitationDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog} habitationName={habitation?.name} onLeft={() => {
-      setHabitation(null);
-      fetchData();
-    }} />
-
-      <RGPDRequestDialog open={showRGPDDialog} onOpenChange={setShowRGPDDialog} />
-
-      <ChangePlanDialog open={showChangePlanDialog} onOpenChange={setShowChangePlanDialog} />
-
-      <ChangeEmailDialog open={showChangeEmailDialog} onOpenChange={setShowChangeEmailDialog} currentEmail={user?.email} />
-
-      <ChangePhoneDialog open={showChangePhoneDialog} onOpenChange={setShowChangePhoneDialog} currentPhone={phoneNumber} onPhoneChanged={fetchData} />
-
       <BottomNav />
-    </div>;
+
+      <DeleteAccountDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} profile={profile} />
+      <ChangeAddressDialog open={showChangeAddressDialog} onOpenChange={setShowChangeAddressDialog} onAddressChanged={() => fetchData()} />
+      <LeaveHabitationDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog} onLeft={() => navigate("/no-habitation")} />
+      <RGPDRequestDialog open={showRGPDDialog} onOpenChange={setShowRGPDDialog} />
+      <ChangePlanDialog 
+        open={showChangePlanDialog} 
+        onOpenChange={setShowChangePlanDialog}
+        currentPlan={subscription?.plan_type || "particulier"}
+      />
+      <ChangeEmailDialog open={showChangeEmailDialog} onOpenChange={setShowChangeEmailDialog} />
+      <ChangePhoneDialog 
+        open={showChangePhoneDialog} 
+        onOpenChange={setShowChangePhoneDialog}
+        currentPhone={phoneNumber}
+        onPhoneChanged={() => fetchData()}
+      />
+    </div>
+  );
 };
+
 export default Account;
