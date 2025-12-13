@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotificationSound } from "@/hooks/useNotificationSound";
 
 interface UserNotification {
   id: string;
@@ -19,6 +20,9 @@ export function useUserNotifications() {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hasNewNotification, setHasNewNotification] = useState(false);
+  const { playNotificationSound, vibrate, stopVibrate } = useNotificationSound();
+  const vibrationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) {
@@ -41,7 +45,9 @@ export function useUserNotifications() {
       // Cast to our type since we know the structure
       const typedData = (data || []) as unknown as UserNotification[];
       setNotifications(typedData);
-      setUnreadCount(typedData.filter((n) => !n.is_read).length);
+      const unread = typedData.filter((n) => !n.is_read).length;
+      setUnreadCount(unread);
+      setHasNewNotification(unread > 0);
     } catch (err) {
       console.error("Error fetching notifications:", err);
     } finally {
@@ -52,6 +58,24 @@ export function useUserNotifications() {
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  // Start vibration when there are unread notifications
+  useEffect(() => {
+    if (hasNewNotification && unreadCount > 0) {
+      // Start periodic vibration
+      vibrationIntervalRef.current = setInterval(() => {
+        vibrate([100, 50, 100]);
+      }, 3000);
+
+      return () => {
+        if (vibrationIntervalRef.current) {
+          clearInterval(vibrationIntervalRef.current);
+          vibrationIntervalRef.current = null;
+        }
+        stopVibrate();
+      };
+    }
+  }, [hasNewNotification, unreadCount, vibrate, stopVibrate]);
 
   // Real-time subscription for new notifications
   useEffect(() => {
@@ -71,6 +95,11 @@ export function useUserNotifications() {
           const newNotif = payload.new as unknown as UserNotification;
           setNotifications((prev) => [newNotif, ...prev]);
           setUnreadCount((prev) => prev + 1);
+          setHasNewNotification(true);
+          
+          // Play sound and vibrate for new notification
+          playNotificationSound();
+          vibrate([200, 100, 200, 100, 200]);
         }
       )
       .subscribe();
@@ -78,7 +107,7 @@ export function useUserNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, playNotificationSound, vibrate]);
 
   const markAsRead = async (notificationId: string) => {
     try {
@@ -96,7 +125,17 @@ export function useUserNotifications() {
             : n
         )
       );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      const newUnreadCount = Math.max(0, unreadCount - 1);
+      setUnreadCount(newUnreadCount);
+      
+      if (newUnreadCount === 0) {
+        setHasNewNotification(false);
+        stopVibrate();
+        if (vibrationIntervalRef.current) {
+          clearInterval(vibrationIntervalRef.current);
+          vibrationIntervalRef.current = null;
+        }
+      }
     } catch (err) {
       console.error("Error marking notification as read:", err);
     }
@@ -118,17 +157,34 @@ export function useUserNotifications() {
         prev.map((n) => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
       );
       setUnreadCount(0);
+      setHasNewNotification(false);
+      stopVibrate();
+      if (vibrationIntervalRef.current) {
+        clearInterval(vibrationIntervalRef.current);
+        vibrationIntervalRef.current = null;
+      }
     } catch (err) {
       console.error("Error marking all notifications as read:", err);
     }
   };
 
+  const clearNewNotificationFlag = useCallback(() => {
+    setHasNewNotification(false);
+    stopVibrate();
+    if (vibrationIntervalRef.current) {
+      clearInterval(vibrationIntervalRef.current);
+      vibrationIntervalRef.current = null;
+    }
+  }, [stopVibrate]);
+
   return {
     notifications,
     unreadCount,
     loading,
+    hasNewNotification,
     markAsRead,
     markAllAsRead,
+    clearNewNotificationFlag,
     refetch: fetchNotifications,
   };
 }

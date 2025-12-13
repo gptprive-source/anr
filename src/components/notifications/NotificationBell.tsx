@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Bell, Check, Gift, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, Check, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -12,8 +12,22 @@ import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export function NotificationBell() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useUserNotifications();
+  const { 
+    notifications, 
+    unreadCount, 
+    hasNewNotification,
+    markAsRead, 
+    markAllAsRead,
+    clearNewNotificationFlag 
+  } = useUserNotifications();
   const [open, setOpen] = useState(false);
+
+  // When popover opens, clear the new notification flag
+  useEffect(() => {
+    if (open && hasNewNotification) {
+      clearNewNotificationFlag();
+    }
+  }, [open, hasNewNotification, clearNewNotificationFlag]);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -27,10 +41,22 @@ export function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={`relative ${hasNewNotification ? "animate-notification-shake" : ""}`}
+        >
+          <Bell 
+            className={`h-5 w-5 transition-colors duration-300 ${
+              hasNewNotification ? "text-green-500 fill-green-500" : ""
+            }`} 
+          />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium">
+            <span 
+              className={`absolute -top-1 -right-1 h-5 w-5 rounded-full text-white text-xs flex items-center justify-center font-medium transition-colors duration-300 ${
+                hasNewNotification ? "bg-green-500 animate-pulse" : "bg-destructive"
+              }`}
+            >
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
