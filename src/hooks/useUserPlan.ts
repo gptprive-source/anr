@@ -13,6 +13,7 @@ export interface PlanLimits {
   planType: string;
   planName: string;
   isProPlan: boolean;
+  hasActiveSubscription: boolean;
 }
 
 const DEFAULT_LIMITS: PlanLimits = {
@@ -25,6 +26,7 @@ const DEFAULT_LIMITS: PlanLimits = {
   planType: "particulier",
   planName: "Particulier",
   isProPlan: false,
+  hasActiveSubscription: false,
 };
 
 // Plan configurations with their limits
@@ -75,12 +77,14 @@ export const useUserPlan = () => {
   const { user } = useAuth();
   const { getConfig } = useAppConfig();
   const [planType, setPlanType] = useState<string>("particulier");
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUserPlan = async () => {
       if (!user) {
         setPlanType("particulier");
+        setHasActiveSubscription(false);
         setLoading(false);
         return;
       }
@@ -98,25 +102,63 @@ export const useUserPlan = () => {
 
         if (subscription?.plan_type) {
           setPlanType(subscription.plan_type);
+          setHasActiveSubscription(true);
         } else {
-          // Fallback: check if user has a pro company role
-          const { data: companyRole } = await supabase
-            .from("pro_company_roles")
-            .select("company_id, pro_companies(plan_type)")
+          // Check if user is an invited resident of an active habitation
+          const { data: resident } = await supabase
+            .from("residents")
+            .select("habitation_id")
             .eq("user_id", user.id)
-            .limit(1)
+            .eq("status", "verified")
             .maybeSingle();
 
-          if (companyRole?.pro_companies) {
-            const company = companyRole.pro_companies as any;
-            setPlanType(company.plan_type || "pro");
-          } else {
-            setPlanType("particulier");
+          if (resident?.habitation_id) {
+            // Check if this habitation has an active subscription (via owner)
+            const { data: ownerResident } = await supabase
+              .from("residents")
+              .select("user_id")
+              .eq("habitation_id", resident.habitation_id)
+              .eq("is_owner", true)
+              .eq("status", "verified")
+              .maybeSingle();
+
+            if (ownerResident?.user_id) {
+              const { data: ownerSub } = await supabase
+                .from("subscriptions")
+                .select("status, plan_type")
+                .eq("user_id", ownerResident.user_id)
+                .eq("status", "active")
+                .maybeSingle();
+
+              if (ownerSub?.status === "active") {
+                setHasActiveSubscription(true);
+                setPlanType(ownerSub.plan_type || "particulier");
+              }
+            }
+          }
+
+          // Fallback: check if user has a pro company role
+          if (!hasActiveSubscription) {
+            const { data: companyRole } = await supabase
+              .from("pro_company_roles")
+              .select("company_id, pro_companies(plan_type)")
+              .eq("user_id", user.id)
+              .limit(1)
+              .maybeSingle();
+
+            if (companyRole?.pro_companies) {
+              const company = companyRole.pro_companies as any;
+              setPlanType(company.plan_type || "pro");
+              setHasActiveSubscription(true);
+            } else {
+              setPlanType("particulier");
+            }
           }
         }
       } catch (error) {
         console.error("Error fetching user plan:", error);
         setPlanType("particulier");
+        setHasActiveSubscription(false);
       } finally {
         setLoading(false);
       }
@@ -140,6 +182,7 @@ export const useUserPlan = () => {
       ...DEFAULT_LIMITS,
       ...baseConfig,
       planType,
+      hasActiveSubscription,
       maxResidents: configMaxResidents ?? baseConfig.maxResidents ?? DEFAULT_LIMITS.maxResidents,
       maxEmployees: configMaxEmployees ?? baseConfig.maxEmployees ?? DEFAULT_LIMITS.maxEmployees,
       copilotEnabled: configCopilot ?? baseConfig.copilotEnabled ?? DEFAULT_LIMITS.copilotEnabled,
@@ -147,7 +190,7 @@ export const useUserPlan = () => {
       schedulingEnabled: configScheduling ?? baseConfig.schedulingEnabled ?? DEFAULT_LIMITS.schedulingEnabled,
       facialRecognitionEnabled: configFacialRecognition ?? baseConfig.facialRecognitionEnabled ?? DEFAULT_LIMITS.facialRecognitionEnabled,
     };
-  }, [planType, getConfig]);
+  }, [planType, hasActiveSubscription, getConfig]);
 
   return { limits, loading, planType };
 };

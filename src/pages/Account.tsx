@@ -17,6 +17,7 @@ import GrantedAccessSection from "@/components/resident/GrantedAccessSection";
 import ChangePlanDialog from "@/components/account/ChangePlanDialog";
 import ChangeEmailDialog from "@/components/account/ChangeEmailDialog";
 import ChangePhoneDialog from "@/components/account/ChangePhoneDialog";
+import { ResidentMessagingSettings } from "@/components/account/ResidentMessagingSettings";
 import { Card } from "@/components/ui/card";
 interface ProfileData {
   first_name: string | null;
@@ -420,6 +421,11 @@ const Account = () => {
 
         {/* Granted Access Section */}
         <GrantedAccessSection />
+
+        {/* Resident Messaging Settings - Only for owners */}
+        {habitation?.is_owner && (
+          <ResidentMessagingSettings habitationId={habitation.id} />
+        )}
 
         {/* Visitor Mode Section */}
         <VisitorModeSection className="border-white bg-white shadow-neumorphic" />

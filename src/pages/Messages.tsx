@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Ban, Home, Send, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Ban, Home, Send, Trash2, Plus, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { useSentMessages } from "@/hooks/useSentMessages";
 import { useBlockedVisitors } from "@/hooks/useBlockedVisitors";
+import { useUserPlan } from "@/hooks/useUserPlan";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow, isToday, isThisWeek, isThisMonth } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -20,6 +21,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import { Loader2 } from "lucide-react";
 import { SystemNotificationsSection } from "@/components/messages/SystemNotificationsSection";
 import NewMessageToAnrDialog from "@/components/messages/NewMessageToAnrDialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 type StatusFilter = "all" | "unread" | "read";
 type DateFilter = "all" | "today" | "week" | "month";
 interface GroupedConversation {
@@ -37,9 +39,8 @@ interface GroupedConversation {
 }
 const Messages = () => {
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
+  const { limits } = useUserPlan();
   const [habitationId, setHabitationId] = useState<string | null>(null);
   const [isResident, setIsResident] = useState<boolean | null>(null);
   const [loadingRole, setLoadingRole] = useState(true);
@@ -48,6 +49,9 @@ const Messages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string; type: 'received' | 'sent' } | null>(null);
   const [showNewMessageDialog, setShowNewMessageDialog] = useState(false);
+  
+  // Check if user can send new messages (has active subscription)
+  const canSendNewMessages = limits.hasActiveSubscription;
 
   // Determine if user is resident or connected visitor
   useEffect(() => {
@@ -259,16 +263,46 @@ const Messages = () => {
                 </p>}
             </div>
           </div>
-          {/* New message button */}
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            onClick={() => setShowNewMessageDialog(true)}
-            className="gap-1"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="text-xs">Nouveau</span>
-          </Button>
+          {/* New message button - only for users with active subscription */}
+          {canSendNewMessages ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={() => setShowNewMessageDialog(true)}
+                    className="gap-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="text-xs">Nouveau</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Envoyer un message à une autre ANR</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-1 opacity-50 cursor-not-allowed"
+                    disabled
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span className="text-xs">Nouveau</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Abonnement requis pour envoyer des messages</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </div>
 

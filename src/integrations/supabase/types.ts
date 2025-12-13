@@ -2294,6 +2294,7 @@ export type Database = {
           id: string
           is_muted: boolean | null
           is_owner: boolean | null
+          receive_visitor_messages: boolean | null
           status: Database["public"]["Enums"]["resident_status"] | null
           updated_at: string | null
           user_id: string
@@ -2304,6 +2305,7 @@ export type Database = {
           id?: string
           is_muted?: boolean | null
           is_owner?: boolean | null
+          receive_visitor_messages?: boolean | null
           status?: Database["public"]["Enums"]["resident_status"] | null
           updated_at?: string | null
           user_id: string
@@ -2314,6 +2316,7 @@ export type Database = {
           id?: string
           is_muted?: boolean | null
           is_owner?: boolean | null
+          receive_visitor_messages?: boolean | null
           status?: Database["public"]["Enums"]["resident_status"] | null
           updated_at?: string | null
           user_id?: string
