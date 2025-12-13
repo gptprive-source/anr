@@ -349,56 +349,56 @@ const Conversation = () => {
     }
     messagesWithDateSeparators.push(msg);
   });
-  return <div className="min-h-screen flex flex-col pb-16">
-      {/* Sticky Header with Contact Info */}
-      <div className="sticky top-0 z-10 bg-background border-b">
-        <div className="max-w-2xl mx-auto w-full p-4 space-y-3 bg-[#f4e8e8]">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
+  return <div className="min-h-screen flex flex-col pb-16 bg-[#E5DDD5]">
+      {/* WhatsApp-style Header */}
+      <div className="sticky top-0 z-10 bg-[#075E54] shadow-md">
+        <div className="max-w-2xl mx-auto w-full px-2 py-3">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => navigate("/messages")}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
 
-            {card ? <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-blue-500 hover:text-blue-600 hover:bg-blue-50" /> : <AddToContactsButton businessCard={{
-            id: visitorId || "",
-            card_type: "individual",
-            first_name: displayName !== "Visiteur" ? displayName : null,
-            last_name: null,
-            company_name: null,
-            job_title: null,
-            phone: visitorMessages[0]?.visitor_phone || null,
-            email: null,
-            visitor_anr_code: null
-          }} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-blue-500 hover:text-blue-600 hover:bg-blue-50" />}
-            
-            <Avatar className="w-10 h-10 flex-shrink-0">
+            <Avatar className="w-10 h-10 flex-shrink-0 border-2 border-white/20">
               {card?.avatar_url ? <AvatarImage src={card.avatar_url} alt={displayName || "Visiteur"} /> : null}
-              <AvatarFallback className={isCompany ? "bg-orange-500/10" : "bg-purple-500/10"}>
-                {isCompany ? <Building2 className="w-5 h-5 text-orange-500" /> : <User className="w-5 h-5 text-purple-500" />}
+              <AvatarFallback className="bg-white/20">
+                {isCompany ? <Building2 className="w-5 h-5 text-white" /> : <User className="w-5 h-5 text-white" />}
               </AvatarFallback>
             </Avatar>
 
-            <div className="flex-1 min-w-0 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => {
-            // Navigate to contacts page with scroll to this contact
-            const contactIdentifier = card?.email || card?.phone || visitorId;
-            navigate(`/contacts?scrollTo=${encodeURIComponent(contactIdentifier || '')}`);
-          }}>
+            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
+              const contactIdentifier = card?.email || card?.phone || visitorId;
+              navigate(`/contacts?scrollTo=${encodeURIComponent(contactIdentifier || '')}`);
+            }}>
               <div className="flex items-center gap-2">
-                <p className="font-semibold truncate">{displayName}</p>
-                {currentVisitorBlocked && <span className="text-xs bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full">Bloqué</span>}
+                <p className="font-semibold text-white truncate">{displayName}</p>
+                {currentVisitorBlocked && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">Bloqué</span>}
               </div>
               <div className="flex items-center gap-2">
-                {card?.job_title && <p className="text-xs text-muted-foreground truncate">{card.job_title}</p>}
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70" title="Vos messages sont protégés par un chiffrement de bout en bout. Seuls vous et votre correspondant pouvez les lire.">
+                {card?.job_title && <p className="text-xs text-white/70 truncate">{card.job_title}</p>}
+                <div className="flex items-center gap-1 text-[10px] text-white/60" title="Chiffrement E2E">
                   <Lock className="w-2.5 h-2.5" />
-                  <span>Chiffrement E2E de bout en bout</span>
+                  <span>E2E</span>
                 </div>
               </div>
             </div>
 
+            {/* Add to contacts */}
+            {card ? <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" /> : <AddToContactsButton businessCard={{
+              id: visitorId || "",
+              card_type: "individual",
+              first_name: displayName !== "Visiteur" ? displayName : null,
+              last_name: null,
+              company_name: null,
+              job_title: null,
+              phone: visitorMessages[0]?.visitor_phone || null,
+              email: null,
+              visitor_anr_code: null
+            }} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />}
+
             {/* Block/Unblock button */}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className={currentVisitorBlocked ? "text-green-500 hover:text-green-600 hover:bg-green-50" : "text-red-500 hover:text-red-600 hover:bg-red-50"}>
+                <Button variant="ghost" size="icon" className={currentVisitorBlocked ? "text-green-400 hover:bg-white/10" : "text-red-400 hover:bg-white/10"}>
                   {currentVisitorBlocked ? <ShieldCheck className="w-5 h-5" /> : <Ban className="w-5 h-5" />}
                 </Button>
               </AlertDialogTrigger>
@@ -414,12 +414,12 @@ const Conversation = () => {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annuler</AlertDialogCancel>
                   <AlertDialogAction className={currentVisitorBlocked ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"} onClick={() => {
-                  if (currentVisitorBlocked) {
-                    unblockVisitor(visitorId || "");
-                  } else {
-                    blockVisitor(visitorId || "", displayName);
-                  }
-                }}>
+                    if (currentVisitorBlocked) {
+                      unblockVisitor(visitorId || "");
+                    } else {
+                      blockVisitor(visitorId || "", displayName);
+                    }
+                  }}>
                     {currentVisitorBlocked ? "Débloquer" : "Bloquer"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -429,12 +429,12 @@ const Conversation = () => {
         </div>
       </div>
 
-      {/* Messages Area - extra padding for fixed input area + footer */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-40 space-y-3 max-w-2xl mx-auto w-full bg-white">
+      {/* Messages Area - WhatsApp chat background */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 pb-40 space-y-2 max-w-2xl mx-auto w-full">
         {messagesWithDateSeparators.map((item, index) => {
         if (item.type === 'separator') {
           return <div key={`sep-${index}`} className="flex justify-center my-3">
-                <span className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-lg">
+                <span className="bg-[#E1F2FB] text-[#54656F] text-xs px-3 py-1.5 rounded-lg shadow-sm">
                   {item.data.label}
                 </span>
               </div>;
@@ -445,17 +445,13 @@ const Conversation = () => {
                 <div className="max-w-[85%]">
                   {msg.voice_message_url ? <div className="mb-1">
                       <WhatsAppAudioPlayer audioUrl={msg.voice_message_url} isOwn={false} showAvatar={true} />
-                      <p className="text-xs text-muted-foreground mt-1 ml-2">
-                        {format(new Date(msg.created_at), "HH:mm", {
-                    locale: fr
-                  })}
+                      <p className="text-xs text-[#667781] mt-1 ml-2">
+                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
                       </p>
-                    </div> : <div className="rounded-xl rounded-tl-sm px-3 py-2 border-blue-500 text-primary bg-white border-2">
-                      <p className="text-sm whitespace-pre-wrap">{renderTextWithLinks(msg.message || "")}</p>
-                      <p className="text-xs text-muted-foreground mt-1 text-right">
-                        {format(new Date(msg.created_at), "HH:mm", {
-                    locale: fr
-                  })}
+                    </div> : <div className="bg-white rounded-lg rounded-tl-none px-3 py-2 shadow-sm">
+                      <p className="text-sm text-[#111B21] whitespace-pre-wrap">{renderTextWithLinks(msg.message || "")}</p>
+                      <p className="text-[11px] text-[#667781] mt-1 text-right">
+                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
                       </p>
                     </div>}
                 </div>
@@ -463,19 +459,17 @@ const Conversation = () => {
         } else {
           const reply = item.data;
           return <div key={`reply-${reply.id}`} className="flex justify-end">
-                <div className="max-w-[85%] bg-[#f8f9f8]">
+                <div className="max-w-[85%]">
                   {/* Media message */}
                   {reply.reply_media_url && <div className="mb-1">
-                      <div className="rounded-xl rounded-tr-sm p-1 overflow-hidden border-2 bg-white border-[#ff0000]">
-                        {reply.reply_media_type === 'video' ? <video src={reply.reply_media_url} controls className="max-w-full rounded-lg max-h-64" /> : <img src={reply.reply_media_url} alt="Photo envoyée" className="max-w-full rounded-lg max-h-64 cursor-pointer" onClick={() => window.open(reply.reply_media_url, '_blank')} />}
-                        {reply.reply_text && <p className="text-sm whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(reply.reply_text)}</p>}
+                      <div className="bg-[#D9FDD3] rounded-lg rounded-tr-none p-1 shadow-sm overflow-hidden">
+                        {reply.reply_media_type === 'video' ? <video src={reply.reply_media_url} controls className="max-w-full rounded-md max-h-64" /> : <img src={reply.reply_media_url} alt="Photo envoyée" className="max-w-full rounded-md max-h-64 cursor-pointer" onClick={() => window.open(reply.reply_media_url, '_blank')} />}
+                        {reply.reply_text && <p className="text-sm text-[#111B21] whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(reply.reply_text)}</p>}
                         <div className="flex items-center justify-end gap-1 px-2 py-1">
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(reply.created_at), "HH:mm", {
-                        locale: fr
-                      })}
+                          <span className="text-[11px] text-[#667781]">
+                            {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                           </span>
-                          {reply.is_read ? <CheckCheck className="w-4 h-4 text-blue-500" /> : <Check className="w-4 h-4 text-muted-foreground" />}
+                          {reply.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />}
                         </div>
                       </div>
                     </div>}
@@ -483,24 +477,21 @@ const Conversation = () => {
                   {reply.reply_voice_url && !reply.reply_media_url && <div className="mb-1">
                       <WhatsAppAudioPlayer audioUrl={reply.reply_voice_url} isOwn={true} showAvatar={true} />
                       <div className="flex items-center justify-end gap-1 mt-1 mr-2">
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(reply.created_at), "HH:mm", {
-                      locale: fr
-                    })}
+                        <span className="text-[11px] text-[#667781]">
+                          {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                         </span>
-                        {reply.is_read ? <CheckCheck className="w-4 h-4 text-blue-500" /> : <Check className="w-4 h-4 text-muted-foreground" />}
+                        {reply.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />}
                       </div>
                     </div>}
-                  {!reply.reply_voice_url && !reply.reply_media_url && reply.reply_text && <div className="rounded-xl rounded-tr-sm px-3 py-2 border-[#ff0000] border-2 bg-white/10">
-                      <p className="text-sm whitespace-pre-wrap">{renderTextWithLinks(reply.reply_text)}</p>
+                  {/* Text message */}
+                  {!reply.reply_voice_url && !reply.reply_media_url && reply.reply_text && <div className="bg-[#D9FDD3] rounded-lg rounded-tr-none px-3 py-2 shadow-sm">
+                      <p className="text-sm text-[#111B21] whitespace-pre-wrap">{renderTextWithLinks(reply.reply_text)}</p>
                       <div className="flex items-center justify-end gap-1 mt-1">
-                        {(reply as any).is_encrypted && <Lock className="w-3 h-3 text-green-500" />}
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(reply.created_at), "HH:mm", {
-                      locale: fr
-                    })}
+                        {(reply as any).is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
+                        <span className="text-[11px] text-[#667781]">
+                          {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                         </span>
-                        {reply.is_read ? <CheckCheck className="w-4 h-4 text-blue-500" /> : <Check className="w-4 h-4 text-muted-foreground" />}
+                        {reply.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />}
                       </div>
                     </div>}
                 </div>
@@ -511,15 +502,15 @@ const Conversation = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - positioned just above footer */}
-      <div className="fixed bottom-16 left-0 right-0 bg-background px-4 py-2 border-t">
+      {/* Input Area - WhatsApp style */}
+      <div className="fixed bottom-16 left-0 right-0 bg-[#F0F2F5] px-2 py-2">
         <div className="max-w-2xl mx-auto w-full">
         {/* Hidden file input */}
         <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
 
         {/* Media Preview */}
-        {selectedMedia && mediaPreview && <div className="mb-3 relative inline-block">
-            <div className="relative rounded-lg overflow-hidden border border-blue-500 max-w-48">
+        {selectedMedia && mediaPreview && <div className="mb-2 relative inline-block">
+            <div className="relative rounded-lg overflow-hidden bg-white shadow-sm max-w-48">
               {selectedMedia.type.startsWith('video/') ? <video src={mediaPreview} className="max-h-32 object-cover" /> : <img src={mediaPreview} alt="Preview" className="max-h-32 object-cover" />}
               <button onClick={clearSelectedMedia} className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80">
                 <X className="w-4 h-4" />
@@ -537,71 +528,62 @@ const Conversation = () => {
         }} sending={sending} videoBlob={videoBlob} /> : showVoiceRecorder ? <VoiceRecorder onRecordingComplete={blob => setAudioBlob(blob)} onSend={handleSend} onCancel={() => {
           setShowVoiceRecorder(false);
           setAudioBlob(null);
-        }} sending={sending} audioBlob={audioBlob} /> : <div className="space-y-2">
-            {/* Input Field - Full width, Expandable like WhatsApp */}
-            <div className="rounded-2xl px-4 py-2 border-black bg-white border-2">
-              <Textarea placeholder="Entrez un message" value={replyText} onChange={e => setReplyText(e.target.value)} className="w-full border-0 p-0 min-h-[24px] max-h-32 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto" rows={1} onKeyDown={e => {
-              if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
-                e.preventDefault();
-                handleSend();
-              }
-            }} style={{
-              height: 'auto',
-              minHeight: '24px'
-            }} onInput={e => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = 'auto';
-              target.style.height = Math.min(target.scrollHeight, 128) + 'px';
-            }} />
+        }} sending={sending} audioBlob={audioBlob} /> : <div className="flex items-center gap-2">
+            {/* Left icons */}
+            <div className="flex items-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors">
+                    <Smile className="w-6 h-6" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-2 max-h-72 overflow-y-auto" side="top" align="start">
+                  <div className="space-y-3">
+                    {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => <div key={category}>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
+                        <div className="grid grid-cols-8 gap-1">
+                          {emojis.map((emoji, index) => <button key={index} className="text-xl p-1 hover:bg-muted rounded transition-colors" onClick={() => setReplyText(prev => prev + emoji)}>
+                              {emoji}
+                            </button>)}
+                        </div>
+                      </div>)}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors" onClick={() => fileInputRef.current?.click()}>
+                <Paperclip className="w-6 h-6" />
+              </button>
+
+              <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors" onClick={() => setShowVideoRecorder(true)}>
+                <Camera className="w-6 h-6" />
+              </button>
             </div>
 
-            {/* Action buttons row */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                {/* Attachment Button */}
-                <button className="p-2 text-muted-foreground hover:text-blue-500 transition-colors" onClick={() => fileInputRef.current?.click()}>
-                  <Paperclip className="w-5 h-5" />
-                </button>
-
-                {/* Camera Button for video selfie */}
-                <button className="p-2 text-muted-foreground hover:text-pink-500 transition-colors" onClick={() => setShowVideoRecorder(true)}>
-                  <Camera className="w-5 h-5" />
-                </button>
-
-                {/* Emoji Picker */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
-                      <Smile className="w-5 h-5" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-2 max-h-72 overflow-y-auto" side="top" align="start">
-                    <div className="space-y-3">
-                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => <div key={category}>
-                          <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
-                          <div className="grid grid-cols-8 gap-1">
-                            {emojis.map((emoji, index) => <button key={index} className="text-xl p-1 hover:bg-muted rounded transition-colors" onClick={() => setReplyText(prev => prev + emoji)}>
-                                {emoji}
-                              </button>)}
-                          </div>
-                        </div>)}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {/* Mic button */}
-                <button className="p-2 text-muted-foreground hover:text-primary transition-colors" onClick={() => setShowVoiceRecorder(true)}>
-                  <Mic className="w-5 h-5" />
-                </button>
-
-                {/* Send button */}
-                <button className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50" onClick={handleSend} disabled={sending || !replyText.trim() && !selectedMedia}>
-                  {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                </button>
-              </div>
+            {/* Input Field */}
+            <div className="flex-1 bg-white rounded-full px-4 py-2 shadow-sm">
+              <Textarea placeholder="Message" value={replyText} onChange={e => setReplyText(e.target.value)} className="w-full border-0 p-0 min-h-[24px] max-h-24 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto text-[#111B21]" rows={1} onKeyDown={e => {
+                if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }} style={{ height: 'auto', minHeight: '24px' }} onInput={e => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 96) + 'px';
+              }} />
             </div>
+
+            {/* Send/Mic button */}
+            {replyText.trim() || selectedMedia ? (
+              <button className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md" onClick={handleSend} disabled={sending}>
+                {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              </button>
+            ) : (
+              <button className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md" onClick={() => setShowVoiceRecorder(true)}>
+                <Mic className="w-5 h-5" />
+              </button>
+            )}
           </div>}
         </div>
       </div>

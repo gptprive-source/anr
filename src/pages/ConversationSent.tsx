@@ -216,26 +216,26 @@ const ConversationSent = () => {
   });
 
   return (
-    <div className="min-h-screen flex flex-col pb-16">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background border-b">
-        <div className="max-w-2xl mx-auto w-full p-4">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/messages")}>
+    <div className="min-h-screen flex flex-col pb-16 bg-[#E5DDD5]">
+      {/* WhatsApp-style Header */}
+      <div className="sticky top-0 z-10 bg-[#075E54] shadow-md">
+        <div className="max-w-2xl mx-auto w-full px-2 py-3">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => navigate("/messages")}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
 
-            <Avatar className="w-10 h-10 flex-shrink-0">
-              <AvatarFallback className="bg-blue-500/10">
-                <Home className="w-5 h-5 text-blue-500" />
+            <Avatar className="w-10 h-10 flex-shrink-0 border-2 border-white/20">
+              <AvatarFallback className="bg-white/20">
+                <Home className="w-5 h-5 text-white" />
               </AvatarFallback>
             </Avatar>
 
             <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{habitationInfo.name}</p>
+              <p className="font-semibold text-white truncate">{habitationInfo.name}</p>
               <div className="flex items-center gap-2">
-                <p className="text-xs text-muted-foreground truncate">{habitationInfo.address}</p>
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70" title="Chiffrement E2E">
+                <p className="text-xs text-white/70 truncate">{habitationInfo.address}</p>
+                <div className="flex items-center gap-1 text-[10px] text-white/60" title="Chiffrement E2E">
                   <Lock className="w-2.5 h-2.5" />
                   <span>E2E</span>
                 </div>
@@ -245,13 +245,13 @@ const ConversationSent = () => {
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-40 space-y-3 max-w-2xl mx-auto w-full">
+      {/* Messages Area - WhatsApp chat background */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 pb-40 space-y-2 max-w-2xl mx-auto w-full">
         {messagesWithDateSeparators.map((item, index) => {
           if (item.type === 'separator') {
             return (
               <div key={`sep-${index}`} className="flex justify-center my-3">
-                <span className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-lg">
+                <span className="bg-[#E1F2FB] text-[#54656F] text-xs px-3 py-1.5 rounded-lg shadow-sm">
                   {item.data.label}
                 </span>
               </div>
@@ -272,28 +272,28 @@ const ConversationSent = () => {
                         showAvatar={true}
                       />
                       <div className="flex items-center justify-end gap-1 mt-1 mr-2">
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-[11px] text-[#667781]">
                           {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
                         </span>
                         {msg.is_read ? (
-                          <CheckCheck className="w-4 h-4 text-blue-500" />
+                          <CheckCheck className="w-4 h-4 text-[#53BDEB]" />
                         ) : (
-                          <Check className="w-4 h-4 text-muted-foreground" />
+                          <Check className="w-4 h-4 text-[#667781]" />
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-green-500/10 rounded-xl rounded-tr-sm px-3 py-2 border border-green-500">
-                      <p className="text-sm whitespace-pre-wrap">{renderTextWithLinks(msg.message || "")}</p>
+                    <div className="bg-[#D9FDD3] rounded-lg rounded-tr-none px-3 py-2 shadow-sm">
+                      <p className="text-sm text-[#111B21] whitespace-pre-wrap">{renderTextWithLinks(msg.message || "")}</p>
                       <div className="flex items-center justify-end gap-1 mt-1">
-                        {msg.is_encrypted && <Lock className="w-3 h-3 text-green-500" />}
-                        <span className="text-xs text-muted-foreground">
+                        {msg.is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
+                        <span className="text-[11px] text-[#667781]">
                           {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
                         </span>
                         {msg.is_read ? (
-                          <CheckCheck className="w-4 h-4 text-blue-500" />
+                          <CheckCheck className="w-4 h-4 text-[#53BDEB]" />
                         ) : (
-                          <Check className="w-4 h-4 text-muted-foreground" />
+                          <Check className="w-4 h-4 text-[#667781]" />
                         )}
                       </div>
                     </div>
@@ -303,7 +303,7 @@ const ConversationSent = () => {
             );
           }
 
-          // Replies from resident - LEFT side, GRAY
+          // Replies from resident - LEFT side, WHITE
           const reply = item.data;
           return (
             <div key={`reply-${reply.id}`} className="flex justify-start">
@@ -315,37 +315,37 @@ const ConversationSent = () => {
                       isOwn={false}
                       showAvatar={true}
                     />
-                    <p className="text-xs text-muted-foreground mt-1 ml-2">
+                    <p className="text-[11px] text-[#667781] mt-1 ml-2">
                       {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                     </p>
                   </div>
                 ) : reply.reply_media_url ? (
-                  <div className="bg-background/50 rounded-xl rounded-tl-sm p-1 border border-blue-500 overflow-hidden">
+                  <div className="bg-white rounded-lg rounded-tl-none p-1 shadow-sm overflow-hidden">
                     {reply.reply_media_type === 'video' ? (
                       <video 
                         src={reply.reply_media_url} 
                         controls 
-                        className="max-w-full rounded-lg max-h-64"
+                        className="max-w-full rounded-md max-h-64"
                       />
                     ) : (
                       <img 
                         src={reply.reply_media_url} 
                         alt="Photo" 
-                        className="max-w-full rounded-lg max-h-64 cursor-pointer"
+                        className="max-w-full rounded-md max-h-64 cursor-pointer"
                         onClick={() => window.open(reply.reply_media_url, '_blank')}
                       />
                     )}
                     {reply.reply_text && (
-                      <p className="text-sm whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(reply.reply_text)}</p>
+                      <p className="text-sm text-[#111B21] whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(reply.reply_text)}</p>
                     )}
-                    <p className="text-xs text-muted-foreground px-2 py-1 text-right">
+                    <p className="text-[11px] text-[#667781] px-2 py-1 text-right">
                       {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-background/50 rounded-xl rounded-tl-sm px-3 py-2 border border-blue-500">
-                    <p className="text-sm whitespace-pre-wrap">{renderTextWithLinks(reply.reply_text || "")}</p>
-                    <p className="text-xs text-muted-foreground mt-1 text-right">
+                  <div className="bg-white rounded-lg rounded-tl-none px-3 py-2 shadow-sm">
+                    <p className="text-sm text-[#111B21] whitespace-pre-wrap">{renderTextWithLinks(reply.reply_text || "")}</p>
+                    <p className="text-[11px] text-[#667781] mt-1 text-right">
                       {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                     </p>
                   </div>
@@ -358,8 +358,8 @@ const ConversationSent = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="fixed bottom-16 left-0 right-0 bg-background px-4 py-2 border-t">
+      {/* Input Area - WhatsApp style */}
+      <div className="fixed bottom-16 left-0 right-0 bg-[#F0F2F5] px-2 py-2">
         <div className="max-w-2xl mx-auto w-full">
           {showVoiceRecorder ? (
             <VoiceRecorder 
@@ -373,13 +373,45 @@ const ConversationSent = () => {
               audioBlob={audioBlob}
             />
           ) : (
-            <div className="space-y-2">
-              <div className="bg-background/50 rounded-2xl px-4 py-2 border border-purple-500">
+            <div className="flex items-center gap-2">
+              {/* Left icons */}
+              <div className="flex items-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors">
+                      <Smile className="w-6 h-6" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2 max-h-48 overflow-y-auto" side="top" align="start">
+                    <div className="space-y-2">
+                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
+                        <div key={category}>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
+                          <div className="grid grid-cols-8 gap-1">
+                            {emojis.map((emoji, index) => (
+                              <button
+                                key={index}
+                                className="text-lg p-0.5 hover:bg-muted rounded transition-colors"
+                                onClick={() => setNewMessage(prev => prev + emoji)}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Input Field */}
+              <div className="flex-1 bg-white rounded-full px-4 py-2 shadow-sm">
                 <Textarea
-                  placeholder="Entrez un message"
+                  placeholder="Message"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  className="w-full border-0 p-0 min-h-[24px] max-h-32 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto"
+                  className="w-full border-0 p-0 min-h-[24px] max-h-24 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto text-[#111B21]"
                   rows={1}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey && newMessage.trim()) {
@@ -391,63 +423,28 @@ const ConversationSent = () => {
                   onInput={(e) => {
                     const target = e.target as HTMLTextAreaElement;
                     target.style.height = 'auto';
-                    target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+                    target.style.height = Math.min(target.scrollHeight, 96) + 'px';
                   }}
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
-                        <Smile className="w-5 h-5" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-2 max-h-48 overflow-y-auto" side="top" align="start">
-                      <div className="space-y-2">
-                        {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
-                          <div key={category}>
-                            <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
-                            <div className="grid grid-cols-8 gap-1">
-                              {emojis.map((emoji, index) => (
-                                <button
-                                  key={index}
-                                  className="text-lg p-0.5 hover:bg-muted rounded transition-colors"
-                                  onClick={() => setNewMessage(prev => prev + emoji)}
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button 
-                    className="p-2 text-muted-foreground hover:text-primary transition-colors"
-                    onClick={() => setShowVoiceRecorder(true)}
-                  >
-                    <Mic className="w-5 h-5" />
-                  </button>
-
-                  <button 
-                    className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                    onClick={handleSend}
-                    disabled={sending || !newMessage.trim()}
-                  >
-                    {sending ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <Send className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
+              {/* Send/Mic button */}
+              {newMessage.trim() ? (
+                <button 
+                  className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md" 
+                  onClick={handleSend} 
+                  disabled={sending}
+                >
+                  {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                </button>
+              ) : (
+                <button 
+                  className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md"
+                  onClick={() => setShowVoiceRecorder(true)}
+                >
+                  <Mic className="w-5 h-5" />
+                </button>
+              )}
             </div>
           )}
         </div>
