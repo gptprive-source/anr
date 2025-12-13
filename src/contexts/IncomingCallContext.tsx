@@ -135,8 +135,8 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     // Check immediately
     checkForCalls();
     
-    // Then every 2 seconds
-    const interval = setInterval(checkForCalls, 2000);
+    // Then every 3 seconds (was 2 - reduce polling load)
+    const interval = setInterval(checkForCalls, 3000);
 
     return () => {
       console.log("[POLL] Stopping polling");

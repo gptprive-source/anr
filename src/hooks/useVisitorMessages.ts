@@ -44,14 +44,34 @@ interface MessageTemplate {
   icon: string | null;
 }
 
-export const useVisitorMessages = (habitationId?: string) => {
+export const useVisitorMessages = (habitationId?: string, countOnly = false) => {
   const [messages, setMessages] = useState<VisitorMessage[]>([]);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [retentionDays, setRetentionDays] = useState(30);
 
-  // Fetch messages for residents (with business card join)
+  // Fetch only unread count (fast - for dashboard)
+  const fetchUnreadCount = async () => {
+    if (!habitationId) return;
+    
+    try {
+      const { count, error } = await supabase
+        .from("visitor_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("habitation_id", habitationId)
+        .eq("is_read", false);
+      
+      if (error) throw error;
+      setUnreadCount(count || 0);
+    } catch (error) {
+      console.error("[useVisitorMessages] Error fetching count:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch full messages for residents (with business card join)
   const fetchMessages = async () => {
     if (!habitationId) return;
     
@@ -60,7 +80,8 @@ export const useVisitorMessages = (habitationId?: string) => {
         .from("visitor_messages" as any)
         .select("*, business_card:visitor_business_cards(*)")
         .eq("habitation_id", habitationId)
-        .order("created_at", { ascending: false }) as any);
+        .order("created_at", { ascending: false })
+        .limit(50) as any); // Limit to 50 messages
       
       if (error) throw error;
       
@@ -233,12 +254,16 @@ export const useVisitorMessages = (habitationId?: string) => {
   };
 
   useEffect(() => {
-    fetchTemplates();
-    fetchRetentionConfig();
     if (habitationId) {
-      fetchMessages();
+      if (countOnly) {
+        fetchUnreadCount();
+      } else {
+        fetchMessages();
+        fetchTemplates();
+        fetchRetentionConfig();
+      }
     }
-  }, [habitationId]);
+  }, [habitationId, countOnly]);
 
   // Subscribe to new messages
   useEffect(() => {
