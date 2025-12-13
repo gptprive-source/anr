@@ -88,34 +88,43 @@ export default function Communications() {
         setUsers(Array.from(userMap.values()));
       }
 
-      // Fetch ANRs with their residents
+      // Fetch ANRs with their verified residents
       const { data: anrsData } = await supabase
         .from('anrs')
         .select(`
           id,
           code,
-          address,
-          habitations(
-            residents(user_id)
-          )
+          address
         `)
         .order('code');
 
       if (anrsData) {
-        const anrOptions: ANROption[] = anrsData.map((anr: any) => {
-          const userIds: string[] = [];
-          anr.habitations?.forEach((h: any) => {
-            h.residents?.forEach((r: any) => {
-              if (r.user_id) userIds.push(r.user_id);
-            });
-          });
-          return {
-            id: anr.id,
-            code: anr.code,
-            address: anr.address,
-            user_ids: [...new Set(userIds)]
-          };
+        // Fetch verified residents separately to properly filter
+        const { data: residentsForAnrs } = await supabase
+          .from('residents')
+          .select(`
+            user_id,
+            habitation:habitations(anr_id)
+          `)
+          .eq('status', 'verified');
+
+        const anrUserMap = new Map<string, string[]>();
+        residentsForAnrs?.forEach((r: any) => {
+          if (r.user_id && r.habitation?.anr_id) {
+            const anrId = r.habitation.anr_id;
+            if (!anrUserMap.has(anrId)) {
+              anrUserMap.set(anrId, []);
+            }
+            anrUserMap.get(anrId)!.push(r.user_id);
+          }
         });
+
+        const anrOptions: ANROption[] = anrsData.map((anr: any) => ({
+          id: anr.id,
+          code: anr.code,
+          address: anr.address,
+          user_ids: [...new Set(anrUserMap.get(anr.id) || [])]
+        }));
         setAnrs(anrOptions);
       }
     };
@@ -318,14 +327,30 @@ export default function Communications() {
                   {/* By ANR selection */}
                   {targetMode === 'by_anr' && (
                     <div className="space-y-2 border rounded-lg p-3">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          value={anrSearch}
-                          onChange={(e) => setAnrSearch(e.target.value)}
-                          placeholder="Rechercher par code ANR ou adresse..."
-                          className="pl-9"
-                        />
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            value={anrSearch}
+                            onChange={(e) => setAnrSearch(e.target.value)}
+                            placeholder="Rechercher par code ANR ou adresse..."
+                            className="pl-9"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (selectedAnrs.length === anrs.length) {
+                              setSelectedAnrs([]);
+                            } else {
+                              setSelectedAnrs(anrs.map(a => a.id));
+                            }
+                          }}
+                        >
+                          {selectedAnrs.length === anrs.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                        </Button>
                       </div>
                       
                       {selectedAnrs.length > 0 && (
