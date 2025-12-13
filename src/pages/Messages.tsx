@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { useSentMessages } from "@/hooks/useSentMessages";
@@ -44,6 +45,7 @@ const Messages = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string; type: 'received' | 'sent' } | null>(null);
 
   // Determine if user is resident or connected visitor
   useEffect(() => {
@@ -415,7 +417,7 @@ const Messages = () => {
                           className="text-destructive hover:bg-destructive/10 flex-shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteReceivedConversation(conv.visitorId);
+                            setDeleteConfirm({ id: conv.visitorId, name: conv.displayName, type: 'received' });
                           }}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -484,7 +486,7 @@ const Messages = () => {
                           className="text-destructive hover:bg-destructive/10 flex-shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteConversation(conv.habitationId);
+                            setDeleteConfirm({ id: conv.habitationId, name: conv.habitationName, type: 'sent' });
                           }}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -496,6 +498,36 @@ const Messages = () => {
         })}
             </div>)}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer la conversation ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vous êtes sur le point de supprimer définitivement tous les messages de la conversation avec <strong>{deleteConfirm?.name}</strong>. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteConfirm) {
+                  if (deleteConfirm.type === 'received') {
+                    deleteReceivedConversation(deleteConfirm.id);
+                  } else {
+                    deleteConversation(deleteConfirm.id);
+                  }
+                  setDeleteConfirm(null);
+                }
+              }}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <BottomNav />
     </div>;
