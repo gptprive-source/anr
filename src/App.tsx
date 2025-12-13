@@ -91,7 +91,7 @@ const AppContent = () => {
       <InstallPrompt />
       <BrowserRouter>
         <ScrollToTop />
-        <UnifiedAssistant />
+        
 
         <SupportAlertOverlay />
         <GlobalIncomingCallListener />
