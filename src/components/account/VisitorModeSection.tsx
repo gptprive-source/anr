@@ -102,7 +102,7 @@ const VisitorModeSection = ({
       {/* Grid for Business Card and Templates side by side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Business Card */}
-        <div className="bg-background rounded-xl p-3 space-y-2 shadow-neumorphic-sm">
+        <div className="rounded-xl p-3 space-y-2 shadow-neumorphic-sm bg-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-purple-500/10 flex items-center justify-center">
@@ -126,7 +126,7 @@ const VisitorModeSection = ({
         </div>
 
         {/* Custom Templates */}
-        <div className="bg-background rounded-xl p-3 space-y-2 shadow-neumorphic-sm">
+        <div className="rounded-xl p-3 space-y-2 shadow-neumorphic-sm bg-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center">
