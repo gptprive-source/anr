@@ -225,11 +225,24 @@ const ConversationSent = () => {
   if (!habitationInfo) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-muted-foreground">Conversation introuvable</p>
-          <Button className="mt-4" onClick={() => navigate("/messages")}>
-            Retour
-          </Button>
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
+            <Home className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-medium">Habitation introuvable</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Cette résidence n'existe plus ou a été supprimée.
+            </p>
+          </div>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" onClick={() => navigate("/messages")}>
+              Retour
+            </Button>
+            <Button onClick={() => navigate("/visitor")}>
+              Scanner une ANR
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -287,6 +300,16 @@ const ConversationSent = () => {
 
       {/* Messages Area - WhatsApp chat background */}
       <div className="flex-1 overflow-y-auto px-3 py-4 pb-40 space-y-2 max-w-2xl mx-auto w-full">
+        {/* Empty conversation welcome message */}
+        {messagesWithDateSeparators.length === 0 && (
+          <div className="flex justify-center my-8">
+            <div className="bg-[#E1F2FB] text-[#54656F] text-sm px-4 py-3 rounded-lg shadow-sm text-center max-w-xs">
+              <p className="font-medium mb-1">📝 Nouvelle conversation</p>
+              <p className="text-xs">Envoyez votre premier message à {habitationInfo.name}</p>
+            </div>
+          </div>
+        )}
+
         {messagesWithDateSeparators.map((item, index) => {
           if (item.type === 'separator') {
             return (
