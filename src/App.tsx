@@ -32,7 +32,7 @@ import CallHistory from "./pages/CallHistory";
 import Messages from "./pages/Messages";
 import Contacts from "./pages/Contacts";
 import Conversation from "./pages/Conversation";
-import ConversationSent from "./pages/ConversationSent";
+// ConversationSent removed - unified in Conversation.tsx
 import NotificationConversation from "./pages/NotificationConversation";
 import MessageBackup from "./pages/MessageBackup";
 import DoorAccess from "./pages/DoorAccess";
@@ -130,11 +130,12 @@ const AppContent = () => {
           <Route path="/contacts" element={<ProtectedRoute>
                 <Contacts />
               </ProtectedRoute>} />
-          <Route path="/conversation/:visitorId" element={<ProtectedRoute>
+          <Route path="/conversation/:id" element={<ProtectedRoute>
                 <Conversation />
               </ProtectedRoute>} />
-          <Route path="/conversation-sent/:habitationId" element={<ProtectedRoute>
-                <ConversationSent />
+          {/* Redirect old route for compatibility */}
+          <Route path="/conversation-sent/:id" element={<ProtectedRoute>
+                <Conversation />
               </ProtectedRoute>} />
           <Route path="/notification/communication/:communicationId" element={<ProtectedRoute>
                 <NotificationConversation />

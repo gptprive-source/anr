@@ -297,11 +297,8 @@ const Messages = () => {
   const totalMessages = messages.length + sentConversations.reduce((acc, c) => acc + c.totalMessages, 0);
 
   const handleNavigate = (conv: UnifiedConversation) => {
-    if (conv.type === 'received') {
-      navigate(`/conversation/${conv.id}`);
-    } else {
-      navigate(`/conversation-sent/${conv.id}`);
-    }
+    // All conversations now use the unified /conversation/:id route
+    navigate(`/conversation/${conv.id}`);
   };
 
   const handleDelete = (conv: UnifiedConversation) => {
