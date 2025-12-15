@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera, Lock, Ban, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera, Lock, Ban, ShieldCheck, Trash2, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useMessageReplies } from "@/hooks/useMessageReplies";
 import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
 import { useBlockedVisitors } from "@/hooks/useBlockedVisitors";
+import { useSentMessages } from "@/hooks/useSentMessages";
+import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
@@ -19,6 +21,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+
 const EMOJI_CATEGORIES = {
   "😊 Smileys": ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "☺️", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🤐", "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "🥸", "😎", "🤓", "🧐", "😕", "😟", "🙁", "☹️", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "☠️", "💩", "🤡", "👹", "👺", "👻", "👽", "👾", "🤖", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾"],
   "👋 Gestes": ["👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦿", "🦵", "🦶", "👂", "🦻", "👃", "🧠", "🫀", "🫁", "🦷", "🦴", "👀", "👁️", "👅", "👄", "💋", "🩸"],
@@ -31,6 +34,7 @@ const EMOJI_CATEGORIES = {
   "⭐ Symboles": ["⭐", "🌟", "💫", "✨", "⚡", "☄️", "💥", "🔥", "🌈", "☀️", "🌤️", "⛅", "🌥️", "☁️", "🌦️", "🌧️", "⛈️", "🌩️", "🌨️", "❄️", "☃️", "⛄", "🌬️", "💨", "💧", "💦", "☔", "☂️", "🌊", "🌫️", "✅", "❌", "❓", "❔", "❕", "❗", "⭕", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤", "⚫", "⚪", "🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "◼️", "◻️", "◾", "◽", "▪️", "▫️", "🔶", "🔷", "🔸", "🔹", "🔺", "🔻", "💠", "🔘", "🔳", "🔲", "🏁", "🚩", "🎌", "🏴", "🏳️", "💯", "🔢", "🔣", "🔤"],
   "🎉 Objets": ["🎉", "🎊", "🎈", "🎁", "🎀", "🎗️", "🎟️", "🎫", "🎖️", "🏆", "🏅", "🥇", "🥈", "🥉", "⚽", "🎯", "🎮", "🕹️", "🎰", "🎲", "🧩", "🎭", "🖼️", "🎨", "🧵", "🪡", "🧶", "🪢", "👓", "🕶️", "🥽", "🥼", "🦺", "👔", "👕", "👖", "🧣", "🧤", "🧥", "🧦", "👗", "👘", "🥻", "🩱", "🩲", "🩳", "👙", "👚", "👛", "👜", "👝", "🛍️", "🎒", "🩴", "👞", "👟", "🥾", "🥿", "👠", "👡", "🩰", "👢", "👑", "👒", "🎩", "🎓", "🧢", "🪖", "⛑️", "📿", "💄", "💍", "💎", "📱", "📲", "💻", "🖥️", "🖨️", "⌨️", "🖱️"]
 };
+
 interface BusinessCard {
   id: string;
   card_type: string;
@@ -43,6 +47,7 @@ interface BusinessCard {
   visitor_anr_code: string | null;
   avatar_url: string | null;
 }
+
 interface VisitorMessage {
   id: string;
   habitation_id: string;
@@ -53,51 +58,41 @@ interface VisitorMessage {
   created_at: string;
   business_card_id: string | null;
   business_card?: BusinessCard | null;
-  // E2E Encryption fields
   encrypted_message?: string | null;
   message_nonce?: string | null;
   visitor_public_key?: string | null;
   is_encrypted?: boolean;
-  // Decrypted content (client-side only)
   decrypted_message?: string | null;
 }
+
+type ConversationType = 'received_from_visitor' | 'sent_to_anr';
+
 const formatDateSeparator = (date: Date) => {
   if (isToday(date)) return "Aujourd'hui";
   if (isYesterday(date)) return "Hier";
-  return format(date, "EEEE d MMMM", {
-    locale: fr
-  });
+  return format(date, "EEEE d MMMM", { locale: fr });
 };
 
-// Function to render text with clickable links
 const renderTextWithLinks = (text: string) => {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
   return parts.map((part, index) => {
     if (urlRegex.test(part)) {
-      return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline hover:text-blue-600 break-all" onClick={e => e.stopPropagation()}>
-          {part}
-        </a>;
+      return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline hover:text-blue-600 break-all" onClick={e => e.stopPropagation()}>{part}</a>;
     }
     return <span key={index}>{part}</span>;
   });
 };
+
 const Conversation = () => {
-  const {
-    visitorId
-  } = useParams<{
-    visitorId: string;
-  }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // ALL useState hooks FIRST - unconditionally
+  // State
+  const [conversationType, setConversationType] = useState<ConversationType | null>(null);
   const [visitorMessages, setVisitorMessages] = useState<VisitorMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [replyText, setReplyText] = useState("");
@@ -109,70 +104,99 @@ const Conversation = () => {
   const [habitationId, setHabitationId] = useState<string | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [habitationInfo, setHabitationInfo] = useState<{ name: string; address: string } | null>(null);
+  const [localMessages, setLocalMessages] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Custom hooks - ALWAYS called unconditionally (before any early returns)
+  // Hooks for "received from visitor" mode (resident viewing)
   const firstMessageId = visitorMessages[0]?.id || "";
-  const {
-    replies,
-    sendReply,
-    deleteReply,
-    loading: repliesLoading
-  } = useMessageReplies(firstMessageId);
-  const {
-    isSupported: encryptionSupported
-  } = useEncryptedMessages(habitationId || undefined);
+  const { replies, sendReply, deleteReply, loading: repliesLoading } = useMessageReplies(firstMessageId);
+  const { isSupported: encryptionSupported } = useEncryptedMessages(habitationId || undefined);
+  const { isBlocked, blockVisitor, unblockVisitor } = useBlockedVisitors();
+  const currentVisitorBlocked = id && conversationType === 'received_from_visitor' ? isBlocked(id) : false;
 
-  // Fetch all messages from this visitor
+  // Hooks for "sent to ANR" mode (visitor/user sending to another ANR)
+  const { messages: sentMessagesFromHook, replies: sentReplies, getConversationMessages, markReplyAsRead, businessCard, deleteSentMessage, refetch: refetchSentMessages } = useSentMessages();
+  const { sendMessage } = useVisitorMessages();
+  const { encryptMessageForResident, isReady: encryptionReady } = useEncryptedMessages(id || undefined);
+
+  // Get sent conversation data
+  const sentConversationData = id && conversationType === 'sent_to_anr' ? getConversationMessages(id) : { messages: [], replies: [] };
+  const allSentMessages = conversationType === 'sent_to_anr' 
+    ? [...sentConversationData.messages, ...localMessages.filter(lm => !sentConversationData.messages.find((m: any) => m.id === lm.id))]
+    : [];
+
+  // Detect conversation type
   useEffect(() => {
-    const fetchVisitorMessages = async () => {
-      if (!visitorId || !user) return;
+    const detectConversationType = async () => {
+      if (!id || !user) return;
+
       try {
-        // First get user's habitation
-        const {
-          data: residentData
-        } = await supabase.from("residents").select("habitation_id").eq("user_id", user.id).eq("status", "verified").maybeSingle();
+        // First check if id is a habitation_id (sent_to_anr mode)
+        const { data: habitation } = await supabase
+          .from("habitations")
+          .select("id, name, anr:anrs(address)")
+          .eq("id", id)
+          .maybeSingle();
+
+        if (habitation) {
+          setConversationType('sent_to_anr');
+          setHabitationInfo({
+            name: habitation.name || "Résidence",
+            address: (habitation.anr as any)?.address || "",
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Otherwise it's received_from_visitor mode
+        setConversationType('received_from_visitor');
+
+        // Get user's habitation for received messages
+        const { data: residentData } = await supabase
+          .from("residents")
+          .select("habitation_id")
+          .eq("user_id", user.id)
+          .eq("status", "verified")
+          .maybeSingle();
+
         if (!residentData?.habitation_id) {
           navigate("/messages");
           return;
         }
+
         setHabitationId(residentData.habitation_id);
 
-        // Determine if visitorId is a business_card_id, message ID (anon-xxx), or visitor_phone
-        let query = supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).order("created_at", {
-          ascending: true
-        });
+        // Fetch visitor messages
+        let query = supabase.from("visitor_messages" as any)
+          .select("*, business_card:visitor_business_cards(*)")
+          .eq("habitation_id", residentData.habitation_id)
+          .order("created_at", { ascending: true });
 
-        // Check if visitorId is an anon-{messageId} pattern
-        const isAnonId = visitorId.startsWith("anon-");
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(visitorId);
+        const isAnonId = id.startsWith("anon-");
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
         if (isAnonId) {
-          // Extract the message ID and fetch that specific message
-          const messageId = visitorId.replace("anon-", "");
+          const messageId = id.replace("anon-", "");
           query = query.eq("id", messageId);
         } else if (isUuid) {
-          query = query.eq("business_card_id", visitorId);
+          query = query.eq("business_card_id", id);
         } else {
-          // It's a phone number or device ID
-          query = query.eq("visitor_phone", visitorId);
+          query = query.eq("visitor_phone", id);
         }
-        const {
-          data,
-          error
-        } = await (query as any);
+
+        const { data, error } = await (query as any);
         if (error) throw error;
+
         if (!data || data.length === 0) {
-          toast({
-            title: "Erreur",
-            description: "Conversation introuvable",
-            variant: "destructive"
-          });
+          toast({ title: "Erreur", description: "Conversation introuvable", variant: "destructive" });
           navigate("/messages");
           return;
         }
+
         setVisitorMessages(data as VisitorMessage[]);
 
-        // Mark all as read
+        // Mark as read
         const unreadIds = data.filter((m: any) => !m.is_read).map((m: any) => m.id);
         if (unreadIds.length > 0) {
           await supabase.from("visitor_messages" as any).update({
@@ -180,101 +204,105 @@ const Conversation = () => {
             read_at: new Date().toISOString()
           }).in("id", unreadIds);
         }
-        
-        // Auto-delete corresponding notifications for these messages
+
+        // Delete corresponding notifications
         if (user?.id && data.length > 0) {
           const messageIds = data.map((m: any) => m.id);
-          // Delete notifications where data contains any of these message_ids
           const { data: notifs } = await supabase
             .from("user_notifications")
             .select("id, data")
             .eq("user_id", user.id)
             .eq("type", "visitor_message");
-          
+
           if (notifs) {
             const notifIdsToDelete = notifs
               .filter(n => n.data && messageIds.includes((n.data as any).message_id))
               .map(n => n.id);
-            
+
             if (notifIdsToDelete.length > 0) {
               await supabase.from("user_notifications").delete().in("id", notifIdsToDelete);
             }
           }
         }
+
+        setLoading(false);
       } catch (error) {
         console.error("[Conversation] Error:", error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger la conversation",
-          variant: "destructive"
-        });
+        toast({ title: "Erreur", description: "Impossible de charger la conversation", variant: "destructive" });
         navigate("/messages");
-      } finally {
-        setLoading(false);
       }
     };
-    fetchVisitorMessages();
-  }, [visitorId, user]);
 
-  // Scroll to bottom when new messages arrive or on initial load
-  // Blocked visitors hook
-  const {
-    isBlocked,
-    blockVisitor,
-    unblockVisitor
-  } = useBlockedVisitors();
+    detectConversationType();
+  }, [id, user]);
 
-  // Check if current visitor is blocked
-  const currentVisitorBlocked = visitorId ? isBlocked(visitorId) : false;
+  // Mark sent replies as read
+  useEffect(() => {
+    if (conversationType !== 'sent_to_anr') return;
+    
+    const unreadReplies = sentConversationData.replies.filter((r: any) => !r.is_read);
+    unreadReplies.forEach((r: any) => markReplyAsRead(r.id));
 
-  // Scroll to bottom IMMEDIATELY on load (not smooth) using useLayoutEffect
+    if (user?.id && unreadReplies.length > 0) {
+      const replyIds = unreadReplies.map((r: any) => r.id);
+      supabase
+        .from("user_notifications")
+        .select("id, data")
+        .eq("user_id", user.id)
+        .eq("type", "message_reply")
+        .then(({ data: notifs }) => {
+          if (notifs) {
+            const notifIdsToDelete = notifs
+              .filter(n => n.data && replyIds.includes((n.data as any).reply_id))
+              .map(n => n.id);
+
+            if (notifIdsToDelete.length > 0) {
+              supabase.from("user_notifications").delete().in("id", notifIdsToDelete);
+            }
+          }
+        });
+    }
+  }, [sentConversationData.replies, conversationType, user]);
+
+  // Scroll handling
   const hasScrolledRef = useRef(false);
   useLayoutEffect(() => {
-    if (!loading && visitorMessages.length > 0 && !hasScrolledRef.current) {
-      // Instant scroll on first load
-      messagesEndRef.current?.scrollIntoView({
-        behavior: "auto"
-      });
+    const hasMessages = conversationType === 'sent_to_anr' 
+      ? allSentMessages.length > 0 || sentConversationData.replies.length > 0
+      : visitorMessages.length > 0;
+
+    if (!loading && hasMessages && !hasScrolledRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
       hasScrolledRef.current = true;
     }
-  }, [loading, visitorMessages.length]);
+  }, [loading, visitorMessages.length, allSentMessages.length, sentConversationData.replies.length, conversationType]);
 
-  // Smooth scroll when new messages arrive AFTER initial load
   useEffect(() => {
     if (hasScrolledRef.current) {
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({
-          behavior: "smooth"
-        });
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     }
-  }, [replies.length]);
+  }, [replies.length, sentConversationData.replies.length]);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast({
-        title: "Fichier trop volumineux",
-        description: "La taille maximale est de 10 Mo",
-        variant: "destructive"
-      });
+      toast({ title: "Fichier trop volumineux", description: "La taille maximale est de 10 Mo", variant: "destructive" });
       return;
     }
 
-    // Check file type
     if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-      toast({
-        title: "Type de fichier non supporté",
-        description: "Seules les photos et vidéos sont acceptées",
-        variant: "destructive"
-      });
+      toast({ title: "Type de fichier non supporté", description: "Seules les photos et vidéos sont acceptées", variant: "destructive" });
       return;
     }
+
     setSelectedMedia(file);
     setMediaPreview(URL.createObjectURL(file));
   };
+
   const clearSelectedMedia = () => {
     setSelectedMedia(null);
     if (mediaPreview) {
@@ -285,93 +313,214 @@ const Conversation = () => {
       fileInputRef.current.value = '';
     }
   };
-  const handleSend = async () => {
-    if (!habitationId || !firstMessageId || !replyText.trim() && !audioBlob && !selectedMedia && !videoBlob) return;
-    setSending(true);
-    try {
-      let audioBase64: string | undefined;
-      if (audioBlob) {
-        const buffer = await audioBlob.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        audioBase64 = btoa(String.fromCharCode(...bytes));
-      }
 
-      // Convert videoBlob to File for upload
-      let mediaToSend = selectedMedia;
-      if (videoBlob && !selectedMedia) {
-        mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, {
-          type: videoBlob.type || 'video/webm'
-        });
+  const handleSend = async () => {
+    if (!id) return;
+
+    if (conversationType === 'received_from_visitor') {
+      // Resident replying to visitor
+      if (!habitationId || !firstMessageId || (!replyText.trim() && !audioBlob && !selectedMedia && !videoBlob)) return;
+      
+      setSending(true);
+      try {
+        let audioBase64: string | undefined;
+        if (audioBlob) {
+          const buffer = await audioBlob.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          audioBase64 = btoa(String.fromCharCode(...bytes));
+        }
+
+        let mediaToSend = selectedMedia;
+        if (videoBlob && !selectedMedia) {
+          mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, { type: videoBlob.type || 'video/webm' });
+        }
+
+        const result = await sendReply(firstMessageId, habitationId, replyText.trim() || undefined, audioBase64, mediaToSend || undefined);
+        if (result.success) {
+          setReplyText("");
+          setAudioBlob(null);
+          setVideoBlob(null);
+          setShowVoiceRecorder(false);
+          setShowVideoRecorder(false);
+          clearSelectedMedia();
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error: any) {
+        toast({ title: "Erreur", description: error.message || "Impossible d'envoyer", variant: "destructive" });
+      } finally {
+        setSending(false);
       }
-      const result = await sendReply(firstMessageId, habitationId, replyText.trim() || undefined, audioBase64, mediaToSend || undefined);
-      if (result.success) {
-        setReplyText("");
-        setAudioBlob(null);
-        setVideoBlob(null);
-        setShowVoiceRecorder(false);
-        setShowVideoRecorder(false);
-        clearSelectedMedia();
-      } else {
-        throw new Error(result.error);
+    } else {
+      // User sending to another ANR
+      if (!replyText.trim() && !audioBlob && !selectedMedia && !videoBlob) return;
+
+      const messageText = replyText.trim();
+      setSending(true);
+
+      try {
+        let audioBase64: string | undefined;
+        if (audioBlob) {
+          const buffer = await audioBlob.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          audioBase64 = btoa(String.fromCharCode(...bytes));
+        }
+
+        // Encrypt if ready
+        let encryptionData: { encrypted_message: string; message_nonce: string; visitor_public_key: string } | undefined;
+        if (encryptionReady && messageText) {
+          try {
+            encryptionData = await encryptMessageForResident(messageText);
+          } catch (error) {
+            console.warn('Encryption failed, sending unencrypted:', error);
+          }
+        }
+
+        const result = await sendMessage(
+          id,
+          messageText || undefined,
+          undefined,
+          undefined,
+          businessCard?.id,
+          audioBase64,
+          encryptionData
+        );
+
+        if (result.success) {
+          if (result.message) {
+            setLocalMessages(prev => [...prev, { ...result.message, message: messageText || null }]);
+          }
+          setReplyText("");
+          setAudioBlob(null);
+          setVideoBlob(null);
+          setShowVoiceRecorder(false);
+          setShowVideoRecorder(false);
+          clearSelectedMedia();
+          setTimeout(() => refetchSentMessages(), 500);
+          toast({ title: "Message envoyé", description: "Le résident recevra une notification" });
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error: any) {
+        toast({ title: "Erreur", description: error.message || "Impossible d'envoyer", variant: "destructive" });
+      } finally {
+        setSending(false);
       }
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'envoyer",
-        variant: "destructive"
-      });
-    } finally {
-      setSending(false);
     }
   };
+
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">
+    return (
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>;
+      </div>
+    );
   }
-  if (visitorMessages.length === 0) {
+
+  // Handle "sent_to_anr" mode with no habitation found
+  if (conversationType === 'sent_to_anr' && !habitationInfo) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
+            <Home className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-medium">Habitation introuvable</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Cette résidence n'existe plus ou a été supprimée.
+            </p>
+          </div>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" onClick={() => navigate("/messages")}>Retour</Button>
+            <Button onClick={() => navigate("/visitor")}>Scanner une ANR</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle "received_from_visitor" mode with no messages
+  if (conversationType === 'received_from_visitor' && visitorMessages.length === 0) {
     return null;
   }
 
-  // Get visitor info from first message with business card
-  const messageWithCard = visitorMessages.find(m => m.business_card);
-  const card = messageWithCard?.business_card;
-  const isCompany = card?.card_type === "company";
-  const displayName = card ? isCompany ? card.company_name : `${card.first_name || ""} ${card.last_name || ""}`.trim() : visitorMessages[0]?.visitor_phone || "Visiteur";
+  // Prepare messages for rendering
+  let allMessagesForDisplay: { type: 'separator' | 'mine' | 'theirs'; data: any; date: Date }[] = [];
 
-  // Combine visitor messages and replies in chronological order
-  const allMessages = [...visitorMessages.map(m => ({
-    type: 'visitor' as const,
-    data: m,
-    date: new Date(m.created_at)
-  })), ...replies.map(r => ({
-    type: 'reply' as const,
-    data: r,
-    date: new Date(r.created_at)
-  }))].sort((a, b) => a.date.getTime() - b.date.getTime());
+  if (conversationType === 'received_from_visitor') {
+    // Resident view: visitor messages on left (theirs), replies on right (mine)
+    const messageWithCard = visitorMessages.find(m => m.business_card);
+    const card = messageWithCard?.business_card;
+    const isCompany = card?.card_type === "company";
+    const displayName = card
+      ? isCompany ? card.company_name : `${card.first_name || ""} ${card.last_name || ""}`.trim()
+      : visitorMessages[0]?.visitor_phone || "Visiteur";
 
-  // Group messages by date for separators
-  const messagesWithDateSeparators: {
-    type: 'separator' | 'visitor' | 'reply';
-    data: any;
-    date: Date;
-  }[] = [];
-  let lastDateStr = "";
-  allMessages.forEach(msg => {
-    const dateStr = format(msg.date, "yyyy-MM-dd");
-    if (dateStr !== lastDateStr) {
-      messagesWithDateSeparators.push({
-        type: 'separator',
-        data: {
-          label: formatDateSeparator(msg.date)
-        },
-        date: msg.date
-      });
-      lastDateStr = dateStr;
+    const combined = [
+      ...visitorMessages.map(m => ({ type: 'theirs' as const, data: m, date: new Date(m.created_at) })),
+      ...replies.map(r => ({ type: 'mine' as const, data: r, date: new Date(r.created_at) }))
+    ].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    let lastDateStr = "";
+    combined.forEach(msg => {
+      const dateStr = format(msg.date, "yyyy-MM-dd");
+      if (dateStr !== lastDateStr) {
+        allMessagesForDisplay.push({ type: 'separator', data: { label: formatDateSeparator(msg.date) }, date: msg.date });
+        lastDateStr = dateStr;
+      }
+      allMessagesForDisplay.push(msg);
+    });
+  } else {
+    // Sent to ANR view: my sent messages on right (mine), replies on left (theirs)
+    const combined = [
+      ...allSentMessages.map(m => ({ type: 'mine' as const, data: m, date: new Date(m.created_at) })),
+      ...sentConversationData.replies.map((r: any) => ({ type: 'theirs' as const, data: r, date: new Date(r.created_at) }))
+    ].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    let lastDateStr = "";
+    combined.forEach(msg => {
+      const dateStr = format(msg.date, "yyyy-MM-dd");
+      if (dateStr !== lastDateStr) {
+        allMessagesForDisplay.push({ type: 'separator', data: { label: formatDateSeparator(msg.date) }, date: msg.date });
+        lastDateStr = dateStr;
+      }
+      allMessagesForDisplay.push(msg);
+    });
+  }
+
+  // Get header info
+  const getHeaderInfo = () => {
+    if (conversationType === 'sent_to_anr') {
+      return {
+        icon: <Home className="w-5 h-5 text-white" />,
+        name: habitationInfo?.name || "Résidence",
+        subtitle: habitationInfo?.address || "",
+        avatarUrl: null,
+        isCompany: false
+      };
+    } else {
+      const messageWithCard = visitorMessages.find(m => m.business_card);
+      const card = messageWithCard?.business_card;
+      const isCompany = card?.card_type === "company";
+      const displayName = card
+        ? isCompany ? card.company_name : `${card.first_name || ""} ${card.last_name || ""}`.trim()
+        : visitorMessages[0]?.visitor_phone || "Visiteur";
+      return {
+        icon: isCompany ? <Building2 className="w-5 h-5 text-white" /> : <User className="w-5 h-5 text-white" />,
+        name: displayName || "Visiteur",
+        subtitle: card?.job_title || null,
+        avatarUrl: card?.avatar_url || null,
+        isCompany,
+        card
+      };
     }
-    messagesWithDateSeparators.push(msg);
-  });
-  return <div className="min-h-screen flex flex-col pb-16 bg-secondary/30">
+  };
+
+  const headerInfo = getHeaderInfo();
+
+  return (
+    <div className="min-h-screen flex flex-col pb-16 bg-secondary/30">
       {/* Blue Header */}
       <div className="sticky top-0 z-10 bg-primary shadow-md">
         <div className="max-w-2xl mx-auto w-full px-2 py-3">
@@ -381,252 +530,312 @@ const Conversation = () => {
             </Button>
 
             <Avatar className="w-10 h-10 flex-shrink-0 border-2 border-white/20">
-              {card?.avatar_url ? <AvatarImage src={card.avatar_url} alt={displayName || "Visiteur"} /> : null}
-              <AvatarFallback className="bg-white/20">
-                {isCompany ? <Building2 className="w-5 h-5 text-white" /> : <User className="w-5 h-5 text-white" />}
-              </AvatarFallback>
+              {headerInfo.avatarUrl ? <AvatarImage src={headerInfo.avatarUrl} alt={headerInfo.name} /> : null}
+              <AvatarFallback className="bg-white/20">{headerInfo.icon}</AvatarFallback>
             </Avatar>
 
-            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
-            const contactIdentifier = card?.email || card?.phone || visitorId;
-            navigate(`/contacts?scrollTo=${encodeURIComponent(contactIdentifier || '')}`);
-          }}>
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="font-semibold text-white truncate">{displayName}</p>
+                <p className="font-semibold text-white truncate">{headerInfo.name}</p>
                 {currentVisitorBlocked && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">Bloqué</span>}
               </div>
               <div className="flex items-center gap-2">
-                {card?.job_title && <p className="text-xs text-white/70 truncate">{card.job_title}</p>}
+                {headerInfo.subtitle && <p className="text-xs text-white/70 truncate">{headerInfo.subtitle}</p>}
                 <div className="flex items-center gap-1 text-[10px] text-white/60" title="Chiffrement E2E">
                   <Lock className="w-2.5 h-2.5" />
-                  <span className="text-xs">Chiffrement E2E de bout en bout </span>
+                  <span className="text-xs">E2E</span>
                 </div>
               </div>
             </div>
 
-            {/* Add to contacts */}
-            {card ? <AddToContactsButton businessCard={card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" /> : <AddToContactsButton businessCard={{
-            id: visitorId || "",
-            card_type: "individual",
-            first_name: displayName !== "Visiteur" ? displayName : null,
-            last_name: null,
-            company_name: null,
-            job_title: null,
-            phone: visitorMessages[0]?.visitor_phone || null,
-            email: null,
-            visitor_anr_code: null
-          }} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />}
+            {/* Contact & Block buttons only for received_from_visitor mode */}
+            {conversationType === 'received_from_visitor' && (
+              <>
+                {(headerInfo as any).card ? (
+                  <AddToContactsButton businessCard={(headerInfo as any).card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />
+                ) : (
+                  <AddToContactsButton businessCard={{
+                    id: id || "",
+                    card_type: "individual",
+                    first_name: headerInfo.name !== "Visiteur" ? headerInfo.name : null,
+                    last_name: null,
+                    company_name: null,
+                    job_title: null,
+                    phone: visitorMessages[0]?.visitor_phone || null,
+                    email: null,
+                    visitor_anr_code: null
+                  }} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />
+                )}
 
-            {/* Block/Unblock button */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className={currentVisitorBlocked ? "text-green-400 hover:bg-white/10" : "text-red-400 hover:bg-white/10"}>
-                  {currentVisitorBlocked ? <ShieldCheck className="w-5 h-5" /> : <Ban className="w-5 h-5" />}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {currentVisitorBlocked ? "Débloquer ce visiteur ?" : "Bloquer ce visiteur ?"}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {currentVisitorBlocked ? "Vous pourrez à nouveau recevoir des messages de ce visiteur." : "Vous ne recevrez plus de messages de ce visiteur. Cette action est réversible."}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction className={currentVisitorBlocked ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"} onClick={() => {
-                  if (currentVisitorBlocked) {
-                    unblockVisitor(visitorId || "");
-                  } else {
-                    blockVisitor(visitorId || "", displayName);
-                  }
-                }}>
-                    {currentVisitorBlocked ? "Débloquer" : "Bloquer"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className={currentVisitorBlocked ? "text-green-400 hover:bg-white/10" : "text-red-400 hover:bg-white/10"}>
+                      {currentVisitorBlocked ? <ShieldCheck className="w-5 h-5" /> : <Ban className="w-5 h-5" />}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {currentVisitorBlocked ? "Débloquer ce visiteur ?" : "Bloquer ce visiteur ?"}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {currentVisitorBlocked 
+                          ? "Vous pourrez à nouveau recevoir des messages de ce visiteur." 
+                          : "Vous ne recevrez plus de messages de ce visiteur. Cette action est réversible."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction 
+                        className={currentVisitorBlocked ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
+                        onClick={() => {
+                          if (currentVisitorBlocked) {
+                            unblockVisitor(id || "");
+                          } else {
+                            blockVisitor(id || "", headerInfo.name);
+                          }
+                        }}
+                      >
+                        {currentVisitorBlocked ? "Débloquer" : "Bloquer"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Messages Area - WhatsApp chat background */}
+      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-3 py-4 pb-40 space-y-2 max-w-2xl mx-auto w-full">
-        {messagesWithDateSeparators.map((item, index) => {
-        if (item.type === 'separator') {
-          return <div key={`sep-${index}`} className="flex justify-center my-3">
+        {/* Empty conversation welcome */}
+        {allMessagesForDisplay.filter(m => m.type !== 'separator').length === 0 && (
+          <div className="flex justify-center my-8">
+            <div className="bg-[#E1F2FB] text-[#54656F] text-sm px-4 py-3 rounded-lg shadow-sm text-center max-w-xs">
+              <p className="font-medium mb-1">📝 Nouvelle conversation</p>
+              <p className="text-xs">Envoyez votre premier message</p>
+            </div>
+          </div>
+        )}
+
+        {allMessagesForDisplay.map((item, index) => {
+          if (item.type === 'separator') {
+            return (
+              <div key={`sep-${index}`} className="flex justify-center my-3">
                 <span className="bg-[#E1F2FB] text-[#54656F] text-xs px-3 py-1.5 rounded-lg shadow-sm">
                   {item.data.label}
                 </span>
-              </div>;
-        }
-        if (item.type === 'visitor') {
+              </div>
+            );
+          }
+
           const msg = item.data;
-          return <div key={`visitor-${msg.id}`} className="flex justify-start group">
-                <div className="max-w-[85%]">
-                  {msg.voice_message_url ? <div className="mb-1">
-                      <WhatsAppAudioPlayer audioUrl={msg.voice_message_url} isOwn={false} showAvatar={true} />
-                      <p className="text-xs text-[#667781] mt-1 ml-2">
-                        {format(new Date(msg.created_at), "HH:mm", {
-                    locale: fr
-                  })}
-                      </p>
-                    </div> : <div className="bg-white rounded-lg rounded-tl-none px-3 py-2 shadow-sm">
-                      <p className="text-sm text-[#111B21] whitespace-pre-wrap">{renderTextWithLinks(msg.message || "")}</p>
-                      <p className="text-[11px] text-[#667781] mt-1 text-right">
-                        {format(new Date(msg.created_at), "HH:mm", {
-                    locale: fr
-                  })}
-                      </p>
-                    </div>}
-                </div>
-              </div>;
-        } else {
-          const reply = item.data;
-          return <div key={`reply-${reply.id}`} className="flex justify-end group">
-                <button 
-                  onClick={() => deleteReply(reply.id)} 
+          const isMine = item.type === 'mine';
+
+          // Determine content type
+          const hasVoice = msg.voice_message_url || msg.reply_voice_url;
+          const hasMedia = msg.reply_media_url;
+          const text = msg.message || msg.reply_text || "";
+
+          return (
+            <div key={`msg-${msg.id}`} className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
+              {isMine && (
+                <button
+                  onClick={() => {
+                    if (conversationType === 'received_from_visitor') {
+                      deleteReply(msg.id);
+                    } else {
+                      deleteSentMessage(msg.id);
+                    }
+                  }}
                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-destructive hover:bg-destructive/10 rounded self-center mr-1"
                   title="Supprimer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-                <div className="max-w-[85%]">
-                  {/* Media message */}
-                  {reply.reply_media_url && <div className="mb-1">
-                      <div className="bg-[#D9FDD3] rounded-lg rounded-tr-none p-1 shadow-sm overflow-hidden">
-                        {reply.reply_media_type === 'video' ? <video src={reply.reply_media_url} controls className="max-w-full rounded-md max-h-64" /> : <img src={reply.reply_media_url} alt="Photo envoyée" className="max-w-full rounded-md max-h-64 cursor-pointer" onClick={() => window.open(reply.reply_media_url, '_blank')} />}
-                        {reply.reply_text && <p className="text-sm text-[#111B21] whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(reply.reply_text)}</p>}
-                        <div className="flex items-center justify-end gap-1 px-2 py-1">
-                          <span className="text-[11px] text-[#667781]">
-                            {format(new Date(reply.created_at), "HH:mm", {
-                        locale: fr
-                      })}
-                          </span>
-                          {reply.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />}
-                        </div>
-                      </div>
-                    </div>}
-                  {/* Voice message */}
-                  {reply.reply_voice_url && !reply.reply_media_url && <div className="mb-1">
-                      <WhatsAppAudioPlayer audioUrl={reply.reply_voice_url} isOwn={true} showAvatar={true} />
-                      <div className="flex items-center justify-end gap-1 mt-1 mr-2">
-                        <span className="text-[11px] text-[#667781]">
-                          {format(new Date(reply.created_at), "HH:mm", {
-                      locale: fr
-                    })}
-                        </span>
-                        {reply.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />}
-                      </div>
-                    </div>}
-                  {/* Text message */}
-                  {!reply.reply_voice_url && !reply.reply_media_url && reply.reply_text && <div className="bg-[#D9FDD3] rounded-lg rounded-tr-none px-3 py-2 shadow-sm">
-                      <p className="text-sm text-[#111B21] whitespace-pre-wrap">{renderTextWithLinks(reply.reply_text)}</p>
-                      <div className="flex items-center justify-end gap-1 mt-1">
-                        {(reply as any).is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
-                        <span className="text-[11px] text-[#667781]">
-                          {format(new Date(reply.created_at), "HH:mm", {
-                      locale: fr
-                    })}
-                        </span>
-                        {reply.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />}
-                      </div>
-                    </div>}
-                </div>
-              </div>;
-        }
-      })}
+              )}
+              
+              <div className="max-w-[85%]">
+                {/* Voice message */}
+                {hasVoice && (
+                  <div className="mb-1">
+                    <WhatsAppAudioPlayer 
+                      audioUrl={msg.voice_message_url || msg.reply_voice_url} 
+                      isOwn={isMine} 
+                      showAvatar={true} 
+                    />
+                    <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end mr-2' : 'ml-2'}`}>
+                      <span className="text-[11px] text-[#667781]">
+                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                      </span>
+                      {isMine && (msg.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Media message */}
+                {hasMedia && !hasVoice && (
+                  <div className={`${isMine ? 'bg-[#D9FDD3] rounded-tr-none' : 'bg-white rounded-tl-none'} rounded-lg p-1 shadow-sm overflow-hidden`}>
+                    {msg.reply_media_type === 'video' ? (
+                      <video src={msg.reply_media_url} controls className="max-w-full rounded-md max-h-64" />
+                    ) : (
+                      <img 
+                        src={msg.reply_media_url} 
+                        alt="Photo" 
+                        className="max-w-full rounded-md max-h-64 cursor-pointer"
+                        onClick={() => window.open(msg.reply_media_url, '_blank')}
+                      />
+                    )}
+                    {text && <p className="text-sm text-[#111B21] whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(text)}</p>}
+                    <div className={`flex items-center gap-1 px-2 py-1 ${isMine ? 'justify-end' : ''}`}>
+                      <span className="text-[11px] text-[#667781]">
+                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                      </span>
+                      {isMine && (msg.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Text message */}
+                {!hasVoice && !hasMedia && text && (
+                  <div className={`${isMine ? 'bg-[#D9FDD3] rounded-tr-none' : 'bg-white rounded-tl-none'} rounded-lg px-3 py-2 shadow-sm`}>
+                    <p className="text-sm text-[#111B21] whitespace-pre-wrap">{renderTextWithLinks(text)}</p>
+                    <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : ''}`}>
+                      {msg.is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
+                      <span className="text-[11px] text-[#667781]">
+                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                      </span>
+                      {isMine && (msg.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - WhatsApp style */}
+      {/* Input Area */}
       <div className="fixed bottom-16 left-0 right-0 bg-[#F0F2F5] px-2 py-2">
         <div className="max-w-2xl mx-auto w-full">
-        {/* Hidden file input */}
-        <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
+          <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
 
-        {/* Media Preview */}
-        {selectedMedia && mediaPreview && <div className="mb-2 relative inline-block">
-            <div className="relative rounded-lg overflow-hidden bg-white shadow-sm max-w-48">
-              {selectedMedia.type.startsWith('video/') ? <video src={mediaPreview} className="max-h-32 object-cover" /> : <img src={mediaPreview} alt="Preview" className="max-h-32 object-cover" />}
-              <button onClick={clearSelectedMedia} className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80">
-                <X className="w-4 h-4" />
-              </button>
-              <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 rounded text-xs text-white flex items-center gap-1">
-                {selectedMedia.type.startsWith('video/') ? <Video className="w-3 h-3" /> : <Image className="w-3 h-3" />}
-                {(selectedMedia.size / 1024 / 1024).toFixed(1)} Mo
+          {/* Media Preview */}
+          {selectedMedia && mediaPreview && (
+            <div className="mb-2 relative inline-block">
+              <div className="relative rounded-lg overflow-hidden bg-white shadow-sm max-w-48">
+                {selectedMedia.type.startsWith('video/') 
+                  ? <video src={mediaPreview} className="max-h-32 object-cover" />
+                  : <img src={mediaPreview} alt="Preview" className="max-h-32 object-cover" />
+                }
+                <button onClick={clearSelectedMedia} className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80">
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 rounded text-xs text-white flex items-center gap-1">
+                  {selectedMedia.type.startsWith('video/') ? <Video className="w-3 h-3" /> : <Image className="w-3 h-3" />}
+                  {(selectedMedia.size / 1024 / 1024).toFixed(1)} Mo
+                </div>
               </div>
             </div>
-          </div>}
+          )}
 
-        {showVideoRecorder ? <VideoRecorder onRecordingComplete={blob => setVideoBlob(blob)} onSend={handleSend} onCancel={() => {
-          setShowVideoRecorder(false);
-          setVideoBlob(null);
-        }} sending={sending} videoBlob={videoBlob} /> : showVoiceRecorder ? <VoiceRecorder onRecordingComplete={blob => setAudioBlob(blob)} onSend={handleSend} onCancel={() => {
-          setShowVoiceRecorder(false);
-          setAudioBlob(null);
-        }} sending={sending} audioBlob={audioBlob} /> : <div className="flex items-center gap-2">
-            {/* Left icons */}
-            <div className="flex items-center">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors">
-                    <Smile className="w-6 h-6" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-2 max-h-72 overflow-y-auto" side="top" align="start">
-                  <div className="space-y-3">
-                    {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => <div key={category}>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
-                        <div className="grid grid-cols-8 gap-1">
-                          {emojis.map((emoji, index) => <button key={index} className="text-xl p-1 hover:bg-muted rounded transition-colors" onClick={() => setReplyText(prev => prev + emoji)}>
-                              {emoji}
-                            </button>)}
+          {showVideoRecorder ? (
+            <VideoRecorder 
+              onRecordingComplete={blob => setVideoBlob(blob)} 
+              onSend={handleSend} 
+              onCancel={() => { setShowVideoRecorder(false); setVideoBlob(null); }} 
+              sending={sending} 
+              videoBlob={videoBlob} 
+            />
+          ) : showVoiceRecorder ? (
+            <VoiceRecorder 
+              onRecordingComplete={blob => setAudioBlob(blob)} 
+              onSend={handleSend} 
+              onCancel={() => { setShowVoiceRecorder(false); setAudioBlob(null); }} 
+              sending={sending} 
+              audioBlob={audioBlob} 
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              {/* Left icons */}
+              <div className="flex items-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors">
+                      <Smile className="w-6 h-6" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-2 max-h-72 overflow-y-auto" side="top" align="start">
+                    <div className="space-y-3">
+                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
+                        <div key={category}>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
+                          <div className="grid grid-cols-8 gap-1">
+                            {emojis.map((emoji, i) => (
+                              <button key={i} className="text-xl p-1 hover:bg-muted rounded transition-colors" onClick={() => setReplyText(prev => prev + emoji)}>
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>)}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
-              <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors" onClick={() => fileInputRef.current?.click()}>
-                <Paperclip className="w-6 h-6" />
-              </button>
+                <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors" onClick={() => fileInputRef.current?.click()}>
+                  <Paperclip className="w-6 h-6" />
+                </button>
 
-              <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors" onClick={() => setShowVideoRecorder(true)}>
-                <Camera className="w-6 h-6" />
-              </button>
+                <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors" onClick={() => setShowVideoRecorder(true)}>
+                  <Camera className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Input */}
+              <div className="flex-1 bg-white rounded-full px-4 py-2 shadow-sm">
+                <Textarea 
+                  placeholder="Message" 
+                  value={replyText} 
+                  onChange={e => setReplyText(e.target.value)} 
+                  className="w-full border-0 p-0 min-h-[24px] max-h-24 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto text-[#111B21]" 
+                  rows={1}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  style={{ height: 'auto', minHeight: '24px' }}
+                  onInput={e => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = Math.min(target.scrollHeight, 96) + 'px';
+                  }}
+                />
+              </div>
+
+              {/* Send/Mic button */}
+              {replyText.trim() || selectedMedia ? (
+                <button className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md" onClick={handleSend} disabled={sending}>
+                  {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                </button>
+              ) : (
+                <button onClick={() => setShowVoiceRecorder(true)} className="p-3 rounded-full text-white transition-colors shadow-md bg-[#2266ba]">
+                  <Mic className="w-5 h-5" />
+                </button>
+              )}
             </div>
-
-            {/* Input Field */}
-            <div className="flex-1 bg-white rounded-full px-4 py-2 shadow-sm">
-              <Textarea placeholder="Message" value={replyText} onChange={e => setReplyText(e.target.value)} className="w-full border-0 p-0 min-h-[24px] max-h-24 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto text-[#111B21]" rows={1} onKeyDown={e => {
-              if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
-                e.preventDefault();
-                handleSend();
-              }
-            }} style={{
-              height: 'auto',
-              minHeight: '24px'
-            }} onInput={e => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = 'auto';
-              target.style.height = Math.min(target.scrollHeight, 96) + 'px';
-            }} />
-            </div>
-
-            {/* Send/Mic button */}
-            {replyText.trim() || selectedMedia ? <button className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md" onClick={handleSend} disabled={sending}>
-                {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              </button> : <button onClick={() => setShowVoiceRecorder(true)} className="p-3 rounded-full text-white transition-colors shadow-md bg-[#2266ba]">
-                <Mic className="w-5 h-5" />
-              </button>}
-          </div>}
+          )}
         </div>
       </div>
 
       <BottomNav />
-    </div>;
+    </div>
+  );
 };
+
 export default Conversation;
