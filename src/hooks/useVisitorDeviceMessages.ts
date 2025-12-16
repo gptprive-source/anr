@@ -66,15 +66,18 @@ export const useVisitorDeviceMessages = () => {
     try {
       setLoading(true);
       
-      // Get business card for this device
-      const { data: businessCard, error: cardError } = await supabase
+      // Get business card for this device (use limit(1) to handle duplicates)
+      const { data: businessCards, error: cardError } = await supabase
         .from("visitor_business_cards")
         .select("id")
         .eq("device_id", deviceId)
-        .maybeSingle();
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const businessCard = businessCards?.[0];
 
       if (cardError || !businessCard) {
-        console.log("[useVisitorDeviceMessages] No business card found for device:", deviceId);
+        console.log("[useVisitorDeviceMessages] No business card found for device:", deviceId, cardError);
         setMessages([]);
         setUnreadCount(0);
         setLoading(false);
