@@ -175,7 +175,7 @@ const AppContent = () => {
           
           {/* Visitor messages (non-authenticated) */}
           <Route path="/visitor-messages" element={<VisitorMessages />} />
-          <Route path="/visitor-conversation/:messageId" element={<VisitorConversation />} />
+          <Route path="/visitor-conversation/:habitationId" element={<VisitorConversation />} />
 
           {/* Public legal pages */}
           <Route path="/mentions-legales" element={<MentionsLegales />} />
