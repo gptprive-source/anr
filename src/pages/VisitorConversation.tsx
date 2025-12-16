@@ -42,7 +42,6 @@ const VisitorConversation = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [newMessage, setNewMessage] = useState("");
-  const [businessCardId, setBusinessCardId] = useState<string | null>(null);
   const [originalMessageId, setOriginalMessageId] = useState<string | null>(null);
 
   // Voice recording
@@ -78,22 +77,7 @@ const VisitorConversation = () => {
         });
       }
 
-      // Get business card for this device
-      const { data: card } = await supabase
-        .from("visitor_business_cards")
-        .select("id")
-        .eq("device_id", deviceId)
-        .maybeSingle();
-
-      if (!card) {
-        setMessages([]);
-        setLoading(false);
-        return;
-      }
-
-      setBusinessCardId(card.id);
-
-      // Get messages sent by this device to this habitation
+      // Get messages sent by this device to this habitation (using device_id directly)
       const { data: sentMessages } = await supabase
         .from("visitor_messages")
         .select(`
@@ -106,7 +90,7 @@ const VisitorConversation = () => {
           encrypted_message,
           is_encrypted
         `)
-        .eq("business_card_id", card.id)
+        .eq("visitor_device_id", deviceId)
         .eq("habitation_id", habitationId)
         .eq("deleted_by_visitor", false)
         .order("created_at", { ascending: true });
@@ -239,7 +223,7 @@ const VisitorConversation = () => {
         .from("visitor_messages")
         .insert({
           habitation_id: habitationId,
-          business_card_id: businessCardId,
+          visitor_device_id: deviceId,
           message: newMessage.trim(),
         });
 
@@ -315,7 +299,7 @@ const VisitorConversation = () => {
   };
 
   const sendVoiceMessage = async (audioBlob: Blob) => {
-    if (!habitationId || !businessCardId) return;
+    if (!habitationId) return;
 
     try {
       setSending(true);
@@ -337,7 +321,7 @@ const VisitorConversation = () => {
         .from("visitor_messages")
         .insert({
           habitation_id: habitationId,
-          business_card_id: businessCardId,
+          visitor_device_id: deviceId,
           voice_message_url: publicUrl.publicUrl,
         });
 

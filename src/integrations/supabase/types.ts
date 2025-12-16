@@ -3172,6 +3172,7 @@ export type Database = {
           message_nonce: string | null
           read_at: string | null
           replied_at: string | null
+          visitor_device_id: string | null
           visitor_latitude: number | null
           visitor_longitude: number | null
           visitor_phone: string | null
@@ -3196,6 +3197,7 @@ export type Database = {
           message_nonce?: string | null
           read_at?: string | null
           replied_at?: string | null
+          visitor_device_id?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
@@ -3220,6 +3222,7 @@ export type Database = {
           message_nonce?: string | null
           read_at?: string | null
           replied_at?: string | null
+          visitor_device_id?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
