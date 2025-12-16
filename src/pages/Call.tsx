@@ -1,5 +1,5 @@
 import { useParams, useSearchParams, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CallInterface from "@/components/call/CallInterface";
 import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
@@ -28,13 +28,25 @@ const Call = () => {
   const [callData, setCallData] = useState<CallData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Ref pour empêcher la double exécution (React Strict Mode)
+  const hasInitializedRef = useRef(false);
 
   const visitorLat = location.state?.visitorLat;
   const visitorLon = location.state?.visitorLon;
   const selectedHabitationId = location.state?.habitationId;
 
   useEffect(() => {
+    // Empêcher la double exécution
+    if (hasInitializedRef.current) {
+      logger.log("[Call] Already initialized, skipping duplicate execution");
+      return;
+    }
+    
     const initializeCall = async () => {
+      // Marquer comme initialisé IMMÉDIATEMENT pour bloquer toute exécution parallèle
+      hasInitializedRef.current = true;
+      
       if (!anrId) {
         setError("Code manquant");
         setLoading(false);
