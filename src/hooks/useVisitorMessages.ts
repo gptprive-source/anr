@@ -10,7 +10,6 @@ interface BusinessCard {
   job_title: string | null;
   phone: string | null;
   email: string | null;
-  visitor_anr_code: string | null;
   avatar_url: string | null;
 }
 

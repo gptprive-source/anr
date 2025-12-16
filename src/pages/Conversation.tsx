@@ -44,7 +44,6 @@ interface BusinessCard {
   job_title: string | null;
   phone: string | null;
   email: string | null;
-  visitor_anr_code: string | null;
   avatar_url: string | null;
 }
 
@@ -693,8 +692,7 @@ const Conversation = () => {
                     company_name: null,
                     job_title: null,
                     phone: visitorMessages[0]?.visitor_phone || null,
-                    email: null,
-                    visitor_anr_code: null
+                    email: null
                   }} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />
                 )}
 

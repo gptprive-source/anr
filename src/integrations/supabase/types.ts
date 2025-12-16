@@ -3016,7 +3016,6 @@ export type Database = {
           phone: string | null
           updated_at: string | null
           user_id: string | null
-          visitor_anr_code: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -3033,7 +3032,6 @@ export type Database = {
           phone?: string | null
           updated_at?: string | null
           user_id?: string | null
-          visitor_anr_code?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -3050,7 +3048,6 @@ export type Database = {
           phone?: string | null
           updated_at?: string | null
           user_id?: string | null
-          visitor_anr_code?: string | null
         }
         Relationships: []
       }

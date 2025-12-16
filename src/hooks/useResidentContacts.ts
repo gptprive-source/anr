@@ -30,7 +30,6 @@ interface BusinessCard {
   job_title: string | null;
   phone: string | null;
   email: string | null;
-  visitor_anr_code?: string | null;
   avatar_url?: string | null;
 }
 
@@ -89,7 +88,6 @@ export const useResidentContacts = () => {
           job_title: businessCard.job_title,
           phone: businessCard.phone,
           email: businessCard.email,
-          anr_code: businessCard.visitor_anr_code || null,
           notes: notes || null,
           source_business_card_id: businessCard.id || null,
           source_message_id: sourceMessageId || null,

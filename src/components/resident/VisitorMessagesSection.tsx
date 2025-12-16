@@ -122,12 +122,6 @@ const VisitorMessagesSection = ({ habitationId }: VisitorMessagesSectionProps) =
                       {card.email}
                     </a>
                   )}
-                  {card.visitor_anr_code && (
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      ANR: {card.visitor_anr_code}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>

@@ -50,7 +50,6 @@ const VisitorModeSection = ({
         email: userEmail || null,
         company_name: null,
         job_title: null,
-        visitor_anr_code: null,
         avatar_url: null
       });
     }
