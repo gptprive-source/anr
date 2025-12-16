@@ -18,6 +18,8 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user?.id) return;
 
+    console.log("[REALTIME] Setting up call status subscription for user:", user.id);
+
     const callChannel = supabase
       .channel('call-status-realtime')
       .on(
@@ -28,21 +30,29 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           table: 'call_logs',
         },
         (payload) => {
+          console.log("[REALTIME] Received call_logs update:", payload.new);
           const callLog = payload.new as any;
           const currentCall = getCurrentCallData();
           
+          console.log("[REALTIME] Current call data:", currentCall?.callId, "Updated call:", callLog.id);
+          console.log("[REALTIME] Call screen visible:", isCallScreenVisible());
+          
           // If we're showing an incoming call screen and this call just ended, hide it
           if (currentCall && isCallScreenVisible() && callLog.id === currentCall.callId) {
+            console.log("[REALTIME] Call IDs match, checking status:", callLog.status);
             if (callLog.status === "ended" || callLog.status === "declined" || callLog.status === "missed") {
-              console.log("[REALTIME] Call ended/declined/missed, hiding incoming call screen immediately");
+              console.log("[REALTIME] ✅ Hiding incoming call screen immediately");
               hideIncomingCall();
             }
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[REALTIME] Subscription status:", status);
+      });
 
     return () => {
+      console.log("[REALTIME] Removing call status channel");
       supabase.removeChannel(callChannel);
     };
   }, [user?.id]);
