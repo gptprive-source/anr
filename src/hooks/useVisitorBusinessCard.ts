@@ -11,7 +11,6 @@ export interface VisitorBusinessCard {
   job_title: string | null;
   phone: string | null;
   email: string | null;
-  visitor_anr_code: string | null;
   avatar_url: string | null;
   device_id: string;
   user_id: string | null;
@@ -65,8 +64,6 @@ export const useVisitorBusinessCard = () => {
           .eq("id", user.id)
           .maybeSingle();
         
-        const visitorAnrCode = `ANR-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
-        
         const { data: newCard, error: insertError } = await (supabase as any)
           .from("visitor_business_cards")
           .insert({
@@ -75,7 +72,6 @@ export const useVisitorBusinessCard = () => {
             first_name: profile?.first_name || "Utilisateur",
             last_name: profile?.last_name || "",
             card_type: "individual",
-            visitor_anr_code: visitorAnrCode,
           })
           .select()
           .single();

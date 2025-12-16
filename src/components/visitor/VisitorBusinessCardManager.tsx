@@ -11,9 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { useVisitorBusinessCard, VisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { useVisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
 import { User, Building2, Loader2, Save, Trash2, CreditCard } from "lucide-react";
 import AvatarUpload from "@/components/ui/AvatarUpload";
 
@@ -29,11 +27,9 @@ const VisitorBusinessCardManager = ({
   onCardSaved,
 }: VisitorBusinessCardManagerProps) => {
   const { card, saveCard, deleteCard, loading } = useVisitorBusinessCard();
-  const { user } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [userAnrCode, setUserAnrCode] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     card_type: "individual" as "individual" | "company",
@@ -43,39 +39,10 @@ const VisitorBusinessCardManager = ({
     job_title: "",
     phone: "",
     email: "",
-    visitor_anr_code: "",
     avatar_url: null as string | null,
   });
 
-  // Fetch user's ANR code if authenticated
-  useEffect(() => {
-    const fetchUserAnr = async () => {
-      if (!user) return;
-      
-      const { data } = await supabase
-        .from("residents")
-        .select(`
-          habitation:habitations (
-            anr:anrs (code)
-          )
-        `)
-        .eq("user_id", user.id)
-        .eq("status", "verified")
-        .limit(1)
-        .maybeSingle();
-      
-      if (data?.habitation) {
-        const anrCode = (data.habitation as any)?.anr?.code;
-        if (anrCode) {
-          setUserAnrCode(anrCode);
-        }
-      }
-    };
-    
-    fetchUserAnr();
-  }, [user]);
-
-  // Populate form when card loads or when userAnrCode is available
+  // Populate form when card loads
   useEffect(() => {
     if (card) {
       setFormData({
@@ -86,14 +53,10 @@ const VisitorBusinessCardManager = ({
         job_title: card.job_title || "",
         phone: card.phone || "",
         email: card.email || "",
-        visitor_anr_code: card.visitor_anr_code || userAnrCode || "",
         avatar_url: card.avatar_url || null,
       });
-    } else if (userAnrCode && !formData.visitor_anr_code) {
-      // Pre-fill ANR code for new cards
-      setFormData(prev => ({ ...prev, visitor_anr_code: userAnrCode }));
     }
-  }, [card, userAnrCode]);
+  }, [card]);
 
   const handleSubmit = async () => {
     // Validation
@@ -145,7 +108,6 @@ const VisitorBusinessCardManager = ({
         job_title: "",
         phone: "",
         email: "",
-        visitor_anr_code: "",
         avatar_url: null,
       });
     } else {
@@ -289,18 +251,6 @@ const VisitorBusinessCardManager = ({
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="email@example.com"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="visitor_anr">Mon code ANR (optionnel)</Label>
-              <Input
-                id="visitor_anr"
-                value={formData.visitor_anr_code}
-                onChange={(e) => setFormData({ ...formData, visitor_anr_code: e.target.value })}
-                placeholder="ABC123"
-              />
-              <p className="text-xs text-muted-foreground">
-                Si vous avez votre propre ANR, le résident pourra vous appeler
-              </p>
             </div>
           </div>
 
