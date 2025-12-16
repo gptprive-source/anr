@@ -3239,6 +3239,10 @@ export type Database = {
           visitor_lon: number
         }[]
       }
+      find_habitation_by_email: {
+        Args: { contact_email: string }
+        Returns: string
+      }
       get_permissive_policies: {
         Args: never
         Returns: {
