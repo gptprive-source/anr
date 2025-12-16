@@ -280,21 +280,21 @@ export const useVisitorDeviceMessages = () => {
     fetchNotifications();
   }, [fetchMessages, fetchNotifications]);
 
-  // Set up real-time subscription for new replies
+  // Set up real-time subscription for new replies and updates
   useEffect(() => {
     const channel = supabase
       .channel("visitor-device-replies")
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*", // Listen to INSERT, UPDATE, DELETE
           schema: "public",
           table: "message_replies",
         },
         (payload) => {
-          console.log("[useVisitorDeviceMessages] New reply received:", payload);
-          // Refetch to get updated data
-          fetchMessages();
+          console.log("[useVisitorDeviceMessages] Reply change:", payload);
+          // Small delay to ensure DB is updated before refetching
+          setTimeout(() => fetchMessages(), 100);
         }
       )
       .on(
