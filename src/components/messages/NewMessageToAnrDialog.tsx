@@ -111,7 +111,7 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
   const handleGoToConversation = () => {
     if (selectedHabitation) {
       onOpenChange(false);
-      navigate(`/conversation-sent/${selectedHabitation.id}`);
+      navigate(`/conversation/${selectedHabitation.id}`);
     }
   };
 
