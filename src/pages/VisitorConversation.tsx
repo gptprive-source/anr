@@ -218,12 +218,20 @@ const VisitorConversation = () => {
     try {
       setSending(true);
 
+      // Get business card for this device to link visitor identity
+      const { data: card } = await supabase
+        .from("visitor_business_cards")
+        .select("id")
+        .eq("device_id", deviceId)
+        .maybeSingle();
+
       // Insert as a new visitor_message (continuing the conversation)
       const { error } = await supabase
         .from("visitor_messages")
         .insert({
           habitation_id: habitationId,
           visitor_device_id: deviceId,
+          business_card_id: card?.id || null,
           message: newMessage.trim(),
         });
 
@@ -304,6 +312,13 @@ const VisitorConversation = () => {
     try {
       setSending(true);
 
+      // Get business card for this device to link visitor identity
+      const { data: card } = await supabase
+        .from("visitor_business_cards")
+        .select("id")
+        .eq("device_id", deviceId)
+        .maybeSingle();
+
       // Upload to storage
       const fileName = `voice_${deviceId}_${Date.now()}.webm`;
       const { error: uploadError } = await supabase.storage
@@ -316,12 +331,13 @@ const VisitorConversation = () => {
         .from("visitor-voice-messages")
         .getPublicUrl(fileName);
 
-      // Insert message
+      // Insert message with both device_id and business_card_id
       const { error } = await supabase
         .from("visitor_messages")
         .insert({
           habitation_id: habitationId,
           visitor_device_id: deviceId,
+          business_card_id: card?.id || null,
           voice_message_url: publicUrl.publicUrl,
         });
 
