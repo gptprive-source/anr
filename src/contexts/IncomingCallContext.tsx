@@ -90,37 +90,58 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
 
     const checkForCalls = async () => {
       const currentCall = getCurrentCallData();
+      const screenVisible = isCallScreenVisible();
       
-      // If call screen is visible, check if call is still active (fast path)
-      if (isCallScreenVisible() && currentCall) {
-        console.log("[POLL] Checking if call still active:", currentCall.callId);
-        
-        // Check both call_logs status AND participant status
-        const [{ data: callLog }, { data: participant }] = await Promise.all([
-          supabase
-            .from("call_logs")
-            .select("status")
-            .eq("id", currentCall.callId)
-            .single(),
-          supabase
+      console.log("[POLL] Check - Screen visible:", screenVisible, "currentCall:", currentCall?.callId);
+      
+      // ALWAYS check if screen is visible - if so, verify the call is still active
+      if (screenVisible) {
+        // If we have currentCall data, check that specific call
+        if (currentCall) {
+          console.log("[POLL] Checking specific call:", currentCall.callId);
+          
+          // Check both call_logs status AND participant status
+          const [{ data: callLog }, { data: participant }] = await Promise.all([
+            supabase
+              .from("call_logs")
+              .select("status")
+              .eq("id", currentCall.callId)
+              .single(),
+            supabase
+              .from("call_participants")
+              .select("status")
+              .eq("id", currentCall.participantId)
+              .single()
+          ]);
+          
+          console.log("[POLL] Call status:", callLog?.status, "Participant status:", participant?.status);
+          
+          // If call ended (visitor hung up) or declined, or participant no longer ringing, hide screen
+          const callEnded = !callLog || callLog.status === "ended" || callLog.status === "missed" || callLog.status === "declined";
+          const notRinging = !participant || participant.status !== "ringing";
+          const answeredByOther = participant?.status === "call_answered_by_other";
+          
+          if (callEnded || notRinging || answeredByOther) {
+            console.log("[POLL] ✅ Hiding screen - callEnded:", callEnded, "notRinging:", notRinging, "answeredByOther:", answeredByOther);
+            hideIncomingCall();
+            return;
+          }
+        } else {
+          // Screen is visible but no currentCall data - check if user has ANY ringing calls
+          console.log("[POLL] Screen visible but no currentCall - checking for any ringing calls");
+          const { data: ringingCalls } = await supabase
             .from("call_participants")
-            .select("status")
-            .eq("id", currentCall.participantId)
-            .single()
-        ]);
-        
-        console.log("[POLL] Call status:", callLog?.status, "Participant status:", participant?.status);
-        
-        // If call ended (visitor hung up) or declined, or participant no longer ringing, hide screen
-        const callEnded = !callLog || callLog.status === "ended" || callLog.status === "missed" || callLog.status === "declined";
-        const notRinging = !participant || participant.status !== "ringing";
-        
-        // Also check if another resident answered
-        const answeredByOther = participant?.status === "call_answered_by_other";
-        
-        if (callEnded || notRinging || answeredByOther) {
-          console.log("[POLL] ✅ Call ended - hiding screen. callLog:", callLog?.status, "participant:", participant?.status);
-          hideIncomingCall();
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("status", "ringing")
+            .eq("role", "resident")
+            .limit(1);
+          
+          if (!ringingCalls || ringingCalls.length === 0) {
+            console.log("[POLL] ✅ No ringing calls found - hiding screen");
+            hideIncomingCall();
+            return;
+          }
         }
         return;
       }
@@ -206,7 +227,7 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     checkForCalls();
     
     // Poll every 1.5 seconds for faster detection when visitor hangs up
-    const interval = setInterval(checkForCalls, 1500);
+    const interval = setInterval(checkForCalls, 1000);
 
     return () => {
       console.log("[POLL] Stopping polling");
