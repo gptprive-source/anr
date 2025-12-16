@@ -75,18 +75,23 @@ const BottomNav = () => {
 
     fetchUnreadCount();
 
-    // Subscribe to changes
+    // Subscribe to changes (all events: INSERT, UPDATE, DELETE)
     const channel = supabase
       .channel('unread-messages-count')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'visitor_messages' },
-        () => fetchUnreadCount()
+        () => {
+          // Small delay to ensure DB is updated before refetching
+          setTimeout(fetchUnreadCount, 100);
+        }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'message_replies' },
-        () => fetchUnreadCount()
+        () => {
+          setTimeout(fetchUnreadCount, 100);
+        }
       )
       .subscribe();
 
