@@ -109,7 +109,7 @@ const Conversation = () => {
   const [habitationInfo, setHabitationInfo] = useState<{ name: string; address: string } | null>(null);
   const [localMessages, setLocalMessages] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [messageToDelete, setMessageToDelete] = useState<{ id: string; isMine: boolean } | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<{ id: string; isMine: boolean; isRead: boolean } | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Hooks for "received from visitor" mode (resident viewing)
@@ -713,10 +713,10 @@ const Conversation = () => {
               {!isMine && (
                 <button
                   onClick={() => {
-                    setMessageToDelete({ id: msg.id, isMine: false });
+                    setMessageToDelete({ id: msg.id, isMine: false, isRead: msg.is_read || false });
                     setShowDeleteDialog(true);
                   }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted-foreground hover:bg-muted rounded self-center mr-1"
+                  className="opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted rounded self-center mr-1"
                   title="Supprimer"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -727,10 +727,10 @@ const Conversation = () => {
               {isMine && (
                 <button
                   onClick={() => {
-                    setMessageToDelete({ id: msg.id, isMine: true });
+                    setMessageToDelete({ id: msg.id, isMine: true, isRead: msg.is_read || false });
                     setShowDeleteDialog(true);
                   }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted-foreground hover:bg-muted rounded self-center mr-1"
+                  className="opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted rounded self-center mr-1"
                   title="Supprimer"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -924,14 +924,23 @@ const Conversation = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex flex-col gap-2 py-4">
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={handleDeleteForEveryone}
-            >
-              <Trash2 className="w-4 h-4" />
-              Supprimer pour tout le monde
-            </Button>
+            {/* Show "Delete for everyone" only if message not read AND it's my message */}
+            {messageToDelete?.isMine && !messageToDelete?.isRead && (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={handleDeleteForEveryone}
+              >
+                <Trash2 className="w-4 h-4" />
+                Supprimer pour tout le monde
+              </Button>
+            )}
+            {/* If message is read AND it's mine, show explanatory message */}
+            {messageToDelete?.isMine && messageToDelete?.isRead && (
+              <p className="text-sm text-muted-foreground text-center py-2 bg-muted/50 rounded-md">
+                Ce message a été lu, vous ne pouvez plus le supprimer pour tout le monde
+              </p>
+            )}
             <Button
               variant="outline"
               className="w-full justify-start gap-2"
