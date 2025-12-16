@@ -43,12 +43,14 @@ export interface VisitorDeviceNotification {
   created_at: string;
 }
 
-// Get or create device ID
+// Get or create device ID - MUST use same key as useVisitorBusinessCard
+const DEVICE_ID_KEY = "anr_visitor_device_id";
+
 export const getDeviceId = (): string => {
-  let deviceId = localStorage.getItem("anr_device_id");
+  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
-    deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem("anr_device_id", deviceId);
+    deviceId = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, deviceId);
   }
   return deviceId;
 };
