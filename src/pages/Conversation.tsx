@@ -109,6 +109,8 @@ const Conversation = () => {
   const [habitationInfo, setHabitationInfo] = useState<{ name: string; address: string } | null>(null);
   const [localMessages, setLocalMessages] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [messageToDelete, setMessageToDelete] = useState<{ id: string; isMine: boolean } | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Hooks for "received from visitor" mode (resident viewing)
   const firstMessageId = visitorMessages[0]?.id || "";
@@ -500,6 +502,60 @@ const Conversation = () => {
     });
   }
 
+  // Delete message handlers
+  const handleDeleteForMe = async () => {
+    if (!messageToDelete) return;
+    
+    if (conversationType === 'received_from_visitor') {
+      if (messageToDelete.isMine) {
+        await deleteReply(messageToDelete.id);
+      } else {
+        // Mark as deleted for me only (soft delete)
+        await supabase
+          .from("visitor_messages")
+          .update({ deleted_by_visitor: true })
+          .eq("id", messageToDelete.id);
+        setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
+      }
+    } else {
+      if (messageToDelete.isMine) {
+        await deleteSentMessage(messageToDelete.id);
+      } else {
+        // For replies, we can only delete them fully (no soft delete column for recipient)
+        await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
+        refetchSentMessages();
+      }
+    }
+    
+    setShowDeleteDialog(false);
+    setMessageToDelete(null);
+    toast({ title: "Message supprimé" });
+  };
+
+  const handleDeleteForEveryone = async () => {
+    if (!messageToDelete) return;
+    
+    if (conversationType === 'received_from_visitor') {
+      if (messageToDelete.isMine) {
+        await deleteReply(messageToDelete.id);
+      } else {
+        await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
+        setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
+      }
+    } else {
+      if (messageToDelete.isMine) {
+        await deleteSentMessage(messageToDelete.id);
+      } else {
+        await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
+        refetchSentMessages();
+      }
+    }
+    
+    setShowDeleteDialog(false);
+    setMessageToDelete(null);
+    toast({ title: "Message supprimé pour tout le monde" });
+  };
+
   // Get header info
   const getHeaderInfo = () => {
     if (conversationType === 'sent_to_anr') {
@@ -653,16 +709,28 @@ const Conversation = () => {
 
           return (
             <div key={`msg-${msg.id}`} className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
+              {/* Trash icon for theirs (left side) */}
+              {!isMine && (
+                <button
+                  onClick={() => {
+                    setMessageToDelete({ id: msg.id, isMine: false });
+                    setShowDeleteDialog(true);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted-foreground hover:bg-muted rounded self-center mr-1"
+                  title="Supprimer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+              
+              {/* Trash icon for mine (left side of my message) */}
               {isMine && (
                 <button
                   onClick={() => {
-                    if (conversationType === 'received_from_visitor') {
-                      deleteReply(msg.id);
-                    } else {
-                      deleteSentMessage(msg.id);
-                    }
+                    setMessageToDelete({ id: msg.id, isMine: true });
+                    setShowDeleteDialog(true);
                   }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-destructive hover:bg-destructive/10 rounded self-center mr-1"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted-foreground hover:bg-muted rounded self-center mr-1"
                   title="Supprimer"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -845,6 +913,39 @@ const Conversation = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Message Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce message ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Choisissez comment supprimer ce message
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={handleDeleteForEveryone}
+            >
+              <Trash2 className="w-4 h-4" />
+              Supprimer pour tout le monde
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={handleDeleteForMe}
+            >
+              <Trash2 className="w-4 h-4" />
+              Supprimer pour moi uniquement
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMessageToDelete(null)}>Annuler</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <BottomNav />
     </div>
