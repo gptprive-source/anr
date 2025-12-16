@@ -24,6 +24,7 @@ export const useMessageReplies = (messageId?: string) => {
   const [loading, setLoading] = useState(false);
 
   const fetchReplies = async (msgId: string) => {
+    console.log("[useMessageReplies] fetchReplies called for:", msgId);
     setLoading(true);
     try {
       // Filter out replies deleted by resident (since this hook is used by residents)
@@ -35,6 +36,7 @@ export const useMessageReplies = (messageId?: string) => {
         .order("created_at", { ascending: true }) as any);
       
       if (error) throw error;
+      console.log("[useMessageReplies] Fetched replies:", data?.length, "for message:", msgId);
       setReplies((data || []) as MessageReply[]);
     } catch (error) {
       console.error("[useMessageReplies] Error fetching replies:", error);
@@ -223,6 +225,11 @@ export const useMessageReplies = (messageId?: string) => {
     sendReply,
     markAsRead,
     deleteReply,
-    refetch: () => messageId && fetchReplies(messageId),
+    refetch: async () => {
+      if (messageId) {
+        console.log("[useMessageReplies] Refetching replies for:", messageId);
+        await fetchReplies(messageId);
+      }
+    },
   };
 };
