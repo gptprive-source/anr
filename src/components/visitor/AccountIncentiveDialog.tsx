@@ -23,7 +23,7 @@ const AccountIncentiveDialog = ({
             Suivez vos conversations
           </DialogTitle>
           <DialogDescription>
-            Créez un compte gratuit pour retrouver toutes vos conversations
+            Créez un compte pour retrouver toutes vos conversations
           </DialogDescription>
         </DialogHeader>
 
