@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -57,6 +57,7 @@ const VisitorMessageDialog = ({
   const [isCustomMessage, setIsCustomMessage] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [showAccountIncentive, setShowAccountIncentive] = useState(false);
+  const pendingOnMessageSentRef = useRef<(() => void) | null>(null);
 
   // Reset on open
   useEffect(() => {
@@ -196,13 +197,12 @@ const VisitorMessageDialog = ({
         onMessageSent?.();
         navigate("/messages");
       } else {
-        // For non-logged-in visitors: close main dialog, then show incentive
+        // For non-logged-in visitors: close main dialog, show incentive
+        // Store callback to call AFTER incentive is closed
+        pendingOnMessageSentRef.current = onMessageSent || null;
         onOpenChange(false);
-        onMessageSent?.();
-        // Show incentive after dialog closes
-        setTimeout(() => {
-          setShowAccountIncentive(true);
-        }, 150);
+        // Show incentive dialog (don't navigate yet - wait for incentive to close)
+        setShowAccountIncentive(true);
       }
     } else {
       toast({
@@ -466,7 +466,14 @@ const VisitorMessageDialog = ({
 
       <AccountIncentiveDialog
         open={showAccountIncentive}
-        onOpenChange={setShowAccountIncentive}
+        onOpenChange={(open) => {
+          setShowAccountIncentive(open);
+          // When incentive dialog closes, call the pending callback (navigate back)
+          if (!open && pendingOnMessageSentRef.current) {
+            pendingOnMessageSentRef.current();
+            pendingOnMessageSentRef.current = null;
+          }
+        }}
       />
 
       <VisitorBusinessCardManager
