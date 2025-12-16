@@ -35,6 +35,9 @@ interface VisitorMessage {
   message_nonce?: string | null;
   visitor_public_key?: string | null;
   is_encrypted?: boolean;
+  // Media fields
+  media_url?: string | null;
+  media_type?: string | null;
 }
 
 interface MessageTemplate {
@@ -144,7 +147,8 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
       encrypted_message: string;
       message_nonce: string;
       visitor_public_key: string;
-    }
+    },
+    mediaFile?: File
   ) => {
     try {
       // If audio is provided, upload to storage first
@@ -178,6 +182,32 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         }
       }
 
+      // If media file is provided, upload to storage
+      let mediaUrl: string | null = null;
+      let mediaType: string | null = null;
+      if (mediaFile) {
+        const fileExt = mediaFile.name.split('.').pop() || 'bin';
+        const fileName = `media-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `visitor-messages/${targetHabitationId}/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('visitor-voice-messages')
+          .upload(filePath, mediaFile, {
+            contentType: mediaFile.type,
+            upsert: false,
+          });
+        
+        if (uploadError) {
+          console.error("[useVisitorMessages] Media upload error:", uploadError);
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('visitor-voice-messages')
+            .getPublicUrl(filePath);
+          mediaUrl = urlData.publicUrl;
+          mediaType = mediaFile.type.startsWith('video/') ? 'video' : 'image';
+        }
+      }
+
       // Prepare insert data with optional encryption
       const insertData: Record<string, any> = {
         habitation_id: targetHabitationId,
@@ -185,6 +215,8 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         voice_message_url: voiceMessageUrl,
         visitor_phone: visitorPhone || null,
         business_card_id: businessCardId || null,
+        media_url: mediaUrl,
+        media_type: mediaType,
       };
 
       // Add encryption fields if provided

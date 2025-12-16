@@ -24,6 +24,8 @@ interface SentMessage {
   business_card_id: string | null;
   encrypted_message?: string | null;
   is_encrypted?: boolean;
+  media_url?: string | null;
+  media_type?: string | null;
 }
 
 interface MessageReply {
