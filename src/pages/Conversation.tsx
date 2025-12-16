@@ -63,6 +63,8 @@ interface VisitorMessage {
   visitor_public_key?: string | null;
   is_encrypted?: boolean;
   decrypted_message?: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
 }
 
 type ConversationType = 'received_from_visitor' | 'sent_to_anr';
@@ -366,6 +368,14 @@ const Conversation = () => {
           audioBase64 = btoa(String.fromCharCode(...bytes));
         }
 
+        // Prepare media file (photo, video, or video selfie)
+        let mediaToSend: File | undefined;
+        if (selectedMedia) {
+          mediaToSend = selectedMedia;
+        } else if (videoBlob) {
+          mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, { type: videoBlob.type || 'video/webm' });
+        }
+
         // Encrypt if ready
         let encryptionData: { encrypted_message: string; message_nonce: string; visitor_public_key: string } | undefined;
         if (encryptionReady && messageText) {
@@ -383,7 +393,8 @@ const Conversation = () => {
           undefined,
           businessCard?.id,
           audioBase64,
-          encryptionData
+          encryptionData,
+          mediaToSend
         );
 
         if (result.success) {
@@ -635,7 +646,9 @@ const Conversation = () => {
 
           // Determine content type
           const hasVoice = msg.voice_message_url || msg.reply_voice_url;
-          const hasMedia = msg.reply_media_url;
+          const hasMedia = msg.reply_media_url || msg.media_url;
+          const mediaUrl = msg.reply_media_url || msg.media_url;
+          const mediaType = msg.reply_media_type || msg.media_type;
           const text = msg.message || msg.reply_text || "";
 
           return (
@@ -677,14 +690,14 @@ const Conversation = () => {
                 {/* Media message */}
                 {hasMedia && !hasVoice && (
                   <div className={`${isMine ? 'bg-[#D9FDD3] rounded-tr-none' : 'bg-white rounded-tl-none'} rounded-lg p-1 shadow-sm overflow-hidden`}>
-                    {msg.reply_media_type === 'video' ? (
-                      <video src={msg.reply_media_url} controls className="max-w-full rounded-md max-h-64" />
+                    {mediaType === 'video' ? (
+                      <video src={mediaUrl} controls className="max-w-full rounded-md max-h-64" />
                     ) : (
                       <img 
-                        src={msg.reply_media_url} 
+                        src={mediaUrl} 
                         alt="Photo" 
                         className="max-w-full rounded-md max-h-64 cursor-pointer"
-                        onClick={() => window.open(msg.reply_media_url, '_blank')}
+                        onClick={() => window.open(mediaUrl, '_blank')}
                       />
                     )}
                     {text && <p className="text-sm text-[#111B21] whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(text)}</p>}

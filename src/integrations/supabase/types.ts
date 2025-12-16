@@ -3126,6 +3126,8 @@ export type Database = {
           id: string
           is_encrypted: boolean | null
           is_read: boolean | null
+          media_type: string | null
+          media_url: string | null
           message: string | null
           message_nonce: string | null
           read_at: string | null
@@ -3147,6 +3149,8 @@ export type Database = {
           id?: string
           is_encrypted?: boolean | null
           is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           message?: string | null
           message_nonce?: string | null
           read_at?: string | null
@@ -3168,6 +3172,8 @@ export type Database = {
           id?: string
           is_encrypted?: boolean | null
           is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           message?: string | null
           message_nonce?: string | null
           read_at?: string | null
