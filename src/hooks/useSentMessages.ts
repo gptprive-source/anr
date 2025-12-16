@@ -105,12 +105,13 @@ export const useSentMessages = () => {
         return;
       }
 
-      // Fetch replies to these messages
+      // Fetch replies to these messages - exclude soft-deleted for visitor
       const messageIds = sentMessages.map(m => m.id);
       const { data: repliesData, error: repliesError } = await (supabase
         .from("message_replies" as any)
         .select("*")
         .in("original_message_id", messageIds)
+        .or("deleted_by_visitor.is.null,deleted_by_visitor.eq.false")
         .order("created_at", { ascending: false }) as any);
 
       if (repliesError) throw repliesError;

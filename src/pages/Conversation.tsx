@@ -507,24 +507,33 @@ const Conversation = () => {
     if (!messageToDelete) return;
     
     if (conversationType === 'received_from_visitor') {
+      // Resident is deleting - use deleted_by_resident
       if (messageToDelete.isMine) {
-        await deleteReply(messageToDelete.id);
+        // My reply as resident - soft delete for resident
+        await supabase
+          .from("message_replies")
+          .update({ deleted_by_resident: true })
+          .eq("id", messageToDelete.id);
       } else {
-        // Mark as deleted for me only (soft delete)
+        // Visitor's message - soft delete for RESIDENT (not visitor!)
         await supabase
           .from("visitor_messages")
-          .update({ deleted_by_visitor: true })
+          .update({ deleted_by_resident: true })
           .eq("id", messageToDelete.id);
-        setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
       }
+      setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
     } else {
+      // Visitor/sender is deleting - use deleted_by_visitor
       if (messageToDelete.isMine) {
+        // My sent message - soft delete for visitor
         await deleteSentMessage(messageToDelete.id);
-        // Also remove from localMessages for immediate UI update
         setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
       } else {
-        // For replies, we can only delete them fully (no soft delete column for recipient)
-        await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
+        // Resident's reply - soft delete for visitor
+        await supabase
+          .from("message_replies")
+          .update({ deleted_by_visitor: true })
+          .eq("id", messageToDelete.id);
         setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
         refetchSentMessages();
       }
@@ -540,17 +549,20 @@ const Conversation = () => {
     
     if (conversationType === 'received_from_visitor') {
       if (messageToDelete.isMine) {
-        await deleteReply(messageToDelete.id);
+        // Hard delete my reply
+        await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
       } else {
+        // Hard delete visitor's message
         await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
-        setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
       }
+      setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
     } else {
       if (messageToDelete.isMine) {
-        await deleteSentMessage(messageToDelete.id);
-        // Also remove from localMessages for immediate UI update
+        // Hard delete my sent message
+        await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
         setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
       } else {
+        // Hard delete resident's reply
         await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
         setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
         refetchSentMessages();

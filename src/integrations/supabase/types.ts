@@ -1509,6 +1509,8 @@ export type Database = {
       message_replies: {
         Row: {
           created_at: string | null
+          deleted_by_resident: boolean | null
+          deleted_by_visitor: boolean | null
           encrypted_reply: string | null
           habitation_id: string
           id: string
@@ -1525,6 +1527,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          deleted_by_resident?: boolean | null
+          deleted_by_visitor?: boolean | null
           encrypted_reply?: string | null
           habitation_id: string
           id?: string
@@ -1541,6 +1545,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          deleted_by_resident?: boolean | null
+          deleted_by_visitor?: boolean | null
           encrypted_reply?: string | null
           habitation_id?: string
           id?: string
@@ -3119,6 +3125,7 @@ export type Database = {
           business_card_id: string | null
           conversation_token: string | null
           created_at: string | null
+          deleted_by_resident: boolean | null
           deleted_by_visitor: boolean | null
           encrypted_message: string | null
           habitation_id: string
@@ -3142,6 +3149,7 @@ export type Database = {
           business_card_id?: string | null
           conversation_token?: string | null
           created_at?: string | null
+          deleted_by_resident?: boolean | null
           deleted_by_visitor?: boolean | null
           encrypted_message?: string | null
           habitation_id: string
@@ -3165,6 +3173,7 @@ export type Database = {
           business_card_id?: string | null
           conversation_token?: string | null
           created_at?: string | null
+          deleted_by_resident?: boolean | null
           deleted_by_visitor?: boolean | null
           encrypted_message?: string | null
           habitation_id?: string
