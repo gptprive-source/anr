@@ -506,82 +506,125 @@ const Conversation = () => {
   const handleDeleteForMe = async () => {
     if (!messageToDelete) return;
     
-    if (conversationType === 'received_from_visitor') {
-      // Resident is deleting - use deleted_by_resident
-      if (messageToDelete.isMine) {
-        // My reply as resident - soft delete for resident
-        await supabase
-          .from("message_replies")
-          .update({ deleted_by_resident: true })
-          .eq("id", messageToDelete.id);
-        // Refetch replies to update display
-        refetchReplies();
-      } else {
-        // Visitor's message - soft delete for RESIDENT (not visitor!)
-        await supabase
-          .from("visitor_messages")
-          .update({ deleted_by_resident: true })
-          .eq("id", messageToDelete.id);
-        // Update local state for visitor messages
-        setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
-      }
-    } else {
-      // Sender is deleting - use deleted_by_visitor
-      if (messageToDelete.isMine) {
-        // My sent message - soft delete for visitor
-        await deleteSentMessage(messageToDelete.id);
-        setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
-        // Refetch to sync display
-        await refetchSentMessages();
-      } else {
-        // Recipient's reply - soft delete for visitor
-        await supabase
-          .from("message_replies")
-          .update({ deleted_by_visitor: true })
-          .eq("id", messageToDelete.id);
-        // Refetch to sync display
-        await refetchSentMessages();
-      }
-    }
+    console.log("[Conversation] handleDeleteForMe:", messageToDelete, "type:", conversationType);
     
-    setShowDeleteDialog(false);
-    setMessageToDelete(null);
-    toast({ title: "Message supprimé" });
+    try {
+      if (conversationType === 'received_from_visitor') {
+        // Resident is deleting - use deleted_by_resident
+        if (messageToDelete.isMine) {
+          // My reply as resident - soft delete for resident
+          const { error } = await supabase
+            .from("message_replies")
+            .update({ deleted_by_resident: true })
+            .eq("id", messageToDelete.id);
+          
+          if (error) {
+            console.error("[Conversation] Error soft deleting reply:", error);
+            throw error;
+          }
+          
+          // Force immediate state update by filtering replies locally first
+          // Then refetch to sync with DB
+          await refetchReplies();
+        } else {
+          // Visitor's message - soft delete for RESIDENT
+          const { error } = await supabase
+            .from("visitor_messages")
+            .update({ deleted_by_resident: true })
+            .eq("id", messageToDelete.id);
+          
+          if (error) {
+            console.error("[Conversation] Error soft deleting visitor message:", error);
+            throw error;
+          }
+          
+          // Update local state immediately
+          setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
+        }
+      } else {
+        // Sender is deleting - use deleted_by_visitor
+        if (messageToDelete.isMine) {
+          // My sent message - soft delete for visitor
+          const { error } = await supabase
+            .from("visitor_messages")
+            .update({ deleted_by_visitor: true })
+            .eq("id", messageToDelete.id);
+          
+          if (error) {
+            console.error("[Conversation] Error soft deleting sent message:", error);
+            throw error;
+          }
+          
+          // Update local state immediately
+          setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
+          // Refetch to sync display from hook
+          await refetchSentMessages();
+        } else {
+          // Recipient's reply - soft delete for visitor
+          const { error } = await supabase
+            .from("message_replies")
+            .update({ deleted_by_visitor: true })
+            .eq("id", messageToDelete.id);
+          
+          if (error) {
+            console.error("[Conversation] Error soft deleting recipient reply:", error);
+            throw error;
+          }
+          
+          // Refetch to sync display
+          await refetchSentMessages();
+        }
+      }
+      
+      setShowDeleteDialog(false);
+      setMessageToDelete(null);
+      toast({ title: "Message supprimé" });
+    } catch (error) {
+      console.error("[Conversation] Delete error:", error);
+      toast({ title: "Erreur", description: "Impossible de supprimer le message", variant: "destructive" });
+    }
   };
 
   const handleDeleteForEveryone = async () => {
     if (!messageToDelete) return;
     
-    if (conversationType === 'received_from_visitor') {
-      if (messageToDelete.isMine) {
-        // Hard delete my reply
-        await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
-        // Refetch replies to update display
-        refetchReplies();
-      } else {
-        // Hard delete visitor's message
-        await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
-        // Update local state for visitor messages
-        setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
-      }
-    } else {
-      if (messageToDelete.isMine) {
-        // Hard delete my sent message
-        await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
-        setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
-        // Refetch to sync display
-        await refetchSentMessages();
-      } else {
-        // Hard delete recipient's reply
-        await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
-        // Refetch to sync display
-        await refetchSentMessages();
-      }
-    }
+    console.log("[Conversation] handleDeleteForEveryone:", messageToDelete, "type:", conversationType);
     
-    setShowDeleteDialog(false);
-    setMessageToDelete(null);
-    toast({ title: "Message supprimé pour tout le monde" });
+    try {
+      if (conversationType === 'received_from_visitor') {
+        if (messageToDelete.isMine) {
+          // Hard delete my reply
+          const { error } = await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
+          if (error) throw error;
+          await refetchReplies();
+        } else {
+          // Hard delete visitor's message
+          const { error } = await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
+          if (error) throw error;
+          setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
+        }
+      } else {
+        if (messageToDelete.isMine) {
+          // Hard delete my sent message
+          const { error } = await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
+          if (error) throw error;
+          setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
+          await refetchSentMessages();
+        } else {
+          // Hard delete recipient's reply
+          const { error } = await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
+          if (error) throw error;
+          await refetchSentMessages();
+        }
+      }
+      
+      setShowDeleteDialog(false);
+      setMessageToDelete(null);
+      toast({ title: "Message supprimé pour tout le monde" });
+    } catch (error) {
+      console.error("[Conversation] Delete everyone error:", error);
+      toast({ title: "Erreur", description: "Impossible de supprimer le message", variant: "destructive" });
+    }
   };
 
   // Get header info

@@ -79,10 +79,13 @@ export const useSentMessages = () => {
   const fetchSentMessages = async () => {
     if (!user) return;
 
+    console.log("[useSentMessages] fetchSentMessages called for user:", user.id);
+
     try {
       // First get visitor's business card
       const card = await fetchBusinessCard();
       if (!card) {
+        console.log("[useSentMessages] No business card found");
         setLoading(false);
         return;
       }
@@ -98,6 +101,7 @@ export const useSentMessages = () => {
       if (messagesError) throw messagesError;
 
       const sentMessages = (messagesData || []) as SentMessage[];
+      console.log("[useSentMessages] Fetched messages:", sentMessages.length);
       setMessages(sentMessages);
 
       if (sentMessages.length === 0) {
@@ -117,6 +121,7 @@ export const useSentMessages = () => {
       if (repliesError) throw repliesError;
 
       const allReplies = (repliesData || []) as MessageReply[];
+      console.log("[useSentMessages] Fetched replies:", allReplies.length);
       setReplies(allReplies);
 
       // Calculate unread replies count
@@ -231,6 +236,7 @@ export const useSentMessages = () => {
 
   // Soft delete a sent message (mark as deleted, don't remove from DB)
   const deleteSentMessage = async (messageId: string) => {
+    console.log("[useSentMessages] deleteSentMessage called for:", messageId);
     try {
       const { error } = await (supabase
         .from("visitor_messages" as any)
@@ -239,9 +245,10 @@ export const useSentMessages = () => {
       
       if (error) throw error;
       
+      // Update local state immediately
       setMessages(prev => prev.filter(m => m.id !== messageId));
-      // Refresh conversations
-      fetchSentMessages();
+      console.log("[useSentMessages] Message deleted from local state");
+      
       return { success: true };
     } catch (error: any) {
       console.error("[useSentMessages] Error deleting message:", error);
