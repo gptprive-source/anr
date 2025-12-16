@@ -800,15 +800,20 @@ const Conversation = () => {
               )}
               
               <div className="max-w-[85%]">
-                {/* Voice message */}
+              {/* Voice message (with optional text) */}
                 {hasVoice && (
-                  <div className="mb-1">
+                  <div className={`${isMine ? 'bg-[#D9FDD3] rounded-tr-none' : 'bg-white rounded-tl-none'} rounded-lg p-2 shadow-sm`}>
                     <WhatsAppAudioPlayer 
                       audioUrl={msg.voice_message_url || msg.reply_voice_url} 
                       isOwn={isMine} 
                       showAvatar={true} 
                     />
-                    <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end mr-2' : 'ml-2'}`}>
+                    {/* Show text below audio if both exist */}
+                    {text && (
+                      <p className="text-sm text-[#111B21] whitespace-pre-wrap px-1 mt-2">{renderTextWithLinks(text)}</p>
+                    )}
+                    <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : ''}`}>
+                      {msg.is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
                       <span className="text-[11px] text-[#667781]">
                         {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
                       </span>
