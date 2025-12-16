@@ -190,15 +190,19 @@ const VisitorMessageDialog = ({
         title: "Message envoyé",
         description: "Le résident recevra votre message",
       });
-      onOpenChange(false);
-      onMessageSent?.();
-      
-      // If user is connected, redirect to messages
-      // If not connected, show account incentive dialog
+      // If user is connected, close dialog and redirect to messages
       if (user) {
+        onOpenChange(false);
+        onMessageSent?.();
         navigate("/messages");
       } else {
-        setShowAccountIncentive(true);
+        // For non-logged-in visitors: close main dialog, then show incentive
+        onOpenChange(false);
+        onMessageSent?.();
+        // Show incentive after dialog closes
+        setTimeout(() => {
+          setShowAccountIncentive(true);
+        }, 150);
       }
     } else {
       toast({
