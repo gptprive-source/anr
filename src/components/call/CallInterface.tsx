@@ -44,6 +44,8 @@ const CallInterface = memo(({
   const hasJoinedRef = useRef(false);
   const channelRef = useRef<any>(null);
   const callStartTimeRef = useRef<number>(Date.now());
+  // Ref to track message dialog state synchronously (prevents race condition)
+  const showMessageDialogRef = useRef(false);
   
   // Ringing timeout: 30 seconds before showing message dialog
   const RINGING_TIMEOUT_MS = 30000;
@@ -127,6 +129,7 @@ const CallInterface = memo(({
           if (callLog.status === "declined" && !isResident) {
             logger.log("[CallInterface] Call was declined by all residents");
             setCallWasDeclined(true);
+            showMessageDialogRef.current = true;
             setShowMessageDialog(true);
             setCallState("ended");
             leaveCall();
@@ -139,6 +142,7 @@ const CallInterface = memo(({
             // If visitor and call ended without being answered
             if (!isResident && !callLog.answered_by && !callWasAnswered) {
               logger.log("[CallInterface] Call ended without answer - showing message dialog");
+              showMessageDialogRef.current = true;
               setShowMessageDialog(true);
             }
             
@@ -163,6 +167,7 @@ const CallInterface = memo(({
     const timeout = setTimeout(() => {
       if (!callWasAnswered && habitationId) {
         logger.log("[CallInterface] 30s timeout - showing message dialog");
+        showMessageDialogRef.current = true;
         setShowMessageDialog(true);
       }
     }, RINGING_TIMEOUT_MS);
@@ -186,17 +191,19 @@ const CallInterface = memo(({
   // Auto-navigate back when call ends (with message prompt for visitors)
   useEffect(() => {
     if (callState === "ended") {
-      // If visitor and message dialog is showing (declined or timeout), don't auto-navigate
-      if (!isResident && showMessageDialog) {
+      // Use ref for synchronous check - prevents race condition with React batched updates
+      if (!isResident && showMessageDialogRef.current) {
+        logger.log("[CallInterface] Message dialog is open, blocking auto-navigate");
         return;
       }
       
       const timeout = setTimeout(() => {
+        logger.log("[CallInterface] Auto-navigating back after call ended");
         navigate(-1);
       }, 1500);
       return () => clearTimeout(timeout);
     }
-  }, [callState, navigate, isResident, showMessageDialog]);
+  }, [callState, navigate, isResident]);
 
   // Individual hangup - only ends call if no other residents are active
   const handleHangup = async () => {
@@ -243,6 +250,7 @@ const CallInterface = memo(({
       if (!callWasAnswered && habitationId) {
         // Call wasn't answered - show message dialog instead of just ending
         logger.log("[CallInterface] Visitor hangup without answer - showing message dialog");
+        showMessageDialogRef.current = true;
         setShowMessageDialog(true);
       }
       
@@ -432,12 +440,19 @@ const CallInterface = memo(({
         <VisitorMessageDialog
           open={showMessageDialog}
           onOpenChange={(open) => {
+            showMessageDialogRef.current = open;
             setShowMessageDialog(open);
-            if (!open) navigate(-1);
+            if (!open) {
+              logger.log("[CallInterface] Message dialog closed, navigating back");
+              navigate(-1);
+            }
           }}
           habitationId={habitationId}
           callId={callId}
-          onMessageSent={() => navigate(-1)}
+          onMessageSent={() => {
+            showMessageDialogRef.current = false;
+            navigate(-1);
+          }}
         />
       )}
 
