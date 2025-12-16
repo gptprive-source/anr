@@ -66,25 +66,7 @@ export const useVisitorDeviceMessages = () => {
     try {
       setLoading(true);
       
-      // Get business card for this device (use limit(1) to handle duplicates)
-      const { data: businessCards, error: cardError } = await supabase
-        .from("visitor_business_cards")
-        .select("id")
-        .eq("device_id", deviceId)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      const businessCard = businessCards?.[0];
-
-      if (cardError || !businessCard) {
-        console.log("[useVisitorDeviceMessages] No business card found for device:", deviceId, cardError);
-        setMessages([]);
-        setUnreadCount(0);
-        setLoading(false);
-        return;
-      }
-
-      // Get all messages sent by this device
+      // Get all messages sent by this device directly using visitor_device_id
       const { data: messagesData, error: messagesError } = await supabase
         .from("visitor_messages")
         .select(`
@@ -100,12 +82,14 @@ export const useVisitorDeviceMessages = () => {
           is_encrypted,
           deleted_by_visitor
         `)
-        .eq("business_card_id", businessCard.id)
+        .eq("visitor_device_id", deviceId)
         .eq("deleted_by_visitor", false)
         .order("created_at", { ascending: false });
 
       if (messagesError) {
         console.error("[useVisitorDeviceMessages] Error fetching messages:", messagesError);
+        setMessages([]);
+        setUnreadCount(0);
         setLoading(false);
         return;
       }
