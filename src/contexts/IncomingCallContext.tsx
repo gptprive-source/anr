@@ -20,8 +20,9 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
 
     console.log("[REALTIME] Setting up call status subscription for user:", user.id);
 
+    // Subscribe to both call_logs AND call_participants for faster response
     const callChannel = supabase
-      .channel('call-status-realtime')
+      .channel('call-status-realtime-v2')
       .on(
         'postgres_changes',
         {
@@ -42,6 +43,28 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
             console.log("[REALTIME] Call IDs match, checking status:", callLog.status);
             if (callLog.status === "ended" || callLog.status === "declined" || callLog.status === "missed") {
               console.log("[REALTIME] ✅ Hiding incoming call screen immediately");
+              hideIncomingCall();
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'call_participants',
+        },
+        (payload) => {
+          console.log("[REALTIME] Received call_participants update:", payload.new);
+          const participant = payload.new as any;
+          const currentCall = getCurrentCallData();
+          
+          // If our participant status changed from ringing, hide the screen
+          if (currentCall && isCallScreenVisible() && participant.id === currentCall.participantId) {
+            console.log("[REALTIME] Participant status changed to:", participant.status);
+            if (participant.status !== "ringing") {
+              console.log("[REALTIME] ✅ Participant no longer ringing, hiding screen");
               hideIncomingCall();
             }
           }
@@ -68,8 +91,10 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     const checkForCalls = async () => {
       const currentCall = getCurrentCallData();
       
-      // If call screen is visible, check if call is still active
+      // If call screen is visible, check if call is still active (fast path)
       if (isCallScreenVisible() && currentCall) {
+        console.log("[POLL] Checking if call still active:", currentCall.callId);
+        
         // Check both call_logs status AND participant status
         const [{ data: callLog }, { data: participant }] = await Promise.all([
           supabase
@@ -84,6 +109,8 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
             .single()
         ]);
         
+        console.log("[POLL] Call status:", callLog?.status, "Participant status:", participant?.status);
+        
         // If call ended (visitor hung up) or declined, or participant no longer ringing, hide screen
         const callEnded = !callLog || callLog.status === "ended" || callLog.status === "missed" || callLog.status === "declined";
         const notRinging = !participant || participant.status !== "ringing";
@@ -92,7 +119,7 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
         const answeredByOther = participant?.status === "call_answered_by_other";
         
         if (callEnded || notRinging || answeredByOther) {
-          console.log("[POLL] Call ended - callLog:", callLog?.status, "participant:", participant?.status);
+          console.log("[POLL] ✅ Call ended - hiding screen. callLog:", callLog?.status, "participant:", participant?.status);
           hideIncomingCall();
         }
         return;
@@ -178,8 +205,8 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     // Check immediately
     checkForCalls();
     
-    // Then every 3 seconds (was 2 - reduce polling load)
-    const interval = setInterval(checkForCalls, 3000);
+    // Poll every 1.5 seconds for faster detection when visitor hangs up
+    const interval = setInterval(checkForCalls, 1500);
 
     return () => {
       console.log("[POLL] Stopping polling");
