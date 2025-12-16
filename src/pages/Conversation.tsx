@@ -544,21 +544,14 @@ const Conversation = () => {
       } else {
         // Sender is deleting - use deleted_by_visitor
         if (messageToDelete.isMine) {
-          // My sent message - soft delete for visitor
-          const { error } = await supabase
-            .from("visitor_messages")
-            .update({ deleted_by_visitor: true })
-            .eq("id", messageToDelete.id);
-          
-          if (error) {
-            console.error("[Conversation] Error soft deleting sent message:", error);
-            throw error;
+          // My sent message - use hook's deleteSentMessage which updates internal state
+          const result = await deleteSentMessage(messageToDelete.id);
+          if (!result.success) {
+            console.error("[Conversation] Error soft deleting sent message:", result.error);
+            throw new Error(result.error);
           }
-          
-          // Update local state immediately
+          // Also filter localMessages for optimistic UI messages
           setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
-          // Refetch to sync display from hook
-          await refetchSentMessages();
         } else {
           // Recipient's reply - soft delete for visitor
           const { error } = await supabase
