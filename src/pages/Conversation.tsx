@@ -520,9 +520,12 @@ const Conversation = () => {
     } else {
       if (messageToDelete.isMine) {
         await deleteSentMessage(messageToDelete.id);
+        // Also remove from localMessages for immediate UI update
+        setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
       } else {
         // For replies, we can only delete them fully (no soft delete column for recipient)
         await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
+        setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
         refetchSentMessages();
       }
     }
@@ -545,8 +548,11 @@ const Conversation = () => {
     } else {
       if (messageToDelete.isMine) {
         await deleteSentMessage(messageToDelete.id);
+        // Also remove from localMessages for immediate UI update
+        setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
       } else {
         await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
+        setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
         refetchSentMessages();
       }
     }
