@@ -987,7 +987,8 @@ const PaymentStep = ({
           },
           habitationName: addressData.habitationName,
           existingAnrId: addressData.existingAnrId,
-          referralCode: referralCode || localStorage.getItem("anr_referral_code") || undefined
+          referralCode: referralCode || localStorage.getItem("anr_referral_code") || undefined,
+          deviceId: localStorage.getItem("anr_device_id") || undefined
         }
       });
       console.log("[REFERRAL] Sent referralCode to checkout:", referralCode || localStorage.getItem("anr_referral_code"));

@@ -304,6 +304,72 @@ serve(async (req) => {
     if (subError) throw new Error(`Error creating subscription record: ${subError.message}`);
     console.log("[VERIFY-PAYMENT] Subscription saved with session_id for idempotency");
 
+    // ============================================
+    // CONVERSATION MIGRATION: Link visitor conversations to new user
+    // ============================================
+    const deviceId = metadata.device_id;
+    if (deviceId) {
+      try {
+        console.log("[VERIFY-PAYMENT] Migrating visitor conversations for device:", deviceId);
+        
+        // Find visitor business card by device_id
+        const { data: visitorCard, error: cardError } = await supabaseAdmin
+          .from("visitor_business_cards")
+          .select("id")
+          .eq("device_id", deviceId)
+          .is("user_id", null)
+          .maybeSingle();
+
+        if (cardError) {
+          console.error("[VERIFY-PAYMENT] Error finding visitor card:", cardError);
+        } else if (visitorCard) {
+          // Update the business card to link to the new user
+          const { error: updateCardError } = await supabaseAdmin
+            .from("visitor_business_cards")
+            .update({ user_id: userId })
+            .eq("id", visitorCard.id);
+
+          if (updateCardError) {
+            console.error("[VERIFY-PAYMENT] Error updating visitor card:", updateCardError);
+          } else {
+            console.log("[VERIFY-PAYMENT] Visitor business card linked to user:", visitorCard.id);
+          }
+
+          // Count migrated conversations
+          const { count: messagesCount } = await supabaseAdmin
+            .from("visitor_messages")
+            .select("*", { count: "exact", head: true })
+            .eq("business_card_id", visitorCard.id);
+
+          if (messagesCount && messagesCount > 0) {
+            // Update user profile with migrated count
+            await supabaseAdmin
+              .from("profiles")
+              .update({ migrated_conversations_count: messagesCount })
+              .eq("id", userId);
+
+            console.log("[VERIFY-PAYMENT] Migrated", messagesCount, "conversations to user account");
+
+            // Create notification for user about migrated conversations
+            await supabaseAdmin
+              .from("user_notifications")
+              .insert({
+                user_id: userId,
+                type: "conversations_migrated",
+                title: "🎉 Vos conversations ont été récupérées !",
+                message: `${messagesCount} conversation${messagesCount > 1 ? 's' : ''} avec des résidents ${messagesCount > 1 ? 'ont' : 'a'} été rattachée${messagesCount > 1 ? 's' : ''} à votre compte.`,
+                data: { count: messagesCount },
+              });
+          }
+        } else {
+          console.log("[VERIFY-PAYMENT] No visitor card found for device, skipping migration");
+        }
+      } catch (migrationError) {
+        console.error("[VERIFY-PAYMENT] Error migrating conversations:", migrationError);
+        // Don't fail the whole process if migration fails
+      }
+    }
+
     // Record doming orders - separate free and paid orders
     const freeDomingCount = actuallyNewAnr ? 1 : 0;
     
