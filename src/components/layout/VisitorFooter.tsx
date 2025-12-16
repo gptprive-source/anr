@@ -1,18 +1,23 @@
-import { Home, UserPlus } from "lucide-react";
+import { Home, UserPlus, MessageSquare } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useVisitorDeviceMessages } from "@/hooks/useVisitorDeviceMessages";
+import { Badge } from "@/components/ui/badge";
 
 interface NavItem {
   icon: React.ReactNode;
   label: string;
   path: string;
+  badge?: number;
 }
 
 const VisitorFooter = () => {
   const location = useLocation();
+  const { unreadCount } = useVisitorDeviceMessages();
 
   const navItems: NavItem[] = [
     { icon: <Home className="w-6 h-6" />, label: "Accueil", path: "/" },
+    { icon: <MessageSquare className="w-6 h-6" />, label: "Messages", path: "/visitor-messages", badge: unreadCount },
     { icon: <UserPlus className="w-6 h-6" />, label: "Créer un compte", path: "/register" },
   ];
 
@@ -26,11 +31,18 @@ const VisitorFooter = () => {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
+                "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors relative",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {item.icon}
+              <div className="relative">
+                {item.icon}
+                {item.badge && item.badge > 0 && (
+                  <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-destructive">
+                    {item.badge}
+                  </Badge>
+                )}
+              </div>
               <span className="text-xs font-medium">{item.label}</span>
             </Link>
           );
