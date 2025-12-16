@@ -87,6 +87,7 @@ const VisitorConversation = () => {
       const businessCardId = cards?.[0]?.id || null;
 
       // Get ALL messages sent to this habitation by this visitor (by device_id OR business_card_id)
+      // Include deleted messages to fetch their replies
       let messagesQuery = supabase
         .from("visitor_messages")
         .select(`
@@ -99,10 +100,10 @@ const VisitorConversation = () => {
           encrypted_message,
           is_encrypted,
           visitor_device_id,
-          business_card_id
+          business_card_id,
+          deleted_by_visitor
         `)
         .eq("habitation_id", habitationId)
-        .eq("deleted_by_visitor", false)
         .order("created_at", { ascending: true });
 
       // Filter by device_id OR business_card_id to catch all messages from this visitor
@@ -115,29 +116,29 @@ const VisitorConversation = () => {
       const { data: sentMessages } = await messagesQuery;
 
       const allMessages: Message[] = [];
-      let firstMessageId: string | null = null;
+      let mostRecentNonDeletedMessageId: string | null = null;
 
-      // Add sent messages
+      // Add sent messages (only non-deleted ones for display)
       (sentMessages || []).forEach((msg) => {
-        // Store the first message ID for replies
-        if (!firstMessageId) {
-          firstMessageId = msg.id;
+        // Track the most recent non-deleted message for new replies
+        if (!msg.deleted_by_visitor) {
+          mostRecentNonDeletedMessageId = msg.id;
+          
+          allMessages.push({
+            id: msg.id,
+            type: "sent",
+            text: msg.message,
+            voice_url: msg.voice_message_url,
+            media_url: msg.media_url,
+            media_type: msg.media_type,
+            created_at: msg.created_at || new Date().toISOString(),
+            is_encrypted: msg.is_encrypted || false,
+          });
         }
-
-        allMessages.push({
-          id: msg.id,
-          type: "sent",
-          text: msg.message,
-          voice_url: msg.voice_message_url,
-          media_url: msg.media_url,
-          media_type: msg.media_type,
-          created_at: msg.created_at || new Date().toISOString(),
-          is_encrypted: msg.is_encrypted || false,
-        });
       });
 
-      if (firstMessageId) {
-        setOriginalMessageId(firstMessageId);
+      if (mostRecentNonDeletedMessageId) {
+        setOriginalMessageId(mostRecentNonDeletedMessageId);
       }
 
       // Get replies for ALL sent messages (including older ones)
