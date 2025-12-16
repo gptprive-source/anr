@@ -177,13 +177,7 @@ const Contacts = () => {
 
   // Navigate to conversation - resolve ANR code to habitation_id if needed
   const handleNavigateToConversation = async (contact: ResidentContact) => {
-    // If we have source_business_card_id (contact from received message), use it directly
-    if (contact.source_business_card_id) {
-      navigate(`/conversation/${contact.source_business_card_id}`);
-      return;
-    }
-
-    // If we have an anr_code, resolve it to habitation_id
+    // PRIORITY 1: If we have an anr_code, resolve it to habitation_id (allows creating new conversation)
     if (contact.anr_code) {
       try {
         // Find the ANR by code
@@ -244,10 +238,16 @@ const Contacts = () => {
       }
     }
 
+    // PRIORITY 2: If we have source_business_card_id (contact from received message without ANR), use it
+    if (contact.source_business_card_id) {
+      navigate(`/conversation/${contact.source_business_card_id}`);
+      return;
+    }
+
     // No valid identifier
     toast({
       title: "Conversation introuvable",
-      description: "Ce contact n'a pas d'identifiant de conversation valide",
+      description: "Ce contact n'a pas de code ANR pour lui envoyer un message",
       variant: "destructive",
     });
   };
