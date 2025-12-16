@@ -238,53 +238,10 @@ const Contacts = () => {
       }
     }
 
-    // PRIORITY 2: If we have source_business_card_id, check if the contact is a subscriber
-    if (contact.source_business_card_id) {
-      try {
-        // Get the business card's user_id
-        const { data: businessCard } = await supabase
-          .from("visitor_business_cards")
-          .select("user_id")
-          .eq("id", contact.source_business_card_id)
-          .maybeSingle();
-
-        if (businessCard?.user_id) {
-          // Check if this user is a verified resident with a habitation
-          const { data: resident } = await supabase
-            .from("residents")
-            .select("habitation_id")
-            .eq("user_id", businessCard.user_id)
-            .eq("status", "verified")
-            .maybeSingle();
-
-          if (resident?.habitation_id) {
-            navigate(`/conversation/${resident.habitation_id}`);
-            return;
-          }
-        }
-
-        // Contact is not a subscriber - cannot send message
-        toast({
-          title: "Contact non abonné",
-          description: "Ce contact n'est pas abonné ANR, impossible de lui envoyer un message",
-          variant: "destructive",
-        });
-        return;
-      } catch (err) {
-        console.error("Error checking contact subscription:", err);
-        toast({
-          title: "Erreur",
-          description: "Impossible de vérifier le statut de ce contact",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    // No valid identifier
+    // No ANR code = cannot send message
     toast({
       title: "Contact non abonné",
-      description: "Ce contact n'a pas de code ANR pour lui envoyer un message",
+      description: "Ce contact n'a pas de code ANR, impossible de lui envoyer un message",
       variant: "destructive",
     });
   };
