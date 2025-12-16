@@ -19,6 +19,7 @@ interface CheckoutRequest {
   existingAnrId?: string;
   planType?: string;
   referralCode?: string;
+  deviceId?: string;
 }
 
 serve(async (req) => {
@@ -47,8 +48,8 @@ serve(async (req) => {
     console.log("[CREATE-CHECKOUT] User authenticated:", user.email);
 
     const body: CheckoutRequest = await req.json();
-    const { extraDomings, isNewAnr, addressData, habitationName, existingAnrId, planType = "particulier", referralCode } = body;
-    console.log("[CREATE-CHECKOUT] Request body:", { extraDomings, isNewAnr, habitationName, planType, referralCode });
+    const { extraDomings, isNewAnr, addressData, habitationName, existingAnrId, planType = "particulier", referralCode, deviceId } = body;
+    console.log("[CREATE-CHECKOUT] Request body:", { extraDomings, isNewAnr, habitationName, planType, referralCode, deviceId });
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
@@ -127,6 +128,7 @@ serve(async (req) => {
         checkout_origin: origin,
         plan_type: planType,
         referral_code: referralCode || "",
+        device_id: deviceId || "",
       },
       success_url: `${origin}/registration-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/register?payment=cancelled`,
