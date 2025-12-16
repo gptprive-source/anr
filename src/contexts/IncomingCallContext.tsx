@@ -14,6 +14,39 @@ const IncomingCallContext = createContext<IncomingCallContextType>({
 export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
 
+  // Realtime subscription to immediately stop ringing when call status changes
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const callChannel = supabase
+      .channel('call-status-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'call_logs',
+        },
+        (payload) => {
+          const callLog = payload.new as any;
+          const currentCall = getCurrentCallData();
+          
+          // If we're showing an incoming call screen and this call just ended, hide it
+          if (currentCall && isCallScreenVisible() && callLog.id === currentCall.callId) {
+            if (callLog.status === "ended" || callLog.status === "declined" || callLog.status === "missed") {
+              console.log("[REALTIME] Call ended/declined/missed, hiding incoming call screen immediately");
+              hideIncomingCall();
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(callChannel);
+    };
+  }, [user?.id]);
+
   useEffect(() => {
     if (!user?.id) {
       console.log("[POLL] No user, skipping");
