@@ -108,6 +108,9 @@ const CallInterface = memo(({
     }
   }, [isResident, joinCall]);
 
+  // Track if we've already processed the call ending
+  const callEndedRef = useRef(false);
+
   // Subscribe to call status changes
   useEffect(() => {
     if (!callId) return;
@@ -124,10 +127,18 @@ const CallInterface = memo(({
         },
         (payload) => {
           const callLog = payload.new as any;
+          logger.log("[CallInterface] Received call status update:", callLog.status);
+          
+          // Prevent double processing
+          if (callEndedRef.current) {
+            logger.log("[CallInterface] Call already ended, ignoring subscription update");
+            return;
+          }
           
           // Handle declined status - show message and redirect to messaging
           if (callLog.status === "declined" && !isResident) {
             logger.log("[CallInterface] Call was declined by all residents");
+            callEndedRef.current = true;
             setCallWasDeclined(true);
             showMessageDialogRef.current = true;
             setShowMessageDialog(true);
@@ -142,12 +153,17 @@ const CallInterface = memo(({
             // If visitor and call ended without being answered
             if (!isResident && !callLog.answered_by && !callWasAnswered) {
               logger.log("[CallInterface] Call ended without answer - showing message dialog");
+              callEndedRef.current = true;
               showMessageDialogRef.current = true;
               setShowMessageDialog(true);
             }
             
             setCallState("ended");
-            leaveCall();
+            // Only call leaveCall if we haven't already ended
+            if (!callEndedRef.current) {
+              callEndedRef.current = true;
+              leaveCall();
+            }
           }
         }
       )
@@ -207,7 +223,10 @@ const CallInterface = memo(({
 
   // Individual hangup - only ends call if no other residents are active
   const handleHangup = async () => {
-    logger.log("[CallInterface] Hanging up");
+    logger.log("[CallInterface] Hanging up, callEndedRef:", callEndedRef.current);
+    
+    // Mark as ended to prevent subscription from re-processing
+    callEndedRef.current = true;
     
     // Leave Daily first
     await leaveCall();
