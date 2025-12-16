@@ -1,29 +1,21 @@
 import { useNavigate } from "react-router-dom";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { UserPlus, MessageSquare, Bell, History, X } from "lucide-react";
-
 interface AccountIncentiveDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const AccountIncentiveDialog = ({ open, onOpenChange }: AccountIncentiveDialogProps) => {
+const AccountIncentiveDialog = ({
+  open,
+  onOpenChange
+}: AccountIncentiveDialogProps) => {
   const navigate = useNavigate();
-
   const handleCreateAccount = () => {
     onOpenChange(false);
     navigate("/register");
   };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+  return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
@@ -79,24 +71,16 @@ const AccountIncentiveDialog = ({ open, onOpenChange }: AccountIncentiveDialogPr
           <div className="space-y-2 pt-2">
             <Button onClick={handleCreateAccount} className="w-full">
               <UserPlus className="w-4 h-4 mr-2" />
-              Créer mon compte gratuit
+              Créer mon compte 
             </Button>
-            <Button
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              className="w-full text-muted-foreground"
-            >
+            <Button variant="ghost" onClick={() => onOpenChange(false)} className="w-full text-muted-foreground">
               Non merci
             </Button>
           </div>
 
-          <p className="text-xs text-center text-muted-foreground">
-            C'est gratuit et sans engagement
-          </p>
+          
         </div>
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>;
 };
-
 export default AccountIncentiveDialog;
