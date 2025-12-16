@@ -209,7 +209,13 @@ export const useMessageReplies = (messageId?: string) => {
         },
         (payload) => {
           const newReply = payload.new as MessageReply;
-          setReplies(prev => [...prev, newReply]);
+          // Avoid duplicates - check if reply already exists
+          setReplies(prev => {
+            if (prev.some(r => r.id === newReply.id)) {
+              return prev;
+            }
+            return [...prev, newReply];
+          });
         }
       )
       .subscribe();
