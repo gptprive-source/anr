@@ -114,7 +114,7 @@ const Conversation = () => {
 
   // Hooks for "received from visitor" mode (resident viewing)
   const firstMessageId = visitorMessages[0]?.id || "";
-  const { replies, sendReply, deleteReply, loading: repliesLoading } = useMessageReplies(firstMessageId);
+  const { replies, sendReply, deleteReply, loading: repliesLoading, refetch: refetchReplies } = useMessageReplies(firstMessageId);
   const { isSupported: encryptionSupported } = useEncryptedMessages(habitationId || undefined);
   const { isBlocked, blockVisitor, unblockVisitor } = useBlockedVisitors();
   const currentVisitorBlocked = id && conversationType === 'received_from_visitor' ? isBlocked(id) : false;
@@ -514,28 +514,33 @@ const Conversation = () => {
           .from("message_replies")
           .update({ deleted_by_resident: true })
           .eq("id", messageToDelete.id);
+        // Refetch replies to update display
+        refetchReplies();
       } else {
         // Visitor's message - soft delete for RESIDENT (not visitor!)
         await supabase
           .from("visitor_messages")
           .update({ deleted_by_resident: true })
           .eq("id", messageToDelete.id);
+        // Update local state for visitor messages
+        setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
       }
-      setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
     } else {
-      // Visitor/sender is deleting - use deleted_by_visitor
+      // Sender is deleting - use deleted_by_visitor
       if (messageToDelete.isMine) {
         // My sent message - soft delete for visitor
         await deleteSentMessage(messageToDelete.id);
         setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
+        // Refetch to sync display
+        await refetchSentMessages();
       } else {
-        // Resident's reply - soft delete for visitor
+        // Recipient's reply - soft delete for visitor
         await supabase
           .from("message_replies")
           .update({ deleted_by_visitor: true })
           .eq("id", messageToDelete.id);
-        setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
-        refetchSentMessages();
+        // Refetch to sync display
+        await refetchSentMessages();
       }
     }
     
@@ -551,21 +556,26 @@ const Conversation = () => {
       if (messageToDelete.isMine) {
         // Hard delete my reply
         await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
+        // Refetch replies to update display
+        refetchReplies();
       } else {
         // Hard delete visitor's message
         await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
+        // Update local state for visitor messages
+        setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
       }
-      setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
     } else {
       if (messageToDelete.isMine) {
         // Hard delete my sent message
         await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
         setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
+        // Refetch to sync display
+        await refetchSentMessages();
       } else {
-        // Hard delete resident's reply
+        // Hard delete recipient's reply
         await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
-        setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
-        refetchSentMessages();
+        // Refetch to sync display
+        await refetchSentMessages();
       }
     }
     
