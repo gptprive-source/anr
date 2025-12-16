@@ -238,7 +238,22 @@ const Contacts = () => {
       }
     }
 
-    // No ANR code = cannot send message
+    // PRIORITY 2: Check if contact email matches a subscriber
+    if (contact.email) {
+      try {
+        const { data: habitationId } = await supabase
+          .rpc("find_habitation_by_email", { contact_email: contact.email });
+
+        if (habitationId) {
+          navigate(`/conversation/${habitationId}`);
+          return;
+        }
+      } catch (err) {
+        console.log("No subscriber found by email:", err);
+      }
+    }
+
+    // No ANR code and no subscriber found = cannot send message
     toast({
       title: "Contact non abonné",
       description: "Ce contact n'a pas de code ANR, impossible de lui envoyer un message",
