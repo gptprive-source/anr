@@ -77,8 +77,17 @@ const VisitorConversation = () => {
         });
       }
 
-      // Get messages sent by this device to this habitation (using device_id directly)
-      const { data: sentMessages } = await supabase
+      // Get business card ID for this device to also fetch older messages
+      const { data: cards } = await supabase
+        .from("visitor_business_cards")
+        .select("id")
+        .eq("device_id", deviceId)
+        .limit(1);
+      
+      const businessCardId = cards?.[0]?.id || null;
+
+      // Get ALL messages sent to this habitation by this visitor (by device_id OR business_card_id)
+      let messagesQuery = supabase
         .from("visitor_messages")
         .select(`
           id,
@@ -88,12 +97,22 @@ const VisitorConversation = () => {
           media_type,
           created_at,
           encrypted_message,
-          is_encrypted
+          is_encrypted,
+          visitor_device_id,
+          business_card_id
         `)
-        .eq("visitor_device_id", deviceId)
         .eq("habitation_id", habitationId)
         .eq("deleted_by_visitor", false)
         .order("created_at", { ascending: true });
+
+      // Filter by device_id OR business_card_id to catch all messages from this visitor
+      if (businessCardId) {
+        messagesQuery = messagesQuery.or(`visitor_device_id.eq.${deviceId},business_card_id.eq.${businessCardId}`);
+      } else {
+        messagesQuery = messagesQuery.eq("visitor_device_id", deviceId);
+      }
+
+      const { data: sentMessages } = await messagesQuery;
 
       const allMessages: Message[] = [];
       let firstMessageId: string | null = null;
@@ -121,7 +140,7 @@ const VisitorConversation = () => {
         setOriginalMessageId(firstMessageId);
       }
 
-      // Get replies for all sent messages
+      // Get replies for ALL sent messages (including older ones)
       const messageIds = (sentMessages || []).map((m) => m.id);
       if (messageIds.length > 0) {
         const { data: replies } = await supabase
