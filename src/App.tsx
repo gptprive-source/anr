@@ -49,6 +49,8 @@ import ShopSuccess from "./pages/ShopSuccess";
 import Orders from "./pages/Orders";
 import Referral from "./pages/Referral";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
+import VisitorMessages from "./pages/VisitorMessages";
+import VisitorConversation from "./pages/VisitorConversation";
 import NotFound from "./pages/NotFound";
 
 // Admin pages

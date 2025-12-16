@@ -1991,6 +1991,7 @@ export type Database = {
           iban: string | null
           id: string
           last_name: string | null
+          migrated_conversations_count: number | null
           phone_number: string | null
           phone_verified: boolean | null
           referral_balance: number | null
@@ -2003,6 +2004,7 @@ export type Database = {
           iban?: string | null
           id: string
           last_name?: string | null
+          migrated_conversations_count?: number | null
           phone_number?: string | null
           phone_verified?: boolean | null
           referral_balance?: number | null
@@ -2015,6 +2017,7 @@ export type Database = {
           iban?: string | null
           id?: string
           last_name?: string | null
+          migrated_conversations_count?: number | null
           phone_number?: string | null
           phone_verified?: boolean | null
           referral_balance?: number | null
@@ -3084,6 +3087,39 @@ export type Database = {
           updated_at?: string | null
           usage_count?: number | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      visitor_device_notifications: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          device_id: string
+          id: string
+          is_read: boolean | null
+          message: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          device_id: string
+          id?: string
+          is_read?: boolean | null
+          message: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          device_id?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          title?: string
+          type?: string
         }
         Relationships: []
       }
