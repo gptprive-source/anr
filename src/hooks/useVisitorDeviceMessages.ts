@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
 
-export interface VisitorDeviceMessage {
+// Single message in a conversation
+export interface VisitorDeviceMessageItem {
   id: string;
-  habitation_id: string;
   message: string | null;
   voice_message_url: string | null;
   media_url: string | null;
@@ -13,10 +13,18 @@ export interface VisitorDeviceMessage {
   created_at: string;
   encrypted_message: string | null;
   is_encrypted: boolean;
-  habitation_name?: string;
+  replies: VisitorDeviceReply[];
+}
+
+// Conversation grouped by habitation_id (one per resident)
+export interface VisitorDeviceConversation {
+  habitation_id: string;
+  habitation_name: string;
   anr_code?: string;
   anr_address?: string;
-  replies: VisitorDeviceReply[];
+  messages: VisitorDeviceMessageItem[];
+  last_activity: string;
+  unread_count: number;
 }
 
 export interface VisitorDeviceReply {
@@ -56,7 +64,7 @@ export const getDeviceId = (): string => {
 };
 
 export const useVisitorDeviceMessages = () => {
-  const [messages, setMessages] = useState<VisitorDeviceMessage[]>([]);
+  const [conversations, setConversations] = useState<VisitorDeviceConversation[]>([]);
   const [notifications, setNotifications] = useState<VisitorDeviceNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -84,65 +92,66 @@ export const useVisitorDeviceMessages = () => {
         `)
         .eq("visitor_device_id", deviceId)
         .eq("deleted_by_visitor", false)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true }); // Chronological order
 
       if (messagesError) {
         console.error("[useVisitorDeviceMessages] Error fetching messages:", messagesError);
-        setMessages([]);
+        setConversations([]);
         setUnreadCount(0);
         setLoading(false);
         return;
       }
 
-      // Fetch habitation details and replies for each message
-      const messagesWithDetails = await Promise.all(
-        (messagesData || []).map(async (msg) => {
-          // Get habitation details
-          const { data: habitation } = await supabase
-            .from("habitations")
-            .select(`
-              name,
-              anr:anrs(code, address)
-            `)
-            .eq("id", msg.habitation_id)
-            .single();
+      // Group messages by habitation_id
+      const habitationMap = new Map<string, typeof messagesData>();
+      for (const msg of messagesData || []) {
+        const existing = habitationMap.get(msg.habitation_id) || [];
+        existing.push(msg);
+        habitationMap.set(msg.habitation_id, existing);
+      }
 
-          // Get replies for this message
-          const { data: replies } = await supabase
-            .from("message_replies")
-            .select(`
-              id,
-              reply_text,
-              reply_voice_url,
-              reply_media_url,
-              reply_media_type,
-              is_read,
-              created_at,
-              resident_id,
-              encrypted_reply,
-              is_encrypted
-            `)
-            .eq("original_message_id", msg.id)
-            .eq("deleted_by_visitor", false)
-            .order("created_at", { ascending: true });
+      // Build conversations for each habitation
+      const conversationsData: VisitorDeviceConversation[] = [];
+      
+      for (const [habitationId, msgs] of habitationMap.entries()) {
+        // Get habitation details (only once per habitation)
+        const { data: habitation } = await supabase
+          .from("habitations")
+          .select(`
+            name,
+            anr:anrs(code, address)
+          `)
+          .eq("id", habitationId)
+          .single();
 
-          const anrData = habitation?.anr as { code: string; address: string } | null;
+        const anrData = habitation?.anr as { code: string; address: string } | null;
 
-          return {
-            id: msg.id,
-            habitation_id: msg.habitation_id,
-            message: msg.message,
-            voice_message_url: msg.voice_message_url,
-            media_url: msg.media_url,
-            media_type: msg.media_type,
-            is_read: msg.is_read || false,
-            created_at: msg.created_at || new Date().toISOString(),
-            encrypted_message: msg.encrypted_message,
-            is_encrypted: msg.is_encrypted || false,
-            habitation_name: habitation?.name || "Habitation",
-            anr_code: anrData?.code,
-            anr_address: anrData?.address,
-            replies: (replies || []).map(r => ({
+        // Get replies for ALL messages in this conversation
+        const messageIds = msgs.map(m => m.id);
+        const { data: allReplies } = await supabase
+          .from("message_replies")
+          .select(`
+            id,
+            original_message_id,
+            reply_text,
+            reply_voice_url,
+            reply_media_url,
+            reply_media_type,
+            is_read,
+            created_at,
+            resident_id,
+            encrypted_reply,
+            is_encrypted
+          `)
+          .in("original_message_id", messageIds)
+          .eq("deleted_by_visitor", false)
+          .order("created_at", { ascending: true });
+
+        // Build message items with their replies
+        const messageItems: VisitorDeviceMessageItem[] = msgs.map(msg => {
+          const msgReplies = (allReplies || [])
+            .filter(r => r.original_message_id === msg.id)
+            .map(r => ({
               id: r.id,
               reply_text: r.reply_text,
               reply_voice_url: r.reply_voice_url,
@@ -153,18 +162,56 @@ export const useVisitorDeviceMessages = () => {
               resident_id: r.resident_id,
               encrypted_reply: r.encrypted_reply,
               is_encrypted: r.is_encrypted || false,
-            })),
-          } as VisitorDeviceMessage;
-        })
+            }));
+
+          return {
+            id: msg.id,
+            message: msg.message,
+            voice_message_url: msg.voice_message_url,
+            media_url: msg.media_url,
+            media_type: msg.media_type,
+            is_read: msg.is_read || false,
+            created_at: msg.created_at || new Date().toISOString(),
+            encrypted_message: msg.encrypted_message,
+            is_encrypted: msg.is_encrypted || false,
+            replies: msgReplies,
+          };
+        });
+
+        // Calculate last activity and unread count for this conversation
+        let lastActivity = msgs[msgs.length - 1]?.created_at || new Date().toISOString();
+        let unreadRepliesCount = 0;
+        
+        for (const msgItem of messageItems) {
+          for (const reply of msgItem.replies) {
+            if (!reply.is_read) unreadRepliesCount++;
+            if (new Date(reply.created_at) > new Date(lastActivity)) {
+              lastActivity = reply.created_at;
+            }
+          }
+        }
+
+        conversationsData.push({
+          habitation_id: habitationId,
+          habitation_name: habitation?.name || "Habitation",
+          anr_code: anrData?.code,
+          anr_address: anrData?.address,
+          messages: messageItems,
+          last_activity: lastActivity,
+          unread_count: unreadRepliesCount,
+        });
+      }
+
+      // Sort conversations by last activity (most recent first)
+      conversationsData.sort((a, b) => 
+        new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime()
       );
 
-      setMessages(messagesWithDetails);
+      setConversations(conversationsData);
 
-      // Calculate unread count (unread replies)
-      const unreadReplies = messagesWithDetails.reduce((count, msg) => {
-        return count + msg.replies.filter(r => !r.is_read).length;
-      }, 0);
-      setUnreadCount(unreadReplies);
+      // Calculate total unread count
+      const totalUnread = conversationsData.reduce((sum, conv) => sum + conv.unread_count, 0);
+      setUnreadCount(totalUnread);
     } catch (error) {
       console.error("[useVisitorDeviceMessages] Error:", error);
     } finally {
@@ -198,10 +245,16 @@ export const useVisitorDeviceMessages = () => {
       .eq("id", replyId);
 
     if (!error) {
-      setMessages(prev => prev.map(msg => ({
-        ...msg,
-        replies: msg.replies.map(r => 
-          r.id === replyId ? { ...r, is_read: true } : r
+      setConversations(prev => prev.map(conv => ({
+        ...conv,
+        messages: conv.messages.map(msg => ({
+          ...msg,
+          replies: msg.replies.map(r => 
+            r.id === replyId ? { ...r, is_read: true } : r
+          )
+        })),
+        unread_count: conv.messages.reduce((count, msg) => 
+          count + msg.replies.filter(r => r.id !== replyId && !r.is_read).length, 0
         )
       })));
       setUnreadCount(prev => Math.max(0, prev - 1));
@@ -265,7 +318,7 @@ export const useVisitorDeviceMessages = () => {
   }, [deviceId, fetchMessages, fetchNotifications]);
 
   return {
-    messages,
+    conversations,
     notifications,
     unreadCount,
     loading,

@@ -185,23 +185,40 @@ const VisitorConversation = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Real-time subscription
+  // Real-time subscription for ALL messages in this conversation
   useEffect(() => {
-    if (!originalMessageId) return;
+    if (!habitationId) return;
 
     const channel = supabase
-      .channel(`visitor-conv-${habitationId}`)
+      .channel(`visitor-conv-${habitationId}-${deviceId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "message_replies",
-          filter: `original_message_id=eq.${originalMessageId}`,
         },
         (payload) => {
           console.log("[VisitorConversation] New reply:", payload);
+          // Refetch to check if this reply belongs to our conversation
           fetchConversation();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "visitor_messages",
+          filter: `habitation_id=eq.${habitationId}`,
+        },
+        (payload) => {
+          console.log("[VisitorConversation] New message:", payload);
+          // Check if it's from our device
+          const newMsg = payload.new as { visitor_device_id?: string };
+          if (newMsg.visitor_device_id === deviceId) {
+            fetchConversation();
+          }
         }
       )
       .subscribe();
@@ -209,7 +226,7 @@ const VisitorConversation = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [originalMessageId, habitationId, fetchConversation]);
+  }, [habitationId, deviceId, fetchConversation]);
 
   // Send message (reply to existing conversation)
   const handleSendMessage = async () => {

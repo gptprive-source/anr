@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useVisitorDeviceMessages, VisitorDeviceMessage } from "@/hooks/useVisitorDeviceMessages";
+import { useVisitorDeviceMessages, VisitorDeviceConversation } from "@/hooks/useVisitorDeviceMessages";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -13,7 +13,7 @@ import VisitorFooter from "@/components/layout/VisitorFooter";
 
 const VisitorMessages = () => {
   const navigate = useNavigate();
-  const { messages, unreadCount, loading } = useVisitorDeviceMessages();
+  const { conversations, unreadCount, loading } = useVisitorDeviceMessages();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -31,21 +31,30 @@ const VisitorMessages = () => {
     }
   };
 
-  const getLastActivity = (msg: VisitorDeviceMessage): string => {
-    if (msg.replies.length > 0) {
-      return msg.replies[msg.replies.length - 1].created_at;
+  const getLastMessagePreview = (conv: VisitorDeviceConversation): string => {
+    // Get all messages and replies in chronological order
+    const allItems: { text: string; date: string; isReply: boolean }[] = [];
+    
+    for (const msg of conv.messages) {
+      if (msg.message || msg.voice_message_url) {
+        allItems.push({
+          text: msg.voice_message_url ? "🎤 Message vocal envoyé" : (msg.message || "Message chiffré"),
+          date: msg.created_at,
+          isReply: false
+        });
+      }
+      for (const reply of msg.replies) {
+        allItems.push({
+          text: reply.reply_voice_url ? "🎤 Message vocal" : (reply.reply_text || "Message chiffré"),
+          date: reply.created_at,
+          isReply: true
+        });
+      }
     }
-    return msg.created_at;
+    
+    allItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return allItems[0]?.text || "Conversation";
   };
-
-  const getUnreadRepliesCount = (msg: VisitorDeviceMessage): number => {
-    return msg.replies.filter(r => !r.is_read).length;
-  };
-
-  // Sort messages by last activity
-  const sortedMessages = [...messages].sort((a, b) => {
-    return new Date(getLastActivity(b)).getTime() - new Date(getLastActivity(a)).getTime();
-  });
 
   if (loading) {
     return (
@@ -129,7 +138,7 @@ const VisitorMessages = () => {
 
       {/* Messages List */}
       <div className="p-4 space-y-3">
-        {sortedMessages.length === 0 ? (
+        {conversations.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted-foreground/10 flex items-center justify-center">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
@@ -148,19 +157,20 @@ const VisitorMessages = () => {
             </Button>
           </div>
         ) : (
-          sortedMessages.map((msg) => {
-            const unreadReplies = getUnreadRepliesCount(msg);
-            const lastReply = msg.replies.length > 0 ? msg.replies[msg.replies.length - 1] : null;
-            const hasUnread = unreadReplies > 0;
+          conversations.map((conv) => {
+            const hasUnread = conv.unread_count > 0;
+            const hasEncryption = conv.messages.some(m => 
+              m.is_encrypted || m.replies.some(r => r.is_encrypted)
+            );
 
             return (
               <Card 
-                key={msg.id}
+                key={conv.habitation_id}
                 className={cn(
                   "cursor-pointer transition-all hover:shadow-md",
                   hasUnread ? "border-primary border-2" : "border-border"
                 )}
-                onClick={() => navigate(`/visitor-conversation/${msg.habitation_id}`)}
+                onClick={() => navigate(`/visitor-conversation/${conv.habitation_id}`)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
@@ -179,16 +189,16 @@ const VisitorMessages = () => {
                           "font-medium truncate",
                           hasUnread && "font-semibold"
                         )}>
-                          {msg.habitation_name}
+                          {conv.habitation_name}
                         </h3>
                         <span className="text-xs text-muted-foreground flex-shrink-0">
-                          {formatDate(getLastActivity(msg))}
+                          {formatDate(conv.last_activity)}
                         </span>
                       </div>
                       
-                      {msg.anr_code && (
+                      {conv.anr_code && (
                         <p className="text-xs text-muted-foreground truncate">
-                          {msg.anr_code}
+                          {conv.anr_code}
                         </p>
                       )}
 
@@ -197,24 +207,17 @@ const VisitorMessages = () => {
                           "text-sm truncate max-w-[80%]",
                           hasUnread ? "text-foreground font-medium" : "text-muted-foreground"
                         )}>
-                          {lastReply 
-                            ? (lastReply.reply_voice_url 
-                                ? "🎤 Message vocal" 
-                                : lastReply.reply_text || "Message chiffré")
-                            : (msg.voice_message_url 
-                                ? "🎤 Message vocal envoyé" 
-                                : msg.message || "Message chiffré")
-                          }
+                          {getLastMessagePreview(conv)}
                         </p>
                         {hasUnread && (
                           <Badge variant="default" className="ml-2 bg-primary">
-                            {unreadReplies}
+                            {conv.unread_count}
                           </Badge>
                         )}
                       </div>
 
                       {/* Encryption indicator */}
-                      {(msg.is_encrypted || (lastReply && lastReply.is_encrypted)) && (
+                      {hasEncryption && (
                         <div className="flex items-center gap-1 mt-1 text-xs text-green-600">
                           <Lock className="h-3 w-3" />
                           <span>Chiffré de bout en bout</span>
@@ -232,7 +235,7 @@ const VisitorMessages = () => {
       </div>
 
       {/* CTA pour créer un compte */}
-      {sortedMessages.length > 0 && (
+      {conversations.length > 0 && (
         <div className="fixed bottom-20 left-4 right-4 z-40">
           <Card className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg">
             <CardContent className="p-4">
