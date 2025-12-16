@@ -177,10 +177,40 @@ const Contacts = () => {
 
   // Navigate to conversation - resolve ANR code to habitation_id if needed
   const handleNavigateToConversation = async (contact: ResidentContact) => {
-    // PRIORITY 1: If we have an anr_code, resolve it to habitation_id (allows creating new conversation)
+    // PRIORITY 1: If we have an anr_code, check if it's a visitor_anr_code OR an actual ANR code
     if (contact.anr_code) {
       try {
-        // Find the ANR by code
+        // First, check if this is a visitor_anr_code (business card code like ANR-XXXXXX)
+        const { data: businessCard } = await supabase
+          .from("visitor_business_cards")
+          .select("id, user_id")
+          .eq("visitor_anr_code", contact.anr_code)
+          .maybeSingle();
+
+        if (businessCard) {
+          // It's a visitor business card code - find their habitation via their user_id
+          const { data: resident } = await supabase
+            .from("residents")
+            .select("habitation_id")
+            .eq("user_id", businessCard.user_id)
+            .eq("status", "verified")
+            .maybeSingle();
+
+          if (resident?.habitation_id) {
+            navigate(`/conversation/${resident.habitation_id}`);
+            return;
+          }
+          
+          // User has business card but no habitation - cannot send message
+          toast({
+            title: "Impossible d'envoyer",
+            description: "Ce contact n'a pas d'habitation associée",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Not a visitor_anr_code, try to find it as actual ANR code
         const { data: anr, error: anrError } = await supabase
           .from("anrs")
           .select("id, address")
@@ -190,7 +220,7 @@ const Contacts = () => {
         if (anrError || !anr) {
           toast({
             title: "ANR introuvable",
-            description: "Le code ANR de ce contact n'existe plus",
+            description: `Le code ${contact.anr_code} n'existe ni comme ANR ni comme carte de visite`,
             variant: "destructive",
           });
           return;
