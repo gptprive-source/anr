@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import AvatarUpload from "@/components/ui/AvatarUpload";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Users,
   Search,
@@ -27,6 +28,7 @@ import {
   Loader2,
   MessageSquare,
   ArrowLeft,
+  MapPin,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,6 +48,12 @@ import {
 } from "@/components/ui/alert-dialog";
 
 type FilterType = "all" | "favorites" | "companies" | "individuals";
+
+interface HabitationOption {
+  id: string;
+  name: string;
+  address: string;
+}
 
 const Contacts = () => {
   const { toast } = useToast();
@@ -67,6 +75,11 @@ const Contacts = () => {
   });
   const [deletingContact, setDeletingContact] = useState<ResidentContact | null>(null);
   const contactRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  
+  // State for habitation selection dialog
+  const [habitationsToSelect, setHabitationsToSelect] = useState<HabitationOption[]>([]);
+  const [showHabitationDialog, setShowHabitationDialog] = useState(false);
+  const [navigatingContact, setNavigatingContact] = useState<ResidentContact | null>(null);
 
   // Scroll to contact if scrollTo param is present
   useEffect(() => {
@@ -160,6 +173,83 @@ const Contacts = () => {
       avatar_url: contact.avatar_url || null,
     });
     setEditingContact(contact);
+  };
+
+  // Navigate to conversation - resolve ANR code to habitation_id if needed
+  const handleNavigateToConversation = async (contact: ResidentContact) => {
+    // If we have source_business_card_id (contact from received message), use it directly
+    if (contact.source_business_card_id) {
+      navigate(`/conversation/${contact.source_business_card_id}`);
+      return;
+    }
+
+    // If we have an anr_code, resolve it to habitation_id
+    if (contact.anr_code) {
+      try {
+        // Find the ANR by code
+        const { data: anr, error: anrError } = await supabase
+          .from("anrs")
+          .select("id, address")
+          .eq("code", contact.anr_code.toUpperCase())
+          .maybeSingle();
+
+        if (anrError || !anr) {
+          toast({
+            title: "ANR introuvable",
+            description: "Le code ANR de ce contact n'existe plus",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Get habitations for this ANR
+        const { data: habitations, error: habError } = await supabase
+          .from("habitations")
+          .select("id, name")
+          .eq("anr_id", anr.id);
+
+        if (habError || !habitations || habitations.length === 0) {
+          toast({
+            title: "Aucune habitation",
+            description: "Aucune habitation trouvée pour ce code ANR",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // If only one habitation, navigate directly
+        if (habitations.length === 1) {
+          navigate(`/conversation/${habitations[0].id}`);
+          return;
+        }
+
+        // Multiple habitations - show selection dialog
+        setHabitationsToSelect(habitations.map(h => ({
+          id: h.id,
+          name: h.name,
+          address: anr.address
+        })));
+        setNavigatingContact(contact);
+        setShowHabitationDialog(true);
+        return;
+
+      } catch (err) {
+        console.error("Error resolving ANR:", err);
+        toast({
+          title: "Erreur",
+          description: "Impossible de résoudre l'ANR de ce contact",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // No valid identifier
+    toast({
+      title: "Conversation introuvable",
+      description: "Ce contact n'a pas d'identifiant de conversation valide",
+      variant: "destructive",
+    });
   };
 
   if (loading) {
@@ -290,19 +380,7 @@ const Contacts = () => {
                   {/* Info - Clickable to open conversation */}
                   <div 
                     className="flex-1 min-w-0 cursor-pointer hover:opacity-80"
-                    onClick={() => {
-                      // Use source_business_card_id, phone, or anr_code to navigate to conversation
-                      const conversationId = contact.source_business_card_id || contact.phone || contact.anr_code;
-                      if (conversationId) {
-                        navigate(`/conversation/${conversationId}`);
-                      } else {
-                        toast({
-                          title: "Conversation introuvable",
-                          description: "Aucun identifiant de conversation disponible pour ce contact",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
+                    onClick={() => handleNavigateToConversation(contact)}
                   >
                     {contact.contact_type === "company" ? (
                       <>
@@ -366,18 +444,7 @@ const Contacts = () => {
                     variant="ghost"
                     size="icon"
                     className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-                    onClick={() => {
-                      const conversationId = contact.source_business_card_id || contact.phone || contact.anr_code;
-                      if (conversationId) {
-                        navigate(`/conversation/${conversationId}`);
-                      } else {
-                        toast({
-                          title: "Conversation introuvable",
-                          description: "Aucun identifiant de conversation disponible",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
+                    onClick={() => handleNavigateToConversation(contact)}
                   >
                     <MessageSquare className="w-5 h-5" />
                   </Button>
@@ -521,6 +588,48 @@ const Contacts = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Habitation Selection Dialog */}
+      <Dialog open={showHabitationDialog} onOpenChange={setShowHabitationDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Home className="w-5 h-5 text-primary" />
+              Sélectionner une habitation
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground mb-4">
+              Plusieurs habitations sont liées à ce code ANR. Sélectionnez celle que vous souhaitez contacter :
+            </p>
+            {habitationsToSelect.map((hab) => (
+              <div
+                key={hab.id}
+                onClick={() => {
+                  navigate(`/conversation/${hab.id}`);
+                  setShowHabitationDialog(false);
+                  setHabitationsToSelect([]);
+                  setNavigatingContact(null);
+                }}
+                className="p-3 rounded-lg border border-border cursor-pointer transition-all hover:border-primary hover:bg-primary/5"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Home className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{hab.name}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      {hab.address}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <BottomNav />
     </div>
