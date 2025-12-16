@@ -227,13 +227,30 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         insertData.is_encrypted = true;
       }
 
-      const { data: insertedMessage, error } = await (supabase
-        .from("visitor_messages" as any)
-        .insert(insertData)
-        .select()
-        .single() as any);
+      // Check if user is authenticated - non-connected visitors can't use .select() due to RLS
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      if (error) throw error;
+      let insertedMessageId: string | null = null;
+      
+      if (currentUser) {
+        // Authenticated user - can use select
+        const { data: insertedMessage, error } = await (supabase
+          .from("visitor_messages" as any)
+          .insert(insertData)
+          .select()
+          .single() as any);
+        
+        if (error) throw error;
+        insertedMessageId = insertedMessage?.id;
+      } else {
+        // Non-authenticated visitor - just insert without select (RLS blocks select for anon)
+        const { error } = await (supabase
+          .from("visitor_messages" as any)
+          .insert(insertData) as any);
+        
+        if (error) throw error;
+        console.log("[useVisitorMessages] Message inserted successfully (no select for visitor)");
+      }
 
       // Create notification for the resident(s) of this habitation
       // Only notify: owner (is_owner=true) AND invited residents with receive_visitor_messages=true
@@ -277,7 +294,7 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
               title: "Nouveau message",
               message: `${visitorName} vous a envoyé un message`,
               is_read: false,
-              data: { message_id: insertedMessage.id, habitation_id: targetHabitationId },
+              data: { message_id: insertedMessageId, habitation_id: targetHabitationId },
             }));
 
             await supabase.from("user_notifications").insert(notifications as any);
@@ -288,7 +305,7 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         // Don't fail the message send if notification fails
       }
 
-      return { success: true, message: insertedMessage };
+      return { success: true, message: insertedMessageId ? { id: insertedMessageId } : null };
     } catch (error: any) {
       console.error("[useVisitorMessages] Error sending message:", error);
       return { success: false, error: error.message };
