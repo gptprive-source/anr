@@ -83,6 +83,7 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         .from("visitor_messages" as any)
         .select("*, business_card:visitor_business_cards(*)")
         .eq("habitation_id", habitationId)
+        .or("deleted_by_resident.is.null,deleted_by_resident.eq.false")
         .order("created_at", { ascending: false })
         .limit(50) as any); // Limit to 50 messages
       

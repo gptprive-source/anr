@@ -26,10 +26,12 @@ export const useMessageReplies = (messageId?: string) => {
   const fetchReplies = async (msgId: string) => {
     setLoading(true);
     try {
+      // Filter out replies deleted by resident (since this hook is used by residents)
       const { data, error } = await (supabase
         .from("message_replies" as any)
         .select("*")
         .eq("original_message_id", msgId)
+        .or("deleted_by_resident.is.null,deleted_by_resident.eq.false")
         .order("created_at", { ascending: true }) as any);
       
       if (error) throw error;
