@@ -209,41 +209,48 @@ const VisitorConversation = () => {
   useEffect(() => {
     if (!habitationId) return;
 
+    console.log("[VisitorConversation] Setting up realtime subscription for", habitationId);
+
     const channel = supabase
       .channel(`visitor-conv-${habitationId}-${deviceId}`)
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*", // Listen to all events (INSERT, UPDATE, DELETE)
           schema: "public",
           table: "message_replies",
         },
         (payload) => {
-          console.log("[VisitorConversation] New reply:", payload);
-          // Refetch to check if this reply belongs to our conversation
-          fetchConversation();
+          console.log("[VisitorConversation] Reply change detected:", payload);
+          // Small delay to ensure DB is updated before refetching
+          setTimeout(() => {
+            console.log("[VisitorConversation] Refetching after reply change");
+            fetchConversation();
+          }, 150);
         }
       )
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*", // Listen to all events
           schema: "public",
           table: "visitor_messages",
           filter: `habitation_id=eq.${habitationId}`,
         },
         (payload) => {
-          console.log("[VisitorConversation] New message:", payload);
-          // Check if it's from our device
-          const newMsg = payload.new as { visitor_device_id?: string };
-          if (newMsg.visitor_device_id === deviceId) {
+          console.log("[VisitorConversation] Message change detected:", payload);
+          setTimeout(() => {
+            console.log("[VisitorConversation] Refetching after message change");
             fetchConversation();
-          }
+          }, 150);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[VisitorConversation] Subscription status:", status);
+      });
 
     return () => {
+      console.log("[VisitorConversation] Removing channel");
       supabase.removeChannel(channel);
     };
   }, [habitationId, deviceId, fetchConversation]);
