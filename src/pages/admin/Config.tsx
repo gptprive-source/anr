@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key, CreditCard, RefreshCw } from "lucide-react";
+import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key, CreditCard, RefreshCw, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -951,6 +951,140 @@ const Config = () => {
 
           {/* FACTURATION TAB */}
           <TabsContent value="facturation" className="space-y-6">
+            {/* Tarifs Module Relais */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Tarifs Module Relais - Facturation Transporteurs
+                </CardTitle>
+                <CardDescription>
+                  Tarifs facturés aux transporteurs pour chaque type de preuve de livraison
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <Label>Tarif par dépôt en point relais (€)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={getValue('carrier_rate_per_relay_deposit') || 0.30}
+                      onChange={(e) => setLocalValue('carrier_rate_per_relay_deposit', parseFloat(e.target.value))}
+                      placeholder="0.30"
+                      className="w-32"
+                    />
+                    <span className="text-sm text-muted-foreground">€ / dépôt relais</span>
+                    {hasChanges('carrier_rate_per_relay_deposit') && (
+                      <Button size="sm" onClick={() => saveConfig('carrier_rate_per_relay_deposit')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Tarif par livraison directe au destinataire (€)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={getValue('carrier_rate_per_direct_delivery') || 0.25}
+                      onChange={(e) => setLocalValue('carrier_rate_per_direct_delivery', parseFloat(e.target.value))}
+                      placeholder="0.25"
+                      className="w-32"
+                    />
+                    <span className="text-sm text-muted-foreground">€ / livraison directe</span>
+                    {hasChanges('carrier_rate_per_direct_delivery') && (
+                      <Button size="sm" onClick={() => saveConfig('carrier_rate_per_direct_delivery')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Jour de facturation mensuelle</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="28"
+                      value={getValue('carrier_invoice_day_of_month') || 1}
+                      onChange={(e) => setLocalValue('carrier_invoice_day_of_month', parseInt(e.target.value))}
+                      placeholder="1"
+                      className="w-32"
+                    />
+                    <span className="text-sm text-muted-foreground">du mois</span>
+                    {hasChanges('carrier_invoice_day_of_month') && (
+                      <Button size="sm" onClick={() => saveConfig('carrier_invoice_day_of_month')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Rémunération Points Relais */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5" />
+                  Rémunération des Points Relais
+                </CardTitle>
+                <CardDescription>
+                  Tarifs de rémunération versés aux points relais pour chaque colis traité
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <Label>Rémunération par colis traité (€)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={getValue('relay_rate_per_parcel') || 1.50}
+                      onChange={(e) => setLocalValue('relay_rate_per_parcel', parseFloat(e.target.value))}
+                      placeholder="1.50"
+                      className="w-32"
+                    />
+                    <span className="text-sm text-muted-foreground">€ / colis</span>
+                    {hasChanges('relay_rate_per_parcel') && (
+                      <Button size="sm" onClick={() => saveConfig('relay_rate_per_parcel')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Seuil minimum de paiement (€)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      step="1"
+                      value={getValue('relay_minimum_payout') || 20}
+                      onChange={(e) => setLocalValue('relay_minimum_payout', parseFloat(e.target.value))}
+                      placeholder="20"
+                      className="w-32"
+                    />
+                    <span className="text-sm text-muted-foreground">€ minimum avant paiement</span>
+                    {hasChanges('relay_minimum_payout') && (
+                      <Button size="sm" onClick={() => saveConfig('relay_minimum_payout')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

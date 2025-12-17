@@ -18,7 +18,11 @@ import {
   RefreshCw,
   Eye,
   Ban,
-  DollarSign
+  DollarSign,
+  FileText,
+  Send,
+  Download,
+  Calendar
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -26,6 +30,7 @@ import { fr } from "date-fns/locale";
 const RelayManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("relay-points");
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<string>("all");
   const queryClient = useQueryClient();
 
   // Fetch relay points
@@ -70,6 +75,22 @@ const RelayManagement = () => {
         `)
         .order('created_at', { ascending: false })
         .limit(100);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch carrier invoices
+  const { data: carrierInvoices, isLoading: loadingInvoices } = useQuery({
+    queryKey: ['admin_carrier_invoices'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('carrier_invoices')
+        .select(`
+          *,
+          carriers:carrier_id (company_name, contact_email)
+        `)
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -120,6 +141,40 @@ const RelayManagement = () => {
     },
   });
 
+  // Update invoice status mutation
+  const updateInvoiceStatus = useMutation({
+    mutationFn: async ({ invoiceId, status, paidAt }: { invoiceId: string; status: string; paidAt?: string }) => {
+      const updateData: any = { status };
+      if (paidAt) updateData.paid_at = paidAt;
+      
+      const { error } = await supabase
+        .from('carrier_invoices')
+        .update(updateData)
+        .eq('id', invoiceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Statut de facture mis à jour");
+      queryClient.invalidateQueries({ queryKey: ['admin_carrier_invoices'] });
+    },
+  });
+
+  // Generate invoices mutation
+  const generateInvoices = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('process-carrier-invoice');
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.summary.invoices_created} facture(s) générée(s)`);
+      queryClient.invalidateQueries({ queryKey: ['admin_carrier_invoices'] });
+    },
+    onError: (error: any) => {
+      toast.error(`Erreur: ${error.message}`);
+    }
+  });
+
   // Stats
   const stats = {
     totalRelays: relayPoints?.length || 0,
@@ -128,6 +183,10 @@ const RelayManagement = () => {
     verifiedCarriers: carriers?.filter(c => c.is_verified).length || 0,
     totalParcels: parcels?.length || 0,
     pendingParcels: parcels?.filter(p => p.status === 'pending' || p.status === 'deposited').length || 0,
+    totalInvoices: carrierInvoices?.length || 0,
+    pendingInvoicesAmount: carrierInvoices
+      ?.filter(i => i.status !== 'paid')
+      .reduce((sum, i) => sum + (i.amount_ttc || 0), 0) || 0,
   };
 
   const filteredRelays = relayPoints?.filter(r => 
@@ -145,6 +204,29 @@ const RelayManagement = () => {
     p.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredInvoices = carrierInvoices?.filter(i => {
+    const matchesSearch = 
+      i.invoice_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      i.carriers?.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = invoiceStatusFilter === 'all' || i.status === invoiceStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const getInvoiceStatusBadge = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return <Badge variant="secondary">Brouillon</Badge>;
+      case 'sent':
+        return <Badge variant="outline" className="border-blue-500 text-blue-600">Envoyée</Badge>;
+      case 'paid':
+        return <Badge variant="default" className="bg-green-500">Payée</Badge>;
+      case 'overdue':
+        return <Badge variant="destructive">En retard</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
   return (
     <AdminLayout>
     <div className="space-y-6">
@@ -161,7 +243,7 @@ const RelayManagement = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
             <MapPin className="h-6 w-6 mx-auto text-primary mb-2" />
@@ -204,6 +286,20 @@ const RelayManagement = () => {
             <p className="text-xs text-muted-foreground">En attente</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <FileText className="h-6 w-6 mx-auto text-purple-500 mb-2" />
+            <p className="text-2xl font-bold">{stats.totalInvoices}</p>
+            <p className="text-xs text-muted-foreground">Factures</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <DollarSign className="h-6 w-6 mx-auto text-red-500 mb-2" />
+            <p className="text-2xl font-bold">{stats.pendingInvoicesAmount.toFixed(0)}€</p>
+            <p className="text-xs text-muted-foreground">À encaisser</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search */}
@@ -219,10 +315,11 @@ const RelayManagement = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="relay-points">Points Relais</TabsTrigger>
           <TabsTrigger value="carriers">Transporteurs</TabsTrigger>
           <TabsTrigger value="parcels">Colis</TabsTrigger>
+          <TabsTrigger value="invoices">Factures</TabsTrigger>
         </TabsList>
 
         {/* Relay Points Tab */}
@@ -387,6 +484,126 @@ const RelayManagement = () => {
                       <Button size="sm" variant="outline">
                         <Eye className="h-4 w-4" />
                       </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Invoices Tab */}
+        <TabsContent value="invoices" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <select
+                value={invoiceStatusFilter}
+                onChange={(e) => setInvoiceStatusFilter(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm"
+              >
+                <option value="all">Tous les statuts</option>
+                <option value="draft">Brouillon</option>
+                <option value="sent">Envoyée</option>
+                <option value="paid">Payée</option>
+                <option value="overdue">En retard</option>
+              </select>
+            </div>
+            <Button 
+              onClick={() => generateInvoices.mutate()}
+              disabled={generateInvoices.isPending}
+            >
+              {generateInvoices.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4 mr-2" />
+              )}
+              Générer factures du mois
+            </Button>
+          </div>
+
+          {loadingInvoices ? (
+            <p className="text-center py-8 text-muted-foreground">Chargement...</p>
+          ) : filteredInvoices?.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground">Aucune facture trouvée</p>
+          ) : (
+            <div className="space-y-3">
+              {filteredInvoices?.map((invoice) => (
+                <Card key={invoice.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-mono text-sm">{invoice.invoice_number}</h3>
+                          {getInvoiceStatusBadge(invoice.status)}
+                        </div>
+                        <p className="text-sm font-medium">{invoice.carriers?.company_name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Période: {format(new Date(invoice.period_start), 'dd/MM/yyyy', { locale: fr })} - {format(new Date(invoice.period_end), 'dd/MM/yyyy', { locale: fr })}
+                        </p>
+                        <div className="flex items-center gap-4 mt-2 text-xs">
+                          <span className="flex items-center gap-1">
+                            <Package className="h-3 w-3" />
+                            {invoice.parcels_count} colis
+                          </span>
+                          <span className="font-medium">
+                            {invoice.amount_ht?.toFixed(2)}€ HT
+                          </span>
+                          <span className="font-bold text-primary">
+                            {invoice.amount_ttc?.toFixed(2)}€ TTC
+                          </span>
+                        </div>
+                        {invoice.due_date && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            <Calendar className="h-3 w-3 inline mr-1" />
+                            Échéance: {format(new Date(invoice.due_date), 'dd/MM/yyyy', { locale: fr })}
+                          </p>
+                        )}
+                        {/* Line items detail */}
+                        {invoice.line_items && Array.isArray(invoice.line_items) && invoice.line_items.length > 0 && (
+                          <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
+                            {(invoice.line_items as any[]).map((item: any, idx: number) => (
+                              <div key={idx} className="flex justify-between">
+                                <span>{item.description}</span>
+                                <span>{item.quantity} × {item.unit_price?.toFixed(2)}€ = {item.total?.toFixed(2)}€</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {invoice.status === 'draft' && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => updateInvoiceStatus.mutate({ 
+                              invoiceId: invoice.id, 
+                              status: 'sent' 
+                            })}
+                            disabled={updateInvoiceStatus.isPending}
+                          >
+                            <Send className="h-4 w-4 mr-1" />
+                            Envoyer
+                          </Button>
+                        )}
+                        {invoice.status === 'sent' && (
+                          <Button 
+                            size="sm" 
+                            variant="default"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => updateInvoiceStatus.mutate({ 
+                              invoiceId: invoice.id, 
+                              status: 'paid',
+                              paidAt: new Date().toISOString()
+                            })}
+                            disabled={updateInvoiceStatus.isPending}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Marquer payée
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
