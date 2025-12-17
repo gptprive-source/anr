@@ -88,6 +88,7 @@ export const useRelayPoint = () => {
     mutationFn: async (data: CreateRelayPointData) => {
       if (!user?.id) throw new Error('Non authentifié');
 
+      // Create the relay point
       const { data: result, error } = await supabase
         .from('relay_points')
         .insert({
@@ -98,10 +99,32 @@ export const useRelayPoint = () => {
         .single();
 
       if (error) throw error;
+
+      // Automatically create a free relay badge doming order
+      const { error: domingError } = await supabase
+        .from('doming_orders')
+        .insert({
+          user_id: user.id,
+          anr_id: data.anr_id,
+          quantity: 1,
+          unit_price: 0,
+          total_price: 0,
+          is_free: true,
+          status: 'paid',
+          order_type: 'relay_badge',
+          shipping_address: null, // Will be filled from ANR address
+        });
+
+      if (domingError) {
+        console.error('Error creating relay badge:', domingError);
+        // Don't throw - relay point was created successfully
+      }
+
       return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['relay_point'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-doming-orders'] });
     },
   });
 

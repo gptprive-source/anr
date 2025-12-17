@@ -55,6 +55,7 @@ interface DomingOrder {
   status: string;
   shipping_address: string | null;
   created_at: string;
+  order_type: "doming" | "relay_badge";
   profile?: {
     first_name: string | null;
     last_name: string | null;
@@ -99,7 +100,7 @@ const statusConfig: Record<OrderStatus, { label: string; color: string; icon: Re
 };
 
 const AllOrders = () => {
-  const [activeTab, setActiveTab] = useState<"all" | "subscriptions" | "domings">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "subscriptions" | "domings" | "relay_badges">("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<DomingOrder | null>(null);
@@ -209,7 +210,14 @@ const AllOrders = () => {
   const filteredOrders = allOrders.filter((order) => {
     // Tab filter
     if (activeTab === "subscriptions" && order.orderType !== "subscription") return false;
-    if (activeTab === "domings" && order.orderType !== "doming") return false;
+    if (activeTab === "domings") {
+      if (order.orderType !== "doming") return false;
+      if ((order as DomingOrder).order_type === 'relay_badge') return false;
+    }
+    if (activeTab === "relay_badges") {
+      if (order.orderType !== "doming") return false;
+      if ((order as DomingOrder).order_type !== 'relay_badge') return false;
+    }
 
     // Status filter (only for domings)
     if (statusFilter !== "all" && order.orderType === "doming") {
@@ -339,11 +347,12 @@ const AllOrders = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "all" | "subscriptions" | "domings")}>
-          <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "all" | "subscriptions" | "domings" | "relay_badges")}>
+          <TabsList className="grid w-full grid-cols-4 max-w-xl">
             <TabsTrigger value="all">Tout ({allOrders.length})</TabsTrigger>
-            <TabsTrigger value="subscriptions">Abonnements ({subscriptions?.length || 0})</TabsTrigger>
-            <TabsTrigger value="domings">Domings ({domingOrders?.length || 0})</TabsTrigger>
+            <TabsTrigger value="subscriptions">Abo ({subscriptions?.length || 0})</TabsTrigger>
+            <TabsTrigger value="domings">Domings ({domingOrders?.filter(d => d.order_type !== 'relay_badge').length || 0})</TabsTrigger>
+            <TabsTrigger value="relay_badges" className="text-teal-600">Badges Relais ({domingOrders?.filter(d => d.order_type === 'relay_badge').length || 0})</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -463,10 +472,17 @@ const AllOrders = () => {
                       return (
                         <TableRow key={`dom-${doming.id}`}>
                           <TableCell>
-                            <Badge variant="outline" className="bg-secondary/50 text-secondary-foreground border-secondary/20">
-                              <Package className="w-3 h-3 mr-1" />
-                              Doming
-                            </Badge>
+                            {doming.order_type === 'relay_badge' ? (
+                              <Badge variant="outline" className="bg-teal-500/10 text-teal-600 border-teal-500/20">
+                                <Package className="w-3 h-3 mr-1" />
+                                Badge Relais
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-secondary/50 text-secondary-foreground border-secondary/20">
+                                <Package className="w-3 h-3 mr-1" />
+                                Doming
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
                             {format(new Date(doming.created_at), "dd/MM/yyyy HH:mm", { locale: fr })}
@@ -488,7 +504,9 @@ const AllOrders = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className="text-sm">{doming.quantity} Doming(s)</span>
+                            <span className="text-sm">
+                              {doming.order_type === 'relay_badge' ? 'Badge Relais QR/NFC' : `${doming.quantity} Doming(s)`}
+                            </span>
                           </TableCell>
                           <TableCell>
                             {doming.is_free ? (
