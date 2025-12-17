@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import { lazy } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -56,6 +57,7 @@ import NotFound from "./pages/NotFound";
 // Relay pages
 import RelayDashboard from "./pages/relay/RelayDashboard";
 import RelayRegistration from "./pages/relay/RelayRegistration";
+import ParcelScan from "./pages/relay/ParcelScan";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -180,6 +182,7 @@ const AppContent = () => {
           {/* Relay Routes */}
           <Route path="/relay" element={<ProtectedRoute><RelayDashboard /></ProtectedRoute>} />
           <Route path="/relay/register" element={<ProtectedRoute><RelayRegistration /></ProtectedRoute>} />
+          <Route path="/relay/scan" element={<ProtectedRoute><ParcelScan /></ProtectedRoute>} />
 
           {/* Visitor messages (non-authenticated) */}
           <Route path="/visitor-messages" element={<VisitorMessages />} />
