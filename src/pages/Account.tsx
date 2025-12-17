@@ -402,21 +402,6 @@ const Account = () => {
             </Card>
           </Link>
 
-          {/* Referral Program section */}
-          <Link to="/referral" className="block">
-            <Card className="p-4 flex items-center justify-between hover:shadow-neumorphic-pressed transition-all">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shadow-neumorphic-inset">
-                  <Gift className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Programme Parrainage</p>
-                  <p className="text-xs text-muted-foreground">Gagnez 5€ par filleul</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </Card>
-          </Link>
         </div>
 
         {/* Granted Access Section */}

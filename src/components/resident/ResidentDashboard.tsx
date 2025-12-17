@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, HelpCircle, MessageSquare, DoorOpen, ShoppingCart, Receipt, Sparkles, Mail } from "lucide-react";
+import { Users, History, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, HelpCircle, MessageSquare, DoorOpen, ShoppingCart, Receipt, Sparkles, Mail, Package, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -331,6 +331,8 @@ const ResidentDashboard = () => {
           {flags.doorOpeningEnabled && <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />}
           {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} color="green" />}
           {copilotEnabled && <QuickAction icon={<Sparkles className="w-6 h-6" />} label="Co-Pilot" onClick={() => navigate("/pro")} color="cyan" />}
+          <QuickAction icon={<Package className="w-6 h-6" />} label="Devenir relais" onClick={() => navigate("/relay")} color="teal" />
+          <QuickAction icon={<Gift className="w-6 h-6" />} label="Parrainage" onClick={() => navigate("/referral")} color="purple" />
           <QuickAction icon={<Mail className="w-6 h-6" />} label="Support" onClick={() => setSupportChatOpen(true)} color="blue" />
         </div>
 
