@@ -890,6 +890,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_free: boolean | null
+          order_type: string
           quantity: number
           shipping_address: string | null
           status: string
@@ -903,6 +904,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_free?: boolean | null
+          order_type?: string
           quantity?: number
           shipping_address?: string | null
           status?: string
@@ -916,6 +918,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_free?: boolean | null
+          order_type?: string
           quantity?: number
           shipping_address?: string | null
           status?: string
