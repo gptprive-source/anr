@@ -66,6 +66,7 @@ const navItems = [
   { path: '/admin/team', label: 'Équipe', icon: UserCog },
   { path: '/admin/audit', label: 'Journal d\'audit', icon: ScrollText },
   { path: '/admin/security', label: 'Sécurité', icon: ShieldCheck },
+  { path: '/admin/relay', label: 'Module Relais', icon: Package },
   { path: '/admin/rgpd', label: 'RGPD', icon: Scale },
   { path: '/admin/rgpd/registry', label: 'Registre', icon: BookOpen },
   { path: '/admin/rgpd/subprocessors', label: 'Sous-traitants', icon: Building2 },
