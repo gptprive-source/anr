@@ -137,6 +137,12 @@ verify_jwt = false
 [functions.process-referral-payout]
 verify_jwt = false
 
+[functions.carrier-api]
+verify_jwt = false
+
+[functions.process-relay-payout]
+verify_jwt = false
+
 [functions.create-parcel-proof]
 verify_jwt = false
 

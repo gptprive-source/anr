@@ -59,6 +59,8 @@ import RelayDashboard from "./pages/relay/RelayDashboard";
 import RelayRegistration from "./pages/relay/RelayRegistration";
 import ParcelScan from "./pages/relay/ParcelScan";
 
+// Carrier pages
+import CarrierDashboard from "./pages/carrier/CarrierDashboard";
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminAnalytics from "./pages/admin/Analytics";
@@ -183,6 +185,9 @@ const AppContent = () => {
           <Route path="/relay" element={<ProtectedRoute><RelayDashboard /></ProtectedRoute>} />
           <Route path="/relay/register" element={<ProtectedRoute><RelayRegistration /></ProtectedRoute>} />
           <Route path="/relay/scan" element={<ProtectedRoute><ParcelScan /></ProtectedRoute>} />
+
+          {/* Carrier Routes */}
+          <Route path="/carrier" element={<CarrierDashboard />} />
 
           {/* Visitor messages (non-authenticated) */}
           <Route path="/visitor-messages" element={<VisitorMessages />} />
