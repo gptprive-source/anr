@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,8 +32,8 @@ interface RouteOptimizationMapProps {
 
 interface OptimizedRoute {
   coordinates: [number, number][];
-  totalDistance: number; // in meters
-  totalDuration: number; // in seconds
+  totalDistance: number;
+  totalDuration: number;
   waypoints: DeliveryPoint[];
 }
 
@@ -57,30 +56,21 @@ const createCustomIcon = (color: string) => {
   });
 };
 
-const relayIcon = createCustomIcon('#0EA5E9'); // Blue for relay points
-const recipientIcon = createCustomIcon('#22C55E'); // Green for recipients
-const startIcon = createCustomIcon('#EF4444'); // Red for start position
-
-// Component to fit map bounds to markers
-function FitBounds({ points }: { points: [number, number][] }) {
-  const map = useMap();
-  
-  useEffect(() => {
-    if (points.length > 0) {
-      const bounds = L.latLngBounds(points.map(p => [p[0], p[1]]));
-      map.fitBounds(bounds, { padding: [50, 50] });
-    }
-  }, [points, map]);
-  
-  return null;
-}
+const relayIcon = createCustomIcon('#0EA5E9');
+const recipientIcon = createCustomIcon('#22C55E');
+const startIcon = createCustomIcon('#EF4444');
 
 export function RouteOptimizationMap({ deliveryPoints, startPosition }: RouteOptimizationMapProps) {
+  const mapRef = useRef<L.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const markersRef = useRef<L.Marker[]>([]);
+  const routeLayerRef = useRef<L.Polyline | null>(null);
+  
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(startPosition || null);
+  const [mapReady, setMapReady] = useState(false);
 
-  // Default center (Paris)
   const defaultCenter: [number, number] = [48.8566, 2.3522];
 
   // Get user's current location
@@ -97,6 +87,110 @@ export function RouteOptimizationMap({ deliveryPoints, startPosition }: RouteOpt
     }
   }, [startPosition]);
 
+  // Initialize map using vanilla Leaflet
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const center = userLocation || defaultCenter;
+    
+    const map = L.map(mapContainerRef.current, {
+      center: center,
+      zoom: 12,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
+
+    mapRef.current = map;
+    setMapReady(true);
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update markers when delivery points or user location changes
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    const map = mapRef.current;
+    const bounds: L.LatLngBoundsExpression = [];
+
+    // Add start position marker
+    if (userLocation) {
+      const marker = L.marker(userLocation, { icon: startIcon })
+        .addTo(map)
+        .bindPopup('<strong>Point de départ</strong><br/>Votre position actuelle');
+      markersRef.current.push(marker);
+      bounds.push(userLocation);
+    }
+
+    // Add delivery point markers
+    deliveryPoints.forEach((point, index) => {
+      const icon = point.type === 'relay' ? relayIcon : recipientIcon;
+      const position: [number, number] = [point.latitude, point.longitude];
+      
+      let orderInfo = '';
+      if (optimizedRoute) {
+        const orderIndex = optimizedRoute.waypoints.findIndex(w => w.id === point.id);
+        if (orderIndex >= 0) {
+          orderInfo = `<div style="margin-top: 4px; font-size: 12px; font-weight: bold; color: #0EA5E9;">Arrêt #${orderIndex + 1}</div>`;
+        }
+      }
+
+      const popupContent = `
+        <div style="min-width: 150px;">
+          <strong>${point.name}</strong><br/>
+          <span style="font-size: 12px; color: #666;">${point.address}</span>
+          ${point.parcelsCount ? `<br/><span style="font-size: 12px;">${point.parcelsCount} colis</span>` : ''}
+          ${orderInfo}
+        </div>
+      `;
+
+      const marker = L.marker(position, { icon })
+        .addTo(map)
+        .bindPopup(popupContent);
+      
+      markersRef.current.push(marker);
+      bounds.push(position);
+    });
+
+    // Fit bounds if we have points
+    if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else if (bounds.length === 1) {
+      map.setView(bounds[0] as [number, number], 12);
+    }
+  }, [deliveryPoints, userLocation, mapReady, optimizedRoute]);
+
+  // Update route polyline
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
+
+    // Remove existing route
+    if (routeLayerRef.current) {
+      routeLayerRef.current.remove();
+      routeLayerRef.current = null;
+    }
+
+    // Add new route if available
+    if (optimizedRoute && optimizedRoute.coordinates.length > 0) {
+      routeLayerRef.current = L.polyline(optimizedRoute.coordinates, {
+        color: '#0EA5E9',
+        weight: 4,
+        opacity: 0.8,
+      }).addTo(mapRef.current);
+    }
+  }, [optimizedRoute, mapReady]);
+
   // Calculate optimized route using OSRM
   const optimizeRoute = async () => {
     if (deliveryPoints.length < 2) {
@@ -107,7 +201,6 @@ export function RouteOptimizationMap({ deliveryPoints, startPosition }: RouteOpt
     setIsOptimizing(true);
 
     try {
-      // Build coordinates string for OSRM
       const start = userLocation || defaultCenter;
       const allPoints = [
         { lat: start[0], lon: start[1] },
@@ -118,7 +211,6 @@ export function RouteOptimizationMap({ deliveryPoints, startPosition }: RouteOpt
         .map(p => `${p.lon},${p.lat}`)
         .join(';');
 
-      // Call OSRM Trip API for route optimization (traveling salesman)
       const response = await fetch(
         `https://router.project-osrm.org/trip/v1/driving/${coordinatesStr}?source=first&roundtrip=false&geometries=geojson&overview=full`
       );
@@ -135,13 +227,12 @@ export function RouteOptimizationMap({ deliveryPoints, startPosition }: RouteOpt
 
       const trip = data.trips[0];
       const coordinates: [number, number][] = trip.geometry.coordinates.map(
-        (coord: [number, number]) => [coord[1], coord[0]] // Swap lon/lat to lat/lon for Leaflet
+        (coord: [number, number]) => [coord[1], coord[0]]
       );
 
-      // Reorder waypoints according to optimized route
       const waypointOrder = data.waypoints.map((wp: any) => wp.waypoint_index);
       const orderedPoints = waypointOrder
-        .slice(1) // Skip the starting point
+        .slice(1)
         .map((index: number) => deliveryPoints[index - 1])
         .filter(Boolean);
 
@@ -161,7 +252,6 @@ export function RouteOptimizationMap({ deliveryPoints, startPosition }: RouteOpt
     }
   };
 
-  // Format distance
   const formatDistance = (meters: number) => {
     if (meters >= 1000) {
       return `${(meters / 1000).toFixed(1)} km`;
@@ -169,7 +259,6 @@ export function RouteOptimizationMap({ deliveryPoints, startPosition }: RouteOpt
     return `${Math.round(meters)} m`;
   };
 
-  // Format duration
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -178,12 +267,6 @@ export function RouteOptimizationMap({ deliveryPoints, startPosition }: RouteOpt
     }
     return `${minutes} min`;
   };
-
-  const mapCenter = userLocation || defaultCenter;
-  const allMapPoints: [number, number][] = [
-    mapCenter,
-    ...deliveryPoints.map(p => [p.latitude, p.longitude] as [number, number])
-  ];
 
   return (
     <div className="space-y-4">
@@ -230,75 +313,14 @@ export function RouteOptimizationMap({ deliveryPoints, startPosition }: RouteOpt
             </div>
           )}
 
-          <div className="h-[400px] rounded-lg overflow-hidden border">
-            <MapContainer
-              center={mapCenter}
-              zoom={12}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              
-              <FitBounds points={allMapPoints} />
-
-              {/* Start position marker */}
-              {userLocation && (
-                <Marker position={userLocation} icon={startIcon}>
-                  <Popup>
-                    <strong>Point de départ</strong>
-                    <br />
-                    Votre position actuelle
-                  </Popup>
-                </Marker>
-              )}
-
-              {/* Delivery point markers */}
-              {deliveryPoints.map((point, index) => (
-                <Marker
-                  key={point.id}
-                  position={[point.latitude, point.longitude]}
-                  icon={point.type === 'relay' ? relayIcon : recipientIcon}
-                >
-                  <Popup>
-                    <div className="min-w-[150px]">
-                      <strong>{point.name}</strong>
-                      <br />
-                      <span className="text-sm text-muted-foreground">{point.address}</span>
-                      {point.parcelsCount && (
-                        <>
-                          <br />
-                          <Badge variant="outline" className="mt-1">
-                            {point.parcelsCount} colis
-                          </Badge>
-                        </>
-                      )}
-                      {optimizedRoute && (
-                        <div className="mt-1 text-xs font-medium text-primary">
-                          Arrêt #{optimizedRoute.waypoints.findIndex(w => w.id === point.id) + 1}
-                        </div>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-
-              {/* Optimized route polyline */}
-              {optimizedRoute && (
-                <Polyline
-                  positions={optimizedRoute.coordinates}
-                  color="#0EA5E9"
-                  weight={4}
-                  opacity={0.8}
-                />
-              )}
-            </MapContainer>
-          </div>
+          <div 
+            ref={mapContainerRef}
+            className="h-[400px] rounded-lg overflow-hidden border"
+            style={{ minHeight: '400px' }}
+          />
         </CardContent>
       </Card>
 
-      {/* Optimized order list */}
       {optimizedRoute && optimizedRoute.waypoints.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
