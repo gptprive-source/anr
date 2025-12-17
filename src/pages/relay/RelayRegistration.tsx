@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Clock, MapPin, CreditCard, Check } from "lucide-react";
+import { ArrowLeft, Package, Clock, MapPin, CreditCard, Check, Square, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useRelayPoint } from "@/hooks/useRelayPoint";
@@ -244,11 +243,11 @@ const RelayRegistration = () => {
                 }`}
                 onClick={() => handleParcelTypeToggle(type.id)}
               >
-                <Checkbox 
-                  checked={formData.accepted_parcel_types.includes(type.id)} 
-                  onCheckedChange={() => handleParcelTypeToggle(type.id)}
-                  onClick={(e) => e.stopPropagation()}
-                />
+                {formData.accepted_parcel_types.includes(type.id) ? (
+                  <CheckSquare className="w-5 h-5 text-primary" />
+                ) : (
+                  <Square className="w-5 h-5 text-muted-foreground" />
+                )}
                 <div className="flex-1">
                   <p className="font-medium">{type.label}</p>
                   <p className="text-sm text-muted-foreground">{type.description}</p>
@@ -279,11 +278,11 @@ const RelayRegistration = () => {
                     onClick={() => toggleDay(day.id)}
                   >
                     <div className="flex items-center gap-3">
-                      <Checkbox 
-                        checked={isActive} 
-                        onCheckedChange={() => toggleDay(day.id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      {isActive ? (
+                        <CheckSquare className="w-5 h-5 text-primary" />
+                      ) : (
+                        <Square className="w-5 h-5 text-muted-foreground" />
+                      )}
                       <span className="font-medium">{day.label}</span>
                     </div>
                     {isActive && (
