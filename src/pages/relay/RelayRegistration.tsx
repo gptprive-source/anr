@@ -244,7 +244,11 @@ const RelayRegistration = () => {
                 }`}
                 onClick={() => handleParcelTypeToggle(type.id)}
               >
-                <Checkbox checked={formData.accepted_parcel_types.includes(type.id)} />
+                <Checkbox 
+                  checked={formData.accepted_parcel_types.includes(type.id)} 
+                  onCheckedChange={() => handleParcelTypeToggle(type.id)}
+                  onClick={(e) => e.stopPropagation()}
+                />
                 <div className="flex-1">
                   <p className="font-medium">{type.label}</p>
                   <p className="text-sm text-muted-foreground">{type.description}</p>
@@ -275,7 +279,11 @@ const RelayRegistration = () => {
                     onClick={() => toggleDay(day.id)}
                   >
                     <div className="flex items-center gap-3">
-                      <Checkbox checked={isActive} />
+                      <Checkbox 
+                        checked={isActive} 
+                        onCheckedChange={() => toggleDay(day.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
                       <span className="font-medium">{day.label}</span>
                     </div>
                     {isActive && (
