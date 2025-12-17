@@ -17,6 +17,9 @@ export interface FeatureFlags {
   // Door features
   doorOpeningEnabled: boolean;
   scheduledAccessEnabled: boolean;
+  
+  // Relay module
+  relayModuleEnabled: boolean;
 }
 
 export const useFeatureFlags = () => {
@@ -58,6 +61,9 @@ export const useFeatureFlags = () => {
       // Door features - default false
       doorOpeningEnabled: parseBoolean(getConfig('feature_door_opening_enabled'), false),
       scheduledAccessEnabled: parseBoolean(getConfig('feature_scheduled_access_enabled'), false),
+      
+      // Relay module - default false
+      relayModuleEnabled: parseBoolean(getConfig('relay_module_enabled'), false),
     };
   }, [configs]);
 

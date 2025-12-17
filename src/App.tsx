@@ -53,6 +53,10 @@ import VisitorMessages from "./pages/VisitorMessages";
 import VisitorConversation from "./pages/VisitorConversation";
 import NotFound from "./pages/NotFound";
 
+// Relay pages
+import RelayDashboard from "./pages/relay/RelayDashboard";
+import RelayRegistration from "./pages/relay/RelayRegistration";
+
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminAnalytics from "./pages/admin/Analytics";
@@ -173,6 +177,10 @@ const AppContent = () => {
                 <NoHabitation />
               </ProtectedRoute>} />
           
+          {/* Relay Routes */}
+          <Route path="/relay" element={<ProtectedRoute><RelayDashboard /></ProtectedRoute>} />
+          <Route path="/relay/register" element={<ProtectedRoute><RelayRegistration /></ProtectedRoute>} />
+
           {/* Visitor messages (non-authenticated) */}
           <Route path="/visitor-messages" element={<VisitorMessages />} />
           <Route path="/visitor-conversation/:habitationId" element={<VisitorConversation />} />

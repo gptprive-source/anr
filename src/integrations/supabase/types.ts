@@ -366,6 +366,146 @@ export type Database = {
         }
         Relationships: []
       }
+      carrier_invoices: {
+        Row: {
+          amount_ht: number
+          amount_ttc: number
+          carrier_id: string
+          created_at: string | null
+          due_date: string | null
+          id: string
+          invoice_number: string
+          line_items: Json | null
+          paid_at: string | null
+          parcels_count: number
+          pdf_url: string | null
+          period_end: string
+          period_start: string
+          status: string
+          stripe_invoice_id: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string | null
+          vat_rate: number | null
+        }
+        Insert: {
+          amount_ht: number
+          amount_ttc: number
+          carrier_id: string
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          line_items?: Json | null
+          paid_at?: string | null
+          parcels_count?: number
+          pdf_url?: string | null
+          period_end: string
+          period_start: string
+          status?: string
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+          vat_rate?: number | null
+        }
+        Update: {
+          amount_ht?: number
+          amount_ttc?: number
+          carrier_id?: string
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          line_items?: Json | null
+          paid_at?: string | null
+          parcels_count?: number
+          pdf_url?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string | null
+          vat_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carrier_invoices_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      carriers: {
+        Row: {
+          address: string | null
+          api_enabled: boolean | null
+          api_key_hash: string | null
+          billing_email: string | null
+          company_name: string
+          contact_email: string
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_verified: boolean | null
+          siret: string | null
+          stripe_customer_id: string | null
+          total_parcels: number | null
+          updated_at: string | null
+          verified_at: string | null
+          verified_by: string | null
+          webhook_secret: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          address?: string | null
+          api_enabled?: boolean | null
+          api_key_hash?: string | null
+          billing_email?: string | null
+          company_name: string
+          contact_email: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          siret?: string | null
+          stripe_customer_id?: string | null
+          total_parcels?: number | null
+          updated_at?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          webhook_secret?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          address?: string | null
+          api_enabled?: boolean | null
+          api_key_hash?: string | null
+          billing_email?: string | null
+          company_name?: string
+          contact_email?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          siret?: string | null
+          stripe_customer_id?: string | null
+          total_parcels?: number | null
+          updated_at?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          webhook_secret?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       chatbot_usage: {
         Row: {
           admin_correction: string | null
@@ -1563,6 +1703,221 @@ export type Database = {
         }
         Relationships: []
       }
+      parcel_proofs: {
+        Row: {
+          actor_carrier_id: string | null
+          actor_driver_id: string | null
+          actor_name: string | null
+          actor_relay_id: string | null
+          actor_user_id: string | null
+          created_at: string | null
+          device_id_hash: string | null
+          device_info: Json | null
+          geo_accuracy_m: number | null
+          geo_latitude: number | null
+          geo_longitude: number | null
+          id: string
+          notes: string | null
+          parcel_id: string
+          photo_url: string | null
+          proof_data: Json
+          proof_hash: string
+          proof_type: string
+          recipient_name: string | null
+          recipient_user_id: string | null
+          scan_method: string | null
+          signature: string | null
+          timestamp_device: string | null
+          timestamp_utc: string
+          timezone: string | null
+        }
+        Insert: {
+          actor_carrier_id?: string | null
+          actor_driver_id?: string | null
+          actor_name?: string | null
+          actor_relay_id?: string | null
+          actor_user_id?: string | null
+          created_at?: string | null
+          device_id_hash?: string | null
+          device_info?: Json | null
+          geo_accuracy_m?: number | null
+          geo_latitude?: number | null
+          geo_longitude?: number | null
+          id?: string
+          notes?: string | null
+          parcel_id: string
+          photo_url?: string | null
+          proof_data: Json
+          proof_hash: string
+          proof_type: string
+          recipient_name?: string | null
+          recipient_user_id?: string | null
+          scan_method?: string | null
+          signature?: string | null
+          timestamp_device?: string | null
+          timestamp_utc?: string
+          timezone?: string | null
+        }
+        Update: {
+          actor_carrier_id?: string | null
+          actor_driver_id?: string | null
+          actor_name?: string | null
+          actor_relay_id?: string | null
+          actor_user_id?: string | null
+          created_at?: string | null
+          device_id_hash?: string | null
+          device_info?: Json | null
+          geo_accuracy_m?: number | null
+          geo_latitude?: number | null
+          geo_longitude?: number | null
+          id?: string
+          notes?: string | null
+          parcel_id?: string
+          photo_url?: string | null
+          proof_data?: Json
+          proof_hash?: string
+          proof_type?: string
+          recipient_name?: string | null
+          recipient_user_id?: string | null
+          scan_method?: string | null
+          signature?: string | null
+          timestamp_device?: string | null
+          timestamp_utc?: string
+          timezone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcel_proofs_actor_carrier_id_fkey"
+            columns: ["actor_carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parcel_proofs_actor_relay_id_fkey"
+            columns: ["actor_relay_id"]
+            isOneToOne: false
+            referencedRelation: "relay_points"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parcel_proofs_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "parcels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parcels: {
+        Row: {
+          carrier_id: string | null
+          created_at: string | null
+          declared_value: number | null
+          delivered_at: string | null
+          delivery_driver_id: string | null
+          delivery_driver_name: string | null
+          deposited_at: string | null
+          description: string | null
+          dimensions_cm: string | null
+          estimated_delivery_at: string | null
+          external_tracking_id: string | null
+          id: string
+          max_storage_until: string | null
+          metadata: Json | null
+          parcel_type: string | null
+          picked_up_at: string | null
+          recipient_anr_id: string | null
+          recipient_email: string | null
+          recipient_name: string
+          recipient_phone: string | null
+          recipient_user_id: string | null
+          relay_point_id: string | null
+          status: string
+          tracking_number: string
+          updated_at: string | null
+          weight_kg: number | null
+        }
+        Insert: {
+          carrier_id?: string | null
+          created_at?: string | null
+          declared_value?: number | null
+          delivered_at?: string | null
+          delivery_driver_id?: string | null
+          delivery_driver_name?: string | null
+          deposited_at?: string | null
+          description?: string | null
+          dimensions_cm?: string | null
+          estimated_delivery_at?: string | null
+          external_tracking_id?: string | null
+          id?: string
+          max_storage_until?: string | null
+          metadata?: Json | null
+          parcel_type?: string | null
+          picked_up_at?: string | null
+          recipient_anr_id?: string | null
+          recipient_email?: string | null
+          recipient_name: string
+          recipient_phone?: string | null
+          recipient_user_id?: string | null
+          relay_point_id?: string | null
+          status?: string
+          tracking_number: string
+          updated_at?: string | null
+          weight_kg?: number | null
+        }
+        Update: {
+          carrier_id?: string | null
+          created_at?: string | null
+          declared_value?: number | null
+          delivered_at?: string | null
+          delivery_driver_id?: string | null
+          delivery_driver_name?: string | null
+          deposited_at?: string | null
+          description?: string | null
+          dimensions_cm?: string | null
+          estimated_delivery_at?: string | null
+          external_tracking_id?: string | null
+          id?: string
+          max_storage_until?: string | null
+          metadata?: Json | null
+          parcel_type?: string | null
+          picked_up_at?: string | null
+          recipient_anr_id?: string | null
+          recipient_email?: string | null
+          recipient_name?: string
+          recipient_phone?: string | null
+          recipient_user_id?: string | null
+          relay_point_id?: string | null
+          status?: string
+          tracking_number?: string
+          updated_at?: string | null
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcels_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parcels_recipient_anr_id_fkey"
+            columns: ["recipient_anr_id"]
+            isOneToOne: false
+            referencedRelation: "anrs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parcels_relay_point_id_fkey"
+            columns: ["relay_point_id"]
+            isOneToOne: false
+            referencedRelation: "relay_points"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       phone_verifications: {
         Row: {
           created_at: string | null
@@ -2182,6 +2537,136 @@ export type Database = {
             columns: ["referrer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      relay_payouts: {
+        Row: {
+          amount: number
+          created_at: string | null
+          details: Json | null
+          id: string
+          paid_at: string | null
+          parcels_count: number
+          period_end: string
+          period_start: string
+          relay_point_id: string
+          status: string
+          stripe_transfer_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          paid_at?: string | null
+          parcels_count?: number
+          period_end: string
+          period_start: string
+          relay_point_id: string
+          status?: string
+          stripe_transfer_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          paid_at?: string | null
+          parcels_count?: number
+          period_end?: string
+          period_start?: string
+          relay_point_id?: string
+          status?: string
+          stripe_transfer_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relay_payouts_relay_point_id_fkey"
+            columns: ["relay_point_id"]
+            isOneToOne: false
+            referencedRelation: "relay_points"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      relay_points: {
+        Row: {
+          accepted_parcel_types: string[] | null
+          anr_id: string
+          availability_schedule: Json | null
+          average_rating: number | null
+          created_at: string | null
+          current_capacity: number
+          display_name: string
+          iban: string | null
+          id: string
+          is_active: boolean | null
+          is_verified: boolean | null
+          max_capacity: number
+          pending_earnings: number | null
+          phone: string | null
+          total_earnings: number | null
+          total_parcels_handled: number | null
+          updated_at: string | null
+          user_id: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          accepted_parcel_types?: string[] | null
+          anr_id: string
+          availability_schedule?: Json | null
+          average_rating?: number | null
+          created_at?: string | null
+          current_capacity?: number
+          display_name: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          max_capacity?: number
+          pending_earnings?: number | null
+          phone?: string | null
+          total_earnings?: number | null
+          total_parcels_handled?: number | null
+          updated_at?: string | null
+          user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          accepted_parcel_types?: string[] | null
+          anr_id?: string
+          availability_schedule?: Json | null
+          average_rating?: number | null
+          created_at?: string | null
+          current_capacity?: number
+          display_name?: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          max_capacity?: number
+          pending_earnings?: number | null
+          phone?: string | null
+          total_earnings?: number | null
+          total_parcels_handled?: number | null
+          updated_at?: string | null
+          user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relay_points_anr_id_fkey"
+            columns: ["anr_id"]
+            isOneToOne: true
+            referencedRelation: "anrs"
             referencedColumns: ["id"]
           },
         ]
