@@ -189,6 +189,7 @@ const AppContent = () => {
 
           {/* Carrier Routes */}
           <Route path="/carrier" element={<CarrierDashboard />} />
+          <Route path="/carrier/dashboard" element={<CarrierDashboard />} />
 
           {/* Visitor messages (non-authenticated) */}
           <Route path="/visitor-messages" element={<VisitorMessages />} />
