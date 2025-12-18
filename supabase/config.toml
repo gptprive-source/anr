@@ -154,3 +154,9 @@ verify_jwt = false
 
 [functions.process-carrier-invoice]
 verify_jwt = false
+
+[functions.prepare-delivery-route]
+verify_jwt = false
+
+[functions.sync-delivery-proofs]
+verify_jwt = false

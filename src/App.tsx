@@ -64,6 +64,7 @@ import CarrierDashboard from "./pages/carrier/CarrierDashboard";
 import CarrierRegistration from "./pages/carrier/CarrierRegistration";
 import CarrierLogin from "./pages/carrier/CarrierLogin";
 import DeliveryScan from "./pages/carrier/DeliveryScan";
+import ParcelReceive from "./pages/ParcelReceive";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -197,6 +198,7 @@ const AppContent = () => {
           <Route path="/carrier/register" element={<CarrierRegistration />} />
           <Route path="/carrier/login" element={<CarrierLogin />} />
           <Route path="/carrier/scan" element={<DeliveryScan />} />
+          <Route path="/parcel/receive" element={<ParcelReceive />} />
 
           {/* Visitor messages (non-authenticated) */}
           <Route path="/visitor-messages" element={<VisitorMessages />} />
