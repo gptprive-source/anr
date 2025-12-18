@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MapPin, Search, Settings2, RotateCcw, ArrowLeft } from "lucide-react";
+import { MapPin, Search, Settings2, RotateCcw, ArrowLeft, Nfc, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -28,12 +28,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const DEFAULT_GPS_DISTANCE = 200;
 
 const AdminANRs = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingAnr, setEditingAnr] = useState<any | null>(null);
+  const [editingNfc, setEditingNfc] = useState<any | null>(null);
+  const [nfcSerial, setNfcSerial] = useState("");
   const [customDistance, setCustomDistance] = useState(DEFAULT_GPS_DISTANCE);
   const [useDefault, setUseDefault] = useState(true);
   const { toast } = useToast();
@@ -84,6 +87,35 @@ const AdminANRs = () => {
     },
   });
 
+  // Update NFC serial mutation
+  const updateNfcMutation = useMutation({
+    mutationFn: async ({ id, nfc_serial }: { id: string; nfc_serial: string | null }) => {
+      const { error } = await supabase
+        .from("anrs")
+        .update({ nfc_serial })
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-anrs"] });
+      await queryClient.refetchQueries({ queryKey: ["admin-anrs"] });
+      toast({
+        title: "✅ NFC mis à jour",
+        description: "Le serial NFC a été enregistré.",
+      });
+      setEditingNfc(null);
+      setNfcSerial("");
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error.message,
+      });
+    },
+  });
+
   const handleOpenEdit = (anr: any) => {
     setEditingAnr(anr);
     if (anr.max_gps_update_distance === null) {
@@ -95,6 +127,11 @@ const AdminANRs = () => {
     }
   };
 
+  const handleOpenNfcEdit = (anr: any) => {
+    setEditingNfc(anr);
+    setNfcSerial(anr.nfc_serial || "");
+  };
+
   const handleSave = () => {
     if (!editingAnr) return;
     updateAnrMutation.mutate({
@@ -103,12 +140,24 @@ const AdminANRs = () => {
     });
   };
 
+  const handleSaveNfc = () => {
+    if (!editingNfc) return;
+    updateNfcMutation.mutate({
+      id: editingNfc.id,
+      nfc_serial: nfcSerial.trim() || null,
+    });
+  };
+
   // Filter ANRs by search query
   const filteredAnrs = anrs?.filter(
     (anr) =>
       anr.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      anr.address.toLowerCase().includes(searchQuery.toLowerCase())
+      anr.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (anr.nfc_serial && anr.nfc_serial.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // Count ANRs with NFC
+  const anrsWithNfc = anrs?.filter(anr => anr.nfc_serial).length || 0;
 
   return (
     <AdminLayout>
@@ -123,17 +172,33 @@ const AdminANRs = () => {
             Gestion des ANRs
           </h1>
           <p className="text-muted-foreground">
-            Configurez la distance GPS maximale pour chaque ANR
+            Configurez la distance GPS et les serials NFC des ANRs
           </p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="bg-card p-4 rounded-lg border">
+            <p className="text-2xl font-bold">{anrs?.length || 0}</p>
+            <p className="text-sm text-muted-foreground">Total ANRs</p>
+          </div>
+          <div className="bg-card p-4 rounded-lg border">
+            <p className="text-2xl font-bold text-green-500">{anrsWithNfc}</p>
+            <p className="text-sm text-muted-foreground">Avec NFC</p>
+          </div>
+          <div className="bg-card p-4 rounded-lg border">
+            <p className="text-2xl font-bold text-orange-500">{(anrs?.length || 0) - anrsWithNfc}</p>
+            <p className="text-sm text-muted-foreground">Sans NFC</p>
+          </div>
         </div>
 
         {/* Info Card */}
         <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            <strong>Distance par défaut : {DEFAULT_GPS_DISTANCE}m</strong>
+            <strong>Configuration NFC pour livraisons offline</strong>
             <br />
-            Pour les grands ensembles (HLM, zones industrielles), vous pouvez augmenter cette limite individuellement.
-            Les résidents dépassant la limite verront un message les invitant à contacter <strong>{supportEmail}</strong>.
+            Le serial NFC permet de vérifier la présence physique du livreur à l'adresse lors des livraisons offline.
+            Format typique: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">04:A1:B2:C3:D4:E5:F6</code>
           </p>
         </div>
 
@@ -155,9 +220,9 @@ const AdminANRs = () => {
               <TableRow>
                 <TableHead>Code ANR</TableHead>
                 <TableHead>Adresse</TableHead>
-                <TableHead>GPS</TableHead>
+                <TableHead>NFC Serial</TableHead>
                 <TableHead>Distance max</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
+                <TableHead className="w-28">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -183,29 +248,48 @@ const AdminANRs = () => {
                     <TableCell className="max-w-xs truncate" title={anr.address}>
                       {anr.address}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {anr.latitude.toFixed(4)}, {anr.longitude.toFixed(4)}
+                    <TableCell>
+                      {anr.nfc_serial ? (
+                        <Badge variant="default" className="bg-green-500 hover:bg-green-600 font-mono text-xs">
+                          <Nfc className="w-3 h-3 mr-1" />
+                          {anr.nfc_serial.substring(0, 14)}...
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          Non configuré
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {anr.max_gps_update_distance === null ? (
                         <Badge variant="secondary">
-                          {DEFAULT_GPS_DISTANCE}m (défaut)
+                          {DEFAULT_GPS_DISTANCE}m
                         </Badge>
                       ) : (
                         <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">
-                          <Settings2 className="w-3 h-3 mr-1" />
                           {anr.max_gps_update_distance}m
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenEdit(anr)}
-                      >
-                        <Settings2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenNfcEdit(anr)}
+                          title="Configurer NFC"
+                        >
+                          <Nfc className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenEdit(anr)}
+                          title="Configurer GPS"
+                        >
+                          <Settings2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -297,6 +381,68 @@ const AdminANRs = () => {
               </Button>
               <Button onClick={handleSave} disabled={updateAnrMutation.isPending}>
                 {updateAnrMutation.isPending ? "Enregistrement..." : "Enregistrer"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* NFC Serial Edit Dialog */}
+        <Dialog open={!!editingNfc} onOpenChange={(open) => !open && setEditingNfc(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Nfc className="w-5 h-5 text-primary" />
+                Configurer le serial NFC
+              </DialogTitle>
+              <DialogDescription>
+                Enregistrez le numéro de série du tag NFC pour cette ANR (utilisé pour la vérification de présence lors des livraisons).
+              </DialogDescription>
+            </DialogHeader>
+
+            {editingNfc && (
+              <div className="space-y-6 py-4">
+                {/* ANR Info */}
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">ANR</Label>
+                  <p className="font-mono font-medium">{editingNfc.code}</p>
+                  <p className="text-sm text-muted-foreground">{editingNfc.address}</p>
+                </div>
+
+                {/* NFC Serial Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="nfc-serial">Numéro de série NFC</Label>
+                  <Input
+                    id="nfc-serial"
+                    placeholder="04:A1:B2:C3:D4:E5:F6"
+                    value={nfcSerial}
+                    onChange={(e) => setNfcSerial(e.target.value.toUpperCase())}
+                    className="font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Le serial NFC se trouve sur le tag ou peut être lu avec une app NFC.
+                    Laissez vide pour supprimer le serial.
+                  </p>
+                </div>
+
+                {/* Current value indicator */}
+                {editingNfc.nfc_serial && (
+                  <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg">
+                    <p className="text-sm text-green-800 dark:text-green-200">
+                      <strong>Serial actuel:</strong>{" "}
+                      <code className="font-mono">{editingNfc.nfc_serial}</code>
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingNfc(null)}>
+                Annuler
+              </Button>
+              <Button onClick={handleSaveNfc} disabled={updateNfcMutation.isPending}>
+                <Save className="w-4 h-4 mr-2" />
+                {updateNfcMutation.isPending ? "Enregistrement..." : "Enregistrer"}
               </Button>
             </DialogFooter>
           </DialogContent>
