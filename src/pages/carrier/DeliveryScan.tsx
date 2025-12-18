@@ -1,162 +1,115 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, QrCode, MapPin, CheckCircle, Truck, User, Signature, Camera, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Package, QrCode, MapPin, CheckCircle, Truck, User, Loader2, X, Wifi, WifiOff, RefreshCw, Nfc, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { ClientSignatureDialog } from "@/components/door/ClientSignatureDialog";
+import { useOfflineDelivery } from "@/hooks/useOfflineDelivery";
+import { NFCProofScanner } from "@/components/carrier/NFCProofScanner";
 import { Html5Qrcode } from "html5-qrcode";
+import { PreparedParcel } from "@/lib/offlineStorage";
 
-type ScanMode = "identify" | "deposit" | "delivery" | "success";
-
-interface DeliveryProof {
-  type: "deposit" | "delivery";
-  tracking_number: string;
-  anr_code?: string;
-  relay_code?: string;
-  recipient_name?: string;
-  signature?: string;
-  timestamp: string;
-  location: {
-    latitude: number | null;
-    longitude: number | null;
-  };
-  driver_id: string;
-}
+type ScanMode = "identify" | "prepare" | "tour" | "nfc_scan" | "qr_display" | "success";
 
 const DeliveryScan = () => {
   const navigate = useNavigate();
   const { latitude, longitude, getCurrentPosition } = useGeolocation();
+  const { isOnline, activeRoute, pendingProofsCount, syncStatus, prepareRoute, loadActiveRoute, recordNfcUnlock, isQrUnlocked, captureProof, syncProofs } = useOfflineDelivery();
   
   const [mode, setMode] = useState<ScanMode>("identify");
   const [driverId, setDriverId] = useState("");
-  const [trackingNumber, setTrackingNumber] = useState("");
-  const [scannedCode, setScannedCode] = useState("");
-  const [recipientName, setRecipientName] = useState("");
-  const [showScanner, setShowScanner] = useState(false);
-  const [showSignature, setShowSignature] = useState(false);
-  const [signature, setSignature] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastProof, setLastProof] = useState<DeliveryProof | null>(null);
+  const [selectedParcel, setSelectedParcel] = useState<PreparedParcel | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [qrUnlocked, setQrUnlocked] = useState(false);
 
   useEffect(() => {
-    // Load driver ID from localStorage
     const savedDriverId = localStorage.getItem("anr_driver_id");
     if (savedDriverId) {
       setDriverId(savedDriverId);
     }
   }, []);
 
-  const handleIdentify = () => {
+  const handleIdentify = async () => {
     if (!driverId.trim()) {
       toast.error("Veuillez entrer votre identifiant");
       return;
     }
     localStorage.setItem("anr_driver_id", driverId.trim());
     getCurrentPosition();
-    setMode("deposit");
-    toast.success("Identifié comme: " + driverId);
+    
+    // Check for existing route
+    const existingRoute = await loadActiveRoute(driverId.trim());
+    if (existingRoute && existingRoute.parcels.some(p => p.status === 'pending')) {
+      setMode("tour");
+    } else {
+      setMode("prepare");
+    }
+    toast.success("Identifié: " + driverId);
   };
 
-  const handleScanResult = (code: string) => {
-    setScannedCode(code);
-    setShowScanner(false);
-    toast.success("Code scanné: " + code);
-  };
-
-  const handleSubmitDeposit = async () => {
-    if (!trackingNumber.trim() || !scannedCode.trim()) {
-      toast.error("Veuillez scanner un code relais et entrer le numéro de suivi");
+  const handlePrepareRoute = async () => {
+    if (!isOnline) {
+      toast.error("Connexion requise pour préparer la tournée");
       return;
     }
+    setIsLoading(true);
+    // Demo: prepare with mock parcel IDs - in production, fetch from carrier API
+    const route = await prepareRoute(driverId, []);
+    setIsLoading(false);
+    if (route) {
+      setMode("tour");
+    }
+  };
 
-    setIsSubmitting(true);
+  const handleSelectParcel = async (parcel: PreparedParcel) => {
+    setSelectedParcel(parcel);
+    const unlocked = await isQrUnlocked(parcel.parcel_id);
+    setQrUnlocked(unlocked);
+    setMode("nfc_scan");
+  };
 
-    try {
-      const proof: DeliveryProof = {
-        type: "deposit",
-        tracking_number: trackingNumber.trim(),
-        relay_code: scannedCode,
-        timestamp: new Date().toISOString(),
-        location: { latitude, longitude },
-        driver_id: driverId
-      };
+  const handleNfcUnlock = async (nfcData: { serial: string; anrCode: string; timestamp: string }) => {
+    if (!selectedParcel) return;
+    
+    const success = await recordNfcUnlock(
+      selectedParcel.parcel_id,
+      nfcData.serial,
+      nfcData.anrCode,
+      latitude && longitude ? { lat: latitude, lng: longitude } : undefined
+    );
+    
+    if (success) {
+      setQrUnlocked(true);
+      setMode("qr_display");
+    }
+  };
 
-      // In a real implementation, this would call the carrier-api
-      console.log("Proof de dépôt:", proof);
-      
-      setLastProof(proof);
+  const handleNfcMismatch = (scanned: string, expected: string) => {
+    toast.error(`Mauvaise adresse! Scanné: ${scanned}, Attendu: ${expected}`);
+  };
+
+  const handleDeliveryComplete = async () => {
+    if (!selectedParcel || !activeRoute) return;
+    
+    const success = await captureProof(
+      selectedParcel.parcel_id,
+      selectedParcel.tracking_number,
+      selectedParcel.qr_token,
+      driverId,
+      latitude && longitude ? { lat: latitude, lng: longitude } : undefined
+    );
+    
+    if (success) {
       setMode("success");
-      toast.success("Dépôt enregistré avec succès");
-      
-      // Reset form
-      setTrackingNumber("");
-      setScannedCode("");
-    } catch (error: any) {
-      toast.error("Erreur: " + error.message);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const handleSubmitDelivery = async () => {
-    if (!trackingNumber.trim() || !scannedCode.trim()) {
-      toast.error("Veuillez scanner l'ANR et entrer le numéro de suivi");
-      return;
-    }
-
-    if (!signature) {
-      setShowSignature(true);
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const proof: DeliveryProof = {
-        type: "delivery",
-        tracking_number: trackingNumber.trim(),
-        anr_code: scannedCode,
-        recipient_name: recipientName || "Non renseigné",
-        signature: signature,
-        timestamp: new Date().toISOString(),
-        location: { latitude, longitude },
-        driver_id: driverId
-      };
-
-      // In a real implementation, this would call the carrier-api
-      console.log("Proof de livraison:", proof);
-      
-      setLastProof(proof);
-      setMode("success");
-      toast.success("Livraison enregistrée avec succès");
-      
-      // Reset form
-      setTrackingNumber("");
-      setScannedCode("");
-      setRecipientName("");
-      setSignature(null);
-    } catch (error: any) {
-      toast.error("Erreur: " + error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSignatureComplete = (sig: string, name: string) => {
-    setSignature(sig);
-    setRecipientName(name);
-    setShowSignature(false);
-    // Auto-submit after signature
-    setTimeout(() => handleSubmitDelivery(), 100);
-  };
-
-  const resetToMenu = () => {
-    setMode("deposit");
-    setLastProof(null);
+  const handleSync = async () => {
+    await syncProofs();
   };
 
   // Identify screen
@@ -174,7 +127,6 @@ const DeliveryScan = () => {
             </div>
           </div>
         </header>
-
         <main className="p-4 max-w-md mx-auto mt-8">
           <Card>
             <CardHeader className="text-center">
@@ -182,23 +134,164 @@ const DeliveryScan = () => {
                 <User className="w-8 h-8 text-orange-600" />
               </div>
               <CardTitle>Identification</CardTitle>
-              <CardDescription>
-                Entrez votre identifiant livreur ou clé équipe
-              </CardDescription>
+              <CardDescription>Entrez votre identifiant livreur</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="driverId">Identifiant / Clé équipe</Label>
-                <Input
-                  id="driverId"
-                  placeholder="Ex: LIVREUR-001 ou CLÉ-EQUIPE"
-                  value={driverId}
-                  onChange={(e) => setDriverId(e.target.value)}
-                  className="text-center text-lg"
-                />
+                <Label>Identifiant</Label>
+                <Input placeholder="Ex: LIVREUR-001" value={driverId} onChange={(e) => setDriverId(e.target.value)} className="text-center text-lg" />
               </div>
-              <Button onClick={handleIdentify} className="w-full" size="lg">
-                Commencer
+              <Button onClick={handleIdentify} className="w-full" size="lg">Commencer</Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  // Prepare route screen
+  if (mode === "prepare") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header driverId={driverId} isOnline={isOnline} pendingCount={pendingProofsCount} onBack={() => setMode("identify")} />
+        <main className="p-4 max-w-md mx-auto mt-4">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <Package className="w-8 h-8 text-blue-600" />
+              </div>
+              <CardTitle>Préparer la tournée</CardTitle>
+              <CardDescription>Téléchargez les QR codes pour travailler hors-ligne</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!isOnline && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+                  <WifiOff className="w-4 h-4 inline mr-2" />
+                  Connexion requise pour préparer la tournée
+                </div>
+              )}
+              <Button onClick={handlePrepareRoute} disabled={!isOnline || isLoading} className="w-full" size="lg">
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+                {isLoading ? "Chargement..." : "Charger la tournée"}
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  // Tour mode - list parcels
+  if (mode === "tour") {
+    const pendingParcels = activeRoute?.parcels.filter(p => p.status === 'pending') || [];
+    const deliveredParcels = activeRoute?.parcels.filter(p => p.status === 'delivered') || [];
+
+    return (
+      <div className="min-h-screen bg-background">
+        <Header driverId={driverId} isOnline={isOnline} pendingCount={pendingProofsCount} onBack={() => setMode("identify")} onSync={handleSync} />
+        <main className="p-4 max-w-md mx-auto space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="font-semibold">Colis à livrer ({pendingParcels.length})</h2>
+            {pendingProofsCount > 0 && (
+              <Badge variant="secondary" className="gap-1">
+                <RefreshCw className="w-3 h-3" /> {pendingProofsCount} à sync
+              </Badge>
+            )}
+          </div>
+          
+          {pendingParcels.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-muted-foreground">Aucun colis en attente</CardContent></Card>
+          ) : (
+            pendingParcels.map(parcel => (
+              <Card key={parcel.parcel_id} className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleSelectParcel(parcel)}>
+                <CardContent className="py-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-mono font-medium">{parcel.tracking_number}</p>
+                      <p className="text-sm text-muted-foreground">{parcel.recipient_name}</p>
+                      <p className="text-xs text-muted-foreground">{parcel.recipient_address}</p>
+                    </div>
+                    <Badge>{parcel.expected_anr_code}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+
+          {deliveredParcels.length > 0 && (
+            <>
+              <h2 className="font-semibold text-green-700 mt-6">Livrés ({deliveredParcels.length})</h2>
+              {deliveredParcels.map(parcel => (
+                <Card key={parcel.parcel_id} className="bg-green-50 border-green-200">
+                  <CardContent className="py-3">
+                    <div className="flex justify-between items-center">
+                      <span className="font-mono text-sm">{parcel.tracking_number}</span>
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+  // NFC Scan screen
+  if (mode === "nfc_scan" && selectedParcel) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header driverId={driverId} isOnline={isOnline} pendingCount={pendingProofsCount} onBack={() => setMode("tour")} />
+        <main className="p-4 max-w-md mx-auto mt-4 space-y-4">
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="py-3">
+              <p className="text-sm font-medium text-blue-900">{selectedParcel.tracking_number}</p>
+              <p className="text-xs text-blue-700">{selectedParcel.recipient_name} - {selectedParcel.expected_anr_code}</p>
+            </CardContent>
+          </Card>
+          
+          <NFCProofScanner
+            expectedAnrCode={selectedParcel.expected_anr_code}
+            onUnlock={handleNfcUnlock}
+            onMismatch={handleNfcMismatch}
+            onCancel={() => setMode("tour")}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  // QR Display screen (after NFC unlock)
+  if (mode === "qr_display" && selectedParcel) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header driverId={driverId} isOnline={isOnline} pendingCount={pendingProofsCount} onBack={() => setMode("tour")} />
+        <main className="p-4 max-w-md mx-auto mt-4 space-y-4">
+          <Card className="bg-green-50 border-green-300">
+            <CardContent className="py-4 text-center">
+              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+              <p className="font-semibold text-green-900">NFC validé - QR déverrouillé</p>
+              <p className="text-sm text-green-700">{selectedParcel.expected_anr_code}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="text-center pb-2">
+              <CardTitle className="text-lg">Faites scanner par le destinataire</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <div className="bg-white p-4 rounded-lg border-2 border-dashed mb-4">
+                <QrCode className="w-32 h-32 mx-auto text-primary" />
+                <p className="text-xs text-muted-foreground mt-2 font-mono break-all">
+                  {selectedParcel.qr_token.substring(0, 50)}...
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Le destinataire doit scanner ce QR pour confirmer la réception
+              </p>
+              <Button onClick={handleDeliveryComplete} className="w-full" size="lg">
+                Confirmer la livraison
               </Button>
             </CardContent>
           </Card>
@@ -208,50 +301,27 @@ const DeliveryScan = () => {
   }
 
   // Success screen
-  if (mode === "success" && lastProof) {
+  if (mode === "success") {
     return (
       <div className="min-h-screen bg-background">
         <header className="sticky top-0 z-10 bg-green-600 text-white p-4 shadow-md">
-          <div className="flex items-center gap-4 max-w-4xl mx-auto">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-6 h-6" />
-              <h1 className="text-xl font-semibold">
-                {lastProof.type === "deposit" ? "Dépôt confirmé" : "Livraison confirmée"}
-              </h1>
-            </div>
+          <div className="flex items-center gap-2 max-w-4xl mx-auto">
+            <CheckCircle className="w-6 h-6" />
+            <h1 className="text-xl font-semibold">Livraison confirmée</h1>
           </div>
         </header>
-
         <main className="p-4 max-w-md mx-auto mt-8">
           <Card className="border-green-200 bg-green-50">
-            <CardContent className="pt-6 text-center space-y-4">
-              <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+            <CardContent className="py-8 text-center">
+              <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle className="w-10 h-10 text-green-600" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-green-900">Preuve enregistrée</h2>
-                <p className="text-green-700 text-sm mt-1">
-                  {new Date(lastProof.timestamp).toLocaleString("fr-FR")}
-                </p>
-              </div>
-              <div className="bg-white rounded-lg p-4 text-left space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">N° suivi:</span>
-                  <span className="font-mono font-medium">{lastProof.tracking_number}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Type:</span>
-                  <span className="font-medium">{lastProof.type === "deposit" ? "Dépôt relais" : "Livraison"}</span>
-                </div>
-                {lastProof.location.latitude && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">GPS:</span>
-                    <span className="text-xs">{lastProof.location.latitude.toFixed(5)}, {lastProof.location.longitude?.toFixed(5)}</span>
-                  </div>
-                )}
-              </div>
-              <Button onClick={resetToMenu} className="w-full" size="lg">
-                Scanner un autre colis
+              <h2 className="text-xl font-bold text-green-900 mb-2">Preuve enregistrée</h2>
+              <p className="text-green-700 text-sm mb-4">
+                {isOnline ? "Synchronisée avec le serveur" : "Sera synchronisée au retour du réseau"}
+              </p>
+              <Button onClick={() => { setSelectedParcel(null); setQrUnlocked(false); setMode("tour"); }} className="w-full" size="lg">
+                Colis suivant
               </Button>
             </CardContent>
           </Card>
@@ -260,228 +330,39 @@ const DeliveryScan = () => {
     );
   }
 
-  // Main scan interface
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setMode("identify")} className="text-primary-foreground hover:bg-primary-foreground/10">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <Truck className="w-6 h-6" />
-              <h1 className="text-xl font-semibold">Scanner Livreur</h1>
-            </div>
-          </div>
-          <span className="text-sm bg-primary-foreground/20 px-3 py-1 rounded-full">
-            {driverId}
-          </span>
-        </div>
-      </header>
-
-      <main className="p-4 max-w-md mx-auto space-y-4">
-        {/* Mode selector */}
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant={mode === "deposit" ? "default" : "outline"}
-            onClick={() => { setMode("deposit"); setScannedCode(""); setTrackingNumber(""); }}
-            className="h-16 flex-col gap-1"
-          >
-            <Package className="w-5 h-5" />
-            <span className="text-xs">Dépôt relais</span>
-          </Button>
-          <Button
-            variant={mode === "delivery" ? "default" : "outline"}
-            onClick={() => { setMode("delivery"); setScannedCode(""); setTrackingNumber(""); }}
-            className="h-16 flex-col gap-1"
-          >
-            <MapPin className="w-5 h-5" />
-            <span className="text-xs">Livraison ANR</span>
-          </Button>
-        </div>
-
-        {/* Scanner */}
-        {showScanner ? (
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Scanner {mode === "deposit" ? "badge relais" : "ANR"}</CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => setShowScanner(false)}>
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <QRScannerSimple onScan={handleScanResult} />
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <QrCode className="w-5 h-5 text-primary" />
-                {mode === "deposit" ? "Dépôt en point relais" : "Livraison directe"}
-              </CardTitle>
-              <CardDescription>
-                {mode === "deposit" 
-                  ? "Scannez le badge du point relais puis le colis"
-                  : "Scannez l'ANR du destinataire pour valider la livraison"
-                }
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Scan button */}
-              <Button 
-                variant="outline" 
-                onClick={() => setShowScanner(true)}
-                className="w-full h-24 border-dashed border-2 flex-col gap-2"
-              >
-                <Camera className="w-8 h-8 text-muted-foreground" />
-                <span>{scannedCode ? `Code: ${scannedCode}` : `Scanner ${mode === "deposit" ? "badge relais" : "ANR"}`}</span>
-              </Button>
-
-              {/* Tracking number */}
-              <div className="space-y-2">
-                <Label htmlFor="tracking">Numéro de suivi</Label>
-                <Input
-                  id="tracking"
-                  placeholder="Ex: COLIS-123456"
-                  value={trackingNumber}
-                  onChange={(e) => setTrackingNumber(e.target.value)}
-                  className="font-mono"
-                />
-              </div>
-
-              {/* Recipient name (delivery only) */}
-              {mode === "delivery" && (
-                <div className="space-y-2">
-                  <Label htmlFor="recipient">Nom du destinataire</Label>
-                  <Input
-                    id="recipient"
-                    placeholder="Nom de la personne qui reçoit"
-                    value={recipientName}
-                    onChange={(e) => setRecipientName(e.target.value)}
-                  />
-                </div>
-              )}
-
-              {/* GPS status */}
-              <div className={`flex items-center gap-2 text-sm p-2 rounded-lg ${latitude ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
-                <MapPin className="w-4 h-4" />
-                {latitude 
-                  ? `GPS: ${latitude.toFixed(5)}, ${longitude?.toFixed(5)}`
-                  : "Localisation en cours..."
-                }
-              </div>
-
-              {/* Submit button */}
-              <Button 
-                onClick={mode === "deposit" ? handleSubmitDeposit : handleSubmitDelivery}
-                disabled={isSubmitting || !scannedCode || !trackingNumber}
-                className="w-full gap-2"
-                size="lg"
-              >
-                {mode === "delivery" && <Signature className="w-5 h-5" />}
-                {isSubmitting 
-                  ? "Enregistrement..." 
-                  : mode === "deposit" 
-                    ? "Confirmer le dépôt" 
-                    : "Signature & validation"
-                }
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </main>
-
-      {/* Signature dialog */}
-      <ClientSignatureDialog
-        open={showSignature}
-        onOpenChange={setShowSignature}
-        onComplete={handleSignatureComplete}
-      />
-    </div>
-  );
+  return null;
 };
 
-// Simple QR Scanner component
-const QRScannerSimple = ({ onScan }: { onScan: (code: string) => void }) => {
-  const [scanning, setScanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-
-  const extractAnrCode = (input: string): string => {
-    const urlMatch = input.match(/\/anr\/([A-Z0-9-]+)/i);
-    if (urlMatch) return urlMatch[1].toUpperCase();
-    return input.trim().toUpperCase();
-  };
-
-  const startScanning = async () => {
-    setError(null);
-    setScanning(true);
-
-    try {
-      const html5QrCode = new Html5Qrcode("delivery-qr-reader");
-      scannerRef.current = html5QrCode;
-
-      await html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => {
-          const code = extractAnrCode(decodedText);
-          stopScanning();
-          onScan(code);
-        },
-        () => {}
-      );
-    } catch (err: any) {
-      setScanning(false);
-      setError(err.message || "Erreur caméra");
-    }
-  };
-
-  const stopScanning = async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-      } catch (e) {}
-      scannerRef.current = null;
-    }
-    setScanning(false);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!scanning) {
-      startScanning();
-    }
-  }, []);
-
-  return (
-    <div className="text-center">
-      <div className="relative w-full aspect-square max-w-[280px] mx-auto rounded-xl overflow-hidden bg-secondary/30">
-        {scanning ? (
-          <div id="delivery-qr-reader" className="w-full h-full" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          </div>
+// Header component
+const Header = ({ driverId, isOnline, pendingCount, onBack, onSync }: { 
+  driverId: string; 
+  isOnline: boolean; 
+  pendingCount: number;
+  onBack: () => void;
+  onSync?: () => void;
+}) => (
+  <header className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
+    <div className="flex items-center justify-between max-w-4xl mx-auto">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="text-primary-foreground hover:bg-primary-foreground/10">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="flex items-center gap-2">
+          <Truck className="w-5 h-5" />
+          <span className="font-medium">{driverId}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {isOnline ? <Wifi className="w-4 h-4 text-green-300" /> : <WifiOff className="w-4 h-4 text-red-300" />}
+        {pendingCount > 0 && onSync && (
+          <Button variant="ghost" size="sm" onClick={onSync} className="text-primary-foreground hover:bg-primary-foreground/10 gap-1">
+            <RefreshCw className="w-4 h-4" />
+            {pendingCount}
+          </Button>
         )}
       </div>
-      {error && (
-        <p className="text-destructive text-sm mt-2">{error}</p>
-      )}
     </div>
-  );
-};
+  </header>
+);
 
 export default DeliveryScan;
