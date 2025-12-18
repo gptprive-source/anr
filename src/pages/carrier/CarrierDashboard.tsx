@@ -156,14 +156,23 @@ const CarrierDashboard = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
-        <div className="max-w-6xl mx-auto flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="text-primary-foreground">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-lg font-bold">Dashboard Transporteur</h1>
-            <p className="text-sm text-primary-foreground/70">Suivi des colis et preuves</p>
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="text-primary-foreground">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-bold">Dashboard Transporteur</h1>
+              <p className="text-sm text-primary-foreground/70">Suivi des colis et preuves</p>
+            </div>
           </div>
+          <Button 
+            onClick={() => navigate('/carrier/scan')} 
+            className="bg-white text-primary hover:bg-white/90"
+          >
+            <Truck className="w-4 h-4 mr-2" />
+            Lancer tournée
+          </Button>
         </div>
       </div>
 

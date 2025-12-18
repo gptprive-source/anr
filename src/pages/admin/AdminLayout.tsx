@@ -49,6 +49,7 @@ const navItems = [
   { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { path: '/admin/daily-usage', label: 'Coûts Daily', icon: Phone },
   { path: '/admin/orders', label: 'Commandes', icon: Package },
+  { path: '/admin/parcels', label: 'Colis Livraison', icon: Package },
   { path: '/admin/anrs', label: 'ANRs', icon: MapPin },
   { path: '/admin/door-modules', label: 'Modules porte', icon: DoorOpen },
   { path: '/admin/config', label: 'Configuration', icon: Settings },
