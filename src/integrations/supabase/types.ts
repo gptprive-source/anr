@@ -101,6 +101,7 @@ export type Database = {
           latitude: number
           longitude: number
           max_gps_update_distance: number | null
+          nfc_serial: string | null
           updated_at: string | null
         }
         Insert: {
@@ -111,6 +112,7 @@ export type Database = {
           latitude: number
           longitude: number
           max_gps_update_distance?: number | null
+          nfc_serial?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -121,6 +123,7 @@ export type Database = {
           latitude?: number
           longitude?: number
           max_gps_update_distance?: number | null
+          nfc_serial?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1805,6 +1808,90 @@ export type Database = {
           },
           {
             foreignKeyName: "parcel_proofs_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "parcels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parcel_qr_tokens: {
+        Row: {
+          consumed_at: string | null
+          created_at: string | null
+          emitter_id: string
+          emitter_type: string
+          expected_anr_id: string | null
+          expected_nfc_serial: string | null
+          expires_at: string
+          geo_latitude: number | null
+          geo_longitude: number | null
+          id: string
+          issued_at: string | null
+          local_proof_hash: string | null
+          nfc_anr_code_scanned: string | null
+          nfc_scan_at: string | null
+          nfc_serial_scanned: string | null
+          parcel_id: string | null
+          proof_type: string
+          qr_scan_at: string | null
+          status: string | null
+          token_hash: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string | null
+          emitter_id: string
+          emitter_type: string
+          expected_anr_id?: string | null
+          expected_nfc_serial?: string | null
+          expires_at: string
+          geo_latitude?: number | null
+          geo_longitude?: number | null
+          id?: string
+          issued_at?: string | null
+          local_proof_hash?: string | null
+          nfc_anr_code_scanned?: string | null
+          nfc_scan_at?: string | null
+          nfc_serial_scanned?: string | null
+          parcel_id?: string | null
+          proof_type: string
+          qr_scan_at?: string | null
+          status?: string | null
+          token_hash: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string | null
+          emitter_id?: string
+          emitter_type?: string
+          expected_anr_id?: string | null
+          expected_nfc_serial?: string | null
+          expires_at?: string
+          geo_latitude?: number | null
+          geo_longitude?: number | null
+          id?: string
+          issued_at?: string | null
+          local_proof_hash?: string | null
+          nfc_anr_code_scanned?: string | null
+          nfc_scan_at?: string | null
+          nfc_serial_scanned?: string | null
+          parcel_id?: string | null
+          proof_type?: string
+          qr_scan_at?: string | null
+          status?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcel_qr_tokens_expected_anr_id_fkey"
+            columns: ["expected_anr_id"]
+            isOneToOne: false
+            referencedRelation: "anrs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parcel_qr_tokens_parcel_id_fkey"
             columns: ["parcel_id"]
             isOneToOne: false
             referencedRelation: "parcels"
