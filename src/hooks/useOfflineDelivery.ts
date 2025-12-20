@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { offlineStorage, PreparedRoute, PendingProof, NfcUnlock } from '@/lib/offlineStorage';
-import { sealProofLocally, generateProofId } from '@/lib/offlineCrypto';
+import { sealProofLocally, generateProofId, decryptQrToken, isNfcUnlockValid, getNfcUnlockRemainingTime } from '@/lib/offlineCrypto';
 import { toast } from 'sonner';
 
 export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
@@ -10,6 +10,12 @@ export interface SyncResult {
   validated: number;
   rejected: number;
   conflicts: string[];
+}
+
+export interface DecryptedQrResult {
+  token: string | null;
+  error?: string;
+  remainingSeconds?: number;
 }
 
 export function useOfflineDelivery() {
@@ -93,7 +99,7 @@ export function useOfflineDelivery() {
       await offlineStorage.saveRoute(route);
       setActiveRoute(route);
 
-      toast.success(`Tournée préparée: ${route.parcels.length} colis chargés`);
+      toast.success(`Tournée préparée: ${route.parcels.length} colis chargés (QR chiffrés)`);
       return route;
     } catch (error: any) {
       console.error('Error preparing route:', error);
@@ -124,10 +130,21 @@ export function useOfflineDelivery() {
     geo?: { lat: number; lng: number }
   ): Promise<boolean> => {
     try {
+      // Validation stricte des données NFC
+      if (!nfcSerial || nfcSerial.trim() === '') {
+        toast.error('NFC serial invalide');
+        return false;
+      }
+      
+      if (!nfcAnrCode || nfcAnrCode.trim() === '') {
+        toast.error('Code ANR NFC invalide');
+        return false;
+      }
+      
       const unlock: NfcUnlock = {
         parcel_id: parcelId,
-        nfc_serial: nfcSerial,
-        nfc_anr_code: nfcAnrCode,
+        nfc_serial: nfcSerial.trim(),
+        nfc_anr_code: nfcAnrCode.trim().toUpperCase(),
         scanned_at: new Date().toISOString(),
         geo
       };
@@ -150,26 +167,90 @@ export function useOfflineDelivery() {
     return offlineStorage.getNfcUnlock(parcelId);
   }, []);
 
+  /**
+   * RÈGLE NON NÉGOCIABLE #1: DÉCHIFFRER LE QR UNIQUEMENT APRÈS NFC VALIDE
+   * 
+   * Cette fonction est le SEUL point d'accès au QR token déchiffré.
+   * Elle applique toutes les validations NFC strictes:
+   * - NFC serial non vide
+   * - NFC ANR code == expected ANR code
+   * - Fenêtre temporelle de 10 minutes
+   * 
+   * AUCUN FALLBACK. AUCUNE EXCEPTION.
+   */
+  const getDecryptedQrToken = useCallback(async (parcelId: string): Promise<DecryptedQrResult> => {
+    // 1. Récupérer le colis de la route active
+    if (!activeRoute) {
+      return { token: null, error: 'Aucune tournée active' };
+    }
+    
+    const parcel = activeRoute.parcels.find(p => p.parcel_id === parcelId);
+    if (!parcel) {
+      return { token: null, error: 'Colis non trouvé dans la tournée' };
+    }
+    
+    // 2. Récupérer les données NFC
+    const nfcUnlock = await offlineStorage.getNfcUnlock(parcelId);
+    
+    // 3. Transformer pour le décryptage
+    const nfcData = nfcUnlock ? {
+      serial: nfcUnlock.nfc_serial,
+      anrCode: nfcUnlock.nfc_anr_code,
+      timestamp: nfcUnlock.scanned_at
+    } : null;
+    
+    // 4. Calculer le temps restant si NFC valide
+    let remainingSeconds: number | undefined;
+    if (nfcUnlock && isNfcUnlockValid(nfcUnlock.scanned_at)) {
+      remainingSeconds = getNfcUnlockRemainingTime(nfcUnlock.scanned_at);
+    }
+    
+    // 5. Décrypter avec validation stricte
+    const result = await decryptQrToken(
+      parcel.encrypted_qr_token,
+      nfcData,
+      parcel.expected_anr_code
+    );
+    
+    return {
+      token: result.token,
+      error: result.error,
+      remainingSeconds
+    };
+  }, [activeRoute]);
+
   // Capture proof (works offline)
   const captureProof = useCallback(async (
     parcelId: string,
     trackingNumber: string,
-    qrToken: string,
     driverId: string,
     geo?: { lat: number; lng: number }
   ): Promise<boolean> => {
     try {
-      // Get NFC unlock data
+      // 1. Récupérer les données NFC (preuve primaire obligatoire)
       const nfcUnlock = await offlineStorage.getNfcUnlock(parcelId);
       if (!nfcUnlock) {
-        toast.error('Scan NFC requis avant validation');
+        toast.error('SCAN NFC REQUIS: Aucun scan NFC trouvé');
+        return false;
+      }
+      
+      // 2. Valider que le NFC est encore dans la fenêtre de 10 minutes
+      if (!isNfcUnlockValid(nfcUnlock.scanned_at)) {
+        toast.error('SCAN NFC EXPIRÉ: Fenêtre de 10 minutes dépassée');
+        return false;
+      }
+      
+      // 3. Obtenir le QR token déchiffré (validation stricte interne)
+      const decryptResult = await getDecryptedQrToken(parcelId);
+      if (!decryptResult.token) {
+        toast.error(decryptResult.error || 'Impossible de déchiffrer le QR');
         return false;
       }
 
-      // Create proof data
+      // 4. Create proof data avec données NFC obligatoires
       const proofData = {
         parcel_id: parcelId,
-        qr_token: qrToken,
+        qr_token: decryptResult.token,
         nfc_serial: nfcUnlock.nfc_serial,
         nfc_anr_code: nfcUnlock.nfc_anr_code,
         nfc_scanned_at: nfcUnlock.scanned_at,
@@ -178,7 +259,7 @@ export function useOfflineDelivery() {
         geo: geo || nfcUnlock.geo
       };
 
-      // Seal proof locally
+      // 5. Seal proof locally (hash composite local)
       const localHash = await sealProofLocally(proofData);
 
       const proof: PendingProof = {
@@ -190,10 +271,10 @@ export function useOfflineDelivery() {
         synced: false
       };
 
-      // Save to IndexedDB
+      // 6. Save to IndexedDB
       await offlineStorage.savePendingProof(proof);
       
-      // Update parcel status in route
+      // 7. Update parcel status in route
       if (activeRoute) {
         await offlineStorage.updateParcelStatus(activeRoute.route_id, parcelId, 'delivered');
         // Update local state
@@ -201,20 +282,20 @@ export function useOfflineDelivery() {
         setActiveRoute(updatedRoute);
       }
 
-      // Clear NFC unlock
+      // 8. Clear NFC unlock
       await offlineStorage.clearNfcUnlock(parcelId);
 
-      // Update pending count
+      // 9. Update pending count
       await loadPendingCount();
 
-      toast.success('Preuve enregistrée localement');
+      toast.success('Preuve composite NFC+QR enregistrée');
       return true;
     } catch (error) {
       console.error('Error capturing proof:', error);
       toast.error('Erreur lors de l\'enregistrement');
       return false;
     }
-  }, [activeRoute]);
+  }, [activeRoute, getDecryptedQrToken]);
 
   // Sync proofs (requires online)
   const syncProofs = useCallback(async (): Promise<SyncResult | null> => {
@@ -274,7 +355,7 @@ export function useOfflineDelivery() {
       };
 
       setSyncStatus('success');
-      toast.success(`Synchronisation terminée: ${syncResult.validated} validée(s)`);
+      toast.success(`Synchronisation: ${syncResult.validated} validée(s), ${syncResult.rejected} rejetée(s)`);
       
       return syncResult;
     } catch (error: any) {
@@ -314,6 +395,7 @@ export function useOfflineDelivery() {
     recordNfcUnlock,
     isQrUnlocked,
     getNfcUnlock,
+    getDecryptedQrToken, // NOUVEAU: Accès sécurisé au QR déchiffré
     captureProof,
     syncProofs,
     clearAllData,

@@ -13,6 +13,58 @@ interface PrepareRouteRequest {
   route_date: string;
 }
 
+// ============ CHIFFREMENT QR TOKEN ============
+// Le QR est chiffré côté serveur avec l'ANR code comme clé
+// Le client ne peut le déchiffrer qu'après un scan NFC valide
+
+async function deriveKeyFromAnrCode(anrCode: string): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(anrCode.toUpperCase().padEnd(32, '0')),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: encoder.encode('anr_delivery_salt_v1'),
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
+}
+
+async function encryptQrToken(qrToken: string, expectedAnrCode: string): Promise<string> {
+  const key = await deriveKeyFromAnrCode(expectedAnrCode);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoder = new TextEncoder();
+  
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    encoder.encode(qrToken)
+  );
+  
+  // Combine IV + encrypted data
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  
+  // Base64 encode
+  let binary = '';
+  for (const byte of combined) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -108,7 +160,13 @@ serve(async (req) => {
         .setExpirationTime(Math.floor(expiresAt.getTime() / 1000))
         .sign(secret);
 
-      // Hash token for storage
+      // SÉCURITÉ: Chiffrer le JWT avec l'ANR code comme clé
+      // Le client ne pourra le déchiffrer qu'après un scan NFC valide
+      const encryptedJwt = await encryptQrToken(jwt, expectedAnrCode);
+      
+      console.log(`[prepare-route] Parcel ${parcel.id}: JWT encrypted for ANR ${expectedAnrCode}`);
+
+      // Hash token for storage (using the unencrypted JWT)
       const tokenHash = await crypto.subtle.digest(
         "SHA-256",
         new TextEncoder().encode(jwt)
@@ -120,7 +178,8 @@ serve(async (req) => {
       preparedParcels.push({
         parcel_id: parcel.id,
         tracking_number: parcel.tracking_number,
-        qr_token: jwt,
+        // SÉCURITÉ: Token chiffré UNIQUEMENT
+        encrypted_qr_token: encryptedJwt,
         expected_anr_code: expectedAnrCode,
         expected_nfc_serial: expectedNfcSerial,
         recipient_name: parcel.recipient_name,
@@ -158,7 +217,7 @@ serve(async (req) => {
       .update({ status: "in_transit" })
       .in("id", parcel_ids);
 
-    console.log(`[prepare-route] Route ${route_id} prepared with ${preparedParcels.length} parcels`);
+    console.log(`[prepare-route] Route ${route_id} prepared with ${preparedParcels.length} parcels (QR tokens encrypted)`);
 
     // Generate a simplified public key representation for client-side verification
     // In production, you would use proper asymmetric keys

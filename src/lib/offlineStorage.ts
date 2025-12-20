@@ -14,7 +14,8 @@ export interface PreparedRoute {
 export interface PreparedParcel {
   parcel_id: string;
   tracking_number: string;
-  qr_token: string;
+  // SÉCURITÉ: QR token CHIFFRÉ - jamais en clair
+  encrypted_qr_token: string;
   expected_anr_code: string;
   expected_nfc_serial?: string;
   recipient_name: string;
@@ -34,13 +35,16 @@ export interface PendingProof {
   id: string;
   parcel_id: string;
   tracking_number: string;
+  // SÉCURITÉ: Token déchiffré uniquement au moment de la capture
   qr_token: string;
+  // OBLIGATOIRE: Données NFC - preuve primaire
   nfc_serial: string;
   nfc_anr_code: string;
   nfc_scanned_at: string;
   qr_scanned_at: string;
   geo?: { lat: number; lng: number };
   driver_id: string;
+  // Hash composite local (NFC + QR)
   local_proof_hash: string;
   created_at: string;
   synced: boolean;

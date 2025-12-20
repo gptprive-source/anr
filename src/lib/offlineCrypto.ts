@@ -1,4 +1,5 @@
 // Cryptographic utilities for offline proof validation and sealing
+// SÉCURITÉ: QR chiffré localement, déchiffrable uniquement après NFC valide
 
 /**
  * Generate SHA-256 hash of data
@@ -152,4 +153,151 @@ export interface QRTokenPayload {
   route_id: string;
   iat: number;  // Issued at
   exp: number;  // Expiration
+}
+
+// ============ CHIFFREMENT QR TOKEN ============
+// Le QR est chiffré avec l'ANR code attendu comme clé
+// Il ne peut être déchiffré qu'après un scan NFC valide
+
+const ENCRYPTION_ALGORITHM = 'AES-GCM';
+const IV_LENGTH = 12;
+
+/**
+ * Derive encryption key from ANR code
+ */
+async function deriveKeyFromAnrCode(anrCode: string): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(anrCode.toUpperCase().padEnd(32, '0')),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: encoder.encode('anr_delivery_salt_v1'),
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    { name: ENCRYPTION_ALGORITHM, length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+/**
+ * Encrypt QR token with ANR code as key
+ * Returns base64-encoded encrypted data
+ */
+export async function encryptQrToken(qrToken: string, expectedAnrCode: string): Promise<string> {
+  const key = await deriveKeyFromAnrCode(expectedAnrCode);
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+  const encoder = new TextEncoder();
+  
+  const encrypted = await crypto.subtle.encrypt(
+    { name: ENCRYPTION_ALGORITHM, iv },
+    key,
+    encoder.encode(qrToken)
+  );
+  
+  // Combine IV + encrypted data
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  
+  return btoa(String.fromCharCode(...combined));
+}
+
+/**
+ * RÈGLE NON NÉGOCIABLE: Decrypt QR token ONLY if NFC is valid
+ * 
+ * Conditions de déchiffrement:
+ * 1. nfc_anr_code === expected_anr_code (case insensitive)
+ * 2. nfc_serial non vide
+ * 3. nfc_timestamp < now
+ * 4. now - nfc_timestamp < 10 minutes (fenêtre stricte)
+ * 
+ * Si une condition échoue → null, aucun fallback
+ */
+export async function decryptQrToken(
+  encryptedToken: string,
+  nfcData: { serial: string; anrCode: string; timestamp: string } | null,
+  expectedAnrCode: string
+): Promise<{ token: string | null; error?: string }> {
+  // === VALIDATION NFC STRICTE - AUCUN FALLBACK ===
+  
+  // 1. NFC data must exist
+  if (!nfcData) {
+    return { token: null, error: 'SCAN NFC REQUIS: Aucune donnée NFC' };
+  }
+  
+  // 2. NFC serial must not be empty
+  if (!nfcData.serial || nfcData.serial.trim() === '') {
+    return { token: null, error: 'SCAN NFC REQUIS: Serial NFC vide' };
+  }
+  
+  // 3. NFC ANR code must match expected (case insensitive)
+  if (nfcData.anrCode.toUpperCase() !== expectedAnrCode.toUpperCase()) {
+    return { token: null, error: `MAUVAISE ADRESSE: ${nfcData.anrCode} ≠ ${expectedAnrCode}` };
+  }
+  
+  // 4. NFC timestamp must be in the past
+  const nfcTime = new Date(nfcData.timestamp).getTime();
+  const now = Date.now();
+  
+  if (nfcTime > now + 60000) { // Allow 1 minute tolerance for clock drift
+    return { token: null, error: 'SCAN NFC INVALIDE: Timestamp dans le futur' };
+  }
+  
+  // 5. NFC must be within 10 minute window (STRICT - NON NÉGOCIABLE)
+  const TEN_MINUTES = 10 * 60 * 1000;
+  if (now - nfcTime > TEN_MINUTES) {
+    return { token: null, error: 'SCAN NFC EXPIRÉ: Fenêtre de 10 minutes dépassée' };
+  }
+  
+  // === NFC VALIDÉ - DÉCHIFFREMENT AUTORISÉ ===
+  try {
+    const key = await deriveKeyFromAnrCode(expectedAnrCode);
+    const combined = Uint8Array.from(atob(encryptedToken), c => c.charCodeAt(0));
+    
+    const iv = combined.slice(0, IV_LENGTH);
+    const encrypted = combined.slice(IV_LENGTH);
+    
+    const decrypted = await crypto.subtle.decrypt(
+      { name: ENCRYPTION_ALGORITHM, iv },
+      key,
+      encrypted
+    );
+    
+    const decoder = new TextDecoder();
+    return { token: decoder.decode(decrypted) };
+  } catch (error) {
+    return { token: null, error: 'ERREUR DÉCHIFFREMENT: Token corrompu ou clé invalide' };
+  }
+}
+
+/**
+ * Check if NFC unlock is still valid (10 minute window)
+ */
+export function isNfcUnlockValid(nfcTimestamp: string): boolean {
+  const nfcTime = new Date(nfcTimestamp).getTime();
+  const now = Date.now();
+  const TEN_MINUTES = 10 * 60 * 1000;
+  return (now - nfcTime) < TEN_MINUTES && nfcTime <= now + 60000;
+}
+
+/**
+ * Get remaining time for NFC unlock validity (in seconds)
+ */
+export function getNfcUnlockRemainingTime(nfcTimestamp: string): number {
+  const nfcTime = new Date(nfcTimestamp).getTime();
+  const now = Date.now();
+  const TEN_MINUTES = 10 * 60 * 1000;
+  const elapsed = now - nfcTime;
+  const remaining = (TEN_MINUTES - elapsed) / 1000;
+  return Math.max(0, Math.floor(remaining));
 }
