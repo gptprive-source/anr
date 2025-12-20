@@ -53,6 +53,69 @@ serve(async (req) => {
 
     for (const proof of proofs) {
       try {
+        // ================================================================
+        // === RÈGLE NON NÉGOCIABLE #2: REJET EXPLICITE SANS NFC VALIDE ===
+        // ================================================================
+        // Rejeter IMMÉDIATEMENT si données NFC absentes ou invalides
+        // AUCUN FALLBACK, AUCUNE EXCEPTION
+        
+        if (!proof.nfc_serial) {
+          console.error(`[sync-proofs] REJET ${proof.proof_id}: nfc_serial manquant`);
+          results.push({ 
+            proof_id: proof.proof_id, 
+            status: "rejected", 
+            error: "PREUVE INVALIDE: NFC serial obligatoire manquant" 
+          });
+          rejected++;
+          continue;
+        }
+        
+        if (proof.nfc_serial.trim() === '') {
+          console.error(`[sync-proofs] REJET ${proof.proof_id}: nfc_serial vide`);
+          results.push({ 
+            proof_id: proof.proof_id, 
+            status: "rejected", 
+            error: "PREUVE INVALIDE: NFC serial vide" 
+          });
+          rejected++;
+          continue;
+        }
+        
+        if (!proof.nfc_anr_code) {
+          console.error(`[sync-proofs] REJET ${proof.proof_id}: nfc_anr_code manquant`);
+          results.push({ 
+            proof_id: proof.proof_id, 
+            status: "rejected", 
+            error: "PREUVE INVALIDE: Code ANR NFC obligatoire manquant" 
+          });
+          rejected++;
+          continue;
+        }
+        
+        if (proof.nfc_anr_code.trim() === '') {
+          console.error(`[sync-proofs] REJET ${proof.proof_id}: nfc_anr_code vide`);
+          results.push({ 
+            proof_id: proof.proof_id, 
+            status: "rejected", 
+            error: "PREUVE INVALIDE: Code ANR NFC vide" 
+          });
+          rejected++;
+          continue;
+        }
+        
+        if (!proof.nfc_scanned_at) {
+          console.error(`[sync-proofs] REJET ${proof.proof_id}: nfc_scanned_at manquant`);
+          results.push({ 
+            proof_id: proof.proof_id, 
+            status: "rejected", 
+            error: "PREUVE INVALIDE: Timestamp NFC obligatoire manquant" 
+          });
+          rejected++;
+          continue;
+        }
+        
+        // === FIN VALIDATION NFC OBLIGATOIRE ===
+        
         // 1. Verify JWT token
         let payload: any;
         try {
@@ -155,28 +218,77 @@ serve(async (req) => {
           continue;
         }
 
-        // 6. All validations passed - create official proof
+        // ================================================================
+        // === RÈGLE NON NÉGOCIABLE #3: HASH COMPOSITE SERVEUR INDIVISIBLE ===
+        // ================================================================
+        // La preuve juridique est UNE preuve composite unique
+        // NFC + QR = indissociables
+        
+        const compositeProofData = JSON.stringify({
+          nfc_serial: proof.nfc_serial,
+          nfc_anr_code: proof.nfc_anr_code.toUpperCase(),
+          anr_id: anr?.id || null,
+          driver_id: payload.driver_id,
+          nfc_timestamp: proof.nfc_scanned_at,
+          qr_token_hash: tokenHashHex,
+          qr_timestamp: proof.qr_scanned_at
+        });
+        
+        const serverHash = await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(compositeProofData)
+        );
+        const serverHashHex = Array.from(new Uint8Array(serverHash))
+          .map(b => b.toString(16).padStart(2, "0"))
+          .join("");
+        
+        console.log(`[sync-proofs] Proof ${proof.proof_id}: Server composite hash generated`);
+        
+        // === FIN HASH COMPOSITE ===
+
+        // 6. All validations passed - create official COMPOSITE proof
         const { data: parcelProof, error: proofError } = await supabase
           .from("parcel_proofs")
           .insert({
             parcel_id: payload.parcel_id,
-            proof_type: "delivery",
+            // SÉCURITÉ: Type de preuve composite - NFC + QR indissociables
+            proof_type: "delivery_composite",
             proof_hash: proof.local_proof_hash,
+            // NOUVEAU: Hash composite calculé côté serveur
             proof_data: {
-              qr_token_hash: tokenHashHex,
-              nfc_serial: proof.nfc_serial,
-              nfc_anr_code: proof.nfc_anr_code,
-              nfc_scanned_at: proof.nfc_scanned_at,
-              qr_scanned_at: proof.qr_scanned_at,
-              driver_id: payload.driver_id,
-              route_id: payload.route_id,
-              local_proof_id: proof.proof_id
+              // Structure INDIVISIBLE - les deux actes sont liés
+              composite_proof: {
+                nfc: {
+                  serial: proof.nfc_serial,
+                  anr_code: proof.nfc_anr_code.toUpperCase(),
+                  anr_id: anr?.id || null,
+                  timestamp: proof.nfc_scanned_at,
+                  // Preuve de présence du livreur
+                  proof_role: "driver_presence"
+                },
+                qr: {
+                  token_hash: tokenHashHex,
+                  timestamp: proof.qr_scanned_at,
+                  // Preuve de remise au destinataire
+                  proof_role: "recipient_confirmation"
+                },
+                driver_id: payload.driver_id,
+                route_id: payload.route_id
+              },
+              validation: {
+                local_hash: proof.local_proof_hash,
+                server_hash: serverHashHex,
+                validated_at: new Date().toISOString(),
+                validation_version: "v2_composite_strict"
+              }
             },
             geo_latitude: proof.geo?.lat,
             geo_longitude: proof.geo?.lng,
             actor_driver_id: payload.driver_id,
             timestamp_utc: proof.qr_scanned_at,
-            timestamp_device: proof.nfc_scanned_at
+            timestamp_device: proof.nfc_scanned_at,
+            // Stocker le hash composite serveur pour vérification ultérieure
+            signature: serverHashHex
           })
           .select()
           .single();
@@ -211,7 +323,7 @@ serve(async (req) => {
         results.push({ proof_id: proof.proof_id, status: "validated" });
         validated++;
 
-        console.log(`[sync-proofs] Proof ${proof.proof_id} validated for parcel ${payload.parcel_id}`);
+        console.log(`[sync-proofs] Proof ${proof.proof_id} VALIDATED as composite proof for parcel ${payload.parcel_id}`);
       } catch (error: any) {
         console.error(`[sync-proofs] Error processing proof ${proof.proof_id}:`, error);
         results.push({ proof_id: proof.proof_id, status: "rejected", error: error.message });

@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, QrCode, MapPin, CheckCircle, Truck, User, Loader2, X, Wifi, WifiOff, RefreshCw, Nfc, Camera } from "lucide-react";
+import { ArrowLeft, Package, QrCode, CheckCircle, Truck, User, Loader2, Wifi, WifiOff, RefreshCw, Clock, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,23 +8,38 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { useOfflineDelivery } from "@/hooks/useOfflineDelivery";
+import { useOfflineDelivery, DecryptedQrResult } from "@/hooks/useOfflineDelivery";
 import { NFCProofScanner } from "@/components/carrier/NFCProofScanner";
-import { Html5Qrcode } from "html5-qrcode";
 import { PreparedParcel } from "@/lib/offlineStorage";
+import { QRCodeSVG } from "qrcode.react";
 
 type ScanMode = "identify" | "prepare" | "tour" | "nfc_scan" | "qr_display" | "success";
 
 const DeliveryScan = () => {
   const navigate = useNavigate();
   const { latitude, longitude, getCurrentPosition } = useGeolocation();
-  const { isOnline, activeRoute, pendingProofsCount, syncStatus, prepareRoute, loadActiveRoute, recordNfcUnlock, isQrUnlocked, captureProof, syncProofs } = useOfflineDelivery();
+  const { 
+    isOnline, 
+    activeRoute, 
+    pendingProofsCount, 
+    prepareRoute, 
+    loadActiveRoute, 
+    recordNfcUnlock, 
+    isQrUnlocked, 
+    getDecryptedQrToken,
+    captureProof, 
+    syncProofs 
+  } = useOfflineDelivery();
   
   const [mode, setMode] = useState<ScanMode>("identify");
   const [driverId, setDriverId] = useState("");
   const [selectedParcel, setSelectedParcel] = useState<PreparedParcel | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [qrUnlocked, setQrUnlocked] = useState(false);
+  
+  // État pour le QR déchiffré
+  const [decryptedQr, setDecryptedQr] = useState<DecryptedQrResult>({ token: null });
+  const [countdownSeconds, setCountdownSeconds] = useState<number>(0);
 
   useEffect(() => {
     const savedDriverId = localStorage.getItem("anr_driver_id");
@@ -32,6 +47,25 @@ const DeliveryScan = () => {
       setDriverId(savedDriverId);
     }
   }, []);
+
+  // Countdown timer pour l'expiration NFC
+  useEffect(() => {
+    if (mode === "qr_display" && countdownSeconds > 0) {
+      const timer = setInterval(() => {
+        setCountdownSeconds(prev => {
+          if (prev <= 1) {
+            // NFC expiré - retour au scan NFC
+            toast.error('Délai NFC expiré - Rescannez le tag NFC');
+            setMode("nfc_scan");
+            setDecryptedQr({ token: null, error: 'Fenêtre de 10 minutes expirée' });
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [mode, countdownSeconds]);
 
   const handleIdentify = async () => {
     if (!driverId.trim()) {
@@ -41,7 +75,6 @@ const DeliveryScan = () => {
     localStorage.setItem("anr_driver_id", driverId.trim());
     getCurrentPosition();
     
-    // Check for existing route
     const existingRoute = await loadActiveRoute(driverId.trim());
     if (existingRoute && existingRoute.parcels.some(p => p.status === 'pending')) {
       setMode("tour");
@@ -57,7 +90,6 @@ const DeliveryScan = () => {
       return;
     }
     setIsLoading(true);
-    // Demo: prepare with mock parcel IDs - in production, fetch from carrier API
     const route = await prepareRoute(driverId, []);
     setIsLoading(false);
     if (route) {
@@ -67,9 +99,26 @@ const DeliveryScan = () => {
 
   const handleSelectParcel = async (parcel: PreparedParcel) => {
     setSelectedParcel(parcel);
+    setDecryptedQr({ token: null });
+    setCountdownSeconds(0);
+    
     const unlocked = await isQrUnlocked(parcel.parcel_id);
     setQrUnlocked(unlocked);
-    setMode("nfc_scan");
+    
+    if (unlocked) {
+      // Tenter de déchiffrer le QR
+      const result = await getDecryptedQrToken(parcel.parcel_id);
+      if (result.token) {
+        setDecryptedQr(result);
+        setCountdownSeconds(result.remainingSeconds || 0);
+        setMode("qr_display");
+      } else {
+        // NFC expiré ou invalide - forcer rescan
+        setMode("nfc_scan");
+      }
+    } else {
+      setMode("nfc_scan");
+    }
   };
 
   const handleNfcUnlock = async (nfcData: { serial: string; anrCode: string; timestamp: string }) => {
@@ -83,8 +132,19 @@ const DeliveryScan = () => {
     );
     
     if (success) {
-      setQrUnlocked(true);
-      setMode("qr_display");
+      // Tenter immédiatement le déchiffrement
+      const result = await getDecryptedQrToken(selectedParcel.parcel_id);
+      
+      if (result.token) {
+        setDecryptedQr(result);
+        setCountdownSeconds(result.remainingSeconds || 600); // 10 minutes par défaut
+        setQrUnlocked(true);
+        setMode("qr_display");
+      } else {
+        // Erreur de déchiffrement - ne devrait pas arriver après un NFC valide
+        toast.error(result.error || "Erreur de déchiffrement inattendue");
+        setDecryptedQr(result);
+      }
     }
   };
 
@@ -95,10 +155,10 @@ const DeliveryScan = () => {
   const handleDeliveryComplete = async () => {
     if (!selectedParcel || !activeRoute) return;
     
+    // captureProof gère désormais tout en interne (déchiffrement + validation)
     const success = await captureProof(
       selectedParcel.parcel_id,
       selectedParcel.tracking_number,
-      selectedParcel.qr_token,
       driverId,
       latitude && longitude ? { lat: latitude, lng: longitude } : undefined
     );
@@ -110,6 +170,12 @@ const DeliveryScan = () => {
 
   const handleSync = async () => {
     await syncProofs();
+  };
+
+  const formatCountdown = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Identify screen
@@ -161,7 +227,7 @@ const DeliveryScan = () => {
                 <Package className="w-8 h-8 text-blue-600" />
               </div>
               <CardTitle>Préparer la tournée</CardTitle>
-              <CardDescription>Téléchargez les QR codes pour travailler hors-ligne</CardDescription>
+              <CardDescription>Téléchargez les QR codes chiffrés pour travailler hors-ligne</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {!isOnline && (
@@ -264,15 +330,50 @@ const DeliveryScan = () => {
 
   // QR Display screen (after NFC unlock)
   if (mode === "qr_display" && selectedParcel) {
+    // SÉCURITÉ: Si pas de QR déchiffré, bloquer l'affichage
+    if (!decryptedQr.token) {
+      return (
+        <div className="min-h-screen bg-background">
+          <Header driverId={driverId} isOnline={isOnline} pendingCount={pendingProofsCount} onBack={() => setMode("tour")} />
+          <main className="p-4 max-w-md mx-auto mt-4 space-y-4">
+            <Card className="bg-red-50 border-red-300">
+              <CardContent className="py-6 text-center">
+                <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-3" />
+                <h3 className="font-bold text-red-900 mb-2">QR Non Disponible</h3>
+                <p className="text-sm text-red-700 mb-4">
+                  {decryptedQr.error || "Scan NFC requis pour déverrouiller le QR"}
+                </p>
+                <Button onClick={() => setMode("nfc_scan")} variant="destructive" className="w-full">
+                  Scanner le tag NFC
+                </Button>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-background">
         <Header driverId={driverId} isOnline={isOnline} pendingCount={pendingProofsCount} onBack={() => setMode("tour")} />
         <main className="p-4 max-w-md mx-auto mt-4 space-y-4">
           <Card className="bg-green-50 border-green-300">
-            <CardContent className="py-4 text-center">
-              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <p className="font-semibold text-green-900">NFC validé - QR déverrouillé</p>
-              <p className="text-sm text-green-700">{selectedParcel.expected_anr_code}</p>
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <div>
+                    <p className="font-semibold text-green-900">NFC validé - QR déverrouillé</p>
+                    <p className="text-sm text-green-700">{selectedParcel.expected_anr_code}</p>
+                  </div>
+                </div>
+                {countdownSeconds > 0 && (
+                  <div className="flex items-center gap-1 text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                    <Clock className="w-4 h-4" />
+                    <span className="font-mono text-sm">{formatCountdown(countdownSeconds)}</span>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -281,11 +382,13 @@ const DeliveryScan = () => {
               <CardTitle className="text-lg">Faites scanner par le destinataire</CardTitle>
             </CardHeader>
             <CardContent className="text-center">
-              <div className="bg-white p-4 rounded-lg border-2 border-dashed mb-4">
-                <QrCode className="w-32 h-32 mx-auto text-primary" />
-                <p className="text-xs text-muted-foreground mt-2 font-mono break-all">
-                  {selectedParcel.qr_token.substring(0, 50)}...
-                </p>
+              <div className="bg-white p-4 rounded-lg border-2 border-dashed mb-4 flex justify-center">
+                <QRCodeSVG 
+                  value={decryptedQr.token} 
+                  size={200}
+                  level="H"
+                  includeMargin={true}
+                />
               </div>
               <p className="text-sm text-muted-foreground mb-4">
                 Le destinataire doit scanner ce QR pour confirmer la réception
@@ -316,11 +419,12 @@ const DeliveryScan = () => {
               <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle className="w-10 h-10 text-green-600" />
               </div>
-              <h2 className="text-xl font-bold text-green-900 mb-2">Preuve enregistrée</h2>
-              <p className="text-green-700 text-sm mb-4">
+              <h2 className="text-xl font-bold text-green-900 mb-2">Preuve composite enregistrée</h2>
+              <p className="text-green-700 text-sm mb-1">NFC + QR = Preuve juridique</p>
+              <p className="text-green-600 text-xs mb-4">
                 {isOnline ? "Synchronisée avec le serveur" : "Sera synchronisée au retour du réseau"}
               </p>
-              <Button onClick={() => { setSelectedParcel(null); setQrUnlocked(false); setMode("tour"); }} className="w-full" size="lg">
+              <Button onClick={() => { setSelectedParcel(null); setQrUnlocked(false); setDecryptedQr({ token: null }); setMode("tour"); }} className="w-full" size="lg">
                 Colis suivant
               </Button>
             </CardContent>
