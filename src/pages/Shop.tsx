@@ -236,7 +236,7 @@ const Shop = () => {
             </div>
 
             {/* Door Module - Only show if feature enabled */}
-            {flags.scheduledAccessEnabled && (
+            {flags.scheduledAccessEnabled && flags.doorModuleSalesEnabled && (
               <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-purple-500">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-purple-500/10">

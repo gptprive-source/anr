@@ -18,8 +18,14 @@ export interface FeatureFlags {
   doorOpeningEnabled: boolean;
   scheduledAccessEnabled: boolean;
   
-  // Relay module
+  // Business modules
   relayModuleEnabled: boolean;
+  carrierModuleEnabled: boolean;
+  doorModuleSalesEnabled: boolean;
+  parcelDeliveryEnabled: boolean;
+  
+  // Referral
+  referralEnabled: boolean;
 }
 
 export const useFeatureFlags = () => {
@@ -62,8 +68,14 @@ export const useFeatureFlags = () => {
       doorOpeningEnabled: parseBoolean(getConfig('feature_door_opening_enabled'), false),
       scheduledAccessEnabled: parseBoolean(getConfig('feature_scheduled_access_enabled'), false),
       
-      // Relay module - default false
+      // Business modules - default false
       relayModuleEnabled: parseBoolean(getConfig('relay_module_enabled'), false),
+      carrierModuleEnabled: parseBoolean(getConfig('feature_carrier_module_enabled'), false),
+      doorModuleSalesEnabled: parseBoolean(getConfig('feature_door_module_sales_enabled'), false),
+      parcelDeliveryEnabled: parseBoolean(getConfig('feature_parcel_delivery_enabled'), false),
+      
+      // Referral - default true
+      referralEnabled: parseBoolean(getConfig('feature_referral_enabled'), true),
     };
   }, [configs]);
 

@@ -35,6 +35,21 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const secret = new TextEncoder().encode(jwtSecret);
 
+    // Check if carrier module is enabled
+    const { data: featureFlag } = await supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', 'feature_carrier_module_enabled')
+      .single();
+
+    if (featureFlag?.value !== true && featureFlag?.value !== 'true') {
+      console.log("[sync-proofs] Carrier module is disabled");
+      return new Response(
+        JSON.stringify({ error: "Module transporteur désactivé" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { proofs }: SyncRequest = await req.json();
 
     if (!proofs || proofs.length === 0) {

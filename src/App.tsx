@@ -9,6 +9,7 @@ import { IncomingCallProvider } from "@/contexts/IncomingCallContext";
 import { SupportChatProvider } from "@/contexts/SupportChatContext";
 import { SupportAlertProvider } from "@/contexts/SupportAlertContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import FeatureFlagRoute from "@/components/auth/FeatureFlagRoute";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import GlobalIncomingCallListener from "@/components/call/GlobalIncomingCallListener";
 import UnifiedAssistant from "@/components/assistant/UnifiedAssistant";
@@ -182,24 +183,26 @@ const AppContent = () => {
                 <Orders />
               </ProtectedRoute>} />
           <Route path="/referral" element={<ProtectedRoute>
-                <Referral />
+                <FeatureFlagRoute flagKey="referralEnabled">
+                  <Referral />
+                </FeatureFlagRoute>
               </ProtectedRoute>} />
           <Route path="/no-habitation" element={<ProtectedRoute>
                 <NoHabitation />
               </ProtectedRoute>} />
           
-          {/* Relay Routes */}
-          <Route path="/relay" element={<ProtectedRoute><RelayDashboard /></ProtectedRoute>} />
-          <Route path="/relay/register" element={<ProtectedRoute><RelayRegistration /></ProtectedRoute>} />
-          <Route path="/relay/scan" element={<ProtectedRoute><ParcelScan /></ProtectedRoute>} />
+          {/* Relay Routes - protected by feature flag */}
+          <Route path="/relay" element={<ProtectedRoute><FeatureFlagRoute flagKey="relayModuleEnabled"><RelayDashboard /></FeatureFlagRoute></ProtectedRoute>} />
+          <Route path="/relay/register" element={<ProtectedRoute><FeatureFlagRoute flagKey="relayModuleEnabled"><RelayRegistration /></FeatureFlagRoute></ProtectedRoute>} />
+          <Route path="/relay/scan" element={<ProtectedRoute><FeatureFlagRoute flagKey="relayModuleEnabled"><ParcelScan /></FeatureFlagRoute></ProtectedRoute>} />
 
-          {/* Carrier Routes */}
-          <Route path="/carrier" element={<CarrierDashboard />} />
-          <Route path="/carrier/dashboard" element={<CarrierDashboard />} />
-          <Route path="/carrier/register" element={<CarrierRegistration />} />
-          <Route path="/carrier/login" element={<CarrierLogin />} />
-          <Route path="/carrier/scan" element={<DeliveryScan />} />
-          <Route path="/parcel/receive" element={<ParcelReceive />} />
+          {/* Carrier Routes - protected by feature flag */}
+          <Route path="/carrier" element={<FeatureFlagRoute flagKey="carrierModuleEnabled"><CarrierDashboard /></FeatureFlagRoute>} />
+          <Route path="/carrier/dashboard" element={<FeatureFlagRoute flagKey="carrierModuleEnabled"><CarrierDashboard /></FeatureFlagRoute>} />
+          <Route path="/carrier/register" element={<FeatureFlagRoute flagKey="carrierModuleEnabled"><CarrierRegistration /></FeatureFlagRoute>} />
+          <Route path="/carrier/login" element={<FeatureFlagRoute flagKey="carrierModuleEnabled"><CarrierLogin /></FeatureFlagRoute>} />
+          <Route path="/carrier/scan" element={<FeatureFlagRoute flagKey="carrierModuleEnabled"><DeliveryScan /></FeatureFlagRoute>} />
+          <Route path="/parcel/receive" element={<FeatureFlagRoute flagKey="parcelDeliveryEnabled"><ParcelReceive /></FeatureFlagRoute>} />
 
           {/* Visitor messages (non-authenticated) */}
           <Route path="/visitor-messages" element={<VisitorMessages />} />

@@ -77,6 +77,21 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check if carrier module is enabled
+    const { data: featureFlag } = await supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', 'feature_carrier_module_enabled')
+      .single();
+
+    if (featureFlag?.value !== true && featureFlag?.value !== 'true') {
+      console.log("[prepare-route] Carrier module is disabled");
+      return new Response(
+        JSON.stringify({ error: "Module transporteur désactivé" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { driver_id, parcel_ids, route_date }: PrepareRouteRequest = await req.json();
 
     if (!driver_id || !parcel_ids || parcel_ids.length === 0) {
