@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key, CreditCard, RefreshCw, Package } from "lucide-react";
+import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key, CreditCard, RefreshCw, Package, Truck, Gift, PackageCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -671,6 +671,58 @@ const Config = () => {
                 {[
                   { key: 'feature_door_opening_enabled', label: 'Ouverture de porte BLE', icon: DoorOpen, description: 'Permettre l\'ouverture de porte via Bluetooth Low Energy' },
                   { key: 'feature_scheduled_access_enabled', label: 'Autorisations d\'accès programmés', icon: Key, description: 'Permettre la planification d\'accès pour des tiers' },
+                ].map(({ key, label, icon: Icon, description }) => {
+                  const isEnabled = getValue(key) === true || getValue(key) === 'true';
+                  return (
+                    <div key={key} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-5 h-5 text-muted-foreground" />
+                        <div>
+                          <span className="font-medium">{label}</span>
+                          <p className="text-sm text-muted-foreground">{description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              await updateConfig({ key, value: checked });
+                              toast.success(`${label} ${checked ? 'activé' : 'désactivé'}`);
+                            } catch (error) {
+                              toast.error('Erreur lors de la mise à jour');
+                            }
+                          }}
+                          disabled={isUpdating}
+                        />
+                        <Badge variant={isEnabled ? "default" : "secondary"} className={isEnabled ? "bg-green-600" : ""}>
+                          {isEnabled ? "Activé" : "Désactivé"}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+            {/* Business Modules */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Modules métier
+                </CardTitle>
+                <CardDescription>
+                  Activer ou désactiver les modules complets de l'application
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[
+                  { key: 'feature_carrier_module_enabled', label: 'Module Livreurs', icon: Truck, description: 'Accès transporteurs, tournées, preuves de livraison offline' },
+                  { key: 'relay_module_enabled', label: 'Module Relais Colis', icon: Package, description: 'Points relais, dépôt/retrait de colis' },
+                  { key: 'feature_parcel_delivery_enabled', label: 'Réception Colis', icon: PackageCheck, description: 'Permettre aux résidents de recevoir des colis' },
+                  { key: 'feature_door_module_sales_enabled', label: 'Vente Boîtier Gâche', icon: DoorOpen, description: 'Afficher le boîtier gâche électrique dans la boutique' },
+                  { key: 'feature_referral_enabled', label: 'Parrainage', icon: Gift, description: 'Module de parrainage et récompenses' },
                 ].map(({ key, label, icon: Icon, description }) => {
                   const isEnabled = getValue(key) === true || getValue(key) === 'true';
                   return (
