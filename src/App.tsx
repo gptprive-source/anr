@@ -246,6 +246,7 @@ const AppContent = () => {
           
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <UnifiedAssistant />
       </BrowserRouter>
     </>;
 };
@@ -256,7 +257,6 @@ const App = () => <QueryClientProvider client={queryClient}>
           <SupportChatProvider>
             <SupportAlertProvider>
               <AppContent />
-              <UnifiedAssistant />
             </SupportAlertProvider>
           </SupportChatProvider>
         </IncomingCallProvider>
