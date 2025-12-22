@@ -2,9 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Smartphone, QrCode, Shield, LogIn, Download, MessageSquare, Truck, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 const HeroSection = () => {
   const navigate = useNavigate();
+  const { flags } = useFeatureFlags();
   const {
     isInstallable,
     isInstalled,
@@ -74,28 +76,30 @@ const HeroSection = () => {
           </Button>
         </div>
 
-        {/* Section Professionnels */}
-        <div className="mb-12 animate-fade-in" style={{ animationDelay: "0.5s" }}>
-          <p className="text-sm text-muted-foreground mb-3">Vous êtes transporteur ou livreur ?</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/carrier/login")}
-              className="gap-2 border-orange-300 hover:bg-orange-50 hover:border-orange-400"
-            >
-              <Truck className="w-4 h-4 text-orange-500" />
-              Espace Transporteur
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/carrier/scan")}
-              className="gap-2 border-teal-300 hover:bg-teal-50 hover:border-teal-400"
-            >
-              <Package className="w-4 h-4 text-teal-500" />
-              Scanner Livreur
-            </Button>
+        {/* Section Professionnels - Visible uniquement si module transporteur activé */}
+        {flags.carrierModuleEnabled && (
+          <div className="mb-12 animate-fade-in" style={{ animationDelay: "0.5s" }}>
+            <p className="text-sm text-muted-foreground mb-3">Vous êtes transporteur ou livreur ?</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/carrier/login")}
+                className="gap-2 border-orange-300 hover:bg-orange-50 hover:border-orange-400"
+              >
+                <Truck className="w-4 h-4 text-orange-500" />
+                Espace Transporteur
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/carrier/scan")}
+                className="gap-2 border-teal-300 hover:bg-teal-50 hover:border-teal-400"
+              >
+                <Package className="w-4 h-4 text-teal-500" />
+                Scanner Livreur
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Feature cards */}
         <div className="grid md:grid-cols-4 gap-4 animate-fade-in" style={{
