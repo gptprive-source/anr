@@ -307,7 +307,7 @@ const ResidentDashboard = () => {
           <QuickAction icon={<ShoppingCart className="w-6 h-6" />} label="Boutique" onClick={() => navigate("/shop")} color="pink" />
           {flags.doorOpeningEnabled && <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />}
           {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} color="green" />}
-          {copilotEnabled && <QuickAction icon={<Sparkles className="w-6 h-6" />} label="Co-Pilot" onClick={() => navigate("/pro")} color="cyan" />}
+          {copilotEnabled && flags.copilotModuleEnabled && <QuickAction icon={<Sparkles className="w-6 h-6" />} label="Co-Pilot" onClick={() => navigate("/pro")} color="cyan" />}
           {flags.relayModuleEnabled && <QuickAction icon={<Package className="w-6 h-6" />} label="Devenir relais" onClick={() => navigate("/relay")} color="teal" />}
           {flags.referralEnabled && <QuickAction icon={<Gift className="w-6 h-6" />} label="Parrainage" onClick={() => navigate("/referral")} color="purple" />}
           <QuickAction icon={<Mail className="w-6 h-6" />} label="Support" onClick={() => setSupportChatOpen(true)} color="blue" />

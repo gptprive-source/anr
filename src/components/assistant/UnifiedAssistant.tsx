@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSupportChat } from "@/contexts/SupportChatContext";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 // CoPilot types
 interface CoPilotMessage {
@@ -43,9 +44,13 @@ const UnifiedAssistant = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isOpen: supportIsOpen, setIsOpen: setSupportIsOpen, rgpdRequest, clearRGPDRequest } = useSupportChat();
+  const { flags } = useFeatureFlags();
   
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"copilot" | "support">("copilot");
+  // Default to support if copilot is disabled
+  const [activeTab, setActiveTab] = useState<"copilot" | "support">(() => 
+    flags.copilotModuleEnabled ? "copilot" : "support"
+  );
   
   // CoPilot state
   const [copilotMessages, setCopilotMessages] = useState<CoPilotMessage[]>(() => {
@@ -668,21 +673,27 @@ const UnifiedAssistant = () => {
           )}
           style={{ height: "min(600px, calc(100vh - 100px))" }}
         >
-        {/* Header with Tabs */}
         <div className="border-b">
           <div className="flex items-center justify-between px-4 pt-3">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "copilot" | "support")} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 h-9">
-                <TabsTrigger value="copilot" className="text-xs gap-1.5">
-                  <Compass className="h-3.5 w-3.5" />
-                  Co-Pilot
-                </TabsTrigger>
-                <TabsTrigger value="support" className="text-xs gap-1.5">
-                  <MessageCircle className="h-3.5 w-3.5" />
-                  Support
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {flags.copilotModuleEnabled ? (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "copilot" | "support")} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 h-9">
+                  <TabsTrigger value="copilot" className="text-xs gap-1.5">
+                    <Compass className="h-3.5 w-3.5" />
+                    Co-Pilot
+                  </TabsTrigger>
+                  <TabsTrigger value="support" className="text-xs gap-1.5">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    Support
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            ) : (
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                <span className="font-semibold">Support</span>
+              </div>
+            )}
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="ml-2 -mr-2">
               <X className="h-4 w-4" />
             </Button>
@@ -693,11 +704,11 @@ const UnifiedAssistant = () => {
             <div className="flex items-center gap-2">
               <div className={cn(
                 "p-1.5 rounded-full",
-                activeTab === "copilot" 
+                activeTab === "copilot" && flags.copilotModuleEnabled
                   ? "bg-gradient-to-r from-blue-600 to-cyan-500" 
                   : "bg-primary/20"
               )}>
-                {activeTab === "copilot" ? (
+                {activeTab === "copilot" && flags.copilotModuleEnabled ? (
                   <Compass className="h-3.5 w-3.5 text-white" />
                 ) : (
                   requestHuman ? <UserCog className="h-3.5 w-3.5 text-primary" /> : <Bot className="h-3.5 w-3.5 text-primary" />
@@ -705,14 +716,14 @@ const UnifiedAssistant = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-sm">
-                  {activeTab === "copilot" ? "ANR Co-Pilot" : "Support Clients"}
+                  {activeTab === "copilot" && flags.copilotModuleEnabled ? "ANR Co-Pilot" : "Support Clients"}
                 </h3>
                 <p className="text-[10px] text-muted-foreground">
-                  {activeTab === "copilot" ? "Votre guide personnel" : "Nous sommes là pour vous aider"}
+                  {activeTab === "copilot" && flags.copilotModuleEnabled ? "Votre guide personnel" : "Nous sommes là pour vous aider"}
                 </p>
               </div>
             </div>
-            {((activeTab === "copilot" && copilotMessages.length > 0) || (activeTab === "support" && supportMessages.length > 0)) && (
+            {((activeTab === "copilot" && flags.copilotModuleEnabled && copilotMessages.length > 0) || (activeTab === "support" && supportMessages.length > 0)) && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -728,7 +739,7 @@ const UnifiedAssistant = () => {
 
         {/* Content */}
         <div className="flex-1 flex flex-col min-h-0">
-          {activeTab === "copilot" ? (
+          {activeTab === "copilot" && flags.copilotModuleEnabled ? (
             <>
               <ScrollArea className="flex-1 p-4" ref={scrollRef}>
                 {copilotMessages.length === 0 ? (
