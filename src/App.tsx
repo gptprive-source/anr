@@ -256,6 +256,7 @@ const App = () => <QueryClientProvider client={queryClient}>
           <SupportChatProvider>
             <SupportAlertProvider>
               <AppContent />
+              <UnifiedAssistant />
             </SupportAlertProvider>
           </SupportChatProvider>
         </IncomingCallProvider>
