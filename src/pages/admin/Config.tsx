@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppConfig } from "@/hooks/useAppConfig";
 import { toast } from "sonner";
-import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key, CreditCard, RefreshCw, Package, Truck, Gift, PackageCheck } from "lucide-react";
+import { Save, Clock, MapPin, Users, Mail, ArrowLeft, Bot, Home, Building, Building2, Landmark, Check, X, Calendar, ScanFace, FileText, List, ToggleLeft, Video, Phone, MessageSquare, Mic, DoorOpen, Key, CreditCard, RefreshCw, Package, Truck, Gift, PackageCheck, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -718,6 +718,7 @@ const Config = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {[
+                  { key: 'feature_copilot_module_enabled', label: 'Co-Pilot IA', icon: Sparkles, description: 'Assistant IA pour guider les utilisateurs dans l\'application' },
                   { key: 'feature_carrier_module_enabled', label: 'Module Livreurs', icon: Truck, description: 'Accès transporteurs, tournées, preuves de livraison offline' },
                   { key: 'relay_module_enabled', label: 'Module Relais Colis', icon: Package, description: 'Points relais, dépôt/retrait de colis' },
                   { key: 'feature_parcel_delivery_enabled', label: 'Réception Colis', icon: PackageCheck, description: 'Permettre aux résidents de recevoir des colis' },

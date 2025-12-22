@@ -24,6 +24,9 @@ export interface FeatureFlags {
   doorModuleSalesEnabled: boolean;
   parcelDeliveryEnabled: boolean;
   
+  // CoPilot
+  copilotModuleEnabled: boolean;
+  
   // Referral
   referralEnabled: boolean;
 }
@@ -73,6 +76,9 @@ export const useFeatureFlags = () => {
       carrierModuleEnabled: parseBoolean(getConfig('feature_carrier_module_enabled'), false),
       doorModuleSalesEnabled: parseBoolean(getConfig('feature_door_module_sales_enabled'), false),
       parcelDeliveryEnabled: parseBoolean(getConfig('feature_parcel_delivery_enabled'), false),
+      
+      // CoPilot - default true
+      copilotModuleEnabled: parseBoolean(getConfig('feature_copilot_module_enabled'), true),
       
       // Referral - default true
       referralEnabled: parseBoolean(getConfig('feature_referral_enabled'), true),
