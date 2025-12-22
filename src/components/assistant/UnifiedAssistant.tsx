@@ -44,13 +44,17 @@ const UnifiedAssistant = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isOpen: supportIsOpen, setIsOpen: setSupportIsOpen, rgpdRequest, clearRGPDRequest } = useSupportChat();
-  const { flags } = useFeatureFlags();
+  const { flags, loading: flagsLoading } = useFeatureFlags();
   
   const [isOpen, setIsOpen] = useState(false);
-  // Default to support if copilot is disabled
-  const [activeTab, setActiveTab] = useState<"copilot" | "support">(() => 
-    flags.copilotModuleEnabled ? "copilot" : "support"
-  );
+  const [activeTab, setActiveTab] = useState<"copilot" | "support">("support");
+  
+  // Switch to support tab when copilot is disabled
+  useEffect(() => {
+    if (!flagsLoading && !flags.copilotModuleEnabled && activeTab === "copilot") {
+      setActiveTab("support");
+    }
+  }, [flags.copilotModuleEnabled, flagsLoading, activeTab]);
   
   // CoPilot state
   const [copilotMessages, setCopilotMessages] = useState<CoPilotMessage[]>(() => {
