@@ -26,8 +26,10 @@ interface SupportMessage {
   usageId?: string;
   rated?: boolean;
 }
+
 const COPILOT_STORAGE_KEY = "anr_copilot_chat";
 const SUPPORT_STORAGE_KEY = "anr_support_chat";
+
 const replaceConfigVariables = (text: string, configMap: Record<string, string>): string => {
   let result = text;
   Object.entries(configMap).forEach(([key, value]) => {
@@ -36,32 +38,24 @@ const replaceConfigVariables = (text: string, configMap: Record<string, string>)
   });
   return result;
 };
+
 const UnifiedAssistant = () => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const {
-    isOpen: supportIsOpen,
-    setIsOpen: setSupportIsOpen,
-    rgpdRequest,
-    clearRGPDRequest
-  } = useSupportChat();
-  const {
-    flags,
-    loading: flagsLoading
-  } = useFeatureFlags();
+  const { isOpen: supportIsOpen, setIsOpen: setSupportIsOpen, rgpdRequest, clearRGPDRequest } = useSupportChat();
+  const { flags, loading: flagsLoading } = useFeatureFlags();
+  
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"copilot" | "support">("support");
-
+  
   // Switch to support tab when copilot is disabled
   useEffect(() => {
     if (!flagsLoading && !flags.copilotModuleEnabled && activeTab === "copilot") {
       setActiveTab("support");
     }
   }, [flags.copilotModuleEnabled, flagsLoading, activeTab]);
-
+  
   // CoPilot state
   const [copilotMessages, setCopilotMessages] = useState<CoPilotMessage[]>(() => {
     try {
@@ -73,7 +67,7 @@ const UnifiedAssistant = () => {
   const [copilotInput, setCopilotInput] = useState("");
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [sessionId] = useState(() => `session_${Date.now()}`);
-
+  
   // Support state
   const [supportMessages, setSupportMessages] = useState<SupportMessage[]>(() => {
     try {
@@ -101,6 +95,7 @@ const UnifiedAssistant = () => {
   const [lastFaqQuery, setLastFaqQuery] = useState<string | null>(null);
   const [configMap, setConfigMap] = useState<Record<string, string>>({});
   const [aiModeEnabled, setAiModeEnabled] = useState(false);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const rgpdProcessedRef = useRef<string | null>(null);
@@ -112,6 +107,7 @@ const UnifiedAssistant = () => {
       setActiveTab("support");
     }
   }, [supportIsOpen]);
+
   useEffect(() => {
     if (!isOpen) {
       setSupportIsOpen(false);
@@ -122,9 +118,7 @@ const UnifiedAssistant = () => {
   useEffect(() => {
     const loadConfig = async () => {
       try {
-        const {
-          data
-        } = await supabase.from('app_config').select('key, value');
+        const { data } = await supabase.from('app_config').select('key, value');
         if (data) {
           const map: Record<string, string> = {};
           data.forEach(config => {
@@ -154,9 +148,7 @@ const UnifiedAssistant = () => {
   // Save CoPilot messages
   useEffect(() => {
     try {
-      localStorage.setItem(COPILOT_STORAGE_KEY, JSON.stringify({
-        messages: copilotMessages
-      }));
+      localStorage.setItem(COPILOT_STORAGE_KEY, JSON.stringify({ messages: copilotMessages }));
     } catch {}
   }, [copilotMessages]);
 
@@ -190,16 +182,21 @@ const UnifiedAssistant = () => {
     if (rgpdRequest && isOpen && rgpdRequest.requestId !== rgpdProcessedRef.current) {
       rgpdProcessedRef.current = rgpdRequest.requestId;
       setActiveTab("support");
+      
       const systemMessage: SupportMessage = {
         role: "system",
         content: `📋 Demande RGPD enregistrée : ${rgpdRequest.typeLabel}${rgpdRequest.details ? ` - "${rgpdRequest.details}"` : ""}`,
         source: "rgpd"
       };
+      
       const userMessage = `Je souhaite exercer mon ${rgpdRequest.typeLabel.toLowerCase()}. ${rgpdRequest.details || ""}`.trim();
+      
       setSupportMessages(prev => [...prev, systemMessage]);
+      
       setTimeout(() => {
         processRGPDRequest(userMessage, rgpdRequest.requestId, rgpdRequest.type);
       }, 500);
+      
       clearRGPDRequest();
     }
   }, [rgpdRequest, isOpen, clearRGPDRequest]);
@@ -215,38 +212,29 @@ const UnifiedAssistant = () => {
     }, payload => {
       const newMsg = payload.new as any;
       if (newMsg.sender_type === 'agent') {
-        setSupportMessages(prev => [...prev, {
-          role: 'agent',
-          content: newMsg.content
-        }]);
+        setSupportMessages(prev => [...prev, { role: 'agent', content: newMsg.content }]);
         toast.info("Nouvelle réponse du support !");
       }
     }).subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [conversationId]);
 
   // ========== CoPilot Functions ==========
   const streamCopilotChat = async (userMessage: string) => {
     setCopilotLoading(true);
-    const userMsg: CoPilotMessage = {
-      role: "user",
-      content: userMessage
-    };
+    
+    const userMsg: CoPilotMessage = { role: "user", content: userMessage };
     const allMessages = [...copilotMessages, userMsg];
     setCopilotMessages(allMessages);
+
     try {
-      const {
-        data: {
-          session
-        }
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         toast.error("Vous devez être connecté");
         setCopilotLoading(false);
         return;
       }
+
       const response = await fetch(`https://mkzpdmyymabgsntwmmir.supabase.co/functions/v1/copilot-chat`, {
         method: "POST",
         headers: {
@@ -254,10 +242,7 @@ const UnifiedAssistant = () => {
           "Authorization": `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          messages: allMessages.map(m => ({
-            role: m.role,
-            content: m.content
-          })),
+          messages: allMessages.map(m => ({ role: m.role, content: m.content })),
           session_id: sessionId,
           context: {
             current_path: location.pathname,
@@ -267,6 +252,7 @@ const UnifiedAssistant = () => {
           }
         })
       });
+
       if (!response.ok) {
         const errorData = await response.json();
         if (errorData.error === 'COPILOT_NOT_ENABLED') {
@@ -277,24 +263,21 @@ const UnifiedAssistant = () => {
         setCopilotLoading(false);
         return;
       }
+
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No reader");
+      
       const decoder = new TextDecoder();
       let buffer = "";
       let assistantContent = "";
-      setCopilotMessages(prev => [...prev, {
-        role: "assistant",
-        content: ""
-      }]);
+
+      setCopilotMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
       while (true) {
-        const {
-          done,
-          value
-        } = await reader.read();
+        const { done, value } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, {
-          stream: true
-        });
+        buffer += decoder.decode(value, { stream: true });
+        
         let newlineIndex: number;
         while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
           let line = buffer.slice(0, newlineIndex);
@@ -311,10 +294,7 @@ const UnifiedAssistant = () => {
               assistantContent += content;
               setCopilotMessages(prev => {
                 const updated = [...prev];
-                updated[updated.length - 1] = {
-                  role: "assistant",
-                  content: assistantContent
-                };
+                updated[updated.length - 1] = { role: "assistant", content: assistantContent };
                 return updated;
               });
             }
@@ -329,12 +309,14 @@ const UnifiedAssistant = () => {
       setCopilotLoading(false);
     }
   };
+
   const handleCopilotSend = async () => {
     if (!copilotInput.trim() || copilotLoading) return;
     const message = copilotInput.trim();
     setCopilotInput("");
     await streamCopilotChat(message);
   };
+
   const clearCopilotHistory = () => {
     setCopilotMessages([]);
     localStorage.removeItem(COPILOT_STORAGE_KEY);
@@ -349,28 +331,20 @@ const UnifiedAssistant = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
         },
-        body: JSON.stringify({
-          query,
-          threshold: 0.3
-        })
+        body: JSON.stringify({ query, threshold: 0.3 })
       });
-      if (!response.ok) return {
-        found: false
-      };
+      if (!response.ok) return { found: false };
       return await response.json();
     } catch {
-      return {
-        found: false
-      };
+      return { found: false };
     }
   };
+
   const processRGPDRequest = async (userMessage: string, requestId: string, requestType: string) => {
     setSupportLoading(true);
-    const userMsg: SupportMessage = {
-      role: "user",
-      content: userMessage
-    };
+    const userMsg: SupportMessage = { role: "user", content: userMessage };
     setSupportMessages(prev => [...prev, userMsg]);
+
     try {
       const response = await fetch(`https://mkzpdmyymabgsntwmmir.supabase.co/functions/v1/support-chat`, {
         method: "POST",
@@ -379,18 +353,11 @@ const UnifiedAssistant = () => {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
         },
         body: JSON.stringify({
-          messages: [{
-            role: "user",
-            content: userMessage
-          }],
-          rgpdContext: {
-            requestId,
-            requestType,
-            userId: user?.id,
-            userEmail: user?.email
-          }
+          messages: [{ role: "user", content: userMessage }],
+          rgpdContext: { requestId, requestType, userId: user?.id, userEmail: user?.email }
         })
       });
+
       if (!response.ok) throw new Error("Erreur du service");
       await handleSupportStreamResponse(response);
     } catch (error) {
@@ -399,28 +366,23 @@ const UnifiedAssistant = () => {
       setSupportLoading(false);
     }
   };
+
   const handleSupportStreamResponse = async (response: Response) => {
     const reader = response.body?.getReader();
     if (!reader) throw new Error("No reader");
+
     const decoder = new TextDecoder();
     let buffer = "";
     let assistantContent = "";
     const tempUsageId = `temp_${Date.now()}`;
-    setSupportMessages(prev => [...prev, {
-      role: "assistant",
-      content: "",
-      source: "ai",
-      usageId: tempUsageId
-    }]);
+    
+    setSupportMessages(prev => [...prev, { role: "assistant", content: "", source: "ai", usageId: tempUsageId }]);
+
     while (true) {
-      const {
-        done,
-        value
-      } = await reader.read();
+      const { done, value } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, {
-        stream: true
-      });
+      buffer += decoder.decode(value, { stream: true });
+      
       let newlineIndex: number;
       while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
         let line = buffer.slice(0, newlineIndex);
@@ -438,12 +400,7 @@ const UnifiedAssistant = () => {
             assistantContent += content;
             setSupportMessages(prev => {
               const updated = [...prev];
-              updated[updated.length - 1] = {
-                role: "assistant",
-                content: assistantContent,
-                source: "ai",
-                usageId: usageId || tempUsageId
-              };
+              updated[updated.length - 1] = { role: "assistant", content: assistantContent, source: "ai", usageId: usageId || tempUsageId };
               return updated;
             });
           }
@@ -451,6 +408,7 @@ const UnifiedAssistant = () => {
       }
     }
   };
+
   const streamSupportAiChat = async (userMessage: string, allMessages: SupportMessage[]) => {
     let assistantContent = "";
     try {
@@ -467,27 +425,21 @@ const UnifiedAssistant = () => {
           }))
         })
       });
+
       if (!response.ok) throw new Error("Erreur du service");
+
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No reader");
       const decoder = new TextDecoder();
       let buffer = "";
       const tempUsageId = `temp_${Date.now()}`;
-      setSupportMessages(prev => [...prev, {
-        role: "assistant",
-        content: "",
-        source: "ai",
-        usageId: tempUsageId
-      }]);
+
+      setSupportMessages(prev => [...prev, { role: "assistant", content: "", source: "ai", usageId: tempUsageId }]);
+
       while (true) {
-        const {
-          done,
-          value
-        } = await reader.read();
+        const { done, value } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, {
-          stream: true
-        });
+        buffer += decoder.decode(value, { stream: true });
         let newlineIndex: number;
         while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
           let line = buffer.slice(0, newlineIndex);
@@ -505,12 +457,7 @@ const UnifiedAssistant = () => {
               assistantContent += content;
               setSupportMessages(prev => {
                 const updated = [...prev];
-                updated[updated.length - 1] = {
-                  role: "assistant",
-                  content: assistantContent,
-                  source: "ai",
-                  usageId: usageId || tempUsageId
-                };
+                updated[updated.length - 1] = { role: "assistant", content: assistantContent, source: "ai", usageId: usageId || tempUsageId };
                 return updated;
               });
             }
@@ -522,21 +469,22 @@ const UnifiedAssistant = () => {
       setSupportMessages(prev => prev.filter((_, i) => i !== prev.length - 1));
     }
   };
+
   const handleSupportSend = async () => {
     if (!supportInput.trim() || supportLoading) return;
     const message = supportInput.trim();
     setSupportInput("");
+    
     if (requestHuman && conversationId) {
       sendHumanMessage(message);
       return;
     }
-    const userMsg: SupportMessage = {
-      role: "user",
-      content: message
-    };
+
+    const userMsg: SupportMessage = { role: "user", content: message };
     setSupportMessages(prev => [...prev, userMsg]);
     setSupportLoading(true);
     setLastFaqQuery(message);
+
     try {
       if (aiModeEnabled) {
         await streamSupportAiChat(message, [...supportMessages, userMsg]);
@@ -544,11 +492,7 @@ const UnifiedAssistant = () => {
         const faqResult = await searchFaq(message);
         if (faqResult.found && faqResult.answer) {
           const processedAnswer = replaceConfigVariables(faqResult.answer, configMap);
-          setSupportMessages(prev => [...prev, {
-            role: "faq",
-            content: processedAnswer,
-            source: "faq"
-          }]);
+          setSupportMessages(prev => [...prev, { role: "faq", content: processedAnswer, source: "faq" }]);
         } else {
           await streamSupportAiChat(message, [...supportMessages, userMsg]);
         }
@@ -559,6 +503,7 @@ const UnifiedAssistant = () => {
       setSupportLoading(false);
     }
   };
+
   const handleRetryWithAi = async () => {
     if (!lastFaqQuery || supportLoading) return;
     setSupportLoading(true);
@@ -569,12 +514,10 @@ const UnifiedAssistant = () => {
       setLastFaqQuery(null);
     }
   };
+
   const sendHumanMessage = async (content: string) => {
     if (!conversationId || !user) return;
-    setSupportMessages(prev => [...prev, {
-      role: "user",
-      content
-    }]);
+    setSupportMessages(prev => [...prev, { role: "user", content }]);
     try {
       await supabase.from('support_messages').insert({
         conversation_id: conversationId,
@@ -586,18 +529,17 @@ const UnifiedAssistant = () => {
       toast.error("Erreur lors de l'envoi");
     }
   };
+
   const handleRequestHuman = async () => {
     setRequestHuman(true);
     if (user) {
       try {
-        const {
-          data: conv,
-          error: convError
-        } = await supabase.from('support_conversations').insert({
+        const { data: conv, error: convError } = await supabase.from('support_conversations').insert({
           user_id: user.id,
           status: 'pending'
         }).select().single();
         if (convError) throw convError;
+
         if (conv && supportMessages.length > 0) {
           const messagesToInsert = supportMessages.filter(m => m.role !== "system").map(m => ({
             conversation_id: conv.id,
@@ -607,18 +549,17 @@ const UnifiedAssistant = () => {
           }));
           await supabase.from('support_messages').insert(messagesToInsert);
         }
+
         try {
           await supabase.functions.invoke('notify-support-request', {
             body: {
               conversationId: conv.id,
               userId: user.id,
-              messages: supportMessages.filter(m => m.role !== "system").map(m => ({
-                role: m.role,
-                content: m.content
-              }))
+              messages: supportMessages.filter(m => m.role !== "system").map(m => ({ role: m.role, content: m.content }))
             }
           });
         } catch {}
+        
         setConversationId(conv.id);
         toast.success("Demande envoyée ! Un agent vous contactera bientôt.");
       } catch {
@@ -628,6 +569,7 @@ const UnifiedAssistant = () => {
       toast.info("Connectez-vous pour demander une assistance humaine");
     }
   };
+
   const clearSupportHistory = () => {
     setSupportMessages([]);
     setRequestHuman(false);
@@ -635,29 +577,31 @@ const UnifiedAssistant = () => {
     rgpdProcessedRef.current = null;
     localStorage.removeItem(SUPPORT_STORAGE_KEY);
   };
+
   const rateMessage = async (messageIndex: number, rating: "positive" | "negative") => {
     const message = supportMessages[messageIndex];
     if (!message.usageId || message.rated) return;
+    
     try {
       await supabase.functions.invoke("chatbot-feedback", {
-        body: {
+        body: { 
           queryText: supportMessages[messageIndex - 1]?.content || "",
           responsePreview: message.content.slice(0, 100),
           rating,
           source: message.source || "ai"
         }
       });
+      
       setSupportMessages(prev => {
         const updated = [...prev];
-        updated[messageIndex] = {
-          ...updated[messageIndex],
-          rated: true
-        };
+        updated[messageIndex] = { ...updated[messageIndex], rated: true };
         return updated;
       });
+      
       toast.success(rating === "positive" ? "Merci pour votre feedback !" : "Merci, nous améliorerons cette réponse");
     } catch {}
   };
+
   const getSupportMessageIcon = (message: SupportMessage) => {
     if (message.role === "user") return <User className="w-4 h-4" />;
     if (message.role === "agent") return <UserCog className="w-4 h-4" />;
@@ -665,6 +609,7 @@ const UnifiedAssistant = () => {
     if (message.source === "faq") return <BookOpen className="w-4 h-4" />;
     return <Sparkles className="w-4 h-4" />;
   };
+
   const getSupportMessageStyle = (message: SupportMessage) => {
     if (message.role === "user") return "bg-primary text-primary-foreground rounded-br-sm";
     if (message.role === "agent") return "bg-green-500/20 text-foreground rounded-bl-sm";
@@ -672,6 +617,7 @@ const UnifiedAssistant = () => {
     if (message.source === "faq") return "bg-blue-500/20 text-foreground rounded-bl-sm";
     return "bg-muted rounded-bl-sm";
   };
+
   const getSupportAvatarStyle = (message: SupportMessage) => {
     if (message.role === "user") return "bg-primary text-primary-foreground";
     if (message.role === "agent") return "bg-green-500 text-white";
@@ -679,29 +625,62 @@ const UnifiedAssistant = () => {
     if (message.source === "faq") return "bg-blue-500 text-white";
     return "bg-muted";
   };
+
   const lastSupportMessageIsFaq = supportMessages.length > 0 && supportMessages[supportMessages.length - 1].source === "faq";
 
   // Hide on messaging pages
   const isMessagingPage = location.pathname === "/messages" || location.pathname.startsWith("/conversation");
+  
   if (isMessagingPage) {
     return null;
   }
-  return <>
+
+  return (
+    <>
       {/* Toggle Buttons - Top Right */}
-      <div className={cn("fixed top-4 right-4 z-50 flex flex-col gap-3 transition-all duration-300", isOpen && "scale-0 opacity-0")}>
-        {user}
-        <Button onClick={() => navigate("/contact")} className={cn("h-12 w-12 rounded-full shadow-lg", "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600")} size="icon">
+      <div className={cn(
+        "fixed top-4 right-4 z-50 flex flex-col gap-3 transition-all duration-300",
+        isOpen && "scale-0 opacity-0"
+      )}>
+        {user && (
+          <Button
+            onClick={() => setIsOpen(!isOpen)}
+            className={cn(
+              "h-12 w-12 rounded-full shadow-lg",
+              "bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
+            )}
+            size="icon"
+          >
+            <Sparkles className="h-5 w-5 text-white" />
+          </Button>
+        )}
+        <Button
+          onClick={() => navigate("/contact")}
+          className={cn(
+            "h-12 w-12 rounded-full shadow-lg",
+            "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
+          )}
+          size="icon"
+        >
           <Mail className="h-5 w-5 text-white" />
         </Button>
       </div>
 
       {/* Chat Window - only for authenticated users */}
-      {user && <div className={cn("fixed top-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)]", "bg-background border rounded-2xl shadow-2xl flex flex-col overflow-hidden", "transition-all duration-300 origin-top-right", isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none")} style={{
-      height: "min(600px, calc(100vh - 100px))"
-    }}>
+      {user && (
+        <div
+          className={cn(
+            "fixed top-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)]",
+            "bg-background border rounded-2xl shadow-2xl flex flex-col overflow-hidden",
+            "transition-all duration-300 origin-top-right",
+            isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"
+          )}
+          style={{ height: "min(600px, calc(100vh - 100px))" }}
+        >
         <div className="border-b">
           <div className="flex items-center justify-between px-4 pt-3">
-            {flags.copilotModuleEnabled ? <Tabs value={activeTab} onValueChange={v => setActiveTab(v as "copilot" | "support")} className="w-full">
+            {flags.copilotModuleEnabled ? (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "copilot" | "support")} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 h-9">
                   <TabsTrigger value="copilot" className="text-xs gap-1.5">
                     <Compass className="h-3.5 w-3.5" />
@@ -712,10 +691,13 @@ const UnifiedAssistant = () => {
                     Support
                   </TabsTrigger>
                 </TabsList>
-              </Tabs> : <div className="flex items-center gap-2">
+              </Tabs>
+            ) : (
+              <div className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" />
                 <span className="font-semibold">Support</span>
-              </div>}
+              </div>
+            )}
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="ml-2 -mr-2">
               <X className="h-4 w-4" />
             </Button>
@@ -724,8 +706,17 @@ const UnifiedAssistant = () => {
           {/* Sub-header */}
           <div className="flex items-center justify-between px-4 py-2">
             <div className="flex items-center gap-2">
-              <div className={cn("p-1.5 rounded-full", activeTab === "copilot" && flags.copilotModuleEnabled ? "bg-gradient-to-r from-blue-600 to-cyan-500" : "bg-primary/20")}>
-                {activeTab === "copilot" && flags.copilotModuleEnabled ? <Compass className="h-3.5 w-3.5 text-white" /> : requestHuman ? <UserCog className="h-3.5 w-3.5 text-primary" /> : <Bot className="h-3.5 w-3.5 text-primary" />}
+              <div className={cn(
+                "p-1.5 rounded-full",
+                activeTab === "copilot" && flags.copilotModuleEnabled
+                  ? "bg-gradient-to-r from-blue-600 to-cyan-500" 
+                  : "bg-primary/20"
+              )}>
+                {activeTab === "copilot" && flags.copilotModuleEnabled ? (
+                  <Compass className="h-3.5 w-3.5 text-white" />
+                ) : (
+                  requestHuman ? <UserCog className="h-3.5 w-3.5 text-primary" /> : <Bot className="h-3.5 w-3.5 text-primary" />
+                )}
               </div>
               <div>
                 <h3 className="font-semibold text-sm">
@@ -736,17 +727,27 @@ const UnifiedAssistant = () => {
                 </p>
               </div>
             </div>
-            {(activeTab === "copilot" && flags.copilotModuleEnabled && copilotMessages.length > 0 || activeTab === "support" && supportMessages.length > 0) && <Button variant="ghost" size="icon" onClick={activeTab === "copilot" ? clearCopilotHistory : clearSupportHistory} title="Nouvelle conversation" className="h-8 w-8">
+            {((activeTab === "copilot" && flags.copilotModuleEnabled && copilotMessages.length > 0) || (activeTab === "support" && supportMessages.length > 0)) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={activeTab === "copilot" ? clearCopilotHistory : clearSupportHistory}
+                title="Nouvelle conversation"
+                className="h-8 w-8"
+              >
                 <Trash2 className="w-3.5 h-3.5" />
-              </Button>}
+              </Button>
+            )}
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 flex flex-col min-h-0">
-          {activeTab === "copilot" && flags.copilotModuleEnabled ? <>
+          {activeTab === "copilot" && flags.copilotModuleEnabled ? (
+            <>
               <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                {copilotMessages.length === 0 ? <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                {copilotMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center p-4">
                     <div className="p-4 rounded-full bg-gradient-to-r from-blue-600/20 to-cyan-500/20 mb-4">
                       <Sparkles className="h-8 w-8 text-blue-600" />
                     </div>
@@ -765,95 +766,147 @@ const UnifiedAssistant = () => {
                         💡 Partager mon code ANR
                       </Button>
                     </div>
-                  </div> : <div className="space-y-4">
-                    {copilotMessages.map((msg, idx) => <div key={idx} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
-                        <div className={cn("max-w-[85%] rounded-2xl px-4 py-2 text-sm", msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md")}>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {copilotMessages.map((msg, idx) => (
+                      <div key={idx} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+                        <div className={cn(
+                          "max-w-[85%] rounded-2xl px-4 py-2 text-sm",
+                          msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md"
+                        )}>
                           <div className="whitespace-pre-wrap">{msg.content}</div>
                         </div>
-                      </div>)}
-                    {copilotLoading && copilotMessages[copilotMessages.length - 1]?.role === "user" && <div className="flex justify-start">
+                      </div>
+                    ))}
+                    {copilotLoading && copilotMessages[copilotMessages.length - 1]?.role === "user" && (
+                      <div className="flex justify-start">
                         <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
                         </div>
-                      </div>}
-                  </div>}
+                      </div>
+                    )}
+                  </div>
+                )}
               </ScrollArea>
               
               <div className="p-4 border-t">
                 <div className="flex items-center gap-2">
-                  <Input ref={inputRef} value={copilotInput} onChange={e => setCopilotInput(e.target.value)} onKeyPress={e => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleCopilotSend())} placeholder="Posez votre question..." disabled={copilotLoading} className="flex-1" />
+                  <Input
+                    ref={inputRef}
+                    value={copilotInput}
+                    onChange={(e) => setCopilotInput(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleCopilotSend())}
+                    placeholder="Posez votre question..."
+                    disabled={copilotLoading}
+                    className="flex-1"
+                  />
                   <Button onClick={handleCopilotSend} disabled={!copilotInput.trim() || copilotLoading} size="icon" className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600">
                     {copilotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
-            </> : <>
+            </>
+          ) : (
+            <>
               <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                {supportMessages.length === 0 ? <div className="text-center text-muted-foreground py-8">
+                {supportMessages.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
                     <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p className="text-sm">Bonjour ! Comment puis-je vous aider ?</p>
-                  </div> : <div className="space-y-4">
-                    {supportMessages.map((message, index) => <div key={index}>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {supportMessages.map((message, index) => (
+                      <div key={index}>
                         <div className={cn("flex gap-3", message.role === "user" ? "flex-row-reverse" : "")}>
                           <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", getSupportAvatarStyle(message))}>
                             {getSupportMessageIcon(message)}
                           </div>
                           <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm", getSupportMessageStyle(message))}>
-                            {message.source && message.role !== "user" && message.role !== "system" && <div className="text-[10px] font-medium opacity-70 mb-1 flex items-center gap-1">
-                                {message.source === "faq" ? <><BookOpen className="w-3 h-3" /> Réponse de notre FAQ</> : <><Sparkles className="w-3 h-3" /> Assistant IA</>}
-                              </div>}
-                            {message.content || <span className="flex items-center gap-2">
+                            {message.source && message.role !== "user" && message.role !== "system" && (
+                              <div className="text-[10px] font-medium opacity-70 mb-1 flex items-center gap-1">
+                                {message.source === "faq" ? (
+                                  <><BookOpen className="w-3 h-3" /> Réponse de notre FAQ</>
+                                ) : (
+                                  <><Sparkles className="w-3 h-3" /> Assistant IA</>
+                                )}
+                              </div>
+                            )}
+                            {message.content || (
+                              <span className="flex items-center gap-2">
                                 <Loader2 className="w-4 h-4 animate-spin" />
                                 Réflexion...
-                              </span>}
+                              </span>
+                            )}
                           </div>
                         </div>
 
-                        {(message.source === "ai" || message.source === "faq") && message.content && !message.rated && <div className="mt-2 ml-11 flex gap-1">
+                        {(message.source === "ai" || message.source === "faq") && message.content && !message.rated && (
+                          <div className="mt-2 ml-11 flex gap-1">
                             <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-muted-foreground hover:text-green-600 hover:bg-green-500/10" onClick={() => rateMessage(index, "positive")}>
                               <ThumbsUp className="w-3 h-3" />
                             </Button>
                             <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-muted-foreground hover:text-red-600 hover:bg-red-500/10" onClick={() => rateMessage(index, "negative")}>
                               <ThumbsDown className="w-3 h-3" />
                             </Button>
-                            {message.source === "faq" && index === supportMessages.length - 1 && !supportLoading && <Button variant="ghost" size="sm" className="text-xs h-7 gap-1.5 text-muted-foreground hover:text-foreground ml-1" onClick={handleRetryWithAi}>
+                            {message.source === "faq" && index === supportMessages.length - 1 && !supportLoading && (
+                              <Button variant="ghost" size="sm" className="text-xs h-7 gap-1.5 text-muted-foreground hover:text-foreground ml-1" onClick={handleRetryWithAi}>
                                 <RefreshCw className="w-3 h-3" />
                                 Réponse IA
-                              </Button>}
-                          </div>}
+                              </Button>
+                            )}
+                          </div>
+                        )}
                         
-                        {message.rated && <div className="mt-1 ml-11 text-xs text-muted-foreground">
+                        {message.rated && (
+                          <div className="mt-1 ml-11 text-xs text-muted-foreground">
                             ✓ Merci pour votre feedback
-                          </div>}
-                      </div>)}
-                  </div>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </ScrollArea>
 
-              {!requestHuman && supportMessages.length > 0 && !lastSupportMessageIsFaq && <div className="px-4 py-2 border-t">
+              {!requestHuman && supportMessages.length > 0 && !lastSupportMessageIsFaq && (
+                <div className="px-4 py-2 border-t">
                   <Button variant="outline" size="sm" className="w-full text-xs gap-2" onClick={handleRequestHuman}>
                     <UserCog className="w-4 h-4" />
                     Parler à un agent humain
                   </Button>
-                </div>}
+                </div>
+              )}
 
-              {requestHuman && <div className="px-4 py-2 bg-green-500/10 text-green-700 text-xs text-center">
+              {requestHuman && (
+                <div className="px-4 py-2 bg-green-500/10 text-green-700 text-xs text-center">
                   ✓ Vous êtes connecté avec le support. Continuez à écrire.
-                </div>}
+                </div>
+              )}
 
               <div className="p-4 border-t">
-                <form onSubmit={e => {
-              e.preventDefault();
-              handleSupportSend();
-            }} className="flex gap-2">
-                  <Input ref={inputRef} value={supportInput} onChange={e => setSupportInput(e.target.value)} placeholder="Écrivez votre message..." disabled={supportLoading} className="flex-1" />
+                <form onSubmit={(e) => { e.preventDefault(); handleSupportSend(); }} className="flex gap-2">
+                  <Input
+                    ref={inputRef}
+                    value={supportInput}
+                    onChange={e => setSupportInput(e.target.value)}
+                    placeholder="Écrivez votre message..."
+                    disabled={supportLoading}
+                    className="flex-1"
+                  />
                   <Button type="submit" size="icon" disabled={!supportInput.trim() || supportLoading}>
                     {supportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </Button>
                 </form>
               </div>
-            </>}
+            </>
+          )}
         </div>
-        </div>}
-    </>;
+        </div>
+      )}
+    </>
+  );
 };
+
 export default UnifiedAssistant;
