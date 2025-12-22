@@ -63,17 +63,17 @@ const ResidentDashboard = () => {
   const {
     unreadCount: unreadMessagesCount
   } = useVisitorMessages(habitationData?.id || "", true);
-  const { setIsOpen: setSupportChatOpen } = useSupportChat();
-  
+  const {
+    setIsOpen: setSupportChatOpen
+  } = useSupportChat();
+
   // Check if user has copilot enabled (pro company)
   useEffect(() => {
     const checkCopilot = async () => {
       if (!user) return;
-      const { data } = await supabase
-        .from("pro_company_roles")
-        .select("company:pro_companies(copilot_enabled)")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const {
+        data
+      } = await supabase.from("pro_company_roles").select("company:pro_companies(copilot_enabled)").eq("user_id", user.id).maybeSingle();
       if (data?.company && (data.company as any).copilot_enabled) {
         setCopilotEnabled(true);
       }
@@ -88,9 +88,10 @@ const ResidentDashboard = () => {
   const fetchHabitationData = async () => {
     try {
       // Single query to get resident data with habitation and ANR
-      const { data: residentData, error: residentError } = await supabase
-        .from("residents")
-        .select(`
+      const {
+        data: residentData,
+        error: residentError
+      } = await supabase.from("residents").select(`
           id, 
           habitation_id, 
           is_owner, 
@@ -100,25 +101,17 @@ const ResidentDashboard = () => {
             name,
             anrs:anr_id (id, code, address, latitude, longitude)
           )
-        `)
-        .eq("user_id", user?.id)
-        .eq("status", "verified")
-        .maybeSingle();
-
+        `).eq("user_id", user?.id).eq("status", "verified").maybeSingle();
       if (residentError) throw residentError;
-      
       if (!residentData) {
         if (retryCount < 5) {
           console.log(`[Dashboard] Resident not found, retrying (${retryCount + 1}/5)...`);
           setTimeout(() => setRetryCount(prev => prev + 1), 1000);
           return;
         }
-        const { data: subscription } = await supabase
-          .from("subscriptions")
-          .select("id, status")
-          .eq("user_id", user?.id)
-          .eq("status", "active")
-          .maybeSingle();
+        const {
+          data: subscription
+        } = await supabase.from("subscriptions").select("id, status").eq("user_id", user?.id).eq("status", "active").maybeSingle();
         if (subscription) {
           navigate("/no-habitation");
         } else {
@@ -126,45 +119,29 @@ const ResidentDashboard = () => {
         }
         return;
       }
-
       setIsOwner(residentData.is_owner || false);
       setCurrentResidentId(residentData.id);
       setIsMuted(residentData.is_muted || false);
-
       const habitation = residentData.habitations as any;
       if (!habitation) throw new Error("Habitation not found");
 
       // Parallel fetch: profile + other residents
-      const [profileResult, residentsResult] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("first_name, last_name")
-          .eq("id", user?.id)
-          .single(),
-        supabase
-          .from("residents")
-          .select("id, user_id, is_owner, is_muted")
-          .eq("habitation_id", residentData.habitation_id)
-          .eq("status", "verified")
-      ]);
-
+      const [profileResult, residentsResult] = await Promise.all([supabase.from("profiles").select("first_name, last_name").eq("id", user?.id).single(), supabase.from("residents").select("id, user_id, is_owner, is_muted").eq("habitation_id", residentData.habitation_id).eq("status", "verified")]);
       if (profileResult.data) {
         setCurrentUserName(`${profileResult.data.first_name || ""} ${profileResult.data.last_name || ""}`.trim());
       }
 
       // Fetch profiles for residents in parallel
       const residents = residentsResult.data || [];
-      const residentsWithProfiles: Resident[] = await Promise.all(
-        residents.map(async resident => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("first_name, last_name, phone_number")
-            .eq("id", resident.user_id)
-            .single();
-          return { ...resident, profile: profile || undefined };
-        })
-      );
-
+      const residentsWithProfiles: Resident[] = await Promise.all(residents.map(async resident => {
+        const {
+          data: profile
+        } = await supabase.from("profiles").select("first_name, last_name, phone_number").eq("id", resident.user_id).single();
+        return {
+          ...resident,
+          profile: profile || undefined
+        };
+      }));
       setHabitationData({
         id: habitation.id,
         name: habitation.name,
@@ -280,7 +257,7 @@ const ResidentDashboard = () => {
         {/* Header */}
         <div className="pt-4 flex items-center justify-between">
           <div>
-            <h1 className="font-bold text-foreground text-3xl">Mon ANR</h1>
+            <h1 className="font-bold text-foreground text-base">Mon Adresse Numérique Résidentielle</h1>
             <p className="text-muted-foreground pt-1 text-sm font-extrabold">{habitationData.anr.address}</p>
           </div>
           <NotificationBell />
