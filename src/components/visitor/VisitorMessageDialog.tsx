@@ -201,7 +201,7 @@ const VisitorMessageDialog = ({
         // Store callback to call AFTER incentive is closed
         pendingOnMessageSentRef.current = onMessageSent || null;
         onOpenChange(false);
-        // Show incentive dialog (don't navigate yet - wait for incentive to close)
+        // Show incentive dialog - then redirect to visitor messages
         setShowAccountIncentive(true);
       }
     } else {
@@ -468,10 +468,14 @@ const VisitorMessageDialog = ({
         open={showAccountIncentive}
         onOpenChange={(open) => {
           setShowAccountIncentive(open);
-          // When incentive dialog closes, call the pending callback (navigate back)
-          if (!open && pendingOnMessageSentRef.current) {
-            pendingOnMessageSentRef.current();
-            pendingOnMessageSentRef.current = null;
+          // When incentive dialog closes, navigate to visitor messages so they can see replies
+          if (!open) {
+            if (pendingOnMessageSentRef.current) {
+              pendingOnMessageSentRef.current();
+              pendingOnMessageSentRef.current = null;
+            }
+            // Navigate to visitor messages page so they can track their conversation
+            navigate("/visitor-messages");
           }
         }}
       />
