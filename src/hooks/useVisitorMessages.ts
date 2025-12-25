@@ -135,6 +135,17 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
     }
   };
 
+  // Get or create device ID for tracking visitor conversations
+  const getVisitorDeviceId = (): string => {
+    const DEVICE_ID_KEY = "anr_visitor_device_id";
+    let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+      localStorage.setItem(DEVICE_ID_KEY, deviceId);
+    }
+    return deviceId;
+  };
+
   // Send a message (visitor - no auth required)
   const sendMessage = async (
     targetHabitationId: string,
@@ -209,6 +220,9 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
       }
 
       // Prepare insert data with optional encryption
+      // IMPORTANT: Always include visitor_device_id so visitors can see their conversations
+      const visitorDeviceId = getVisitorDeviceId();
+      
       const insertData: Record<string, any> = {
         habitation_id: targetHabitationId,
         message: encryptionData ? null : (message || null), // Clear text only if not encrypted
@@ -217,6 +231,7 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         business_card_id: businessCardId || null,
         media_url: mediaUrl,
         media_type: mediaType,
+        visitor_device_id: visitorDeviceId, // Track which device sent this message
       };
 
       // Add encryption fields if provided
