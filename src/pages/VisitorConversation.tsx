@@ -479,8 +479,10 @@ const VisitorConversation = () => {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <p>Aucun message dans cette conversation</p>
+          <div className="text-center py-12 text-muted-foreground space-y-2">
+            <p className="font-medium text-foreground">Le résident n'est pas disponible</p>
+            <p>Laissez-lui un message texte ou vocal ci-dessous.</p>
+            <p className="text-sm">Il recevra une notification et pourra vous répondre.</p>
           </div>
         ) : (
           messages.map((msg) => (
