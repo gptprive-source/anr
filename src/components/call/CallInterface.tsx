@@ -7,7 +7,6 @@ import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
 import { supabase } from "@/integrations/supabase/client";
 import VideoGrid from "./VideoGrid";
 import InviteResidentsPanel from "./InviteResidentsPanel";
-import VisitorMessageDialog from "@/components/visitor/VisitorMessageDialog";
 import { BleOpenDoorButton } from "@/components/door/BleOpenDoorButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -37,15 +36,13 @@ const CallInterface = memo(({
 }: CallInterfaceProps) => {
   const navigate = useNavigate();
   const [callState, setCallState] = useState<CallState>(isResident ? "ringing" : "connecting");
-  const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [callWasAnswered, setCallWasAnswered] = useState(false);
   const [callWasDeclined, setCallWasDeclined] = useState(false);
   const [showDoorDialog, setShowDoorDialog] = useState(false);
+  const [shouldRedirectToConversation, setShouldRedirectToConversation] = useState(false);
   const hasJoinedRef = useRef(false);
   const channelRef = useRef<any>(null);
   const callStartTimeRef = useRef<number>(Date.now());
-  // Ref to track message dialog state synchronously (prevents race condition)
-  const showMessageDialogRef = useRef(false);
   
   // Ringing timeout: 30 seconds before showing message dialog
   const RINGING_TIMEOUT_MS = 30000;
@@ -135,13 +132,12 @@ const CallInterface = memo(({
             return;
           }
           
-          // Handle declined status - show message and redirect to messaging
+          // Handle declined status - redirect to conversation
           if (callLog.status === "declined" && !isResident) {
-            logger.log("[CallInterface] Call was declined by all residents");
+            logger.log("[CallInterface] Call was declined by all residents - redirecting to conversation");
             callEndedRef.current = true;
             setCallWasDeclined(true);
-            showMessageDialogRef.current = true;
-            setShowMessageDialog(true);
+            setShouldRedirectToConversation(true);
             setCallState("ended");
             leaveCall();
             return;
@@ -150,12 +146,11 @@ const CallInterface = memo(({
           if (callLog.status === "ended") {
             logger.log("[CallInterface] Call ended by other party");
             
-            // If visitor and call ended without being answered
+            // If visitor and call ended without being answered - redirect to conversation
             if (!isResident && !callLog.answered_by && !callWasAnswered) {
-              logger.log("[CallInterface] Call ended without answer - showing message dialog");
+              logger.log("[CallInterface] Call ended without answer - redirecting to conversation");
               callEndedRef.current = true;
-              showMessageDialogRef.current = true;
-              setShowMessageDialog(true);
+              setShouldRedirectToConversation(true);
             }
             
             setCallState("ended");
@@ -176,15 +171,14 @@ const CallInterface = memo(({
     };
   }, [callId, leaveCall, isResident, callWasAnswered]);
 
-  // Ringing timeout - show message dialog after 30 seconds without answer
+  // Ringing timeout - redirect to conversation after 30 seconds without answer
   useEffect(() => {
     if (isResident || callWasAnswered || callState === "ended") return;
 
     const timeout = setTimeout(() => {
       if (!callWasAnswered && habitationId) {
-        logger.log("[CallInterface] 30s timeout - showing message dialog");
-        showMessageDialogRef.current = true;
-        setShowMessageDialog(true);
+        logger.log("[CallInterface] 30s timeout - redirecting to conversation");
+        setShouldRedirectToConversation(true);
       }
     }, RINGING_TIMEOUT_MS);
 
@@ -204,12 +198,13 @@ const CallInterface = memo(({
     }
   }, [isJoined, isLoading, callState, remoteParticipants.length]);
 
-  // Auto-navigate back when call ends (with message prompt for visitors)
+  // Auto-navigate when call ends
   useEffect(() => {
     if (callState === "ended") {
-      // Use ref for synchronous check - prevents race condition with React batched updates
-      if (!isResident && showMessageDialogRef.current) {
-        logger.log("[CallInterface] Message dialog is open, blocking auto-navigate");
+      // If visitor should go to conversation, redirect there
+      if (!isResident && shouldRedirectToConversation && habitationId) {
+        logger.log("[CallInterface] Redirecting visitor to conversation page");
+        navigate(`/visitor-conversation/${habitationId}`, { replace: true });
         return;
       }
       
@@ -219,7 +214,7 @@ const CallInterface = memo(({
       }, 1500);
       return () => clearTimeout(timeout);
     }
-  }, [callState, navigate, isResident]);
+  }, [callState, navigate, isResident, shouldRedirectToConversation, habitationId]);
 
   // Individual hangup - only ends call if no other residents are active
   const handleHangup = async () => {
@@ -267,10 +262,9 @@ const CallInterface = memo(({
     } else if (callId && !isResident) {
       // Visitor hanging up - check if call was answered
       if (!callWasAnswered && habitationId) {
-        // Call wasn't answered - show message dialog instead of just ending
-        logger.log("[CallInterface] Visitor hangup without answer - showing message dialog");
-        showMessageDialogRef.current = true;
-        setShowMessageDialog(true);
+        // Call wasn't answered - redirect to conversation
+        logger.log("[CallInterface] Visitor hangup without answer - redirecting to conversation");
+        setShouldRedirectToConversation(true);
       }
       
       // End the entire call
@@ -454,26 +448,6 @@ const CallInterface = memo(({
         </div>
       )}
 
-      {/* Visitor Message Dialog - shown when call ends without answer */}
-      {habitationId && (
-        <VisitorMessageDialog
-          open={showMessageDialog}
-          onOpenChange={(open) => {
-            showMessageDialogRef.current = open;
-            setShowMessageDialog(open);
-            if (!open) {
-              logger.log("[CallInterface] Message dialog closed, navigating back");
-              navigate(-1);
-            }
-          }}
-          habitationId={habitationId}
-          callId={callId}
-          onMessageSent={() => {
-            showMessageDialogRef.current = false;
-            navigate(-1);
-          }}
-        />
-      )}
 
       {/* Door Open Dialog for Residents */}
       <Dialog open={showDoorDialog} onOpenChange={setShowDoorDialog}>
