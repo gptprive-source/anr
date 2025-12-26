@@ -53,20 +53,29 @@ const VisitorConversation = () => {
 
   // Fetch conversation data
   const fetchConversation = useCallback(async () => {
-    if (!habitationId) return;
+    if (!habitationId) {
+      console.log("[VisitorConversation] No habitationId, skipping fetch");
+      setLoading(false);
+      return;
+    }
 
     try {
+      console.log("[VisitorConversation] Fetching conversation for", habitationId);
       setLoading(true);
 
-      // Get habitation info
-      const { data: habitation } = await supabase
+      // Get habitation info - use maybeSingle to avoid errors when not found
+      const { data: habitation, error: habError } = await supabase
         .from("habitations")
         .select(`
           name,
           anr:anrs(code, address)
         `)
         .eq("id", habitationId)
-        .single();
+        .maybeSingle();
+
+      if (habError) {
+        console.error("[VisitorConversation] Error fetching habitation:", habError);
+      }
 
       if (habitation) {
         const anrData = habitation.anr as { code: string; address: string } | null;
@@ -75,6 +84,9 @@ const VisitorConversation = () => {
           anr_code: anrData?.code || "",
           anr_address: anrData?.address || "",
         });
+        console.log("[VisitorConversation] Habitation found:", habitation.name);
+      } else {
+        console.log("[VisitorConversation] No habitation found for id:", habitationId);
       }
 
       // Get business card ID for this device to also fetch older messages
@@ -188,13 +200,19 @@ const VisitorConversation = () => {
 
       // Sort by date
       allMessages.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      console.log("[VisitorConversation] Total messages loaded:", allMessages.length);
       setMessages(allMessages);
     } catch (error) {
-      console.error("[VisitorConversation] Error:", error);
+      console.error("[VisitorConversation] Error fetching conversation:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger la conversation",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  }, [habitationId, deviceId]);
+  }, [habitationId, deviceId, toast]);
 
   useEffect(() => {
     fetchConversation();
@@ -257,19 +275,25 @@ const VisitorConversation = () => {
 
   // Send message (reply to existing conversation)
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !habitationId) return;
+    if (!newMessage.trim() || !habitationId) {
+      console.log("[VisitorConversation] Cannot send - missing message or habitationId");
+      return;
+    }
 
     try {
       setSending(true);
+      console.log("[VisitorConversation] Sending message to", habitationId);
 
-      // Get business card for this device to link visitor identity
+      // Get business card for this device to link visitor identity (optional)
       const { data: cards } = await supabase
         .from("visitor_business_cards")
         .select("id")
         .eq("device_id", deviceId)
         .limit(1);
       
+      // Business card is OPTIONAL - not required to send a message
       const cardId = cards?.[0]?.id || null;
+      console.log("[VisitorConversation] Business card id:", cardId || "none (optional)");
 
       // Insert as a new visitor_message (continuing the conversation)
       const { error } = await supabase
@@ -277,24 +301,29 @@ const VisitorConversation = () => {
         .insert({
           habitation_id: habitationId,
           visitor_device_id: deviceId,
-          business_card_id: cardId,
+          business_card_id: cardId, // Optional
           message: newMessage.trim(),
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[VisitorConversation] Insert error:", error);
+        throw error;
+      }
 
+      console.log("[VisitorConversation] Message sent successfully");
       setNewMessage("");
       toast({
         title: "Message envoyé",
         description: "Votre message a été envoyé au résident.",
       });
 
-      fetchConversation();
-    } catch (error) {
+      // Wait a bit before refreshing to let DB update
+      setTimeout(() => fetchConversation(), 300);
+    } catch (error: any) {
       console.error("[VisitorConversation] Send error:", error);
       toast({
         title: "Erreur",
-        description: "Impossible d'envoyer le message.",
+        description: error?.message || "Impossible d'envoyer le message.",
         variant: "destructive",
       });
     } finally {
@@ -357,14 +386,16 @@ const VisitorConversation = () => {
 
     try {
       setSending(true);
+      console.log("[VisitorConversation] Sending voice message");
 
-      // Get business card for this device to link visitor identity
+      // Get business card for this device to link visitor identity (optional)
       const { data: cards } = await supabase
         .from("visitor_business_cards")
         .select("id")
         .eq("device_id", deviceId)
         .limit(1);
       
+      // Business card is OPTIONAL
       const cardId = cards?.[0]?.id || null;
 
       // Upload to storage
@@ -373,29 +404,36 @@ const VisitorConversation = () => {
         .from("visitor-voice-messages")
         .upload(fileName, audioBlob, { contentType: "audio/webm" });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("[VisitorConversation] Upload error:", uploadError);
+        throw uploadError;
+      }
 
       const { data: publicUrl } = supabase.storage
         .from("visitor-voice-messages")
         .getPublicUrl(fileName);
 
-      // Insert message with both device_id and business_card_id
+      // Insert message with device_id and optional business_card_id
       const { error } = await supabase
         .from("visitor_messages")
         .insert({
           habitation_id: habitationId,
           visitor_device_id: deviceId,
-          business_card_id: cardId,
+          business_card_id: cardId, // Optional
           voice_message_url: publicUrl.publicUrl,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[VisitorConversation] Insert voice error:", error);
+        throw error;
+      }
 
+      console.log("[VisitorConversation] Voice message sent successfully");
       toast({
         title: "Message vocal envoyé",
       });
 
-      fetchConversation();
+      setTimeout(() => fetchConversation(), 300);
     } catch (error) {
       console.error("[VisitorConversation] Voice send error:", error);
       toast({
