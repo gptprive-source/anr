@@ -17,6 +17,7 @@ import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
 import VideoRecorder from "@/components/messages/VideoRecorder";
+import { useVisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
 import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
@@ -119,9 +120,11 @@ const Conversation = () => {
   const currentVisitorBlocked = id && conversationType === 'received_from_visitor' ? isBlocked(id) : false;
 
   // Hooks for "sent to ANR" mode (visitor/user sending to another ANR)
-  const { messages: sentMessagesFromHook, replies: sentReplies, getConversationMessages, markReplyAsRead, businessCard, deleteSentMessage, refetch: refetchSentMessages } = useSentMessages();
+  const { messages: sentMessagesFromHook, replies: sentReplies, getConversationMessages, markReplyAsRead, deleteSentMessage, refetch: refetchSentMessages } = useSentMessages();
   const { sendMessage } = useVisitorMessages();
   const { encryptMessageForResident, isReady: encryptionReady } = useEncryptedMessages(id || undefined);
+  // Use dedicated hook for business card - ensures card is created for authenticated users
+  const { card: userBusinessCard, loading: businessCardLoading } = useVisitorBusinessCard();
 
   // Get sent conversation data
   const sentConversationData = id && conversationType === 'sent_to_anr' ? getConversationMessages(id) : { messages: [], replies: [] };
@@ -392,7 +395,7 @@ const Conversation = () => {
           messageText || undefined,
           undefined,
           undefined,
-          businessCard?.id,
+          userBusinessCard?.id,
           audioBase64,
           encryptionData,
           mediaToSend
