@@ -122,7 +122,7 @@ export const useVisitorDeviceMessages = () => {
             anr:anrs(code, address)
           `)
           .eq("id", habitationId)
-          .single();
+          .maybeSingle();
 
         const anrData = habitation?.anr as { code: string; address: string } | null;
 
