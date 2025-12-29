@@ -115,7 +115,7 @@ const HeroSection = () => {
 
             {/* ANR Badge */}
             <div className="relative z-10 animate-float">
-              <img src={anrBadge} alt="Badge ANR - Adresse Numérique Résidentielle" className="w-48 h-48 md:w-64 md:h-64 lg:w-72 lg:h-72 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-300" />
+              <img alt="Badge ANR - Adresse Numérique Résidentielle" className="w-48 h-48 md:w-64 md:h-64 lg:w-72 lg:h-72 object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-300" src="/lovable-uploads/b5164588-60c6-44b2-93ec-3b972843ed5a.png" />
             </div>
 
             {/* Floating label */}
