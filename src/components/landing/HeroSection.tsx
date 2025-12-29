@@ -141,7 +141,7 @@ const HeroSection = () => {
           />
           <FeatureCard
             icon={<MessageSquare className="w-6 h-6" />}
-            title="Messagerie"
+            title="Communiquez"
             description="Parlez ou échangez des messages chiffrés avec vos visiteurs, texte, vocal et vidéos"
             color="purple"
           />
