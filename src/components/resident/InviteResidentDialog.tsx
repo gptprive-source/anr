@@ -1,12 +1,6 @@
 import { useState } from "react";
 import { Mail, Loader2, User } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,17 +62,15 @@ const InviteResidentDialog = ({
       expiresAt.setHours(expiresAt.getHours() + 24);
 
       // Create invitation in database with first_name and last_name
-      const { error: inviteError } = await supabase
-        .from("resident_invitations")
-        .insert({
-          habitation_id: habitationId,
-          invited_by: user.id,
-          email: email.toLowerCase().trim(),
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          code,
-          expires_at: expiresAt.toISOString(),
-        });
+      const { error: inviteError } = await supabase.from("resident_invitations").insert({
+        habitation_id: habitationId,
+        invited_by: user.id,
+        email: email.toLowerCase().trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        code,
+        expires_at: expiresAt.toISOString(),
+      });
 
       if (inviteError) {
         if (inviteError.code === "23505") {
@@ -135,10 +127,8 @@ const InviteResidentDialog = ({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Inviter un résident</DialogTitle>
-          <DialogDescription>
-            Entrez les informations de la personne à inviter
-          </DialogDescription>
+          <DialogTitle>Inviter un co-résident</DialogTitle>
+          <DialogDescription>Entrez les informations de la personne à inviter</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -194,11 +184,7 @@ const InviteResidentDialog = ({
               disabled={!firstName.trim() || !lastName.trim() || !email.trim() || loading}
               className="flex-1"
             >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                "Inviter"
-              )}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Inviter"}
             </Button>
           </div>
         </div>
