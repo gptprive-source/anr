@@ -51,7 +51,7 @@ const HeroSection = () => {
 
             <p style={{
             animationDelay: "0.3s"
-          }} className="md:text-xl max-w-xl mx-auto lg:mx-0 mb-8 animate-fade-in bg-black/0 text-black font-medium text-lg">Sans aucune installation de matériel. 
+          }} className="md:text-xl max-w-xl mx-auto lg:mx-0 mb-8 animate-fade-in bg-black/0 text-black font-medium text-base">Sans aucune installation de matériel. 
 Recevez vos visiteurs où que vous soyez.</p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-6 animate-fade-in" style={{
