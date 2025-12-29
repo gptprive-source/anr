@@ -112,6 +112,8 @@ const Conversation = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [messageToDelete, setMessageToDelete] = useState<{ id: string; isMine: boolean; isRead: boolean } | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDeleteConversationDialog, setShowDeleteConversationDialog] = useState(false);
+  const [deletingConversation, setDeletingConversation] = useState(false);
 
   // Hooks for "received from visitor" mode (resident viewing)
   // Pass ALL message IDs to get replies for the entire conversation (WhatsApp-like)
@@ -283,6 +285,107 @@ const Conversation = () => {
 
     detectConversationType();
   }, [id, user]);
+
+  // Real-time subscription for new messages and replies
+  useEffect(() => {
+    if (!habitationId || conversationType !== 'received_from_visitor') return;
+
+    console.log("[Conversation] Setting up realtime subscriptions for habitationId:", habitationId);
+
+    // Subscribe to new visitor messages for this conversation
+    const messagesChannel = supabase
+      .channel(`conversation-messages-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'visitor_messages',
+          filter: `habitation_id=eq.${habitationId}`
+        },
+        async (payload) => {
+          console.log("[Conversation] New visitor message received:", payload);
+          const newMessage = payload.new as any;
+          
+          // Check if this message belongs to this conversation
+          const isAnonId = id?.startsWith("anon-");
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || "");
+          const isPhoneNumber = /^\+?[0-9\s\-()]+$/.test(id || "") && (id?.length || 0) >= 10;
+
+          let belongsToConversation = false;
+          if (isAnonId) {
+            belongsToConversation = newMessage.id === id?.replace("anon-", "");
+          } else if (isPhoneNumber) {
+            belongsToConversation = newMessage.visitor_phone === id;
+          } else if (isUuid) {
+            belongsToConversation = newMessage.visitor_device_id === id || newMessage.business_card_id === id;
+          } else {
+            belongsToConversation = newMessage.visitor_device_id === id;
+          }
+
+          if (belongsToConversation) {
+            // Fetch complete message with business card
+            const { data: fullMessage } = await (supabase
+              .from("visitor_messages" as any)
+              .select("*, business_card:visitor_business_cards(*)")
+              .eq("id", newMessage.id)
+              .single() as any);
+
+            if (fullMessage) {
+              setVisitorMessages(prev => {
+                // Avoid duplicates
+                if (prev.find(m => m.id === (fullMessage as any).id)) return prev;
+                return [...prev, fullMessage as VisitorMessage].sort(
+                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+              });
+
+              // Mark as read immediately
+              await supabase.from("visitor_messages" as any).update({
+                is_read: true,
+                read_at: new Date().toISOString()
+              }).eq("id", newMessage.id);
+
+              // Scroll to bottom
+              setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+              }, 100);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to new replies for this conversation
+    const repliesChannel = supabase
+      .channel(`conversation-replies-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_replies',
+          filter: `habitation_id=eq.${habitationId}`
+        },
+        (payload) => {
+          console.log("[Conversation] New reply received:", payload);
+          // Refetch replies to get complete data
+          refetchReplies();
+          
+          // Scroll to bottom
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          }, 100);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log("[Conversation] Cleaning up realtime subscriptions");
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(repliesChannel);
+    };
+  }, [habitationId, conversationType, id, refetchReplies]);
 
   // Mark sent replies as read
   useEffect(() => {
@@ -664,6 +767,72 @@ const Conversation = () => {
     }
   };
 
+  // Delete entire conversation
+  const handleDeleteConversation = async () => {
+    setDeletingConversation(true);
+    try {
+      if (conversationType === 'received_from_visitor') {
+        // Get all message IDs for this conversation
+        const messageIds = visitorMessages.map(m => m.id);
+        
+        // Soft delete all visitor messages for this resident
+        if (messageIds.length > 0) {
+          const { error: msgError } = await supabase
+            .from("visitor_messages" as any)
+            .update({ deleted_by_resident: true })
+            .in("id", messageIds);
+          
+          if (msgError) throw msgError;
+        }
+        
+        // Soft delete all replies for these messages
+        if (messageIds.length > 0) {
+          const { error: replyError } = await supabase
+            .from("message_replies")
+            .update({ deleted_by_resident: true })
+            .in("original_message_id", messageIds);
+          
+          if (replyError) throw replyError;
+        }
+        
+        toast({ title: "Conversation supprimée" });
+        navigate("/messages");
+      } else {
+        // Sent to ANR mode - soft delete for visitor
+        const messageIds = allSentMessages.map(m => m.id);
+        
+        if (messageIds.length > 0) {
+          const { error: msgError } = await supabase
+            .from("visitor_messages" as any)
+            .update({ deleted_by_visitor: true })
+            .in("id", messageIds);
+          
+          if (msgError) throw msgError;
+        }
+        
+        // Soft delete replies received
+        const replyIds = sentConversationData.replies.map((r: any) => r.id);
+        if (replyIds.length > 0) {
+          const { error: replyError } = await supabase
+            .from("message_replies")
+            .update({ deleted_by_visitor: true })
+            .in("id", replyIds);
+          
+          if (replyError) throw replyError;
+        }
+        
+        toast({ title: "Conversation supprimée" });
+        navigate("/messages");
+      }
+    } catch (error) {
+      console.error("[Conversation] Delete conversation error:", error);
+      toast({ title: "Erreur", description: "Impossible de supprimer la conversation", variant: "destructive" });
+    } finally {
+      setDeletingConversation(false);
+      setShowDeleteConversationDialog(false);
+    }
+  };
+
   // Get header info
   const getHeaderInfo = () => {
     if (conversationType === 'sent_to_anr') {
@@ -775,7 +944,65 @@ const Conversation = () => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+
+                {/* Delete conversation button */}
+                <AlertDialog open={showDeleteConversationDialog} onOpenChange={setShowDeleteConversationDialog}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                      <Trash2 className="w-5 h-5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Supprimer cette conversation ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tous les messages de cette conversation seront supprimés de votre vue. Cette action est irréversible.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction 
+                        className="bg-red-500 hover:bg-red-600"
+                        onClick={handleDeleteConversation}
+                        disabled={deletingConversation}
+                      >
+                        {deletingConversation ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Supprimer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </>
+            )}
+
+            {/* Delete conversation button for sent_to_anr mode */}
+            {conversationType === 'sent_to_anr' && (
+              <AlertDialog open={showDeleteConversationDialog} onOpenChange={setShowDeleteConversationDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                    <Trash2 className="w-5 h-5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Supprimer cette conversation ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tous les messages de cette conversation seront supprimés de votre vue. Cette action est irréversible.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction 
+                      className="bg-red-500 hover:bg-red-600"
+                      onClick={handleDeleteConversation}
+                      disabled={deletingConversation}
+                    >
+                      {deletingConversation ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Supprimer
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
         </div>
