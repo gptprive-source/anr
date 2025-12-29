@@ -246,7 +246,7 @@ const AppContent = () => {
           
           <Route path="*" element={<NotFound />} />
         </Routes>
-        <UnifiedAssistant />
+        <UnifiedAssistant className="pb-0 mb-0 mt-0 pt-0" />
       </BrowserRouter>
     </>;
 };
