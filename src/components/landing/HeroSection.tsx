@@ -51,9 +51,8 @@ const HeroSection = () => {
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto lg:mx-0 mb-8 animate-fade-in" style={{
             animationDelay: "0.3s"
-          }}>
-              Transformez votre smartphone en interphone intelligent. Recevez vos visiteurs en vidéo, où que vous soyez.
-            </p>
+          }}>Transformez votre smartphone en interphone sans installer de matériel.
+Recevez vos visiteurs en vidéo, où que vous soyez.</p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-6 animate-fade-in" style={{
             animationDelay: "0.4s"
