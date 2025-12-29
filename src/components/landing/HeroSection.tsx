@@ -34,7 +34,7 @@ const HeroSection = () => {
       <div className="relative z-10 max-w-6xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center my-0 py-0">
           {/* Left column - Text content */}
-          <div className="text-center lg:text-left order-2 lg:order-1">
+          <div className="text-center lg:text-left order-2 lg:order-1 pt-0 pb-0">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 border border-border mb-6 animate-fade-in" style={{
             animationDelay: "0.1s"
           }}>
@@ -51,7 +51,8 @@ const HeroSection = () => {
 
             <p style={{
             animationDelay: "0.3s"
-          }} className="text-lg md:text-xl max-w-xl mx-auto lg:mx-0 mb-8 animate-fade-in bg-black/0 text-black font-normal">Sans aucune installation de matériel. Recevez vos visiteurs où que vous soyez.</p>
+          }} className="text-lg md:text-xl max-w-xl mx-auto lg:mx-0 mb-8 animate-fade-in bg-black/0 text-black font-normal">Sans aucune installation de matériel.
+Recevez vos visiteurs où que vous soyez.</p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-6 animate-fade-in" style={{
             animationDelay: "0.4s"
