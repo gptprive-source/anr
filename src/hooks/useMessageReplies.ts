@@ -19,24 +19,36 @@ interface MessageReply {
   is_encrypted?: boolean;
 }
 
-export const useMessageReplies = (messageId?: string) => {
+// Accept a single messageId OR an array of messageIds for fetching all conversation replies
+export const useMessageReplies = (messageIds?: string | string[]) => {
   const [replies, setReplies] = useState<MessageReply[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchReplies = async (msgId: string) => {
-    console.log("[useMessageReplies] fetchReplies called for:", msgId);
+  // Normalize to array
+  const idsArray = messageIds 
+    ? (Array.isArray(messageIds) ? messageIds : [messageIds]).filter(Boolean)
+    : [];
+
+  const fetchReplies = async (ids: string[]) => {
+    if (ids.length === 0) {
+      setReplies([]);
+      return;
+    }
+    
+    console.log("[useMessageReplies] fetchReplies called for:", ids.length, "messages");
     setLoading(true);
     try {
       // Filter out replies deleted by resident (since this hook is used by residents)
+      // Use .in() to get replies for ALL messages in the conversation
       const { data, error } = await (supabase
         .from("message_replies" as any)
         .select("*")
-        .eq("original_message_id", msgId)
+        .in("original_message_id", ids)
         .or("deleted_by_resident.is.null,deleted_by_resident.eq.false")
         .order("created_at", { ascending: true }) as any);
       
       if (error) throw error;
-      console.log("[useMessageReplies] Fetched replies:", data?.length, "for message:", msgId);
+      console.log("[useMessageReplies] Fetched replies:", data?.length, "for", ids.length, "messages");
       setReplies((data || []) as MessageReply[]);
     } catch (error) {
       console.error("[useMessageReplies] Error fetching replies:", error);
@@ -188,34 +200,39 @@ export const useMessageReplies = (messageId?: string) => {
   };
 
   useEffect(() => {
-    if (messageId) {
-      fetchReplies(messageId);
+    if (idsArray.length > 0) {
+      fetchReplies(idsArray);
     }
-  }, [messageId]);
+  }, [JSON.stringify(idsArray)]);
 
-  // Realtime subscription
+  // Realtime subscription for ALL message IDs
   useEffect(() => {
-    if (!messageId) return;
+    if (idsArray.length === 0) return;
 
+    // Subscribe to all message replies at once
+    const channelName = `message-replies-${idsArray.slice(0, 3).join("-")}`;
+    
     const channel = supabase
-      .channel(`message-replies-${messageId}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "message_replies",
-          filter: `original_message_id=eq.${messageId}`,
         },
         (payload) => {
           const newReply = payload.new as MessageReply;
-          // Avoid duplicates - check if reply already exists
-          setReplies(prev => {
-            if (prev.some(r => r.id === newReply.id)) {
-              return prev;
-            }
-            return [...prev, newReply];
-          });
+          // Only add if it's for one of our messages
+          if (idsArray.includes(newReply.original_message_id)) {
+            // Avoid duplicates - check if reply already exists
+            setReplies(prev => {
+              if (prev.some(r => r.id === newReply.id)) {
+                return prev;
+              }
+              return [...prev, newReply];
+            });
+          }
         }
       )
       .subscribe();
@@ -223,7 +240,7 @@ export const useMessageReplies = (messageId?: string) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [messageId]);
+  }, [JSON.stringify(idsArray)]);
 
   return {
     replies,
@@ -232,9 +249,9 @@ export const useMessageReplies = (messageId?: string) => {
     markAsRead,
     deleteReply,
     refetch: async () => {
-      if (messageId) {
-        console.log("[useMessageReplies] Refetching replies for:", messageId);
-        await fetchReplies(messageId);
+      if (idsArray.length > 0) {
+        console.log("[useMessageReplies] Refetching replies for:", idsArray.length, "messages");
+        await fetchReplies(idsArray);
       }
     },
   };

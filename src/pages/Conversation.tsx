@@ -113,8 +113,10 @@ const Conversation = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Hooks for "received from visitor" mode (resident viewing)
-  const firstMessageId = visitorMessages[0]?.id || "";
-  const { replies, sendReply, deleteReply, loading: repliesLoading, refetch: refetchReplies } = useMessageReplies(firstMessageId);
+  // Pass ALL message IDs to get replies for the entire conversation (WhatsApp-like)
+  const allVisitorMessageIds = visitorMessages.map(m => m.id);
+  const latestMessageId = visitorMessages.length > 0 ? visitorMessages[visitorMessages.length - 1]?.id : "";
+  const { replies, sendReply, deleteReply, loading: repliesLoading, refetch: refetchReplies } = useMessageReplies(allVisitorMessageIds);
   const { isSupported: encryptionSupported } = useEncryptedMessages(habitationId || undefined);
   const { isBlocked, blockVisitor, unblockVisitor } = useBlockedVisitors();
   const currentVisitorBlocked = id && conversationType === 'received_from_visitor' ? isBlocked(id) : false;
@@ -323,7 +325,7 @@ const Conversation = () => {
 
     if (conversationType === 'received_from_visitor') {
       // Resident replying to visitor
-      if (!habitationId || !firstMessageId || (!replyText.trim() && !audioBlob && !selectedMedia && !videoBlob)) return;
+      if (!habitationId || !latestMessageId || (!replyText.trim() && !audioBlob && !selectedMedia && !videoBlob)) return;
       
       setSending(true);
       try {
@@ -339,7 +341,7 @@ const Conversation = () => {
           mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, { type: videoBlob.type || 'video/webm' });
         }
 
-        const result = await sendReply(firstMessageId, habitationId, replyText.trim() || undefined, audioBase64, mediaToSend || undefined);
+        const result = await sendReply(latestMessageId, habitationId, replyText.trim() || undefined, audioBase64, mediaToSend || undefined);
         if (result.success) {
           setReplyText("");
           setAudioBlob(null);
