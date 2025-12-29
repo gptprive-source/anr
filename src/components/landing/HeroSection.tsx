@@ -42,9 +42,9 @@ const HeroSection = () => {
               <span className="text-sm text-muted-foreground">L'Adresse Numérique Résidentielle</span>
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 animate-fade-in" style={{
+            <h1 style={{
             animationDelay: "0.2s"
-          }}>
+          }} className="text-4xl md:text-5xl lg:text-6xl mb-6 animate-fade-in font-extrabold">
               ​Votre interphone   
               <span className="gradient-text block mt-2">100% numérique</span>
             </h1>
