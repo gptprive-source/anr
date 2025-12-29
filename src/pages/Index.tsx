@@ -16,9 +16,9 @@ const Index = () => {
       </div>;
   }
   return <main className="min-h-screen bg-background pb-20">
-      <HeroSection className="mb-0 my-0 py-[49px] pb-0" />
-      <TrustSection className="py-0" />
-      <HowItWorks className="py-[47px]" />
+      <HeroSection />
+      <TrustSection />
+      <HowItWorks />
       <Footer />
       {user && <BottomNav />}
     </main>;
