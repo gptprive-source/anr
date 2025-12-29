@@ -11,9 +11,7 @@ const Footer = () => {
             <span className="text-xl font-bold">ANR</span>
           </div>
           
-          <p className="text-sm text-muted-foreground text-center">
-            © 2024 ANR - Adresse Numérique Résidentielle. Système breveté.
-          </p>
+          <p className="text-sm text-muted-foreground text-center">© 2026 ANR - Adresse Numérique Résidentielle. Système breveté.</p>
           
           <div className="flex gap-4 text-sm">
             <Link to="/faq" className="transition-colors flex items-center gap-1 text-black">
