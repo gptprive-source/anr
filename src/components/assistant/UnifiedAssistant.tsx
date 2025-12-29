@@ -689,8 +689,7 @@ const UnifiedAssistant = () => {
   return <>
       {/* Toggle Buttons - Top Right */}
       <div className={cn("fixed top-4 right-4 z-50 flex flex-col gap-3 transition-all duration-300", isOpen && "scale-0 opacity-0")}>
-        {user}
-        
+        {/* Empty - buttons removed */}
       </div>
 
       {/* Chat Window - only for authenticated users */}
