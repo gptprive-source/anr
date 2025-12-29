@@ -181,21 +181,21 @@ const Conversation = () => {
           .order("created_at", { ascending: true });
 
         // Detect ID type for conversation lookup
-        // Priority: visitor_device_id (new consistent ID) > business_card_id > visitor_phone > anon-id
         const isAnonId = id.startsWith("anon-");
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-        const isDeviceId = !isAnonId && !isUuid && id.length > 30; // Device IDs are typically longer random strings
+        const isPhoneNumber = /^\+?[0-9\s\-()]+$/.test(id) && id.length >= 10;
 
         if (isAnonId) {
           const messageId = id.replace("anon-", "");
           query = query.eq("id", messageId);
-        } else if (isDeviceId) {
-          // New: query by visitor_device_id for consistent conversation grouping
-          query = query.eq("visitor_device_id", id);
         } else if (isUuid) {
+          // UUID = business_card_id
           query = query.eq("business_card_id", id);
-        } else {
+        } else if (isPhoneNumber) {
           query = query.eq("visitor_phone", id);
+        } else {
+          // Default: treat as visitor_device_id (any other string format)
+          query = query.eq("visitor_device_id", id);
         }
 
         const { data, error } = await (query as any);
