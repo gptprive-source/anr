@@ -28,7 +28,7 @@ const Footer = () => {
               <FileText className="w-4 h-4" />
               CGU
             </Link>
-            <Link to="/contact" className="transition-colors flex items-center gap-1 bg-primary text-black">
+            <Link to="/contact" className="transition-colors flex items-center gap-1 bg-[#380000]/0 text-black">
               <Mail className="w-4 h-4" />
               Contact
             </Link>
