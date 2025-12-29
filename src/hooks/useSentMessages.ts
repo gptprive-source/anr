@@ -75,26 +75,45 @@ export const useSentMessages = () => {
     return data;
   };
 
-  // Fetch sent messages and replies
+  // Get device ID for anonymous visitors
+  const getDeviceId = () => {
+    const DEVICE_ID_KEY = 'visitor_device_id';
+    let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+    if (!deviceId) {
+      deviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      localStorage.setItem(DEVICE_ID_KEY, deviceId);
+    }
+    return deviceId;
+  };
+
+  // Fetch sent messages and replies - NO LONGER BLOCKED BY BUSINESS CARD
   const fetchSentMessages = async () => {
     if (!user) return;
 
     console.log("[useSentMessages] fetchSentMessages called for user:", user.id);
 
     try {
-      // First get visitor's business card
+      // Get visitor's business card (optional)
       const card = await fetchBusinessCard();
-      if (!card) {
-        console.log("[useSentMessages] No business card found");
-        setLoading(false);
-        return;
-      }
+      const deviceId = getDeviceId();
+      
+      console.log("[useSentMessages] Searching with user_id:", user.id, "card:", card?.id || "none", "device:", deviceId);
 
-      // Fetch messages sent by this visitor (via business card) - exclude soft-deleted
+      // Fetch messages sent by this visitor via MULTIPLE identifiers:
+      // 1. business_card_id (if they have one)
+      // 2. visitor_device_id (their device fingerprint)
+      // 3. user_id via business card lookup
+      let orConditions: string[] = [];
+      
+      if (card?.id) {
+        orConditions.push(`business_card_id.eq.${card.id}`);
+      }
+      orConditions.push(`visitor_device_id.eq.${deviceId}`);
+
       const { data: messagesData, error: messagesError } = await (supabase
         .from("visitor_messages" as any)
         .select("*")
-        .eq("business_card_id", card.id)
+        .or(orConditions.join(","))
         .or("deleted_by_visitor.is.null,deleted_by_visitor.eq.false")
         .order("created_at", { ascending: false }) as any);
 
@@ -105,6 +124,9 @@ export const useSentMessages = () => {
       setMessages(sentMessages);
 
       if (sentMessages.length === 0) {
+        setConversations([]);
+        setReplies([]);
+        setUnreadRepliesCount(0);
         setLoading(false);
         return;
       }
