@@ -17,7 +17,7 @@ const steps = [
   {
     icon: <MessageSquare className="w-8 h-8" />,
     title: "Échanger",
-    description: "Parlez et envoyez des messages chiffrés, texte ou vocal",
+    description: "Vous répondez, parlez et échangez des messages chiffrés",
     color: "green",
   },
 ];
