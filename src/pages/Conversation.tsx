@@ -58,6 +58,7 @@ interface VisitorMessage {
   created_at: string;
   business_card_id: string | null;
   business_card?: BusinessCard | null;
+  visitor_device_id?: string | null;
   encrypted_message?: string | null;
   message_nonce?: string | null;
   visitor_public_key?: string | null;
@@ -179,12 +180,18 @@ const Conversation = () => {
           .eq("habitation_id", residentData.habitation_id)
           .order("created_at", { ascending: true });
 
+        // Detect ID type for conversation lookup
+        // Priority: visitor_device_id (new consistent ID) > business_card_id > visitor_phone > anon-id
         const isAnonId = id.startsWith("anon-");
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        const isDeviceId = !isAnonId && !isUuid && id.length > 30; // Device IDs are typically longer random strings
 
         if (isAnonId) {
           const messageId = id.replace("anon-", "");
           query = query.eq("id", messageId);
+        } else if (isDeviceId) {
+          // New: query by visitor_device_id for consistent conversation grouping
+          query = query.eq("visitor_device_id", id);
         } else if (isUuid) {
           query = query.eq("business_card_id", id);
         } else {

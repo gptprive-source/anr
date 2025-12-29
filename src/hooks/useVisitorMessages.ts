@@ -29,6 +29,8 @@ interface VisitorMessage {
   has_reply?: boolean;
   replied_at?: string | null;
   conversation_token?: string | null;
+  // Device ID for consistent conversation grouping
+  visitor_device_id?: string | null;
   // E2E Encryption fields
   encrypted_message?: string | null;
   message_nonce?: string | null;

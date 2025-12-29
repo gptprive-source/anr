@@ -120,7 +120,9 @@ const Messages = () => {
     }>();
     
     messages.forEach(msg => {
-      const visitorId = msg.business_card_id || msg.visitor_phone || `anon-${msg.id}`;
+      // Use visitor_device_id as primary key for grouping conversations (WhatsApp-like)
+      // Fall back to business_card_id, then visitor_phone, then anon-id
+      const visitorId = msg.visitor_device_id || msg.business_card_id || msg.visitor_phone || `anon-${msg.id}`;
       const existing = groups.get(visitorId);
       const card = msg.business_card;
       const isCompany = card?.card_type === "company";
