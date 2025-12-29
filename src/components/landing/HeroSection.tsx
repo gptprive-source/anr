@@ -49,10 +49,11 @@ const HeroSection = () => {
               <span className="gradient-text block mt-2">100% numérique</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto lg:mx-0 mb-8 animate-fade-in" style={{
+            <p style={{
             animationDelay: "0.3s"
-          }}>Transformez votre smartphone en interphone sans installer de matériel.
-Recevez vos visiteurs en vidéo, où que vous soyez.</p>
+          }} className="text-lg md:text-xl max-w-xl mx-auto lg:mx-0 mb-8 animate-fade-in bg-black/0 text-black">Sans aucune installation de matériel.
+Recevez vos visiteurs en vidéo, où que vous soyez.
+          </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-6 animate-fade-in" style={{
             animationDelay: "0.4s"
