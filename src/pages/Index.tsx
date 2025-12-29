@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import HeroSection from "@/components/landing/HeroSection";
+import TrustSection from "@/components/landing/TrustSection";
 import HowItWorks from "@/components/landing/HowItWorks";
 import Footer from "@/components/landing/Footer";
 import BottomNav from "@/components/layout/BottomNav";
@@ -19,6 +20,7 @@ const Index = () => {
   return (
     <main className="min-h-screen bg-background pb-20">
       <HeroSection />
+      <TrustSection />
       <HowItWorks />
       <Footer />
       {user && <BottomNav />}
