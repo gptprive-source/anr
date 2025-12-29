@@ -5,27 +5,22 @@ import TrustSection from "@/components/landing/TrustSection";
 import HowItWorks from "@/components/landing/HowItWorks";
 import Footer from "@/components/landing/Footer";
 import BottomNav from "@/components/layout/BottomNav";
-
 const Index = () => {
-  const { user, loading } = useAuth();
-
+  const {
+    user,
+    loading
+  } = useAuth();
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
+    return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <main className="min-h-screen bg-background pb-20">
-      <HeroSection />
-      <TrustSection />
-      <HowItWorks />
+  return <main className="min-h-screen bg-background pb-20">
+      <HeroSection className="mb-0 my-0 py-[49px] pb-0" />
+      <TrustSection className="py-0" />
+      <HowItWorks className="py-[47px]" />
       <Footer />
       {user && <BottomNav />}
-    </main>
-  );
+    </main>;
 };
-
 export default Index;
