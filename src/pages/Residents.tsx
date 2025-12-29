@@ -210,9 +210,7 @@ const Residents = () => {
                     <div>
                       <p className="font-medium">{name}</p>
                       <div className="flex items-center gap-2">
-                        {resident.is_owner && <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs">
-                            Propriétaire
-                          </span>}
+                        {resident.is_owner && <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs">Résident principal</span>}
                         {resident.is_muted && <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
                             En sourdine
                           </span>}
