@@ -1,16 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const STORAGE_KEY = "anr_phone_verification";
-
 export type VerificationStatus = "idle" | "initializing" | "calling" | "waiting" | "verified" | "expired" | "error";
-
-interface StoredVerification {
-  verificationId: string;
-  ovhNumber: string;
-  expiresAt: string;
-  phoneNumber: string;
-}
 
 interface UsePhoneVerificationReturn {
   status: VerificationStatus;
@@ -29,41 +20,21 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
   const [status, setStatus] = useState<VerificationStatus>("idle");
   const [ovhNumber, setOvhNumber] = useState<string>("+33185099116");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState<number>(600); // 10 minutes
-  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<number>(600);
   
+  // Use refs to avoid closure issues
+  const verificationIdRef = useRef<string | null>(null);
   const pollingRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
   const expiresAtRef = useRef<Date | null>(null);
+  const statusRef = useRef<VerificationStatus>("idle");
 
-  // Detect Capacitor (native app)
-  const isCapacitor = typeof (window as any).Capacitor !== "undefined";
-
-  // Restore verification from localStorage on mount
+  // Keep statusRef in sync
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const data: StoredVerification = JSON.parse(stored);
-        const expiresAt = new Date(data.expiresAt);
-        
-        // Check if not expired
-        if (expiresAt > new Date()) {
-          setVerificationId(data.verificationId);
-          setOvhNumber(data.ovhNumber);
-          expiresAtRef.current = expiresAt;
-          setTimeRemaining(Math.floor((expiresAt.getTime() - Date.now()) / 1000));
-          setStatus("waiting");
-          console.log("[usePhoneVerification] Restored verification from storage:", data.verificationId);
-        } else {
-          // Expired, clean up
-          localStorage.removeItem(STORAGE_KEY);
-        }
-      } catch (e) {
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    }
-  }, []);
+    statusRef.current = status;
+  }, [status]);
+
+  const isCapacitor = typeof (window as any).Capacitor !== "undefined";
 
   // Cleanup on unmount
   useEffect(() => {
@@ -82,7 +53,10 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
           setTimeRemaining(remaining);
           if (remaining === 0) {
             setStatus("expired");
-            stopPolling();
+            if (pollingRef.current) {
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
+            }
           }
         }
       }, 1000);
@@ -98,6 +72,14 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
     };
   }, [status]);
 
+  const stopPolling = useCallback(() => {
+    console.log("[usePhoneVerification] stopPolling called");
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
   const initVerification = useCallback(async (phoneNumber: string, deviceId: string): Promise<boolean> => {
     setStatus("initializing");
     setErrorMessage(null);
@@ -110,6 +92,7 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
         return false;
       }
 
+      console.log("[usePhoneVerification] Calling init-phone-auth...");
       const response = await supabase.functions.invoke("init-phone-auth", {
         body: { phone_number: phoneNumber, device_id: deviceId },
       });
@@ -127,21 +110,14 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
         return false;
       }
 
-      setVerificationId(data.verification_id);
+      console.log("[usePhoneVerification] Init successful:", data.verification_id);
+      
+      // Store in ref (not state) to avoid closure issues
+      verificationIdRef.current = data.verification_id;
       setOvhNumber(data.ovh_number);
       expiresAtRef.current = new Date(data.expires_at);
       setTimeRemaining(Math.floor((expiresAtRef.current.getTime() - Date.now()) / 1000));
       setStatus("calling");
-      
-      // Save to localStorage for persistence across page reloads
-      const storedData: StoredVerification = {
-        verificationId: data.verification_id,
-        ovhNumber: data.ovh_number,
-        expiresAt: data.expires_at,
-        phoneNumber,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
-      console.log("[usePhoneVerification] Saved verification to storage:", data.verification_id);
       
       return true;
     } catch (error) {
@@ -152,83 +128,75 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
     }
   }, []);
 
-  const stopPolling = useCallback(() => {
+  const startPolling = useCallback(() => {
     if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-  }, []);
-
-  const checkVerification = useCallback(async () => {
-    // Read verificationId from localStorage to avoid stale closure issues
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      console.log("[usePhoneVerification] No stored verification found");
+      console.log("[usePhoneVerification] Polling already running");
       return;
     }
     
-    let storedId: string;
-    try {
-      const data: StoredVerification = JSON.parse(stored);
-      storedId = data.verificationId;
-    } catch (e) {
-      console.error("[usePhoneVerification] Failed to parse stored verification");
+    const currentId = verificationIdRef.current;
+    if (!currentId) {
+      console.error("[usePhoneVerification] No verificationId to poll");
       return;
     }
     
-    if (!storedId || status === "verified" || status === "expired") {
-      console.log("[usePhoneVerification] Skipping check:", { storedId: !!storedId, status });
-      return;
-    }
+    console.log("[usePhoneVerification] Starting polling for:", currentId);
+    setStatus("waiting");
 
-    console.log("[usePhoneVerification] Checking verification:", storedId);
-
-    try {
-      const response = await supabase.functions.invoke("check-phone-auth", {
-        body: { verification_id: storedId },
-      });
-
-      if (response.error) {
-        console.error("[usePhoneVerification] Check error:", response.error);
+    const doCheck = async () => {
+      // Read from ref to get current value
+      const id = verificationIdRef.current;
+      const currentStatus = statusRef.current;
+      
+      if (!id) {
+        console.log("[usePhoneVerification] No verificationId, stopping poll");
+        stopPolling();
+        return;
+      }
+      
+      if (currentStatus === "verified" || currentStatus === "expired") {
+        console.log("[usePhoneVerification] Status is", currentStatus, ", stopping poll");
+        stopPolling();
         return;
       }
 
-      const data = response.data;
-      console.log("[usePhoneVerification] Check response:", data);
-      
-      if (data.verified) {
-        setStatus("verified");
-        stopPolling();
-        localStorage.removeItem(STORAGE_KEY);
-      } else if (data.status === "expired") {
-        setStatus("expired");
-        stopPolling();
-        localStorage.removeItem(STORAGE_KEY);
+      console.log("[usePhoneVerification] Checking verification:", id);
+
+      try {
+        const response = await supabase.functions.invoke("check-phone-auth", {
+          body: { verification_id: id },
+        });
+
+        if (response.error) {
+          console.error("[usePhoneVerification] Check error:", response.error);
+          return;
+        }
+
+        const data = response.data;
+        console.log("[usePhoneVerification] Check response:", data);
+        
+        if (data.verified) {
+          setStatus("verified");
+          stopPolling();
+        } else if (data.status === "expired") {
+          setStatus("expired");
+          stopPolling();
+        }
+      } catch (error) {
+        console.error("[usePhoneVerification] Check error:", error);
       }
-    } catch (error) {
-      console.error("[usePhoneVerification] Check error:", error);
-    }
-  }, [status, stopPolling]);
+    };
 
-  const startPolling = useCallback(() => {
-    if (pollingRef.current) return;
+    // Check immediately
+    doCheck();
     
-    setStatus("waiting");
-    
-    // Poll every 2 seconds
-    pollingRef.current = window.setInterval(() => {
-      checkVerification();
-    }, 2000);
-    
-    // Also check immediately
-    checkVerification();
-  }, [checkVerification]);
-
+    // Then every 3 seconds
+    pollingRef.current = window.setInterval(doCheck, 3000);
+  }, [stopPolling]);
 
   const triggerCall = useCallback(() => {
     const telUrl = `tel:${ovhNumber.replace(/\s/g, "")}`;
     
-    // Use invisible link to prevent page reload
     const link = document.createElement("a");
     link.href = telUrl;
     link.style.display = "none";
@@ -245,9 +213,8 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
     setStatus("idle");
     setErrorMessage(null);
     setTimeRemaining(600);
-    setVerificationId(null);
+    verificationIdRef.current = null;
     expiresAtRef.current = null;
-    localStorage.removeItem(STORAGE_KEY);
   }, [stopPolling]);
 
   return {
