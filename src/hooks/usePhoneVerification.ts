@@ -1,7 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+const STORAGE_KEY = "anr_phone_verification";
+
 export type VerificationStatus = "idle" | "initializing" | "calling" | "waiting" | "verified" | "expired" | "error";
+
+interface StoredVerification {
+  verificationId: string;
+  ovhNumber: string;
+  expiresAt: string;
+  phoneNumber: string;
+}
 
 interface UsePhoneVerificationReturn {
   status: VerificationStatus;
@@ -29,6 +38,32 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
 
   // Detect Capacitor (native app)
   const isCapacitor = typeof (window as any).Capacitor !== "undefined";
+
+  // Restore verification from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const data: StoredVerification = JSON.parse(stored);
+        const expiresAt = new Date(data.expiresAt);
+        
+        // Check if not expired
+        if (expiresAt > new Date()) {
+          setVerificationId(data.verificationId);
+          setOvhNumber(data.ovhNumber);
+          expiresAtRef.current = expiresAt;
+          setTimeRemaining(Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+          setStatus("waiting");
+          console.log("[usePhoneVerification] Restored verification from storage:", data.verificationId);
+        } else {
+          // Expired, clean up
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch (e) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -98,6 +133,16 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
       setTimeRemaining(Math.floor((expiresAtRef.current.getTime() - Date.now()) / 1000));
       setStatus("calling");
       
+      // Save to localStorage for persistence across page reloads
+      const storedData: StoredVerification = {
+        verificationId: data.verification_id,
+        ovhNumber: data.ovh_number,
+        expiresAt: data.expires_at,
+        phoneNumber,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
+      console.log("[usePhoneVerification] Saved verification to storage:", data.verification_id);
+      
       return true;
     } catch (error) {
       console.error("[usePhoneVerification] Init error:", error);
@@ -158,19 +203,16 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
   const triggerCall = useCallback(() => {
     const telUrl = `tel:${ovhNumber.replace(/\s/g, "")}`;
     
-    if (isCapacitor) {
-      // On native app, directly open phone dialer
-      window.open(telUrl, "_system");
-    } else {
-      // On web, open tel: link
-      window.location.href = telUrl;
-    }
+    // Use invisible link to prevent page reload
+    const link = document.createElement("a");
+    link.href = telUrl;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     
-    // Start polling after triggering call
-    setTimeout(() => {
-      startPolling();
-    }, 1000);
-  }, [ovhNumber, isCapacitor, startPolling]);
+    console.log("[usePhoneVerification] Triggered call to:", telUrl);
+  }, [ovhNumber]);
 
   const reset = useCallback(() => {
     stopPolling();
@@ -180,6 +222,7 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
     setTimeRemaining(600);
     setVerificationId(null);
     expiresAtRef.current = null;
+    localStorage.removeItem(STORAGE_KEY);
   }, [stopPolling]);
 
   return {
