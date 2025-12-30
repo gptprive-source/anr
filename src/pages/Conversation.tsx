@@ -1209,9 +1209,7 @@ const Conversation = () => {
                 Supprimer pour tout le monde
               </Button>}
             {/* If message is read AND it's mine, show explanatory message */}
-            {messageToDelete?.isMine && messageToDelete?.isRead && <p className="text-sm text-muted-foreground text-center bg-muted/50 rounded-md py-0 pb-0 pt-0">
-                Ce message a été lu, vous ne pouvez plus le supprimer pour tout le monde
-              </p>}
+            {messageToDelete?.isMine && messageToDelete?.isRead}
             <Button variant="outline" className="w-full justify-start gap-2" onClick={handleDeleteForMe}>
               <Trash2 className="w-4 h-4" />
               Supprimer pour moi uniquement
