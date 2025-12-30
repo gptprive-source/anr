@@ -15,6 +15,14 @@ const ProtectedRoute = ({ children, skipPhoneCheck = false }: ProtectedRouteProp
   const [checkingPhone, setCheckingPhone] = useState(!skipPhoneCheck);
   const [needsPhoneVerification, setNeedsPhoneVerification] = useState(false);
 
+  // Reset states when user changes
+  useEffect(() => {
+    console.log("[ProtectedRoute] User changed, resetting states:", { userId: user?.id, skipPhoneCheck });
+    setCheckingPhone(!skipPhoneCheck);
+    setNeedsPhoneVerification(false);
+  }, [user?.id, skipPhoneCheck]);
+
+  // Check phone verification after states are reset
   useEffect(() => {
     const checkPhoneVerification = async () => {
       if (!user || skipPhoneCheck) {
@@ -23,45 +31,64 @@ const ProtectedRoute = ({ children, skipPhoneCheck = false }: ProtectedRouteProp
         return;
       }
 
-      // Check device ID match
-      const localDeviceId = localStorage.getItem("anr_device_id");
-      console.log("[ProtectedRoute] Checking phone verification for user:", user.id, "localDeviceId:", localDeviceId);
-      
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("phone_verified, device_id")
-        .eq("id", user.id)
-        .maybeSingle();
+      try {
+        const localDeviceId = localStorage.getItem("anr_device_id");
+        console.log("[ProtectedRoute] Checking phone verification for user:", user.id, "localDeviceId:", localDeviceId);
+        
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("phone_verified, device_id")
+          .eq("id", user.id)
+          .maybeSingle();
 
-      console.log("[ProtectedRoute] Profile data:", profile, "Error:", error);
+        console.log("[ProtectedRoute] Profile data:", profile, "Error:", error);
 
-      // If profile has a device_id and it doesn't match local, this is unauthorized
-      if (profile?.device_id && localDeviceId && profile.device_id !== localDeviceId) {
-        console.warn("[ProtectedRoute] Device mismatch detected, signing out");
-        await supabase.auth.signOut();
-        return;
+        if (error) {
+          console.error("[ProtectedRoute] Error fetching profile:", error);
+          setCheckingPhone(false);
+          return;
+        }
+
+        // If profile has a device_id and it doesn't match local, this is unauthorized
+        if (profile?.device_id && localDeviceId && profile.device_id !== localDeviceId) {
+          console.warn("[ProtectedRoute] Device mismatch detected, signing out");
+          await supabase.auth.signOut();
+          return;
+        }
+
+        // Check if phone verification is needed
+        const needsVerification = !profile?.phone_verified || !profile?.device_id;
+        console.log("[ProtectedRoute] Needs phone verification:", needsVerification, {
+          phone_verified: profile?.phone_verified,
+          device_id: profile?.device_id
+        });
+        
+        // Always update the state (not just when true)
+        setNeedsPhoneVerification(needsVerification);
+      } catch (err) {
+        console.error("[ProtectedRoute] Exception:", err);
+      } finally {
+        setCheckingPhone(false);
       }
-
-      // Check if phone verification is needed
-      const needsVerification = !profile?.phone_verified || !profile?.device_id;
-      console.log("[ProtectedRoute] Needs phone verification:", needsVerification, {
-        phone_verified: profile?.phone_verified,
-        device_id: profile?.device_id
-      });
-      
-      if (needsVerification) {
-        setNeedsPhoneVerification(true);
-      }
-      
-      setCheckingPhone(false);
     };
 
     if (!loading && user) {
       checkPhoneVerification();
-    } else if (!loading) {
+    } else if (!loading && !user) {
       setCheckingPhone(false);
     }
   }, [user, loading, skipPhoneCheck]);
+
+  // Log render state for debugging
+  console.log("[ProtectedRoute] Render state:", {
+    loading,
+    checkingPhone,
+    user: !!user,
+    userId: user?.id,
+    needsPhoneVerification,
+    skipPhoneCheck,
+    pathname: location.pathname
+  });
 
   // Always show loader while auth state is being determined
   if (loading || checkingPhone) {
@@ -79,6 +106,7 @@ const ProtectedRoute = ({ children, skipPhoneCheck = false }: ProtectedRouteProp
 
   // Redirect to phone verification if needed
   if (needsPhoneVerification && !skipPhoneCheck) {
+    console.log("[ProtectedRoute] Redirecting to phone verification");
     return <Navigate to="/phone-verification" replace />;
   }
 
