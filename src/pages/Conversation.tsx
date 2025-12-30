@@ -17,12 +17,10 @@ import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
 import VideoRecorder from "@/components/messages/VideoRecorder";
-
 import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-
 const EMOJI_CATEGORIES = {
   "😊 Smileys": ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "☺️", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🤐", "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "🥸", "😎", "🤓", "🧐", "😕", "😟", "🙁", "☹️", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "☠️", "💩", "🤡", "👹", "👺", "👻", "👽", "👾", "🤖", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾"],
   "👋 Gestes": ["👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦿", "🦵", "🦶", "👂", "🦻", "👃", "🧠", "🫀", "🫁", "🦷", "🦴", "👀", "👁️", "👅", "👄", "💋", "🩸"],
@@ -35,7 +33,6 @@ const EMOJI_CATEGORIES = {
   "⭐ Symboles": ["⭐", "🌟", "💫", "✨", "⚡", "☄️", "💥", "🔥", "🌈", "☀️", "🌤️", "⛅", "🌥️", "☁️", "🌦️", "🌧️", "⛈️", "🌩️", "🌨️", "❄️", "☃️", "⛄", "🌬️", "💨", "💧", "💦", "☔", "☂️", "🌊", "🌫️", "✅", "❌", "❓", "❔", "❕", "❗", "⭕", "🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤", "⚫", "⚪", "🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫", "⬛", "⬜", "◼️", "◻️", "◾", "◽", "▪️", "▫️", "🔶", "🔷", "🔸", "🔹", "🔺", "🔻", "💠", "🔘", "🔳", "🔲", "🏁", "🚩", "🎌", "🏴", "🏳️", "💯", "🔢", "🔣", "🔤"],
   "🎉 Objets": ["🎉", "🎊", "🎈", "🎁", "🎀", "🎗️", "🎟️", "🎫", "🎖️", "🏆", "🏅", "🥇", "🥈", "🥉", "⚽", "🎯", "🎮", "🕹️", "🎰", "🎲", "🧩", "🎭", "🖼️", "🎨", "🧵", "🪡", "🧶", "🪢", "👓", "🕶️", "🥽", "🥼", "🦺", "👔", "👕", "👖", "🧣", "🧤", "🧥", "🧦", "👗", "👘", "🥻", "🩱", "🩲", "🩳", "👙", "👚", "👛", "👜", "👝", "🛍️", "🎒", "🩴", "👞", "👟", "🥾", "🥿", "👠", "👡", "🩰", "👢", "👑", "👒", "🎩", "🎓", "🧢", "🪖", "⛑️", "📿", "💄", "💍", "💎", "📱", "📲", "💻", "🖥️", "🖨️", "⌨️", "🖱️"]
 };
-
 interface BusinessCard {
   id: string;
   card_type: string;
@@ -47,7 +44,6 @@ interface BusinessCard {
   email: string | null;
   avatar_url: string | null;
 }
-
 interface VisitorMessage {
   id: string;
   habitation_id: string;
@@ -67,15 +63,14 @@ interface VisitorMessage {
   media_url?: string | null;
   media_type?: string | null;
 }
-
 type ConversationType = 'received_from_visitor' | 'sent_to_anr';
-
 const formatDateSeparator = (date: Date) => {
   if (isToday(date)) return "Aujourd'hui";
   if (isYesterday(date)) return "Hier";
-  return format(date, "EEEE d MMMM", { locale: fr });
+  return format(date, "EEEE d MMMM", {
+    locale: fr
+  });
 };
-
 const renderTextWithLinks = (text: string) => {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
@@ -86,12 +81,19 @@ const renderTextWithLinks = (text: string) => {
     return <span key={index}>{part}</span>;
   });
 };
-
 const Conversation = () => {
-  const { id } = useParams<{ id: string }>();
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const {
+    user
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // State
@@ -107,10 +109,17 @@ const Conversation = () => {
   const [habitationId, setHabitationId] = useState<string | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const [habitationInfo, setHabitationInfo] = useState<{ name: string; address: string } | null>(null);
+  const [habitationInfo, setHabitationInfo] = useState<{
+    name: string;
+    address: string;
+  } | null>(null);
   const [localMessages, setLocalMessages] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [messageToDelete, setMessageToDelete] = useState<{ id: string; isMine: boolean; isRead: boolean } | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<{
+    id: string;
+    isMine: boolean;
+    isRead: boolean;
+  } | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteConversationDialog, setShowDeleteConversationDialog] = useState(false);
   const [deletingConversation, setDeletingConversation] = useState(false);
@@ -119,40 +128,61 @@ const Conversation = () => {
   // Pass ALL message IDs to get replies for the entire conversation (WhatsApp-like)
   const allVisitorMessageIds = visitorMessages.map(m => m.id);
   const latestMessageId = visitorMessages.length > 0 ? visitorMessages[visitorMessages.length - 1]?.id : "";
-  const { replies, sendReply, deleteReply, loading: repliesLoading, refetch: refetchReplies } = useMessageReplies(allVisitorMessageIds);
-  const { isSupported: encryptionSupported } = useEncryptedMessages(habitationId || undefined);
-  const { isBlocked, blockVisitor, unblockVisitor } = useBlockedVisitors();
+  const {
+    replies,
+    sendReply,
+    deleteReply,
+    loading: repliesLoading,
+    refetch: refetchReplies
+  } = useMessageReplies(allVisitorMessageIds);
+  const {
+    isSupported: encryptionSupported
+  } = useEncryptedMessages(habitationId || undefined);
+  const {
+    isBlocked,
+    blockVisitor,
+    unblockVisitor
+  } = useBlockedVisitors();
   const currentVisitorBlocked = id && conversationType === 'received_from_visitor' ? isBlocked(id) : false;
 
   // Hooks for "sent to ANR" mode (visitor/user sending to another ANR)
-  const { messages: sentMessagesFromHook, replies: sentReplies, getConversationMessages, markReplyAsRead, deleteSentMessage, refetch: refetchSentMessages } = useSentMessages();
-  const { sendMessage } = useVisitorMessages();
-  const { encryptMessageForResident, isReady: encryptionReady } = useEncryptedMessages(id || undefined);
+  const {
+    messages: sentMessagesFromHook,
+    replies: sentReplies,
+    getConversationMessages,
+    markReplyAsRead,
+    deleteSentMessage,
+    refetch: refetchSentMessages
+  } = useSentMessages();
+  const {
+    sendMessage
+  } = useVisitorMessages();
+  const {
+    encryptMessageForResident,
+    isReady: encryptionReady
+  } = useEncryptedMessages(id || undefined);
 
   // Get sent conversation data
-  const sentConversationData = id && conversationType === 'sent_to_anr' ? getConversationMessages(id) : { messages: [], replies: [] };
-  const allSentMessages = conversationType === 'sent_to_anr' 
-    ? [...sentConversationData.messages, ...localMessages.filter(lm => !sentConversationData.messages.find((m: any) => m.id === lm.id))]
-    : [];
+  const sentConversationData = id && conversationType === 'sent_to_anr' ? getConversationMessages(id) : {
+    messages: [],
+    replies: []
+  };
+  const allSentMessages = conversationType === 'sent_to_anr' ? [...sentConversationData.messages, ...localMessages.filter(lm => !sentConversationData.messages.find((m: any) => m.id === lm.id))] : [];
 
   // Detect conversation type
   useEffect(() => {
     const detectConversationType = async () => {
       if (!id || !user) return;
-
       try {
         // First check if id is a habitation_id (sent_to_anr mode)
-        const { data: habitation } = await supabase
-          .from("habitations")
-          .select("id, name, anr:anrs(address)")
-          .eq("id", id)
-          .maybeSingle();
-
+        const {
+          data: habitation
+        } = await supabase.from("habitations").select("id, name, anr:anrs(address)").eq("id", id).maybeSingle();
         if (habitation) {
           setConversationType('sent_to_anr');
           setHabitationInfo({
             name: habitation.name || "Résidence",
-            address: (habitation.anr as any)?.address || "",
+            address: (habitation.anr as any)?.address || ""
           });
           setLoading(false);
           return;
@@ -162,18 +192,13 @@ const Conversation = () => {
         setConversationType('received_from_visitor');
 
         // Get user's habitation for received messages
-        const { data: residentData } = await supabase
-          .from("residents")
-          .select("habitation_id")
-          .eq("user_id", user.id)
-          .eq("status", "verified")
-          .maybeSingle();
-
+        const {
+          data: residentData
+        } = await supabase.from("residents").select("habitation_id").eq("user_id", user.id).eq("status", "verified").maybeSingle();
         if (!residentData?.habitation_id) {
           navigate("/messages");
           return;
         }
-
         setHabitationId(residentData.habitation_id);
 
         // Fetch visitor messages - query will be built based on ID type
@@ -182,68 +207,56 @@ const Conversation = () => {
         const isAnonId = id.startsWith("anon-");
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
         const isPhoneNumber = /^\+?[0-9\s\-()]+$/.test(id) && id.length >= 10;
-
         let data: any[] | null = null;
         let error: any = null;
-
         if (isAnonId) {
           const messageId = id.replace("anon-", "");
-          const result = await supabase.from("visitor_messages" as any)
-            .select("*, business_card:visitor_business_cards(*)")
-            .eq("habitation_id", residentData.habitation_id)
-            .eq("id", messageId)
-            .order("created_at", { ascending: true });
+          const result = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("id", messageId).order("created_at", {
+            ascending: true
+          });
           data = result.data;
           error = result.error;
         } else if (isPhoneNumber) {
-          const result = await supabase.from("visitor_messages" as any)
-            .select("*, business_card:visitor_business_cards(*)")
-            .eq("habitation_id", residentData.habitation_id)
-            .eq("visitor_phone", id)
-            .order("created_at", { ascending: true });
+          const result = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_phone", id).order("created_at", {
+            ascending: true
+          });
           data = result.data;
           error = result.error;
         } else if (isUuid) {
           // UUID can be visitor_device_id OR business_card_id
           // Priority: visitor_device_id (WhatsApp-like consistent grouping)
-          const byDeviceId = await supabase.from("visitor_messages" as any)
-            .select("*, business_card:visitor_business_cards(*)")
-            .eq("habitation_id", residentData.habitation_id)
-            .eq("visitor_device_id", id)
-            .order("created_at", { ascending: true });
-          
+          const byDeviceId = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_device_id", id).order("created_at", {
+            ascending: true
+          });
           if (byDeviceId.data && byDeviceId.data.length > 0) {
             data = byDeviceId.data;
             error = byDeviceId.error;
           } else {
             // Fallback: search by business_card_id
-            const byCardId = await supabase.from("visitor_messages" as any)
-              .select("*, business_card:visitor_business_cards(*)")
-              .eq("habitation_id", residentData.habitation_id)
-              .eq("business_card_id", id)
-              .order("created_at", { ascending: true });
+            const byCardId = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("business_card_id", id).order("created_at", {
+              ascending: true
+            });
             data = byCardId.data;
             error = byCardId.error;
           }
         } else {
           // Default: treat as visitor_device_id
-          const result = await supabase.from("visitor_messages" as any)
-            .select("*, business_card:visitor_business_cards(*)")
-            .eq("habitation_id", residentData.habitation_id)
-            .eq("visitor_device_id", id)
-            .order("created_at", { ascending: true });
+          const result = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_device_id", id).order("created_at", {
+            ascending: true
+          });
           data = result.data;
           error = result.error;
         }
-
         if (error) throw error;
-
         if (!data || data.length === 0) {
-          toast({ title: "Erreur", description: "Conversation introuvable", variant: "destructive" });
+          toast({
+            title: "Erreur",
+            description: "Conversation introuvable",
+            variant: "destructive"
+          });
           navigate("/messages");
           return;
         }
-
         setVisitorMessages(data as VisitorMessage[]);
 
         // Mark as read
@@ -258,128 +271,105 @@ const Conversation = () => {
         // Delete corresponding notifications
         if (user?.id && data.length > 0) {
           const messageIds = data.map((m: any) => m.id);
-          const { data: notifs } = await supabase
-            .from("user_notifications")
-            .select("id, data")
-            .eq("user_id", user.id)
-            .eq("type", "visitor_message");
-
+          const {
+            data: notifs
+          } = await supabase.from("user_notifications").select("id, data").eq("user_id", user.id).eq("type", "visitor_message");
           if (notifs) {
-            const notifIdsToDelete = notifs
-              .filter(n => n.data && messageIds.includes((n.data as any).message_id))
-              .map(n => n.id);
-
+            const notifIdsToDelete = notifs.filter(n => n.data && messageIds.includes((n.data as any).message_id)).map(n => n.id);
             if (notifIdsToDelete.length > 0) {
               await supabase.from("user_notifications").delete().in("id", notifIdsToDelete);
             }
           }
         }
-
         setLoading(false);
       } catch (error) {
         console.error("[Conversation] Error:", error);
-        toast({ title: "Erreur", description: "Impossible de charger la conversation", variant: "destructive" });
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger la conversation",
+          variant: "destructive"
+        });
         navigate("/messages");
       }
     };
-
     detectConversationType();
   }, [id, user]);
 
   // Real-time subscription for new messages and replies
   useEffect(() => {
     if (!habitationId || conversationType !== 'received_from_visitor') return;
-
     console.log("[Conversation] Setting up realtime subscriptions for habitationId:", habitationId);
 
     // Subscribe to new visitor messages for this conversation
-    const messagesChannel = supabase
-      .channel(`conversation-messages-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'visitor_messages',
-          filter: `habitation_id=eq.${habitationId}`
-        },
-        async (payload) => {
-          console.log("[Conversation] New visitor message received:", payload);
-          const newMessage = payload.new as any;
-          
-          // Check if this message belongs to this conversation
-          const isAnonId = id?.startsWith("anon-");
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || "");
-          const isPhoneNumber = /^\+?[0-9\s\-()]+$/.test(id || "") && (id?.length || 0) >= 10;
+    const messagesChannel = supabase.channel(`conversation-messages-${id}`).on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'visitor_messages',
+      filter: `habitation_id=eq.${habitationId}`
+    }, async payload => {
+      console.log("[Conversation] New visitor message received:", payload);
+      const newMessage = payload.new as any;
 
-          let belongsToConversation = false;
-          if (isAnonId) {
-            belongsToConversation = newMessage.id === id?.replace("anon-", "");
-          } else if (isPhoneNumber) {
-            belongsToConversation = newMessage.visitor_phone === id;
-          } else if (isUuid) {
-            belongsToConversation = newMessage.visitor_device_id === id || newMessage.business_card_id === id;
-          } else {
-            belongsToConversation = newMessage.visitor_device_id === id;
-          }
+      // Check if this message belongs to this conversation
+      const isAnonId = id?.startsWith("anon-");
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || "");
+      const isPhoneNumber = /^\+?[0-9\s\-()]+$/.test(id || "") && (id?.length || 0) >= 10;
+      let belongsToConversation = false;
+      if (isAnonId) {
+        belongsToConversation = newMessage.id === id?.replace("anon-", "");
+      } else if (isPhoneNumber) {
+        belongsToConversation = newMessage.visitor_phone === id;
+      } else if (isUuid) {
+        belongsToConversation = newMessage.visitor_device_id === id || newMessage.business_card_id === id;
+      } else {
+        belongsToConversation = newMessage.visitor_device_id === id;
+      }
+      if (belongsToConversation) {
+        // Fetch complete message with business card
+        const {
+          data: fullMessage
+        } = await (supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("id", newMessage.id).single() as any);
+        if (fullMessage) {
+          setVisitorMessages(prev => {
+            // Avoid duplicates
+            if (prev.find(m => m.id === (fullMessage as any).id)) return prev;
+            return [...prev, fullMessage as VisitorMessage].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          });
 
-          if (belongsToConversation) {
-            // Fetch complete message with business card
-            const { data: fullMessage } = await (supabase
-              .from("visitor_messages" as any)
-              .select("*, business_card:visitor_business_cards(*)")
-              .eq("id", newMessage.id)
-              .single() as any);
+          // Mark as read immediately
+          await supabase.from("visitor_messages" as any).update({
+            is_read: true,
+            read_at: new Date().toISOString()
+          }).eq("id", newMessage.id);
 
-            if (fullMessage) {
-              setVisitorMessages(prev => {
-                // Avoid duplicates
-                if (prev.find(m => m.id === (fullMessage as any).id)) return prev;
-                return [...prev, fullMessage as VisitorMessage].sort(
-                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-                );
-              });
-
-              // Mark as read immediately
-              await supabase.from("visitor_messages" as any).update({
-                is_read: true,
-                read_at: new Date().toISOString()
-              }).eq("id", newMessage.id);
-
-              // Scroll to bottom
-              setTimeout(() => {
-                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-              }, 100);
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    // Subscribe to new replies for this conversation
-    const repliesChannel = supabase
-      .channel(`conversation-replies-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'message_replies',
-          filter: `habitation_id=eq.${habitationId}`
-        },
-        (payload) => {
-          console.log("[Conversation] New reply received:", payload);
-          // Refetch replies to get complete data
-          refetchReplies();
-          
           // Scroll to bottom
           setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            messagesEndRef.current?.scrollIntoView({
+              behavior: "smooth"
+            });
           }, 100);
         }
-      )
-      .subscribe();
+      }
+    }).subscribe();
 
+    // Subscribe to new replies for this conversation
+    const repliesChannel = supabase.channel(`conversation-replies-${id}`).on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'message_replies',
+      filter: `habitation_id=eq.${habitationId}`
+    }, payload => {
+      console.log("[Conversation] New reply received:", payload);
+      // Refetch replies to get complete data
+      refetchReplies();
+
+      // Scroll to bottom
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "smooth"
+        });
+      }, 100);
+    }).subscribe();
     return () => {
       console.log("[Conversation] Cleaning up realtime subscriptions");
       supabase.removeChannel(messagesChannel);
@@ -390,70 +380,65 @@ const Conversation = () => {
   // Mark sent replies as read
   useEffect(() => {
     if (conversationType !== 'sent_to_anr') return;
-    
     const unreadReplies = sentConversationData.replies.filter((r: any) => !r.is_read);
     unreadReplies.forEach((r: any) => markReplyAsRead(r.id));
-
     if (user?.id && unreadReplies.length > 0) {
       const replyIds = unreadReplies.map((r: any) => r.id);
-      supabase
-        .from("user_notifications")
-        .select("id, data")
-        .eq("user_id", user.id)
-        .eq("type", "message_reply")
-        .then(({ data: notifs }) => {
-          if (notifs) {
-            const notifIdsToDelete = notifs
-              .filter(n => n.data && replyIds.includes((n.data as any).reply_id))
-              .map(n => n.id);
-
-            if (notifIdsToDelete.length > 0) {
-              supabase.from("user_notifications").delete().in("id", notifIdsToDelete);
-            }
+      supabase.from("user_notifications").select("id, data").eq("user_id", user.id).eq("type", "message_reply").then(({
+        data: notifs
+      }) => {
+        if (notifs) {
+          const notifIdsToDelete = notifs.filter(n => n.data && replyIds.includes((n.data as any).reply_id)).map(n => n.id);
+          if (notifIdsToDelete.length > 0) {
+            supabase.from("user_notifications").delete().in("id", notifIdsToDelete);
           }
-        });
+        }
+      });
     }
   }, [sentConversationData.replies, conversationType, user]);
 
   // Scroll handling
   const hasScrolledRef = useRef(false);
   useLayoutEffect(() => {
-    const hasMessages = conversationType === 'sent_to_anr' 
-      ? allSentMessages.length > 0 || sentConversationData.replies.length > 0
-      : visitorMessages.length > 0;
-
+    const hasMessages = conversationType === 'sent_to_anr' ? allSentMessages.length > 0 || sentConversationData.replies.length > 0 : visitorMessages.length > 0;
     if (!loading && hasMessages && !hasScrolledRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      messagesEndRef.current?.scrollIntoView({
+        behavior: "auto"
+      });
       hasScrolledRef.current = true;
     }
   }, [loading, visitorMessages.length, allSentMessages.length, sentConversationData.replies.length, conversationType]);
-
   useEffect(() => {
     if (hasScrolledRef.current) {
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "smooth"
+        });
       }, 100);
     }
   }, [replies.length, sentConversationData.replies.length]);
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "Fichier trop volumineux", description: "La taille maximale est de 10 Mo", variant: "destructive" });
+      toast({
+        title: "Fichier trop volumineux",
+        description: "La taille maximale est de 10 Mo",
+        variant: "destructive"
+      });
       return;
     }
-
     if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-      toast({ title: "Type de fichier non supporté", description: "Seules les photos et vidéos sont acceptées", variant: "destructive" });
+      toast({
+        title: "Type de fichier non supporté",
+        description: "Seules les photos et vidéos sont acceptées",
+        variant: "destructive"
+      });
       return;
     }
-
     setSelectedMedia(file);
     setMediaPreview(URL.createObjectURL(file));
   };
-
   const clearSelectedMedia = () => {
     setSelectedMedia(null);
     if (mediaPreview) {
@@ -464,14 +449,11 @@ const Conversation = () => {
       fileInputRef.current.value = '';
     }
   };
-
   const handleSend = async () => {
     if (!id) return;
-
     if (conversationType === 'received_from_visitor') {
       // Resident replying to visitor
-      if (!habitationId || !latestMessageId || (!replyText.trim() && !audioBlob && !selectedMedia && !videoBlob)) return;
-      
+      if (!habitationId || !latestMessageId || !replyText.trim() && !audioBlob && !selectedMedia && !videoBlob) return;
       setSending(true);
       try {
         let audioBase64: string | undefined;
@@ -480,12 +462,12 @@ const Conversation = () => {
           const bytes = new Uint8Array(buffer);
           audioBase64 = btoa(String.fromCharCode(...bytes));
         }
-
         let mediaToSend = selectedMedia;
         if (videoBlob && !selectedMedia) {
-          mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, { type: videoBlob.type || 'video/webm' });
+          mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, {
+            type: videoBlob.type || 'video/webm'
+          });
         }
-
         const result = await sendReply(latestMessageId, habitationId, replyText.trim() || undefined, audioBase64, mediaToSend || undefined);
         if (result.success) {
           setReplyText("");
@@ -498,17 +480,19 @@ const Conversation = () => {
           throw new Error(result.error);
         }
       } catch (error: any) {
-        toast({ title: "Erreur", description: error.message || "Impossible d'envoyer", variant: "destructive" });
+        toast({
+          title: "Erreur",
+          description: error.message || "Impossible d'envoyer",
+          variant: "destructive"
+        });
       } finally {
         setSending(false);
       }
     } else {
       // User sending to another ANR
       if (!replyText.trim() && !audioBlob && !selectedMedia && !videoBlob) return;
-
       const messageText = replyText.trim();
       setSending(true);
-
       try {
         let audioBase64: string | undefined;
         if (audioBlob) {
@@ -522,11 +506,17 @@ const Conversation = () => {
         if (selectedMedia) {
           mediaToSend = selectedMedia;
         } else if (videoBlob) {
-          mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, { type: videoBlob.type || 'video/webm' });
+          mediaToSend = new File([videoBlob], `selfie-${Date.now()}.webm`, {
+            type: videoBlob.type || 'video/webm'
+          });
         }
 
         // Encrypt if ready
-        let encryptionData: { encrypted_message: string; message_nonce: string; visitor_public_key: string } | undefined;
+        let encryptionData: {
+          encrypted_message: string;
+          message_nonce: string;
+          visitor_public_key: string;
+        } | undefined;
         if (encryptionReady && messageText) {
           try {
             encryptionData = await encryptMessageForResident(messageText);
@@ -534,21 +524,15 @@ const Conversation = () => {
             console.warn('Encryption failed, sending unencrypted:', error);
           }
         }
-
-        const result = await sendMessage(
-          id,
-          messageText || undefined,
-          undefined,
-          undefined,
-          undefined, // Business card is optional - not required to send messages
-          audioBase64,
-          encryptionData,
-          mediaToSend
-        );
-
+        const result = await sendMessage(id, messageText || undefined, undefined, undefined, undefined,
+        // Business card is optional - not required to send messages
+        audioBase64, encryptionData, mediaToSend);
         if (result.success) {
           if (result.message) {
-            setLocalMessages(prev => [...prev, { ...result.message, message: messageText || null }]);
+            setLocalMessages(prev => [...prev, {
+              ...result.message,
+              message: messageText || null
+            }]);
           }
           setReplyText("");
           setAudioBlob(null);
@@ -557,30 +541,33 @@ const Conversation = () => {
           setShowVideoRecorder(false);
           clearSelectedMedia();
           setTimeout(() => refetchSentMessages(), 500);
-          toast({ title: "Message envoyé", description: "Le résident recevra une notification" });
+          toast({
+            title: "Message envoyé",
+            description: "Le résident recevra une notification"
+          });
         } else {
           throw new Error(result.error);
         }
       } catch (error: any) {
-        toast({ title: "Erreur", description: error.message || "Impossible d'envoyer", variant: "destructive" });
+        toast({
+          title: "Erreur",
+          description: error.message || "Impossible d'envoyer",
+          variant: "destructive"
+        });
       } finally {
         setSending(false);
       }
     }
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
+    return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
 
   // Handle "sent_to_anr" mode with no habitation found
   if (conversationType === 'sent_to_anr' && !habitationInfo) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+    return <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
             <Home className="w-8 h-8 text-muted-foreground" />
@@ -596,8 +583,7 @@ const Conversation = () => {
             <Button onClick={() => navigate("/visitor")}>Scanner une ANR</Button>
           </div>
         </div>
-      </div>
-    );
+      </div>;
   }
 
   // Handle "received_from_visitor" mode with no messages
@@ -606,43 +592,63 @@ const Conversation = () => {
   }
 
   // Prepare messages for rendering
-  let allMessagesForDisplay: { type: 'separator' | 'mine' | 'theirs'; data: any; date: Date }[] = [];
-
+  let allMessagesForDisplay: {
+    type: 'separator' | 'mine' | 'theirs';
+    data: any;
+    date: Date;
+  }[] = [];
   if (conversationType === 'received_from_visitor') {
     // Resident view: visitor messages on left (theirs), replies on right (mine)
     const messageWithCard = visitorMessages.find(m => m.business_card);
     const card = messageWithCard?.business_card;
     const isCompany = card?.card_type === "company";
-    const displayName = card
-      ? isCompany ? card.company_name : `${card.first_name || ""} ${card.last_name || ""}`.trim()
-      : visitorMessages[0]?.visitor_phone || "Visiteur";
-
-    const combined = [
-      ...visitorMessages.map(m => ({ type: 'theirs' as const, data: m, date: new Date(m.created_at) })),
-      ...replies.map(r => ({ type: 'mine' as const, data: r, date: new Date(r.created_at) }))
-    ].sort((a, b) => a.date.getTime() - b.date.getTime());
-
+    const displayName = card ? isCompany ? card.company_name : `${card.first_name || ""} ${card.last_name || ""}`.trim() : visitorMessages[0]?.visitor_phone || "Visiteur";
+    const combined = [...visitorMessages.map(m => ({
+      type: 'theirs' as const,
+      data: m,
+      date: new Date(m.created_at)
+    })), ...replies.map(r => ({
+      type: 'mine' as const,
+      data: r,
+      date: new Date(r.created_at)
+    }))].sort((a, b) => a.date.getTime() - b.date.getTime());
     let lastDateStr = "";
     combined.forEach(msg => {
       const dateStr = format(msg.date, "yyyy-MM-dd");
       if (dateStr !== lastDateStr) {
-        allMessagesForDisplay.push({ type: 'separator', data: { label: formatDateSeparator(msg.date) }, date: msg.date });
+        allMessagesForDisplay.push({
+          type: 'separator',
+          data: {
+            label: formatDateSeparator(msg.date)
+          },
+          date: msg.date
+        });
         lastDateStr = dateStr;
       }
       allMessagesForDisplay.push(msg);
     });
   } else {
     // Sent to ANR view: my sent messages on right (mine), replies on left (theirs)
-    const combined = [
-      ...allSentMessages.map(m => ({ type: 'mine' as const, data: m, date: new Date(m.created_at) })),
-      ...sentConversationData.replies.map((r: any) => ({ type: 'theirs' as const, data: r, date: new Date(r.created_at) }))
-    ].sort((a, b) => a.date.getTime() - b.date.getTime());
-
+    const combined = [...allSentMessages.map(m => ({
+      type: 'mine' as const,
+      data: m,
+      date: new Date(m.created_at)
+    })), ...sentConversationData.replies.map((r: any) => ({
+      type: 'theirs' as const,
+      data: r,
+      date: new Date(r.created_at)
+    }))].sort((a, b) => a.date.getTime() - b.date.getTime());
     let lastDateStr = "";
     combined.forEach(msg => {
       const dateStr = format(msg.date, "yyyy-MM-dd");
       if (dateStr !== lastDateStr) {
-        allMessagesForDisplay.push({ type: 'separator', data: { label: formatDateSeparator(msg.date) }, date: msg.date });
+        allMessagesForDisplay.push({
+          type: 'separator',
+          data: {
+            label: formatDateSeparator(msg.date)
+          },
+          date: msg.date
+        });
         lastDateStr = dateStr;
       }
       allMessagesForDisplay.push(msg);
@@ -652,39 +658,37 @@ const Conversation = () => {
   // Delete message handlers
   const handleDeleteForMe = async () => {
     if (!messageToDelete) return;
-    
     console.log("[Conversation] handleDeleteForMe:", messageToDelete, "type:", conversationType);
-    
     try {
       if (conversationType === 'received_from_visitor') {
         // Resident is deleting - use deleted_by_resident
         if (messageToDelete.isMine) {
           // My reply as resident - soft delete for resident
-          const { error } = await supabase
-            .from("message_replies")
-            .update({ deleted_by_resident: true })
-            .eq("id", messageToDelete.id);
-          
+          const {
+            error
+          } = await supabase.from("message_replies").update({
+            deleted_by_resident: true
+          }).eq("id", messageToDelete.id);
           if (error) {
             console.error("[Conversation] Error soft deleting reply:", error);
             throw error;
           }
-          
+
           // Force immediate state update by filtering replies locally first
           // Then refetch to sync with DB
           await refetchReplies();
         } else {
           // Visitor's message - soft delete for RESIDENT
-          const { error } = await supabase
-            .from("visitor_messages")
-            .update({ deleted_by_resident: true })
-            .eq("id", messageToDelete.id);
-          
+          const {
+            error
+          } = await supabase.from("visitor_messages").update({
+            deleted_by_resident: true
+          }).eq("id", messageToDelete.id);
           if (error) {
             console.error("[Conversation] Error soft deleting visitor message:", error);
             throw error;
           }
-          
+
           // Update local state immediately
           setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
         }
@@ -701,69 +705,84 @@ const Conversation = () => {
           setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
         } else {
           // Recipient's reply - soft delete for visitor
-          const { error } = await supabase
-            .from("message_replies")
-            .update({ deleted_by_visitor: true })
-            .eq("id", messageToDelete.id);
-          
+          const {
+            error
+          } = await supabase.from("message_replies").update({
+            deleted_by_visitor: true
+          }).eq("id", messageToDelete.id);
           if (error) {
             console.error("[Conversation] Error soft deleting recipient reply:", error);
             throw error;
           }
-          
+
           // Refetch to sync display
           await refetchSentMessages();
         }
       }
-      
       setShowDeleteDialog(false);
       setMessageToDelete(null);
-      toast({ title: "Message supprimé" });
+      toast({
+        title: "Message supprimé"
+      });
     } catch (error) {
       console.error("[Conversation] Delete error:", error);
-      toast({ title: "Erreur", description: "Impossible de supprimer le message", variant: "destructive" });
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
+        variant: "destructive"
+      });
     }
   };
-
   const handleDeleteForEveryone = async () => {
     if (!messageToDelete) return;
-    
     console.log("[Conversation] handleDeleteForEveryone:", messageToDelete, "type:", conversationType);
-    
     try {
       if (conversationType === 'received_from_visitor') {
         if (messageToDelete.isMine) {
           // Hard delete my reply
-          const { error } = await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
+          const {
+            error
+          } = await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
           if (error) throw error;
           await refetchReplies();
         } else {
           // Hard delete visitor's message
-          const { error } = await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
+          const {
+            error
+          } = await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
           if (error) throw error;
           setVisitorMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
         }
       } else {
         if (messageToDelete.isMine) {
           // Hard delete my sent message
-          const { error } = await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
+          const {
+            error
+          } = await supabase.from("visitor_messages").delete().eq("id", messageToDelete.id);
           if (error) throw error;
           setLocalMessages(prev => prev.filter(m => m.id !== messageToDelete.id));
           await refetchSentMessages();
         } else {
           // Hard delete recipient's reply
-          const { error } = await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
+          const {
+            error
+          } = await supabase.from("message_replies").delete().eq("id", messageToDelete.id);
           if (error) throw error;
           await refetchSentMessages();
         }
       }
-      
       setShowDeleteDialog(false);
       setMessageToDelete(null);
-      toast({ title: "Message supprimé pour tout le monde" });
+      toast({
+        title: "Message supprimé pour tout le monde"
+      });
     } catch (error) {
       console.error("[Conversation] Delete everyone error:", error);
-      toast({ title: "Erreur", description: "Impossible de supprimer le message", variant: "destructive" });
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
+        variant: "destructive"
+      });
     }
   };
 
@@ -774,59 +793,64 @@ const Conversation = () => {
       if (conversationType === 'received_from_visitor') {
         // Get all message IDs for this conversation
         const messageIds = visitorMessages.map(m => m.id);
-        
+
         // Soft delete all visitor messages for this resident
         if (messageIds.length > 0) {
-          const { error: msgError } = await supabase
-            .from("visitor_messages" as any)
-            .update({ deleted_by_resident: true })
-            .in("id", messageIds);
-          
+          const {
+            error: msgError
+          } = await supabase.from("visitor_messages" as any).update({
+            deleted_by_resident: true
+          }).in("id", messageIds);
           if (msgError) throw msgError;
         }
-        
+
         // Soft delete all replies for these messages
         if (messageIds.length > 0) {
-          const { error: replyError } = await supabase
-            .from("message_replies")
-            .update({ deleted_by_resident: true })
-            .in("original_message_id", messageIds);
-          
+          const {
+            error: replyError
+          } = await supabase.from("message_replies").update({
+            deleted_by_resident: true
+          }).in("original_message_id", messageIds);
           if (replyError) throw replyError;
         }
-        
-        toast({ title: "Conversation supprimée" });
+        toast({
+          title: "Conversation supprimée"
+        });
         navigate("/messages");
       } else {
         // Sent to ANR mode - soft delete for visitor
         const messageIds = allSentMessages.map(m => m.id);
-        
         if (messageIds.length > 0) {
-          const { error: msgError } = await supabase
-            .from("visitor_messages" as any)
-            .update({ deleted_by_visitor: true })
-            .in("id", messageIds);
-          
+          const {
+            error: msgError
+          } = await supabase.from("visitor_messages" as any).update({
+            deleted_by_visitor: true
+          }).in("id", messageIds);
           if (msgError) throw msgError;
         }
-        
+
         // Soft delete replies received
         const replyIds = sentConversationData.replies.map((r: any) => r.id);
         if (replyIds.length > 0) {
-          const { error: replyError } = await supabase
-            .from("message_replies")
-            .update({ deleted_by_visitor: true })
-            .in("id", replyIds);
-          
+          const {
+            error: replyError
+          } = await supabase.from("message_replies").update({
+            deleted_by_visitor: true
+          }).in("id", replyIds);
           if (replyError) throw replyError;
         }
-        
-        toast({ title: "Conversation supprimée" });
+        toast({
+          title: "Conversation supprimée"
+        });
         navigate("/messages");
       }
     } catch (error) {
       console.error("[Conversation] Delete conversation error:", error);
-      toast({ title: "Erreur", description: "Impossible de supprimer la conversation", variant: "destructive" });
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la conversation",
+        variant: "destructive"
+      });
     } finally {
       setDeletingConversation(false);
       setShowDeleteConversationDialog(false);
@@ -847,9 +871,7 @@ const Conversation = () => {
       const messageWithCard = visitorMessages.find(m => m.business_card);
       const card = messageWithCard?.business_card;
       const isCompany = card?.card_type === "company";
-      const displayName = card
-        ? isCompany ? card.company_name : `${card.first_name || ""} ${card.last_name || ""}`.trim()
-        : visitorMessages[0]?.visitor_phone || "Visiteur";
+      const displayName = card ? isCompany ? card.company_name : `${card.first_name || ""} ${card.last_name || ""}`.trim() : visitorMessages[0]?.visitor_phone || "Visiteur";
       return {
         icon: isCompany ? <Building2 className="w-5 h-5 text-white" /> : <User className="w-5 h-5 text-white" />,
         name: displayName || "Visiteur",
@@ -860,11 +882,8 @@ const Conversation = () => {
       };
     }
   };
-
   const headerInfo = getHeaderInfo();
-
-  return (
-    <div className="min-h-screen flex flex-col pb-16 bg-secondary/30">
+  return <div className="min-h-screen flex flex-col pb-16 bg-secondary/30">
       {/* Blue Header */}
       <div className="sticky top-0 z-10 bg-primary shadow-md">
         <div className="max-w-2xl mx-auto w-full px-2 py-3">
@@ -893,22 +912,17 @@ const Conversation = () => {
             </div>
 
             {/* Contact & Block buttons only for received_from_visitor mode */}
-            {conversationType === 'received_from_visitor' && (
-              <>
-                {(headerInfo as any).card ? (
-                  <AddToContactsButton businessCard={(headerInfo as any).card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />
-                ) : (
-                  <AddToContactsButton businessCard={{
-                    id: id || "",
-                    card_type: "individual",
-                    first_name: headerInfo.name !== "Visiteur" ? headerInfo.name : null,
-                    last_name: null,
-                    company_name: null,
-                    job_title: null,
-                    phone: visitorMessages[0]?.visitor_phone || null,
-                    email: null
-                  }} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />
-                )}
+            {conversationType === 'received_from_visitor' && <>
+                {(headerInfo as any).card ? <AddToContactsButton businessCard={(headerInfo as any).card} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" /> : <AddToContactsButton businessCard={{
+              id: id || "",
+              card_type: "individual",
+              first_name: headerInfo.name !== "Visiteur" ? headerInfo.name : null,
+              last_name: null,
+              company_name: null,
+              job_title: null,
+              phone: visitorMessages[0]?.visitor_phone || null,
+              email: null
+            }} messageId={visitorMessages[0]?.id} size="icon" variant="ghost" className="text-white hover:bg-white/10" />}
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -922,23 +936,18 @@ const Conversation = () => {
                         {currentVisitorBlocked ? "Débloquer ce visiteur ?" : "Bloquer ce visiteur ?"}
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        {currentVisitorBlocked 
-                          ? "Vous pourrez à nouveau recevoir des messages de ce visiteur." 
-                          : "Vous ne recevrez plus de messages de ce visiteur. Cette action est réversible."}
+                        {currentVisitorBlocked ? "Vous pourrez à nouveau recevoir des messages de ce visiteur." : "Vous ne recevrez plus de messages de ce visiteur. Cette action est réversible."}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction 
-                        className={currentVisitorBlocked ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
-                        onClick={() => {
-                          if (currentVisitorBlocked) {
-                            unblockVisitor(id || "");
-                          } else {
-                            blockVisitor(id || "", headerInfo.name);
-                          }
-                        }}
-                      >
+                      <AlertDialogAction className={currentVisitorBlocked ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"} onClick={() => {
+                    if (currentVisitorBlocked) {
+                      unblockVisitor(id || "");
+                    } else {
+                      blockVisitor(id || "", headerInfo.name);
+                    }
+                  }}>
                         {currentVisitorBlocked ? "Débloquer" : "Bloquer"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -961,23 +970,17 @@ const Conversation = () => {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction 
-                        className="bg-red-500 hover:bg-red-600"
-                        onClick={handleDeleteConversation}
-                        disabled={deletingConversation}
-                      >
+                      <AlertDialogAction className="bg-red-500 hover:bg-red-600" onClick={handleDeleteConversation} disabled={deletingConversation}>
                         {deletingConversation ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                         Supprimer
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </>
-            )}
+              </>}
 
             {/* Delete conversation button for sent_to_anr mode */}
-            {conversationType === 'sent_to_anr' && (
-              <AlertDialog open={showDeleteConversationDialog} onOpenChange={setShowDeleteConversationDialog}>
+            {conversationType === 'sent_to_anr' && <AlertDialog open={showDeleteConversationDialog} onOpenChange={setShowDeleteConversationDialog}>
                 <AlertDialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
                     <Trash2 className="w-5 h-5" />
@@ -992,18 +995,13 @@ const Conversation = () => {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction 
-                      className="bg-red-500 hover:bg-red-600"
-                      onClick={handleDeleteConversation}
-                      disabled={deletingConversation}
-                    >
+                    <AlertDialogAction className="bg-red-500 hover:bg-red-600" onClick={handleDeleteConversation} disabled={deletingConversation}>
                       {deletingConversation ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                       Supprimer
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
-              </AlertDialog>
-            )}
+              </AlertDialog>}
           </div>
         </div>
       </div>
@@ -1011,129 +1009,102 @@ const Conversation = () => {
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-3 py-4 pb-40 space-y-2 max-w-2xl mx-auto w-full">
         {/* Empty conversation welcome */}
-        {allMessagesForDisplay.filter(m => m.type !== 'separator').length === 0 && (
-          <div className="flex justify-center my-8">
+        {allMessagesForDisplay.filter(m => m.type !== 'separator').length === 0 && <div className="flex justify-center my-8">
             <div className="bg-[#E1F2FB] text-[#54656F] text-sm px-4 py-3 rounded-lg shadow-sm text-center max-w-xs">
               <p className="font-medium mb-1">📝 Nouvelle conversation</p>
               <p className="text-xs">Envoyez votre premier message</p>
             </div>
-          </div>
-        )}
+          </div>}
 
         {allMessagesForDisplay.map((item, index) => {
-          if (item.type === 'separator') {
-            return (
-              <div key={`sep-${index}`} className="flex justify-center my-3">
+        if (item.type === 'separator') {
+          return <div key={`sep-${index}`} className="flex justify-center my-3">
                 <span className="bg-[#E1F2FB] text-[#54656F] text-xs px-3 py-1.5 rounded-lg shadow-sm">
                   {item.data.label}
                 </span>
-              </div>
-            );
-          }
+              </div>;
+        }
+        const msg = item.data;
+        const isMine = item.type === 'mine';
 
-          const msg = item.data;
-          const isMine = item.type === 'mine';
-
-          // Determine content type
-          const hasVoice = msg.voice_message_url || msg.reply_voice_url;
-          const hasMedia = msg.reply_media_url || msg.media_url;
-          const mediaUrl = msg.reply_media_url || msg.media_url;
-          const mediaType = msg.reply_media_type || msg.media_type;
-          const text = msg.message || msg.reply_text || "";
-
-          return (
-            <div key={`msg-${msg.id}`} className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
+        // Determine content type
+        const hasVoice = msg.voice_message_url || msg.reply_voice_url;
+        const hasMedia = msg.reply_media_url || msg.media_url;
+        const mediaUrl = msg.reply_media_url || msg.media_url;
+        const mediaType = msg.reply_media_type || msg.media_type;
+        const text = msg.message || msg.reply_text || "";
+        return <div key={`msg-${msg.id}`} className={`flex ${isMine ? 'justify-end' : 'justify-start'} group`}>
               {/* Trash icon for theirs (left side) */}
-              {!isMine && (
-                <button
-                  onClick={() => {
-                    setMessageToDelete({ id: msg.id, isMine: false, isRead: msg.is_read || false });
-                    setShowDeleteDialog(true);
-                  }}
-                  className="opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted rounded self-center mr-1"
-                  title="Supprimer"
-                >
+              {!isMine && <button onClick={() => {
+            setMessageToDelete({
+              id: msg.id,
+              isMine: false,
+              isRead: msg.is_read || false
+            });
+            setShowDeleteDialog(true);
+          }} className="opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted rounded self-center mr-1" title="Supprimer">
                   <Trash2 className="w-4 h-4" />
-                </button>
-              )}
+                </button>}
               
               {/* Trash icon for mine (left side of my message) */}
-              {isMine && (
-                <button
-                  onClick={() => {
-                    setMessageToDelete({ id: msg.id, isMine: true, isRead: msg.is_read || false });
-                    setShowDeleteDialog(true);
-                  }}
-                  className="opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted rounded self-center mr-1"
-                  title="Supprimer"
-                >
+              {isMine && <button onClick={() => {
+            setMessageToDelete({
+              id: msg.id,
+              isMine: true,
+              isRead: msg.is_read || false
+            });
+            setShowDeleteDialog(true);
+          }} className="opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted rounded self-center mr-1" title="Supprimer">
                   <Trash2 className="w-4 h-4" />
-                </button>
-              )}
+                </button>}
               
               <div className="max-w-[85%]">
               {/* Voice message (with optional text) */}
-                {hasVoice && (
-                  <div className={`${isMine ? 'bg-[#D9FDD3] rounded-tr-none' : 'bg-white rounded-tl-none'} rounded-lg p-2 shadow-sm`}>
-                    <WhatsAppAudioPlayer 
-                      audioUrl={msg.voice_message_url || msg.reply_voice_url} 
-                      isOwn={isMine} 
-                      showAvatar={true} 
-                    />
+                {hasVoice && <div className={`${isMine ? 'bg-[#D9FDD3] rounded-tr-none' : 'bg-white rounded-tl-none'} rounded-lg p-2 shadow-sm`}>
+                    <WhatsAppAudioPlayer audioUrl={msg.voice_message_url || msg.reply_voice_url} isOwn={isMine} showAvatar={true} />
                     {/* Show text below audio if both exist */}
-                    {text && (
-                      <p className="text-sm text-[#111B21] whitespace-pre-wrap px-1 mt-2">{renderTextWithLinks(text)}</p>
-                    )}
+                    {text && <p className="text-sm text-[#111B21] whitespace-pre-wrap px-1 mt-2">{renderTextWithLinks(text)}</p>}
                     <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : ''}`}>
                       {msg.is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
                       <span className="text-[11px] text-[#667781]">
-                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                        {format(new Date(msg.created_at), "HH:mm", {
+                    locale: fr
+                  })}
                       </span>
                       {isMine && (msg.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />)}
                     </div>
-                  </div>
-                )}
+                  </div>}
 
                 {/* Media message */}
-                {hasMedia && !hasVoice && (
-                  <div className={`${isMine ? 'bg-[#D9FDD3] rounded-tr-none' : 'bg-white rounded-tl-none'} rounded-lg p-1 shadow-sm overflow-hidden`}>
-                    {mediaType === 'video' ? (
-                      <video src={mediaUrl} controls className="max-w-full rounded-md max-h-64" />
-                    ) : (
-                      <img 
-                        src={mediaUrl} 
-                        alt="Photo" 
-                        className="max-w-full rounded-md max-h-64 cursor-pointer"
-                        onClick={() => window.open(mediaUrl, '_blank')}
-                      />
-                    )}
+                {hasMedia && !hasVoice && <div className={`${isMine ? 'bg-[#D9FDD3] rounded-tr-none' : 'bg-white rounded-tl-none'} rounded-lg p-1 shadow-sm overflow-hidden`}>
+                    {mediaType === 'video' ? <video src={mediaUrl} controls className="max-w-full rounded-md max-h-64" /> : <img src={mediaUrl} alt="Photo" className="max-w-full rounded-md max-h-64 cursor-pointer" onClick={() => window.open(mediaUrl, '_blank')} />}
                     {text && <p className="text-sm text-[#111B21] whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(text)}</p>}
                     <div className={`flex items-center gap-1 px-2 py-1 ${isMine ? 'justify-end' : ''}`}>
                       <span className="text-[11px] text-[#667781]">
-                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                        {format(new Date(msg.created_at), "HH:mm", {
+                    locale: fr
+                  })}
                       </span>
                       {isMine && (msg.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />)}
                     </div>
-                  </div>
-                )}
+                  </div>}
 
                 {/* Text message */}
-                {!hasVoice && !hasMedia && text && (
-                  <div className={`${isMine ? 'bg-[#D9FDD3] rounded-tr-none' : 'bg-white rounded-tl-none'} rounded-lg px-3 py-2 shadow-sm`}>
+                {!hasVoice && !hasMedia && text && <div className={`${isMine ? 'bg-[#D9FDD3] rounded-tr-none' : 'bg-white rounded-tl-none'} rounded-lg px-3 py-2 shadow-sm`}>
                     <p className="text-sm text-[#111B21] whitespace-pre-wrap">{renderTextWithLinks(text)}</p>
                     <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : ''}`}>
                       {msg.is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
                       <span className="text-[11px] text-[#667781]">
-                        {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                        {format(new Date(msg.created_at), "HH:mm", {
+                    locale: fr
+                  })}
                       </span>
                       {isMine && (msg.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />)}
                     </div>
-                  </div>
-                )}
+                  </div>}
               </div>
-            </div>
-          );
-        })}
+            </div>;
+      })}
 
         <div ref={messagesEndRef} />
       </div>
@@ -1144,13 +1115,9 @@ const Conversation = () => {
           <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
 
           {/* Media Preview */}
-          {selectedMedia && mediaPreview && (
-            <div className="mb-2 relative inline-block">
+          {selectedMedia && mediaPreview && <div className="mb-2 relative inline-block">
               <div className="relative rounded-lg overflow-hidden bg-white shadow-sm max-w-48">
-                {selectedMedia.type.startsWith('video/') 
-                  ? <video src={mediaPreview} className="max-h-32 object-cover" />
-                  : <img src={mediaPreview} alt="Preview" className="max-h-32 object-cover" />
-                }
+                {selectedMedia.type.startsWith('video/') ? <video src={mediaPreview} className="max-h-32 object-cover" /> : <img src={mediaPreview} alt="Preview" className="max-h-32 object-cover" />}
                 <button onClick={clearSelectedMedia} className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80">
                   <X className="w-4 h-4" />
                 </button>
@@ -1159,27 +1126,15 @@ const Conversation = () => {
                   {(selectedMedia.size / 1024 / 1024).toFixed(1)} Mo
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
 
-          {showVideoRecorder ? (
-            <VideoRecorder 
-              onRecordingComplete={blob => setVideoBlob(blob)} 
-              onSend={handleSend} 
-              onCancel={() => { setShowVideoRecorder(false); setVideoBlob(null); }} 
-              sending={sending} 
-              videoBlob={videoBlob} 
-            />
-          ) : showVoiceRecorder ? (
-            <VoiceRecorder 
-              onRecordingComplete={blob => setAudioBlob(blob)} 
-              onSend={handleSend} 
-              onCancel={() => { setShowVoiceRecorder(false); setAudioBlob(null); }} 
-              sending={sending} 
-              audioBlob={audioBlob} 
-            />
-          ) : (
-            <div className="flex items-center gap-2">
+          {showVideoRecorder ? <VideoRecorder onRecordingComplete={blob => setVideoBlob(blob)} onSend={handleSend} onCancel={() => {
+          setShowVideoRecorder(false);
+          setVideoBlob(null);
+        }} sending={sending} videoBlob={videoBlob} /> : showVoiceRecorder ? <VoiceRecorder onRecordingComplete={blob => setAudioBlob(blob)} onSend={handleSend} onCancel={() => {
+          setShowVoiceRecorder(false);
+          setAudioBlob(null);
+        }} sending={sending} audioBlob={audioBlob} /> : <div className="flex items-center gap-2">
               {/* Left icons */}
               <div className="flex items-center">
                 <Popover>
@@ -1190,18 +1145,14 @@ const Conversation = () => {
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-2 max-h-72 overflow-y-auto" side="top" align="start">
                     <div className="space-y-3">
-                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
-                        <div key={category}>
+                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => <div key={category}>
                           <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
                           <div className="grid grid-cols-8 gap-1">
-                            {emojis.map((emoji, i) => (
-                              <button key={i} className="text-xl p-1 hover:bg-muted rounded transition-colors" onClick={() => setReplyText(prev => prev + emoji)}>
+                            {emojis.map((emoji, i) => <button key={i} className="text-xl p-1 hover:bg-muted rounded transition-colors" onClick={() => setReplyText(prev => prev + emoji)}>
                                 {emoji}
-                              </button>
-                            ))}
+                              </button>)}
                           </div>
-                        </div>
-                      ))}
+                        </div>)}
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -1217,39 +1168,28 @@ const Conversation = () => {
 
               {/* Input */}
               <div className="flex-1 bg-white rounded-full px-4 py-2 shadow-sm">
-                <Textarea 
-                  placeholder="Message" 
-                  value={replyText} 
-                  onChange={e => setReplyText(e.target.value)} 
-                  className="w-full border-0 p-0 min-h-[24px] max-h-24 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto text-[#111B21]" 
-                  rows={1}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  style={{ height: 'auto', minHeight: '24px' }}
-                  onInput={e => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = Math.min(target.scrollHeight, 96) + 'px';
-                  }}
-                />
+                <Textarea placeholder="Message" value={replyText} onChange={e => setReplyText(e.target.value)} className="w-full border-0 p-0 min-h-[24px] max-h-24 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto text-[#111B21]" rows={1} onKeyDown={e => {
+              if (e.key === "Enter" && !e.shiftKey && (replyText.trim() || selectedMedia)) {
+                e.preventDefault();
+                handleSend();
+              }
+            }} style={{
+              height: 'auto',
+              minHeight: '24px'
+            }} onInput={e => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = 'auto';
+              target.style.height = Math.min(target.scrollHeight, 96) + 'px';
+            }} />
               </div>
 
               {/* Send/Mic button */}
-              {replyText.trim() || selectedMedia ? (
-                <button className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md" onClick={handleSend} disabled={sending}>
+              {replyText.trim() || selectedMedia ? <button className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md" onClick={handleSend} disabled={sending}>
                   {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                </button>
-              ) : (
-                <button onClick={() => setShowVoiceRecorder(true)} className="p-3 rounded-full text-white transition-colors shadow-md bg-[#2266ba]">
+                </button> : <button onClick={() => setShowVoiceRecorder(true)} className="p-3 rounded-full text-white transition-colors shadow-md bg-[#2266ba]">
                   <Mic className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          )}
+                </button>}
+            </div>}
         </div>
       </div>
 
@@ -1262,29 +1202,17 @@ const Conversation = () => {
               Choisissez comment supprimer ce message
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="flex flex-col gap-2 py-4">
+          <div className="flex flex-col gap-2 py-0">
             {/* Show "Delete for everyone" only if message not read AND it's my message */}
-            {messageToDelete?.isMine && !messageToDelete?.isRead && (
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-2"
-                onClick={handleDeleteForEveryone}
-              >
+            {messageToDelete?.isMine && !messageToDelete?.isRead && <Button variant="outline" className="w-full justify-start gap-2" onClick={handleDeleteForEveryone}>
                 <Trash2 className="w-4 h-4" />
                 Supprimer pour tout le monde
-              </Button>
-            )}
+              </Button>}
             {/* If message is read AND it's mine, show explanatory message */}
-            {messageToDelete?.isMine && messageToDelete?.isRead && (
-              <p className="text-sm text-muted-foreground text-center py-2 bg-muted/50 rounded-md">
+            {messageToDelete?.isMine && messageToDelete?.isRead && <p className="text-sm text-muted-foreground text-center bg-muted/50 rounded-md py-0 pb-0 pt-0">
                 Ce message a été lu, vous ne pouvez plus le supprimer pour tout le monde
-              </p>
-            )}
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={handleDeleteForMe}
-            >
+              </p>}
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={handleDeleteForMe}>
               <Trash2 className="w-4 h-4" />
               Supprimer pour moi uniquement
             </Button>
@@ -1296,8 +1224,6 @@ const Conversation = () => {
       </AlertDialog>
 
       <BottomNav />
-    </div>
-  );
+    </div>;
 };
-
 export default Conversation;
