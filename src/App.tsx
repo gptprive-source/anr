@@ -54,6 +54,7 @@ import RegistrationSuccess from "./pages/RegistrationSuccess";
 import VisitorMessages from "./pages/VisitorMessages";
 import VisitorConversation from "./pages/VisitorConversation";
 import NotFound from "./pages/NotFound";
+import PhoneVerification from "./pages/PhoneVerification";
 
 // Relay pages
 import RelayDashboard from "./pages/relay/RelayDashboard";
@@ -132,6 +133,7 @@ const AppContent = () => {
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/invitation" element={<Invitation />} />
           <Route path="/registration-success" element={<RegistrationSuccess />} />
+          <Route path="/phone-verification" element={<ProtectedRoute skipPhoneCheck><PhoneVerification /></ProtectedRoute>} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/update-gps" element={<ProtectedRoute>
                 <UpdateGPS />

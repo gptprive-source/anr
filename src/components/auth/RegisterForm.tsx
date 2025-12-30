@@ -47,6 +47,16 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
   const [loading, setLoading] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [addressData, setAddressData] = useState<AddressData | null>(null);
+  
+  // Generate device ID on mount (for phone verification later)
+  useEffect(() => {
+    if (!localStorage.getItem("anr_device_id")) {
+      const deviceId = crypto.randomUUID();
+      localStorage.setItem("anr_device_id", deviceId);
+      console.log("[RegisterForm] Generated device ID:", deviceId);
+    }
+  }, []);
+  
   const [referralCode, setReferralCode] = useState<string | null>(() => {
     // Initialize from localStorage on mount (persists across tabs/sessions)
     return localStorage.getItem("anr_referral_code") || null;

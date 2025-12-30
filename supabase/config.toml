@@ -160,3 +160,9 @@ verify_jwt = false
 
 [functions.sync-delivery-proofs]
 verify_jwt = false
+
+[functions.init-phone-auth]
+verify_jwt = true
+
+[functions.check-phone-auth]
+verify_jwt = true
