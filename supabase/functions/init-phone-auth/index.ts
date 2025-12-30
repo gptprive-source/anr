@@ -20,18 +20,31 @@ function signOvhRequest(
   return `$1$${hash}`;
 }
 
-// Normalize French phone number to international format
+// Normalize phone number to international format
 function normalizePhoneNumber(phone: string): string {
   let cleaned = phone.replace(/[\s\-\.]/g, "");
   
-  if (cleaned.startsWith("0033")) {
-    cleaned = "+33" + cleaned.slice(4);
-  } else if (cleaned.startsWith("33") && !cleaned.startsWith("+")) {
-    cleaned = "+33" + cleaned.slice(2);
-  } else if (cleaned.startsWith("0")) {
-    cleaned = "+33" + cleaned.slice(1);
+  // If number already starts with +, it's already in international format - keep as-is
+  if (cleaned.startsWith("+")) {
+    return cleaned;
   }
   
+  // French format: 0033XXXXXXXXX -> +33XXXXXXXXX
+  if (cleaned.startsWith("0033")) {
+    return "+33" + cleaned.slice(4);
+  }
+  
+  // French format: 33XXXXXXXXX -> +33XXXXXXXXX (only if it looks like a French number)
+  if (cleaned.startsWith("33") && cleaned.length >= 11 && cleaned.length <= 12) {
+    return "+33" + cleaned.slice(2);
+  }
+  
+  // French local format: 0XXXXXXXXX -> +33XXXXXXXXX
+  if (cleaned.startsWith("0") && cleaned.length === 10) {
+    return "+33" + cleaned.slice(1);
+  }
+  
+  // Otherwise return as-is (might be missing + prefix)
   return cleaned;
 }
 
