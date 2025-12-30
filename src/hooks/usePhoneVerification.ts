@@ -152,12 +152,40 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
     }
   }, []);
 
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
   const checkVerification = useCallback(async () => {
-    if (!verificationId || status === "verified" || status === "expired") return;
+    // Read verificationId from localStorage to avoid stale closure issues
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      console.log("[usePhoneVerification] No stored verification found");
+      return;
+    }
+    
+    let storedId: string;
+    try {
+      const data: StoredVerification = JSON.parse(stored);
+      storedId = data.verificationId;
+    } catch (e) {
+      console.error("[usePhoneVerification] Failed to parse stored verification");
+      return;
+    }
+    
+    if (!storedId || status === "verified" || status === "expired") {
+      console.log("[usePhoneVerification] Skipping check:", { storedId: !!storedId, status });
+      return;
+    }
+
+    console.log("[usePhoneVerification] Checking verification:", storedId);
 
     try {
       const response = await supabase.functions.invoke("check-phone-auth", {
-        body: { verification_id: verificationId },
+        body: { verification_id: storedId },
       });
 
       if (response.error) {
@@ -166,18 +194,21 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
       }
 
       const data = response.data;
+      console.log("[usePhoneVerification] Check response:", data);
       
       if (data.verified) {
         setStatus("verified");
         stopPolling();
+        localStorage.removeItem(STORAGE_KEY);
       } else if (data.status === "expired") {
         setStatus("expired");
         stopPolling();
+        localStorage.removeItem(STORAGE_KEY);
       }
     } catch (error) {
       console.error("[usePhoneVerification] Check error:", error);
     }
-  }, [verificationId, status]);
+  }, [status, stopPolling]);
 
   const startPolling = useCallback(() => {
     if (pollingRef.current) return;
@@ -193,12 +224,6 @@ export const usePhoneVerification = (): UsePhoneVerificationReturn => {
     checkVerification();
   }, [checkVerification]);
 
-  const stopPolling = useCallback(() => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-  }, []);
 
   const triggerCall = useCallback(() => {
     const telUrl = `tel:${ovhNumber.replace(/\s/g, "")}`;
