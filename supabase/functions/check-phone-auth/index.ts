@@ -26,26 +26,17 @@ async function signOvhRequest(
   return `$1$${hashHex}`;
 }
 
-// Normalize phone number for comparison
+// Normalize phone number for comparison - works for all countries
 function normalizeForComparison(phone: string): string {
-  // Remove all non-digit characters except +
-  let cleaned = phone.replace(/[^\d+]/g, "");
+  // Remove all non-digit characters
+  const cleaned = phone.replace(/[^\d]/g, "");
   
-  // Normalize various French formats to last 9 digits for comparison
-  if (cleaned.startsWith("+33")) {
-    return cleaned.slice(-9);
-  }
-  if (cleaned.startsWith("0033")) {
-    return cleaned.slice(-9);
-  }
-  if (cleaned.startsWith("33") && cleaned.length >= 11) {
-    return cleaned.slice(-9);
-  }
-  if (cleaned.startsWith("0") && cleaned.length === 10) {
+  // Take last 9 digits for comparison (works for all international numbers)
+  if (cleaned.length >= 9) {
     return cleaned.slice(-9);
   }
   
-  return cleaned.slice(-9);
+  return cleaned;
 }
 
 Deno.serve(async (req) => {
