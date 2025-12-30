@@ -21,7 +21,6 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
     timeRemaining,
     isCapacitor,
     initVerification,
-    startPolling,
     triggerCall,
     reset,
   } = usePhoneVerification();
@@ -54,12 +53,8 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
     e.preventDefault();
     if (!phoneNumber.trim()) return;
 
-    const success = await initVerification(phoneNumber.trim(), deviceId);
-    if (success) {
-      // Start polling FIRST, then trigger call
-      startPolling();
-      triggerCall();
-    }
+    // Everything is handled inside initVerification now (polling + dialer)
+    await initVerification(phoneNumber.trim(), deviceId);
   };
 
   // Phone input form
@@ -131,8 +126,8 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
     );
   }
 
-  // Calling / Waiting state
-  if (status === "calling" || status === "waiting") {
+  // Waiting state
+  if (status === "waiting") {
     return (
       <div className="space-y-6 text-center">
         <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center relative">
@@ -141,9 +136,7 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold">
-            {status === "calling" ? "Lancez l'appel" : "En attente de votre appel..."}
-          </h2>
+          <h2 className="text-2xl font-bold">En attente de votre appel...</h2>
           <p className="text-muted-foreground">
             Appelez le numéro ci-dessous depuis votre téléphone
           </p>
