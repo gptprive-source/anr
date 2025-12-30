@@ -21,9 +21,17 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
     timeRemaining,
     isCapacitor,
     initVerification,
+    startPolling,
     triggerCall,
     reset,
   } = usePhoneVerification();
+
+  // Auto-start polling when restored from storage
+  useEffect(() => {
+    if (status === "waiting") {
+      startPolling();
+    }
+  }, [status, startPolling]);
 
   // Auto-transition after verification
   useEffect(() => {
@@ -55,6 +63,8 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
 
     const success = await initVerification(phoneNumber.trim(), deviceId);
     if (success) {
+      // Start polling BEFORE triggering call to ensure it runs even if page state changes
+      startPolling();
       triggerCall();
     }
   };
