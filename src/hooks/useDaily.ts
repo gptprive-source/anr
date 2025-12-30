@@ -177,7 +177,7 @@ export const useDaily = ({
     });
   }, [safeSetState, updateTracks, onCallConnected, onCallEnded, onError]);
 
-  const requestMediaPermissions = useCallback(async (needVideo: boolean): Promise<boolean> => {
+  const requestMediaPermissions = useCallback(async (needVideo: boolean): Promise<{ success: boolean; error?: string }> => {
     try {
       logger.log("[useDaily] Requesting permissions, video:", needVideo);
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -186,10 +186,25 @@ export const useDaily = ({
       });
       stream.getTracks().forEach(track => track.stop());
       logger.log("[useDaily] Permissions granted");
-      return true;
+      return { success: true };
     } catch (err: any) {
-      logger.error("[useDaily] Permission denied:", err.name, err.message);
-      return false;
+      logger.error("[useDaily] Permission error:", err.name, err.message);
+      
+      // Return specific error message based on error type
+      let errorMessage = "Erreur d'accès au micro/caméra";
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        errorMessage = "Permissions caméra/micro refusées. Veuillez autoriser l'accès dans les paramètres de votre navigateur.";
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        errorMessage = "Aucun micro ou caméra détecté sur cet appareil.";
+      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        errorMessage = "Le micro ou la caméra est déjà utilisé par une autre application.";
+      } else if (err.name === "OverconstrainedError") {
+        errorMessage = "Impossible de trouver un appareil compatible.";
+      } else if (err.name === "AbortError") {
+        errorMessage = "L'accès au média a été interrompu.";
+      }
+      
+      return { success: false, error: errorMessage };
     }
   }, []);
 
@@ -202,13 +217,13 @@ export const useDaily = ({
 
     try {
       // PARALLÈLE: Permissions + Room création en même temps
-      const [permissionGranted, roomUrl] = await Promise.all([
+      const [permissionResult, roomUrl] = await Promise.all([
         requestMediaPermissions(true),
         createRoom(),
       ]);
       
-      if (!permissionGranted) {
-        throw new Error("Permissions caméra/micro refusées. Veuillez autoriser l'accès dans les paramètres.");
+      if (!permissionResult.success) {
+        throw new Error(permissionResult.error || "Erreur d'accès au micro/caméra");
       }
       
       if (!mountedRef.current) return;

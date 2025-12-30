@@ -129,12 +129,14 @@ export const useSentMessages = () => {
         .from("visitor_messages" as any)
         .select("*")
         .or(orConditions.join(","))
-        .or("deleted_by_visitor.is.null,deleted_by_visitor.eq.false")
         .order("created_at", { ascending: false }) as any);
 
       if (messagesError) throw messagesError;
 
-      const sentMessages = (messagesData || []) as SentMessage[];
+      // Filter out messages deleted by visitor (double .or() doesn't work correctly)
+      const sentMessages = ((messagesData || []) as SentMessage[]).filter(
+        (m: any) => m.deleted_by_visitor !== true
+      );
       console.log("[useSentMessages] Fetched messages:", sentMessages.length);
       setMessages(sentMessages);
 
