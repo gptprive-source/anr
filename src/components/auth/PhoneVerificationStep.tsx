@@ -26,13 +26,6 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
     reset,
   } = usePhoneVerification();
 
-  // Auto-start polling when restored from storage
-  useEffect(() => {
-    if (status === "waiting") {
-      startPolling();
-    }
-  }, [status, startPolling]);
-
   // Auto-transition after verification
   useEffect(() => {
     if (status === "verified") {
@@ -63,14 +56,10 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
 
     const success = await initVerification(phoneNumber.trim(), deviceId);
     if (success) {
-      // Start polling BEFORE triggering call to ensure it runs even if page state changes
+      // Start polling FIRST, then trigger call
       startPolling();
       triggerCall();
     }
-  };
-
-  const handleRetry = () => {
-    reset();
   };
 
   // Phone input form
@@ -186,7 +175,7 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
           </span>
         </div>
 
-        <Button variant="ghost" onClick={handleRetry} className="text-sm">
+        <Button variant="ghost" onClick={reset} className="text-sm">
           Réessayer avec un autre numéro
         </Button>
       </div>
@@ -229,7 +218,7 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
           </p>
         </div>
 
-        <Button onClick={handleRetry} className="w-full">
+        <Button onClick={reset} className="w-full">
           Réessayer
         </Button>
       </div>
