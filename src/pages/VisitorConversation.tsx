@@ -273,6 +273,62 @@ const VisitorConversation = () => {
     };
   }, [habitationId, deviceId, fetchConversation]);
 
+  // Helper to get or create business card for current user
+  const getOrCreateBusinessCard = async (): Promise<string | null> => {
+    // Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      // For authenticated users, search by user_id first
+      const { data: userCards } = await supabase
+        .from("visitor_business_cards")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+      
+      if (userCards?.[0]?.id) {
+        console.log("[VisitorConversation] Found existing card for user:", userCards[0].id);
+        return userCards[0].id;
+      }
+      
+      // No card exists for this user - create one from their profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      if (profile && (profile.first_name || profile.last_name)) {
+        const { data: newCard } = await supabase
+          .from("visitor_business_cards")
+          .insert({
+            user_id: user.id,
+            device_id: deviceId,
+            card_type: "individual",
+            first_name: profile.first_name || null,
+            last_name: profile.last_name || null,
+            email: user.email || null,
+          })
+          .select("id")
+          .single();
+        
+        if (newCard) {
+          console.log("[VisitorConversation] Created new card for user:", newCard.id);
+          return newCard.id;
+        }
+      }
+    }
+    
+    // For non-authenticated visitors, search by device_id
+    const { data: deviceCards } = await supabase
+      .from("visitor_business_cards")
+      .select("id")
+      .eq("device_id", deviceId)
+      .limit(1);
+    
+    return deviceCards?.[0]?.id || null;
+  };
+
   // Send message (reply to existing conversation)
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !habitationId) {
@@ -284,16 +340,9 @@ const VisitorConversation = () => {
       setSending(true);
       console.log("[VisitorConversation] Sending message to", habitationId);
 
-      // Get business card for this device to link visitor identity (optional)
-      const { data: cards } = await supabase
-        .from("visitor_business_cards")
-        .select("id")
-        .eq("device_id", deviceId)
-        .limit(1);
-      
-      // Business card is OPTIONAL - not required to send a message
-      const cardId = cards?.[0]?.id || null;
-      console.log("[VisitorConversation] Business card id:", cardId || "none (optional)");
+      // Get or create business card (prioritizes user_id for logged-in users)
+      const cardId = await getOrCreateBusinessCard();
+      console.log("[VisitorConversation] Business card id:", cardId || "none");
 
       // Insert as a new visitor_message (continuing the conversation)
       const { error } = await supabase
@@ -301,7 +350,7 @@ const VisitorConversation = () => {
         .insert({
           habitation_id: habitationId,
           visitor_device_id: deviceId,
-          business_card_id: cardId, // Optional
+          business_card_id: cardId,
           message: newMessage.trim(),
         });
 
@@ -388,15 +437,8 @@ const VisitorConversation = () => {
       setSending(true);
       console.log("[VisitorConversation] Sending voice message");
 
-      // Get business card for this device to link visitor identity (optional)
-      const { data: cards } = await supabase
-        .from("visitor_business_cards")
-        .select("id")
-        .eq("device_id", deviceId)
-        .limit(1);
-      
-      // Business card is OPTIONAL
-      const cardId = cards?.[0]?.id || null;
+      // Get or create business card (prioritizes user_id for logged-in users)
+      const cardId = await getOrCreateBusinessCard();
 
       // Upload to storage
       const fileName = `voice_${deviceId}_${Date.now()}.webm`;
@@ -413,13 +455,13 @@ const VisitorConversation = () => {
         .from("visitor-voice-messages")
         .getPublicUrl(fileName);
 
-      // Insert message with device_id and optional business_card_id
+      // Insert message with device_id and business_card_id
       const { error } = await supabase
         .from("visitor_messages")
         .insert({
           habitation_id: habitationId,
           visitor_device_id: deviceId,
-          business_card_id: cardId, // Optional
+          business_card_id: cardId,
           voice_message_url: publicUrl.publicUrl,
         });
 
