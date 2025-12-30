@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts";
 
 const corsHeaders = {
@@ -6,18 +7,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// OVH API signature generation
-function signOvhRequest(
+// OVH API signature generation using SHA1 (not HMAC)
+async function signOvhRequest(
   method: string,
   url: string,
   body: string,
   timestamp: number,
   appSecret: string,
   consumerKey: string
-): string {
-  const toSign = [appSecret, consumerKey, method.toUpperCase(), url, body, String(timestamp)].join("+");
-  const hash = createHmac("sha1", appSecret).update(toSign).digest("hex");
-  return `$1$${hash}`;
+): Promise<string> {
+  // OVH signature = "$1$" + SHA1(applicationSecret+"+"+consumerKey+"+"+METHOD+"+"+URL+"+"+BODY+"+"+TIMESTAMP)
+  const toSign = `${appSecret}+${consumerKey}+${method.toUpperCase()}+${url}+${body}+${timestamp}`;
+  
+  console.log("[init-phone-auth] Signature string (masked):", toSign.replace(appSecret, "***").replace(consumerKey, "***"));
+  
+  const encoder = new TextEncoder();
+  const data = encoder.encode(toSign);
+  const hashBuffer = await crypto.subtle.digest("SHA-1", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  
+  return `$1$${hashHex}`;
 }
 
 // Normalize phone number to international format
@@ -134,7 +144,7 @@ Deno.serve(async (req) => {
     // Create Event Token for OVH events polling
     const eventTokenUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/eventToken`;
     const eventTokenBody = JSON.stringify({ expiration: "10 minutes" });
-    const eventTokenSignature = signOvhRequest("POST", eventTokenUrl, eventTokenBody, timestamp, appSecret, consumerKey);
+    const eventTokenSignature = await signOvhRequest("POST", eventTokenUrl, eventTokenBody, timestamp, appSecret, consumerKey);
 
     console.log("[init-phone-auth] Creating OVH event token...");
     
