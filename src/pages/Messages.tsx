@@ -189,12 +189,12 @@ const Messages = () => {
       }
     });
     
-    // Add sent conversations (to ANRs)
+    // Add sent conversations (to ANRs) - use resident name instead of habitation name
     sentConversations.forEach(conv => {
       unified.push({
         id: conv.habitationId,
         type: 'sent',
-        displayName: conv.habitationName,
+        displayName: conv.residentName || conv.habitationName,
         subtitle: conv.anrAddress,
         lastMessage: conv.lastMessage,
         lastMessageDate: conv.lastMessageDate,
