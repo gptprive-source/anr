@@ -2017,6 +2017,7 @@ export type Database = {
           id: string
           phone_number: string
           signature: string
+          started_at: string | null
           status: string | null
           user_id: string | null
           verification_code: string
@@ -2030,6 +2031,7 @@ export type Database = {
           id?: string
           phone_number: string
           signature: string
+          started_at?: string | null
           status?: string | null
           user_id?: string | null
           verification_code: string
@@ -2043,6 +2045,7 @@ export type Database = {
           id?: string
           phone_number?: string
           signature?: string
+          started_at?: string | null
           status?: string | null
           user_id?: string | null
           verification_code?: string
