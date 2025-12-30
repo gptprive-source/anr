@@ -1,0 +1,2 @@
+ALTER TABLE phone_verifications 
+ADD COLUMN IF NOT EXISTS started_at TIMESTAMP WITH TIME ZONE DEFAULT now();

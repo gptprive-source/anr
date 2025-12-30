@@ -1,34 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// OVH API signature generation using SHA1 (not HMAC)
-async function signOvhRequest(
-  method: string,
-  url: string,
-  body: string,
-  timestamp: number,
-  appSecret: string,
-  consumerKey: string
-): Promise<string> {
-  // OVH signature = "$1$" + SHA1(applicationSecret+"+"+consumerKey+"+"+METHOD+"+"+URL+"+"+BODY+"+"+TIMESTAMP)
-  const toSign = `${appSecret}+${consumerKey}+${method.toUpperCase()}+${url}+${body}+${timestamp}`;
-  
-  console.log("[init-phone-auth] Signature string (masked):", toSign.replace(appSecret, "***").replace(consumerKey, "***"));
-  
-  const encoder = new TextEncoder();
-  const data = encoder.encode(toSign);
-  const hashBuffer = await crypto.subtle.digest("SHA-1", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-  
-  return `$1$${hashHex}`;
-}
 
 // Normalize phone number to international format
 function normalizePhoneNumber(phone: string): string {
@@ -131,49 +107,11 @@ Deno.serve(async (req) => {
     }
 
     // OVH API credentials
-    const appKey = Deno.env.get("OVH_APPLICATION_KEY")!;
     const appSecret = Deno.env.get("OVH_APPLICATION_SECRET")!;
-    const consumerKey = Deno.env.get("OVH_CONSUMER_KEY")!;
-    const billingAccount = Deno.env.get("OVH_BILLING_ACCOUNT")!;
     const ovhPhoneNumber = Deno.env.get("OVH_PHONE_NUMBER")!;
 
-    // Get OVH API time for signature
-    const timeRes = await fetch("https://eu.api.ovh.com/1.0/auth/time");
-    const timestamp = await timeRes.json();
-
-    // Create Event Token for OVH events polling
-    const eventTokenUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/eventToken`;
-    const eventTokenBody = JSON.stringify({ expiration: "unlimited" });
-    const eventTokenSignature = await signOvhRequest("POST", eventTokenUrl, eventTokenBody, timestamp, appSecret, consumerKey);
-
-    console.log("[init-phone-auth] Creating OVH event token...");
-    
-    const eventTokenRes = await fetch(eventTokenUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Ovh-Application": appKey,
-        "X-Ovh-Timestamp": String(timestamp),
-        "X-Ovh-Signature": eventTokenSignature,
-        "X-Ovh-Consumer": consumerKey,
-      },
-      body: eventTokenBody,
-    });
-
-    if (!eventTokenRes.ok) {
-      const errorText = await eventTokenRes.text();
-      console.error("[init-phone-auth] OVH event token error:", errorText);
-      return new Response(JSON.stringify({ error: "Erreur lors de la création du token OVH" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const eventTokenData = await eventTokenRes.json();
-    const eventToken = eventTokenData.token;
-    console.log("[init-phone-auth] Event token created successfully");
-
-    // Create verification record
+    // Create verification record with started_at timestamp
+    const startedAt = new Date();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     const verificationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     const signature = createHmac("sha256", appSecret).update(`${user.id}:${normalizedPhone}:${verificationCode}`).digest("hex");
@@ -186,8 +124,8 @@ Deno.serve(async (req) => {
         verification_code: verificationCode,
         signature: signature,
         expires_at: expiresAt.toISOString(),
+        started_at: startedAt.toISOString(),
         status: "pending",
-        event_token: eventToken,
         device_id: device_id,
       })
       .select("id")
@@ -201,7 +139,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log("[init-phone-auth] Verification created:", verification.id);
+    console.log("[init-phone-auth] Verification created:", verification.id, "started_at:", startedAt.toISOString());
 
     return new Response(JSON.stringify({
       verification_id: verification.id,

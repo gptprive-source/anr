@@ -1,9 +1,52 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// OVH API signature generation using SHA1
+async function signOvhRequest(
+  method: string,
+  url: string,
+  body: string,
+  timestamp: number,
+  appSecret: string,
+  consumerKey: string
+): Promise<string> {
+  const toSign = `${appSecret}+${consumerKey}+${method.toUpperCase()}+${url}+${body}+${timestamp}`;
+  
+  const encoder = new TextEncoder();
+  const data = encoder.encode(toSign);
+  const hashBuffer = await crypto.subtle.digest("SHA-1", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  
+  return `$1$${hashHex}`;
+}
+
+// Normalize phone number for comparison
+function normalizeForComparison(phone: string): string {
+  // Remove all non-digit characters except +
+  let cleaned = phone.replace(/[^\d+]/g, "");
+  
+  // Normalize various French formats to last 9 digits for comparison
+  if (cleaned.startsWith("+33")) {
+    return cleaned.slice(-9);
+  }
+  if (cleaned.startsWith("0033")) {
+    return cleaned.slice(-9);
+  }
+  if (cleaned.startsWith("33") && cleaned.length >= 11) {
+    return cleaned.slice(-9);
+  }
+  if (cleaned.startsWith("0") && cleaned.length === 10) {
+    return cleaned.slice(-9);
+  }
+  
+  return cleaned.slice(-9);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -77,83 +120,127 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Poll OVH events API
-    const eventToken = verification.event_token;
-    if (!eventToken) {
-      return new Response(JSON.stringify({ verified: false, status: "pending", error: "Token OVH manquant" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Get OVH credentials
+    const appKey = Deno.env.get("OVH_APPLICATION_KEY")!;
+    const appSecret = Deno.env.get("OVH_APPLICATION_SECRET")!;
+    const consumerKey = Deno.env.get("OVH_CONSUMER_KEY")!;
+    const billingAccount = Deno.env.get("OVH_BILLING_ACCOUNT")!;
+    const ovhPhoneNumber = Deno.env.get("OVH_PHONE_NUMBER")!;
 
-    console.log("[check-phone-auth] Polling OVH events for verification:", verification_id);
+    // Clean OVH phone number to get service name (remove + prefix)
+    const serviceName = ovhPhoneNumber.replace("+", "00");
+
+    console.log("[check-phone-auth] Checking call logs for verification:", verification_id);
+    console.log("[check-phone-auth] Looking for calls from:", verification.phone_number);
+    console.log("[check-phone-auth] Started at:", verification.started_at);
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+      // Get OVH API time
+      const timeRes = await fetch("https://eu.api.ovh.com/1.0/auth/time");
+      const timestamp = await timeRes.json();
 
-      const eventsRes = await fetch(`https://events.voip.ovh.net/?token=${eventToken}`, {
-        signal: controller.signal,
+      // Query OVH incoming call logs
+      // GET /telephony/{billingAccount}/service/{serviceName}/voiceConsumption
+      const callLogsUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/service/${serviceName}/voiceConsumption`;
+      const signature = await signOvhRequest("GET", callLogsUrl, "", timestamp, appSecret, consumerKey);
+
+      const callLogsRes = await fetch(callLogsUrl, {
+        method: "GET",
+        headers: {
+          "X-Ovh-Application": appKey,
+          "X-Ovh-Timestamp": String(timestamp),
+          "X-Ovh-Signature": signature,
+          "X-Ovh-Consumer": consumerKey,
+        },
       });
 
-      clearTimeout(timeoutId);
+      if (!callLogsRes.ok) {
+        const errorText = await callLogsRes.text();
+        console.error("[check-phone-auth] OVH API error:", callLogsRes.status, errorText);
+        return new Response(JSON.stringify({ verified: false, status: "pending", error: "Erreur API OVH" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-      if (eventsRes.ok) {
-        const events = await eventsRes.json();
-        console.log("[check-phone-auth] OVH events received:", JSON.stringify(events));
+      const callIds = await callLogsRes.json();
+      console.log("[check-phone-auth] Found", callIds.length, "call consumption records");
 
-        // Look for incoming call event with matching caller ID
-        for (const event of events) {
-          // Check for start_ringing or incomingCall event
-          if (event.event === "start_ringing" || event.event === "incomingCall") {
-            const callerNumber = event.callingNumber || event.calling || event.from;
-            
-            if (callerNumber) {
-              // Normalize and compare phone numbers
-              const normalizedCaller = callerNumber.replace(/[\s\-\.]/g, "").replace(/^0033/, "+33").replace(/^33/, "+33").replace(/^0/, "+33");
-              const normalizedExpected = verification.phone_number;
+      // Check recent calls (get details for last 10 calls)
+      const recentCallIds = callIds.slice(-10);
+      const startedAt = new Date(verification.started_at);
+      const expectedPhone = normalizeForComparison(verification.phone_number);
 
-              console.log("[check-phone-auth] Comparing caller:", normalizedCaller, "with expected:", normalizedExpected);
+      for (const callId of recentCallIds) {
+        // Get call details
+        const callDetailUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/service/${serviceName}/voiceConsumption/${callId}`;
+        const detailSignature = await signOvhRequest("GET", callDetailUrl, "", timestamp, appSecret, consumerKey);
 
-              if (normalizedCaller === normalizedExpected || normalizedCaller.endsWith(normalizedExpected.slice(-9)) || normalizedExpected.endsWith(normalizedCaller.slice(-9))) {
-                console.log("[check-phone-auth] Phone number matched! Verifying...");
+        const detailRes = await fetch(callDetailUrl, {
+          method: "GET",
+          headers: {
+            "X-Ovh-Application": appKey,
+            "X-Ovh-Timestamp": String(timestamp),
+            "X-Ovh-Signature": detailSignature,
+            "X-Ovh-Consumer": consumerKey,
+          },
+        });
 
-                // Update verification status
-                await supabase
-                  .from("phone_verifications")
-                  .update({ status: "verified", verified_at: new Date().toISOString() })
-                  .eq("id", verification_id);
+        if (!detailRes.ok) continue;
 
-                // Update profile with phone and device
-                await supabase
-                  .from("profiles")
-                  .update({
-                    phone_number: verification.phone_number,
-                    phone_verified: true,
-                    device_id: verification.device_id,
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq("id", user.id);
+        const callDetail = await detailRes.json();
+        console.log("[check-phone-auth] Call detail:", JSON.stringify(callDetail));
 
-                console.log("[check-phone-auth] Profile updated successfully");
+        // Check if this is an incoming call after started_at
+        const callDate = new Date(callDetail.creationDatetime || callDetail.datetime);
+        
+        if (callDate < startedAt) {
+          console.log("[check-phone-auth] Call is before started_at, skipping");
+          continue;
+        }
 
-                return new Response(JSON.stringify({ verified: true, status: "verified" }), {
-                  headers: { ...corsHeaders, "Content-Type": "application/json" },
-                });
-              }
-            }
-          }
+        // Check if wayType is incoming
+        if (callDetail.wayType !== "incoming") {
+          console.log("[check-phone-auth] Not an incoming call, skipping");
+          continue;
+        }
+
+        // Compare caller number
+        const callerPhone = normalizeForComparison(callDetail.calling || callDetail.callingNumber || "");
+        console.log("[check-phone-auth] Comparing caller:", callerPhone, "with expected:", expectedPhone);
+
+        if (callerPhone === expectedPhone) {
+          console.log("[check-phone-auth] Phone number matched! Verifying...");
+
+          // Update verification status
+          await supabase
+            .from("phone_verifications")
+            .update({ status: "verified", verified_at: new Date().toISOString() })
+            .eq("id", verification_id);
+
+          // Update profile with phone and device
+          await supabase
+            .from("profiles")
+            .update({
+              phone_number: verification.phone_number,
+              phone_verified: true,
+              device_id: verification.device_id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", user.id);
+
+          console.log("[check-phone-auth] Profile updated successfully");
+
+          return new Response(JSON.stringify({ verified: true, status: "verified" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
       }
+
     } catch (pollError) {
-      // Timeout or network error - just return pending
-      if (pollError instanceof Error && pollError.name === "AbortError") {
-        console.log("[check-phone-auth] Polling timeout, returning pending");
-      } else {
-        console.error("[check-phone-auth] Polling error:", pollError);
-      }
+      console.error("[check-phone-auth] Error checking call logs:", pollError);
     }
 
-    // No matching event found
+    // No matching call found yet
     return new Response(JSON.stringify({ verified: false, status: "pending" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
