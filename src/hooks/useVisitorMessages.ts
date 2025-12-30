@@ -393,25 +393,31 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
   const deleteConversation = async (visitorId: string) => {
     try {
       // Get all message IDs for this visitor
+      // IMPORTANT: Must match the grouping logic in Messages.tsx (visitor_device_id first)
       const messagesToDelete = messages.filter(m => {
-        const msgVisitorId = m.business_card_id || m.visitor_phone || `anon-${m.id}`;
+        const msgVisitorId = m.visitor_device_id || m.business_card_id || m.visitor_phone || `anon-${m.id}`;
         return msgVisitorId === visitorId;
       });
 
-      if (messagesToDelete.length === 0) return { success: true };
+      if (messagesToDelete.length === 0) {
+        console.log("[useVisitorMessages] No messages found to delete for visitorId:", visitorId);
+        return { success: true };
+      }
 
-      // Delete all messages for this visitor
+      console.log("[useVisitorMessages] Soft-deleting", messagesToDelete.length, "messages for visitor:", visitorId);
+
+      // Soft delete all messages for this visitor (mark as deleted by resident)
       for (const msg of messagesToDelete) {
         await supabase
           .from("visitor_messages" as any)
-          .delete()
+          .update({ deleted_by_resident: true })
           .eq("id", msg.id);
       }
 
       // Update local state
       const unreadDeleted = messagesToDelete.filter(m => !m.is_read).length;
       setMessages(prev => prev.filter(m => {
-        const msgVisitorId = m.business_card_id || m.visitor_phone || `anon-${m.id}`;
+        const msgVisitorId = m.visitor_device_id || m.business_card_id || m.visitor_phone || `anon-${m.id}`;
         return msgVisitorId !== visitorId;
       }));
       setUnreadCount(prev => Math.max(0, prev - unreadDeleted));
