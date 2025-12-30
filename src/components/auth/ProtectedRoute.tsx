@@ -18,18 +18,22 @@ const ProtectedRoute = ({ children, skipPhoneCheck = false }: ProtectedRouteProp
   useEffect(() => {
     const checkPhoneVerification = async () => {
       if (!user || skipPhoneCheck) {
+        console.log("[ProtectedRoute] Skipping phone check:", { user: !!user, skipPhoneCheck });
         setCheckingPhone(false);
         return;
       }
 
       // Check device ID match
       const localDeviceId = localStorage.getItem("anr_device_id");
+      console.log("[ProtectedRoute] Checking phone verification for user:", user.id, "localDeviceId:", localDeviceId);
       
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select("phone_verified, device_id")
         .eq("id", user.id)
         .maybeSingle();
+
+      console.log("[ProtectedRoute] Profile data:", profile, "Error:", error);
 
       // If profile has a device_id and it doesn't match local, this is unauthorized
       if (profile?.device_id && localDeviceId && profile.device_id !== localDeviceId) {
@@ -39,7 +43,13 @@ const ProtectedRoute = ({ children, skipPhoneCheck = false }: ProtectedRouteProp
       }
 
       // Check if phone verification is needed
-      if (!profile?.phone_verified || !profile?.device_id) {
+      const needsVerification = !profile?.phone_verified || !profile?.device_id;
+      console.log("[ProtectedRoute] Needs phone verification:", needsVerification, {
+        phone_verified: profile?.phone_verified,
+        device_id: profile?.device_id
+      });
+      
+      if (needsVerification) {
         setNeedsPhoneVerification(true);
       }
       
