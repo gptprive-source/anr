@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
 
     // Create Event Token for OVH events polling
     const eventTokenUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/eventToken`;
-    const eventTokenBody = JSON.stringify({ expiration: "10 minutes" });
+    const eventTokenBody = JSON.stringify({ expiration: "unlimited" });
     const eventTokenSignature = await signOvhRequest("POST", eventTokenUrl, eventTokenBody, timestamp, appSecret, consumerKey);
 
     console.log("[init-phone-auth] Creating OVH event token...");
