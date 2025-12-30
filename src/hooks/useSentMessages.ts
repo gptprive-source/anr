@@ -75,12 +75,12 @@ export const useSentMessages = () => {
     return data;
   };
 
-  // Get device ID for anonymous visitors
+  // Get device ID for anonymous visitors - MUST match the key used in useVisitorMessages
   const getDeviceId = () => {
-    const DEVICE_ID_KEY = 'visitor_device_id';
+    const DEVICE_ID_KEY = 'anr_visitor_device_id';
     let deviceId = localStorage.getItem(DEVICE_ID_KEY);
     if (!deviceId) {
-      deviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      deviceId = crypto.randomUUID();
       localStorage.setItem(DEVICE_ID_KEY, deviceId);
     }
     return deviceId;
@@ -102,13 +102,27 @@ export const useSentMessages = () => {
       // Fetch messages sent by this visitor via MULTIPLE identifiers:
       // 1. business_card_id (if they have one)
       // 2. visitor_device_id (their device fingerprint)
-      // 3. user_id via business card lookup
+      // 3. All business cards linked to this user_id
       let orConditions: string[] = [];
       
       if (card?.id) {
         orConditions.push(`business_card_id.eq.${card.id}`);
       }
       orConditions.push(`visitor_device_id.eq.${deviceId}`);
+      
+      // Also fetch all business cards linked to this user (in case they have multiple or old ones)
+      const { data: userCards } = await supabase
+        .from("visitor_business_cards")
+        .select("id")
+        .eq("user_id", user.id);
+      
+      if (userCards && userCards.length > 0) {
+        for (const uc of userCards) {
+          if (uc.id !== card?.id) { // Avoid duplicate condition
+            orConditions.push(`business_card_id.eq.${uc.id}`);
+          }
+        }
+      }
 
       const { data: messagesData, error: messagesError } = await (supabase
         .from("visitor_messages" as any)

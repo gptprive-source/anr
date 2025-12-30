@@ -225,12 +225,30 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
       // IMPORTANT: Always include visitor_device_id so visitors can see their conversations
       const visitorDeviceId = getVisitorDeviceId();
       
+      // Check if user is authenticated first
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      // For logged-in users, auto-attach their business card if not provided
+      let finalBusinessCardId = businessCardId || null;
+      if (currentUser && !finalBusinessCardId) {
+        const { data: userCard } = await supabase
+          .from("visitor_business_cards")
+          .select("id")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+        
+        if (userCard) {
+          finalBusinessCardId = userCard.id;
+          console.log("[useVisitorMessages] Auto-attached business card for logged-in user:", finalBusinessCardId);
+        }
+      }
+      
       const insertData: Record<string, any> = {
         habitation_id: targetHabitationId,
         message: encryptionData ? null : (message || null), // Clear text only if not encrypted
         voice_message_url: voiceMessageUrl,
         visitor_phone: visitorPhone || null,
-        business_card_id: businessCardId || null,
+        business_card_id: finalBusinessCardId,
         media_url: mediaUrl,
         media_type: mediaType,
         visitor_device_id: visitorDeviceId, // Track which device sent this message
@@ -243,9 +261,6 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         insertData.visitor_public_key = encryptionData.visitor_public_key;
         insertData.is_encrypted = true;
       }
-
-      // Check if user is authenticated - non-connected visitors can't use .select() due to RLS
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
       
       let insertedMessageId: string | null = null;
       
