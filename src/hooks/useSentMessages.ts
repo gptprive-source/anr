@@ -44,6 +44,7 @@ interface MessageReply {
 interface Conversation {
   habitationId: string;
   habitationName: string;
+  residentName: string; // Name of the owner/resident
   anrAddress: string;
   lastMessage: string | null;
   lastMessageDate: Date;
@@ -199,6 +200,7 @@ export const useSentMessages = () => {
           conversationsMap.set(habId, {
             habitationId: habId,
             habitationName: "", // Will be fetched separately
+            residentName: "", // Will be fetched separately
             anrAddress: "",
             lastMessage: lastActivityText,
             lastMessageDate: lastActivityDate,
@@ -209,13 +211,22 @@ export const useSentMessages = () => {
         }
       }
 
-      // Fetch habitation details
+      // Fetch habitation details and resident names
       const habIds = Array.from(conversationsMap.keys());
       if (habIds.length > 0) {
+        // Fetch habitations with ANR address
         const { data: habData } = await supabase
           .from("habitations")
           .select("id, name, anr:anrs(address)")
           .in("id", habIds);
+
+        // Fetch owner/resident profiles for each habitation
+        const { data: residentsData } = await supabase
+          .from("residents")
+          .select("habitation_id, user_id, is_owner, profiles:profiles(first_name, last_name)")
+          .in("habitation_id", habIds)
+          .eq("status", "verified")
+          .eq("is_owner", true);
 
         if (habData) {
           for (const hab of habData as any[]) {
@@ -223,6 +234,17 @@ export const useSentMessages = () => {
             if (conv) {
               conv.habitationName = hab.name || "Résidence";
               conv.anrAddress = hab.anr?.address || "";
+              
+              // Find owner's name for this habitation
+              const owner = residentsData?.find(r => r.habitation_id === hab.id);
+              if (owner?.profiles) {
+                const profile = owner.profiles as any;
+                const firstName = profile.first_name || "";
+                const lastName = profile.last_name || "";
+                conv.residentName = `${firstName} ${lastName}`.trim() || conv.habitationName;
+              } else {
+                conv.residentName = conv.habitationName;
+              }
             }
           }
         }
