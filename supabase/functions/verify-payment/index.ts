@@ -240,31 +240,58 @@ serve(async (req) => {
       console.log("[VERIFY-PAYMENT] Using existing ANR (from metadata):", anrId);
     }
 
-    // Create habitation
-    const { data: habitation, error: habError } = await supabaseAdmin
+    // Create or reuse habitation (handle duplicates gracefully)
+    let habitationId: string;
+    
+    // First check if this exact habitation already exists
+    const { data: existingHab } = await supabaseAdmin
       .from("habitations")
-      .insert({
-        anr_id: anrId,
-        name: habitationName,
-      })
       .select("id")
-      .single();
+      .eq("anr_id", anrId)
+      .eq("name", habitationName)
+      .maybeSingle();
+    
+    if (existingHab) {
+      console.log("[VERIFY-PAYMENT] Reusing existing habitation:", existingHab.id);
+      habitationId = existingHab.id;
+    } else {
+      const { data: habitation, error: habError } = await supabaseAdmin
+        .from("habitations")
+        .insert({
+          anr_id: anrId,
+          name: habitationName,
+        })
+        .select("id")
+        .single();
 
-    if (habError) throw new Error(`Error creating habitation: ${habError.message}`);
-    console.log("[VERIFY-PAYMENT] Habitation created:", habitation.id);
+      if (habError) throw new Error(`Error creating habitation: ${habError.message}`);
+      console.log("[VERIFY-PAYMENT] Habitation created:", habitation.id);
+      habitationId = habitation.id;
+    }
 
-    // Create resident as owner
-    const { error: resError } = await supabaseAdmin
+    // Create resident as owner (check if already exists to avoid duplicates)
+    const { data: existingResident } = await supabaseAdmin
       .from("residents")
-      .insert({
-        habitation_id: habitation.id,
-        user_id: userId,
-        is_owner: true,
-        status: "verified",
-      });
+      .select("id")
+      .eq("habitation_id", habitationId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    
+    if (!existingResident) {
+      const { error: resError } = await supabaseAdmin
+        .from("residents")
+        .insert({
+          habitation_id: habitationId,
+          user_id: userId,
+          is_owner: true,
+          status: "verified",
+        });
 
-    if (resError) throw new Error(`Error creating resident: ${resError.message}`);
-    console.log("[VERIFY-PAYMENT] Resident created");
+      if (resError) throw new Error(`Error creating resident: ${resError.message}`);
+      console.log("[VERIFY-PAYMENT] Resident created");
+    } else {
+      console.log("[VERIFY-PAYMENT] Resident already exists:", existingResident.id);
+    }
 
     // Get subscription details
     const subscription = session.subscription as Stripe.Subscription;
@@ -290,7 +317,7 @@ serve(async (req) => {
       .from("subscriptions")
       .insert({
         user_id: userId,
-        habitation_id: habitation.id,
+        habitation_id: habitationId,
         stripe_customer_id: session.customer as string,
         stripe_subscription_id: subscription?.id || session.id,
         stripe_session_id: sessionId, // NEW: for idempotency
@@ -731,7 +758,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      habitationId: habitation.id,
+      habitationId: habitationId,
       anrId,
       isNewAnr: actuallyNewAnr 
     }), {
