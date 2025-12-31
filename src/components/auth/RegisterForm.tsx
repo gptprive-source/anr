@@ -382,7 +382,7 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
           // If resend fails, the account might be confirmed - redirect to login
           toast({
             title: "Compte existant",
-            description: "Cet email est déjà associé à un compte. Redirection vers la connexion..."
+            description: "Cet email est déjà associé à un compte confirmé. Redirection vers la connexion..."
           });
           setTimeout(() => {
             navigate("/login");
@@ -392,20 +392,22 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
         throw error;
       }
       
-      // Check if user was created but needs confirmation (identities empty = email not confirmed yet)
-      // Supabase returns user data even for existing unconfirmed users
+      // Check if user was created but needs confirmation (identities empty = email already confirmed)
+      // Supabase returns user data with empty identities for ALREADY CONFIRMED users
       if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
-        // User exists but not confirmed - resend email
-        await supabase.auth.resend({
-          type: 'signup',
-          email: email.trim()
-        });
+        // User is already confirmed - redirect to login
+        console.log("[RegisterForm] User already confirmed, redirecting to login");
         toast({
-          title: "Email de confirmation renvoyé",
-          description: "Un nouvel email de confirmation a été envoyé."
+          title: "Compte déjà confirmé",
+          description: "Votre compte existe déjà. Redirection vers la connexion..."
         });
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
+        return;
       }
       
+      // New user created successfully - email will be sent automatically
       setStep("email-sent");
     } catch (error: any) {
       toast({
