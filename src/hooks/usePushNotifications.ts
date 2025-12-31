@@ -9,7 +9,7 @@ export const usePushNotifications = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const registeredRef = useRef(false);
-  const tokenSavedRef = useRef(false);
+  const lastSavedTokenRef = useRef<string | null>(null);
 
   const saveToken = useCallback(async (token: string, platform: string) => {
     if (!user) {
@@ -17,35 +17,65 @@ export const usePushNotifications = () => {
       return;
     }
 
-    if (tokenSavedRef.current) {
-      console.log("[Push] Token already saved this session");
+    // Skip if same token already saved this session
+    if (lastSavedTokenRef.current === token) {
+      console.log("[Push] Token already saved (same token)");
       return;
     }
 
     console.log("[Push] 📱 Saving token for user:", user.id, "platform:", platform);
     console.log("[Push] Token value:", token.substring(0, 50) + "...");
     
-    // Delete existing tokens for this platform first to avoid conflicts
-    const { error: deleteError } = await supabase
-      .from("push_tokens")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("platform", platform);
-    
-    if (deleteError) {
-      console.error("[Push] Error deleting old tokens:", deleteError);
-    }
-    
-    // Insert the new token
-    const { error } = await supabase
-      .from("push_tokens")
-      .insert({ user_id: user.id, token, platform });
+    try {
+      // Check if token already exists for this user
+      const { data: existingToken } = await supabase
+        .from("push_tokens")
+        .select("token, updated_at")
+        .eq("user_id", user.id)
+        .eq("platform", platform)
+        .maybeSingle();
+      
+      if (existingToken?.token === token) {
+        // Same token, just update the timestamp
+        console.log("[Push] Token exists, updating timestamp");
+        await supabase
+          .from("push_tokens")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+          .eq("platform", platform);
+        lastSavedTokenRef.current = token;
+        return;
+      }
+      
+      // Delete existing tokens for this platform first to avoid conflicts
+      const { error: deleteError } = await supabase
+        .from("push_tokens")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("platform", platform);
+      
+      if (deleteError) {
+        console.error("[Push] Error deleting old tokens:", deleteError);
+      }
+      
+      // Insert the new token
+      const { error } = await supabase
+        .from("push_tokens")
+        .insert({ 
+          user_id: user.id, 
+          token, 
+          platform,
+          updated_at: new Date().toISOString()
+        });
 
-    if (error) {
-      console.error("[Push] ❌ Error saving token:", error);
-    } else {
-      console.log("[Push] ✅ Token saved successfully to Supabase");
-      tokenSavedRef.current = true;
+      if (error) {
+        console.error("[Push] ❌ Error saving token:", error);
+      } else {
+        console.log("[Push] ✅ Token saved successfully to Supabase");
+        lastSavedTokenRef.current = token;
+      }
+    } catch (err) {
+      console.error("[Push] ❌ Exception saving token:", err);
     }
   }, [user]);
 
@@ -114,6 +144,8 @@ export const usePushNotifications = () => {
       "registrationError",
       (error) => {
         console.error("[Push] ❌ Registration ERROR:", JSON.stringify(error));
+        // Reset registration flag to allow retry
+        registeredRef.current = false;
       }
     );
 
@@ -140,7 +172,7 @@ export const usePushNotifications = () => {
       }
     );
 
-    // Start registration immediately
+    // Always re-register on app start to ensure token is fresh
     console.log("[Push] Calling registerPushNotifications()...");
     registerPushNotifications();
 

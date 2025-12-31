@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { showIncomingCall, hideIncomingCall, isCallScreenVisible, getCurrentCallData } from "@/lib/incomingCallRenderer";
+import { showIncomingCall, hideIncomingCall, isCallScreenVisible, getCurrentCallData, forceStopAllAlerts } from "@/lib/incomingCallRenderer";
 
 interface IncomingCallContextType {
   clearIncomingCall: () => void;
@@ -101,8 +101,9 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           // If we're showing an incoming call screen and this call just ended, hide it
           if (currentCall && isCallScreenVisible() && callLog.id === currentCall.callId) {
             console.log("[REALTIME] Call IDs match, checking status:", callLog.status);
-            if (callLog.status === "ended" || callLog.status === "declined" || callLog.status === "missed") {
+          if (callLog.status === "ended" || callLog.status === "declined" || callLog.status === "missed") {
               console.log("[REALTIME] ✅ Hiding incoming call screen immediately");
+              forceStopAllAlerts(); // Stop alerts first
               hideIncomingCall();
             }
           }
@@ -125,6 +126,7 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
             console.log("[REALTIME] Participant status changed to:", participant.status);
             if (participant.status !== "ringing") {
               console.log("[REALTIME] ✅ Participant no longer ringing, hiding screen");
+              forceStopAllAlerts(); // Stop alerts first
               hideIncomingCall();
             }
           }
@@ -183,6 +185,7 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           
           if (callEnded || notRinging || answeredByOther) {
             console.log("[POLL] ✅ Hiding screen - callEnded:", callEnded, "notRinging:", notRinging, "answeredByOther:", answeredByOther);
+            forceStopAllAlerts(); // Stop alerts first
             hideIncomingCall();
             return;
           }
@@ -199,6 +202,7 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
           
           if (!ringingCalls || ringingCalls.length === 0) {
             console.log("[POLL] ✅ No ringing calls found - hiding screen");
+            forceStopAllAlerts(); // Stop alerts first
             hideIncomingCall();
             return;
           }
