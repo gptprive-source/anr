@@ -9,7 +9,8 @@ interface ProtectedRouteProps {
   skipPhoneCheck?: boolean;
 }
 
-const ProtectedRoute = ({ children, skipPhoneCheck = false }: ProtectedRouteProps) => {
+// TEMPORARY: Phone verification disabled until app launch
+const ProtectedRoute = ({ children, skipPhoneCheck = true }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
   const location = useLocation();
   const [checkingPhone, setCheckingPhone] = useState(!skipPhoneCheck);
