@@ -64,14 +64,14 @@ const Orders = () => {
       const value = typeof config.value === 'number' ? config.value : Number(config.value);
       return value;
     }
-    // Default prices
+    // Default prices (must match app_config values)
     const defaults: Record<string, number> = {
-      particulier: 12,
+      particulier: 36,
       pro: 348,
-      entreprise: 1188,
-      collectivites: 2388
+      entreprise: 2400,
+      collectivites: 4800
     };
-    return defaults[planType] || 12;
+    return defaults[planType] || 36;
   };
 
   useEffect(() => {
