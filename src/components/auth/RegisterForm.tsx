@@ -220,6 +220,8 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
       localStorage.removeItem("anr_register_address_data");
       localStorage.removeItem("anr_register_step");
       localStorage.removeItem("anr_pending_session_id");
+      localStorage.removeItem("anr_register_account_type");
+      localStorage.removeItem("anr_register_selected_plan");
       sessionStorage.removeItem("anr_referral_code");
       
       // Get ANR code for business card step
