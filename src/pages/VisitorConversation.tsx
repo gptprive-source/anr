@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Lock, Home, Mic, Square, Loader2, Paperclip, Video, X, Image, FileText } from "lucide-react";
+import { ArrowLeft, Send, Lock, Home, Mic, Square, Loader2, Paperclip, Video, X, Image, FileText, Smile } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -60,6 +61,22 @@ const VisitorConversation = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Emoji picker
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const commonEmojis = [
+    "😀", "😊", "😂", "🥰", "😍", "🤩", "😘", "😎",
+    "🤔", "😅", "😢", "😭", "😡", "🥳", "🤗", "😴",
+    "👍", "👎", "👏", "🙌", "🤝", "✌️", "👋", "🙏",
+    "❤️", "💕", "💖", "💙", "💚", "💛", "🧡", "💜",
+    "🎉", "🎊", "🔥", "⭐", "✨", "💯", "🏠", "📦",
+    "📞", "📧", "⏰", "📍", "🚪", "🔑", "🔔", "✅"
+  ];
+
+  const insertEmoji = (emoji: string) => {
+    setNewMessage((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+  };
 
   // Fetch conversation data
   const fetchConversation = useCallback(async () => {
@@ -877,6 +894,34 @@ const VisitorConversation = () => {
             >
               <Mic className="h-5 w-5" />
             </Button>
+
+            {/* Emoji picker */}
+            <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="flex-shrink-0"
+                  disabled={sending}
+                >
+                  <Smile className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start" side="top">
+                <div className="grid grid-cols-8 gap-1">
+                  {commonEmojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className="text-xl hover:bg-muted rounded p-1 transition-colors"
+                      onClick={() => insertEmoji(emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             
             <Textarea
               placeholder="Écrire un message..."
