@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Play, Square, Check, Loader2, Music, ChevronLeft } from 'lucide-react';
+import { Bell, Play, Square, Check, Loader2, Music, ChevronLeft, Upload, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRingtoneSettings } from '@/hooks/useRingtoneSettings';
 import { useToast } from '@/hooks/use-toast';
@@ -8,11 +8,16 @@ import { cn } from '@/lib/utils';
 
 const RingtoneSettings = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     ringtones,
+    customRingtones,
     selectedRingtone,
     loading,
+    uploading,
     saveRingtone,
+    uploadRingtone,
+    deleteCustomRingtone,
     previewRingtone,
     stopPreview,
     openNativePicker,
@@ -22,6 +27,7 @@ const RingtoneSettings = () => {
   const { toast } = useToast();
   const [playingUri, setPlayingUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingUri, setDeletingUri] = useState<string | null>(null);
 
   const handlePreview = async (uri: string) => {
     if (playingUri === uri) {
@@ -30,7 +36,7 @@ const RingtoneSettings = () => {
     } else {
       setPlayingUri(uri);
       await previewRingtone(uri);
-      setTimeout(() => setPlayingUri(null), 3000);
+      setTimeout(() => setPlayingUri(null), 5000);
     }
   };
 
@@ -63,6 +69,57 @@ const RingtoneSettings = () => {
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const ringtone = await uploadRingtone(file);
+      toast({
+        title: 'Sonnerie importée',
+        description: `"${ringtone.title}" a été ajoutée à vos sonneries.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erreur d\'import',
+        description: error.message || 'Impossible d\'importer le fichier.',
+        variant: 'destructive',
+      });
+    }
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, uri: string, title: string) => {
+    e.stopPropagation();
+    
+    if (!confirm(`Supprimer "${title}" ?`)) return;
+    
+    setDeletingUri(uri);
+    try {
+      await deleteCustomRingtone(uri);
+      toast({
+        title: 'Sonnerie supprimée',
+        description: `"${title}" a été supprimée.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de supprimer la sonnerie.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingUri(null);
+    }
+  };
+
+  const isCustomRingtone = (uri: string) => {
+    return customRingtones.some(r => r.uri === uri);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -73,6 +130,15 @@ const RingtoneSettings = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,.mp3,.wav,.ogg,.m4a"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex items-center gap-3 p-4">
@@ -98,6 +164,26 @@ const RingtoneSettings = () => {
       </div>
 
       <div className="p-4 space-y-6 pb-24">
+        {/* Upload button */}
+        <Button
+          variant="outline"
+          className="w-full gap-2 h-12 border-dashed"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Import en cours...
+            </>
+          ) : (
+            <>
+              <Upload className="w-5 h-5" />
+              Importer ma sonnerie (MP3, WAV...)
+            </>
+          )}
+        </Button>
+
         {/* Native picker button (Android only) */}
         {isNative && (
           <Button
@@ -113,7 +199,7 @@ const RingtoneSettings = () => {
         {/* Ringtone list */}
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground font-medium px-1">
-            {isNative ? 'Ou choisir parmi nos sonneries :' : 'Sonneries disponibles :'}
+            Sonneries disponibles :
           </p>
           
           {ringtones.map((ringtone) => (
@@ -147,6 +233,23 @@ const RingtoneSettings = () => {
                 )}
               </div>
 
+              {/* Delete button for custom ringtones */}
+              {isCustomRingtone(ringtone.uri) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-10 w-10 p-0 rounded-full shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={(e) => handleDelete(e, ringtone.uri, ringtone.title)}
+                  disabled={deletingUri === ringtone.uri}
+                >
+                  {deletingUri === ringtone.uri ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                </Button>
+              )}
+
               {/* Preview button */}
               <Button
                 variant={playingUri === ringtone.uri ? "destructive" : "secondary"}
@@ -178,8 +281,8 @@ const RingtoneSettings = () => {
         <div className="bg-muted/50 rounded-xl p-4 space-y-2">
           <p className="text-sm font-medium text-foreground">À propos des sonneries</p>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            La sonnerie personnalisée s'applique quand l'application est ouverte. 
-            Quand l'app est fermée, la sonnerie système est utilisée pour les notifications.
+            Importez vos propres fichiers audio (MP3, WAV, OGG, M4A - max 5MB).
+            La sonnerie personnalisée s'applique quand l'application est ouverte.
           </p>
         </div>
       </div>
