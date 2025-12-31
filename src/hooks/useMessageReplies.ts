@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface MessageReply {
@@ -24,12 +24,16 @@ export const useMessageReplies = (messageIds?: string | string[]) => {
   const [replies, setReplies] = useState<MessageReply[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Normalize to array
+  // Normalize to array and stabilize with ref
   const idsArray = messageIds 
     ? (Array.isArray(messageIds) ? messageIds : [messageIds]).filter(Boolean)
     : [];
+  
+  // Use ref to store the latest IDs for the refetch function
+  const idsRef = useRef<string[]>(idsArray);
+  idsRef.current = idsArray;
 
-  const fetchReplies = async (ids: string[]) => {
+  const fetchReplies = useCallback(async (ids: string[]) => {
     if (ids.length === 0) {
       setReplies([]);
       return;
@@ -55,7 +59,7 @@ export const useMessageReplies = (messageIds?: string | string[]) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const sendReply = async (
     originalMessageId: string,
@@ -242,17 +246,20 @@ export const useMessageReplies = (messageIds?: string | string[]) => {
     };
   }, [JSON.stringify(idsArray)]);
 
+  // Stable refetch function using ref
+  const refetch = useCallback(async () => {
+    if (idsRef.current.length > 0) {
+      console.log("[useMessageReplies] Refetching replies for:", idsRef.current.length, "messages");
+      await fetchReplies(idsRef.current);
+    }
+  }, [fetchReplies]);
+
   return {
     replies,
     loading,
     sendReply,
     markAsRead,
     deleteReply,
-    refetch: async () => {
-      if (idsArray.length > 0) {
-        console.log("[useMessageReplies] Refetching replies for:", idsArray.length, "messages");
-        await fetchReplies(idsArray);
-      }
-    },
+    refetch,
   };
 };

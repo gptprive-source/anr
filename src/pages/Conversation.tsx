@@ -375,7 +375,7 @@ const Conversation = () => {
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(repliesChannel);
     };
-  }, [habitationId, conversationType, id, refetchReplies]);
+  }, [habitationId, conversationType, id]);
 
   // Real-time subscription for sent_to_anr mode (visitor sending to ANR)
   useEffect(() => {
