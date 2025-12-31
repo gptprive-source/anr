@@ -12,7 +12,7 @@ L'APPLICATION ANR:
 ANR est un système d'interphone numérique innovant. Chaque adresse postale a un identifiant unique (QR code, NFC, ou numéro) sur un "Doming" collé à la boîte aux lettres/portail.
 - Les VISITEURS scannent l'ANR pour appeler les résidents en vidéo
 - Les RÉSIDENTS reçoivent les appels sur leur smartphone et peuvent ouvrir la porte à distance
-- L'abonnement coûte 12€/an avec 1 Doming gratuit pour nouvelle ANR
+- L'abonnement coûte 36€/an avec 1 Doming gratuit pour nouvelle ANR
 
 FONCTIONNALITÉS RÉSIDENTS:
 - **Dashboard** (/dashboard): Vue d'ensemble, résidents de l'habitation, historique d'appels
