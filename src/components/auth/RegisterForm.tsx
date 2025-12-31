@@ -349,7 +349,7 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
         email,
         password,
         options: {
-          emailRedirectTo: 'https://anr.lovable.app/'
+          emailRedirectTo: 'https://anr.lovable.app/register'
         }
       });
       if (error) throw error;
