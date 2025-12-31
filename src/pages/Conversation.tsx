@@ -377,6 +377,61 @@ const Conversation = () => {
     };
   }, [habitationId, conversationType, id, refetchReplies]);
 
+  // Real-time subscription for sent_to_anr mode (visitor sending to ANR)
+  useEffect(() => {
+    if (conversationType !== 'sent_to_anr' || !id) return;
+    console.log("[Conversation] Setting up realtime for sent_to_anr mode, habitation:", id);
+
+    const sentChannel = supabase
+      .channel(`sent-conversation-${id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'visitor_messages',
+        filter: `habitation_id=eq.${id}`
+      }, (payload) => {
+        console.log("[Conversation] New sent message via realtime:", payload);
+        const newMessage = payload.new as any;
+        
+        // Add to local messages to update UI immediately
+        setLocalMessages(prev => {
+          if (prev.find(m => m.id === newMessage.id)) return prev;
+          return [...prev, newMessage];
+        });
+        
+        // Refetch to get complete data
+        refetchSentMessages();
+        
+        // Scroll to bottom
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'message_replies',
+        filter: `habitation_id=eq.${id}`
+      }, (payload) => {
+        console.log("[Conversation] New reply for sent message:", payload);
+        // Refetch to get complete data
+        refetchSentMessages();
+        
+        // Scroll to bottom
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      })
+      .subscribe((status) => {
+        console.log("[Conversation] sent_to_anr realtime status:", status);
+      });
+
+    return () => {
+      console.log("[Conversation] Cleaning up sent_to_anr realtime");
+      supabase.removeChannel(sentChannel);
+    };
+  }, [conversationType, id, refetchSentMessages]);
+
   // Mark sent replies as read
   useEffect(() => {
     if (conversationType !== 'sent_to_anr') return;
