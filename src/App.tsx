@@ -55,6 +55,7 @@ import VisitorMessages from "./pages/VisitorMessages";
 import VisitorConversation from "./pages/VisitorConversation";
 import NotFound from "./pages/NotFound";
 import PhoneVerification from "./pages/PhoneVerification";
+import RingtoneSettings from "./pages/RingtoneSettings";
 
 // Relay pages
 import RelayDashboard from "./pages/relay/RelayDashboard";
@@ -127,6 +128,9 @@ const AppContent = () => {
               </ProtectedRoute>} />
           <Route path="/account" element={<ProtectedRoute>
                 <Account />
+              </ProtectedRoute>} />
+          <Route path="/account/ringtone" element={<ProtectedRoute>
+                <RingtoneSettings />
               </ProtectedRoute>} />
           <Route path="/call/:anrId" element={<Call />} />
           <Route path="/multi-habitat/:anrId" element={<MultiHabitat />} />
