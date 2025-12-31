@@ -120,9 +120,9 @@ const Messages = () => {
     }>();
     
     messages.forEach(msg => {
-      // Use visitor_device_id as primary key for grouping conversations (WhatsApp-like)
-      // Fall back to business_card_id, then visitor_phone, then anon-id
-      const visitorId = msg.visitor_device_id || msg.business_card_id || msg.visitor_phone || `anon-${msg.id}`;
+      // Use business_card_id as primary key for connected users (stable identifier)
+      // Fall back to visitor_device_id for anonymous visitors, then visitor_phone
+      const visitorId = msg.business_card_id || msg.visitor_device_id || msg.visitor_phone || `anon-${msg.id}`;
       const existing = groups.get(visitorId);
       const card = msg.business_card;
       const isCompany = card?.card_type === "company";
