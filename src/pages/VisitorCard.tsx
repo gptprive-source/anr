@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Loader2, CreditCard } from "lucide-react";
+import { Loader2, CreditCard, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import BusinessCardForm, { BusinessCardFormData } from "@/components/onboarding/BusinessCardForm";
 import { useVisitorBusinessCard } from "@/hooks/useVisitorBusinessCard";
 import { useVisitorCustomTemplates } from "@/hooks/useVisitorCustomTemplates";
@@ -19,19 +20,21 @@ const VisitorCard = () => {
   const { templates: existingTemplates, saveTemplate, deleteTemplate } = useVisitorCustomTemplates();
   const [saving, setSaving] = useState(false);
 
-  const redirectTo = searchParams.get("redirect") || "/visitor";
+  // Check if this is edit mode (coming from account) or onboarding mode
+  const isEditMode = searchParams.get("edit") === "true";
+  const redirectTo = searchParams.get("redirect") || (isEditMode ? "/account" : "/visitor");
 
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate(`/visitor-login?redirect=${encodeURIComponent(redirectTo)}`, { replace: true });
+      navigate(`/visitor-login?redirect=${encodeURIComponent("/visitor-card")}`, { replace: true });
     }
-  }, [authLoading, user, navigate, redirectTo]);
+  }, [authLoading, user, navigate]);
 
-  // Check if already complete
+  // Check if already complete - only redirect during onboarding, not in edit mode
   useEffect(() => {
     const checkComplete = async () => {
-      if (!user) return;
+      if (!user || isEditMode) return;
       
       const { data: profile } = await supabase
         .from("profiles")
@@ -47,7 +50,7 @@ const VisitorCard = () => {
     if (!authLoading && user) {
       checkComplete();
     }
-  }, [authLoading, user, navigate, redirectTo]);
+  }, [authLoading, user, navigate, redirectTo, isEditMode]);
 
   if (authLoading || cardLoading) {
     return (
@@ -64,9 +67,9 @@ const VisitorCard = () => {
     last_name: card?.last_name || "",
     email: user?.email || card?.email || "",
     phone: card?.phone || "",
-    show_email: true,
-    show_phone: true,
-    anr_code: "",
+    show_email: card?.show_email ?? true,
+    show_phone: card?.show_phone ?? true,
+    anr_code: card?.anr_code || "",
     templates: existingTemplates.map((t) => ({
       id: t.id,
       title: t.name,
@@ -124,7 +127,7 @@ const VisitorCard = () => {
         }
       }
 
-      // Mark as complete
+      // Mark as complete (only if not already)
       if (user) {
         await supabase
           .from("profiles")
@@ -133,8 +136,8 @@ const VisitorCard = () => {
       }
 
       toast({
-        title: "Carte de visite créée",
-        description: "Vous pouvez maintenant contacter les résidents",
+        title: isEditMode ? "Carte de visite modifiée" : "Carte de visite créée",
+        description: isEditMode ? "Vos modifications ont été enregistrées" : "Vous pouvez maintenant contacter les résidents",
       });
 
       navigate(redirectTo, { replace: true });
@@ -152,15 +155,34 @@ const VisitorCard = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Header for edit mode */}
+      {isEditMode && (
+        <div className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/account")}
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-lg font-semibold">Ma carte de visite</h1>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <CreditCard className="w-6 h-6 text-primary" />
             </div>
-            <CardTitle>Votre carte de visite</CardTitle>
+            <CardTitle>{isEditMode ? "Modifier ma carte de visite" : "Votre carte de visite"}</CardTitle>
             <CardDescription>
-              Présentez-vous aux résidents que vous souhaitez contacter
+              {isEditMode 
+                ? "Mettez à jour les informations affichées aux résidents"
+                : "Présentez-vous aux résidents que vous souhaitez contacter"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -169,12 +191,12 @@ const VisitorCard = () => {
               initialData={initialData}
               onSubmit={handleSubmit}
               loading={saving}
-              submitLabel="Continuer"
+              submitLabel={isEditMode ? "Enregistrer" : "Continuer"}
             />
           </CardContent>
         </Card>
       </div>
-      <VisitorFooter />
+      {!isEditMode && <VisitorFooter />}
     </div>
   );
 };

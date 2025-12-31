@@ -456,6 +456,22 @@ const Account = () => {
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </Card>
           </Link>
+
+          {/* Visitor Business Card section */}
+          <Link to="/visitor-card?edit=true" className="block">
+            <Card className="p-4 flex items-center justify-between hover:shadow-neumorphic-pressed transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shadow-neumorphic-inset">
+                  <CreditCard className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Ma carte de visite</p>
+                  <p className="text-xs text-muted-foreground">Informations affichées aux résidents</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </Card>
+          </Link>
         </div>
 
         {/* Granted Access Section */}
