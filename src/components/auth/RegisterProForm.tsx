@@ -258,6 +258,7 @@ const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) 
         email: email.trim(),
         password,
         options: {
+          emailRedirectTo: 'https://anr.lovable.app/',
           data: {
             first_name: contactFirstName,
             last_name: contactLastName

@@ -342,7 +342,10 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
         error
       } = await supabase.auth.signUp({
         email,
-        password
+        password,
+        options: {
+          emailRedirectTo: 'https://anr.lovable.app/'
+        }
       });
       if (error) throw error;
       setStep("email-sent");
