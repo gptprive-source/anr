@@ -2440,6 +2440,7 @@ export type Database = {
       profiles: {
         Row: {
           allow_emergency_access: boolean | null
+          business_card_completed: boolean | null
           created_at: string | null
           device_id: string | null
           first_name: string | null
@@ -2455,6 +2456,7 @@ export type Database = {
         }
         Insert: {
           allow_emergency_access?: boolean | null
+          business_card_completed?: boolean | null
           created_at?: string | null
           device_id?: string | null
           first_name?: string | null
@@ -2470,6 +2472,7 @@ export type Database = {
         }
         Update: {
           allow_emergency_access?: boolean | null
+          business_card_completed?: boolean | null
           created_at?: string | null
           device_id?: string | null
           first_name?: string | null
@@ -3595,6 +3598,7 @@ export type Database = {
       }
       visitor_business_cards: {
         Row: {
+          anr_code: string | null
           avatar_url: string | null
           card_type: string
           company_name: string | null
@@ -3607,10 +3611,13 @@ export type Database = {
           job_title: string | null
           last_name: string | null
           phone: string | null
+          show_email: boolean | null
+          show_phone: boolean | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          anr_code?: string | null
           avatar_url?: string | null
           card_type?: string
           company_name?: string | null
@@ -3623,10 +3630,13 @@ export type Database = {
           job_title?: string | null
           last_name?: string | null
           phone?: string | null
+          show_email?: boolean | null
+          show_phone?: boolean | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          anr_code?: string | null
           avatar_url?: string | null
           card_type?: string
           company_name?: string | null
@@ -3639,6 +3649,8 @@ export type Database = {
           job_title?: string | null
           last_name?: string | null
           phone?: string | null
+          show_email?: boolean | null
+          show_phone?: boolean | null
           updated_at?: string | null
           user_id?: string | null
         }
