@@ -23,27 +23,11 @@ const PhoneVerification = () => {
     setDeviceId(id);
   }, []);
 
-  // Check if already verified
+  // TEMPORARY: Phone verification disabled until app launch
+  // Redirect all users directly to dashboard
   useEffect(() => {
-    const checkVerification = async () => {
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("phone_verified, device_id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profile?.phone_verified && profile?.device_id) {
-        setAlreadyVerified(true);
-        navigate("/dashboard", { replace: true });
-      } else {
-        setLoading(false);
-      }
-    };
-
     if (!authLoading && user) {
-      checkVerification();
+      navigate("/dashboard", { replace: true });
     } else if (!authLoading && !user) {
       navigate("/login", { replace: true });
     }
