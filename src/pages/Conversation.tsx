@@ -659,6 +659,13 @@ const Conversation = () => {
     return null;
   }
 
+  // Helper to safely parse date
+  const safeParseDate = (dateStr: string | null | undefined): Date => {
+    if (!dateStr) return new Date();
+    const parsed = new Date(dateStr);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+
   // Prepare messages for rendering
   let allMessagesForDisplay: {
     type: 'separator' | 'mine' | 'theirs';
@@ -674,11 +681,11 @@ const Conversation = () => {
     const combined = [...visitorMessages.map(m => ({
       type: 'theirs' as const,
       data: m,
-      date: new Date(m.created_at)
+      date: safeParseDate(m.created_at)
     })), ...replies.map(r => ({
       type: 'mine' as const,
       data: r,
-      date: new Date(r.created_at)
+      date: safeParseDate(r.created_at)
     }))].sort((a, b) => a.date.getTime() - b.date.getTime());
     let lastDateStr = "";
     combined.forEach(msg => {
@@ -700,11 +707,11 @@ const Conversation = () => {
     const combined = [...allSentMessages.map(m => ({
       type: 'mine' as const,
       data: m,
-      date: new Date(m.created_at)
+      date: safeParseDate(m.created_at)
     })), ...sentConversationData.replies.map((r: any) => ({
       type: 'theirs' as const,
       data: r,
-      date: new Date(r.created_at)
+      date: safeParseDate(r.created_at)
     }))].sort((a, b) => a.date.getTime() - b.date.getTime());
     let lastDateStr = "";
     combined.forEach(msg => {
