@@ -169,10 +169,20 @@ const Conversation = () => {
   };
   const allSentMessages = conversationType === 'sent_to_anr' ? [...sentConversationData.messages, ...localMessages.filter(lm => !sentConversationData.messages.find((m: any) => m.id === lm.id))] : [];
 
+  // Track if we've already loaded the conversation to prevent re-fetching
+  const hasLoadedRef = useRef(false);
+
   // Detect conversation type
   useEffect(() => {
+    // Skip if already loaded
+    if (hasLoadedRef.current) return;
+    
     const detectConversationType = async () => {
       if (!id || !user) return;
+      
+      // Mark as loaded to prevent re-execution
+      hasLoadedRef.current = true;
+      
       try {
         // First check if id is a habitation_id (sent_to_anr mode)
         const {
@@ -196,6 +206,7 @@ const Conversation = () => {
           data: residentData
         } = await supabase.from("residents").select("habitation_id").eq("user_id", user.id).eq("status", "verified").maybeSingle();
         if (!residentData?.habitation_id) {
+          hasLoadedRef.current = false; // Allow retry
           navigate("/messages");
           return;
         }
@@ -254,6 +265,7 @@ const Conversation = () => {
             description: "Conversation introuvable",
             variant: "destructive"
           });
+          hasLoadedRef.current = false; // Allow retry
           navigate("/messages");
           return;
         }
@@ -289,6 +301,7 @@ const Conversation = () => {
           description: "Impossible de charger la conversation",
           variant: "destructive"
         });
+        hasLoadedRef.current = false; // Allow retry
         navigate("/messages");
       }
     };
