@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Lock, Home, Mic, Square, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Lock, Home, Mic, Square, Loader2, Paperclip, Video, X, Image, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getDeviceId } from "@/hooks/useVisitorDeviceMessages";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
+import VideoRecorder from "@/components/messages/VideoRecorder";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -50,6 +51,15 @@ const VisitorConversation = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Video recording
+  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+
+  // File attachment
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch conversation data
   const fetchConversation = useCallback(async () => {
@@ -331,8 +341,8 @@ const VisitorConversation = () => {
 
   // Send message (reply to existing conversation)
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !habitationId) {
-      console.log("[VisitorConversation] Cannot send - missing message or habitationId");
+    if ((!newMessage.trim() && !selectedFile) || !habitationId) {
+      console.log("[VisitorConversation] Cannot send - missing message/file or habitationId");
       return;
     }
 
@@ -344,6 +354,32 @@ const VisitorConversation = () => {
       const cardId = await getOrCreateBusinessCard();
       console.log("[VisitorConversation] Business card id:", cardId || "none");
 
+      let mediaUrl: string | null = null;
+      let mediaType: string | null = null;
+
+      // Upload file if selected
+      if (selectedFile) {
+        const fileExt = selectedFile.name.split('.').pop();
+        const fileName = `visitor_${deviceId}_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("visitor-voice-messages")
+          .upload(fileName, selectedFile, { contentType: selectedFile.type });
+
+        if (uploadError) {
+          console.error("[VisitorConversation] File upload error:", uploadError);
+          throw uploadError;
+        }
+
+        const { data: publicUrl } = supabase.storage
+          .from("visitor-voice-messages")
+          .getPublicUrl(fileName);
+
+        mediaUrl = publicUrl.publicUrl;
+        mediaType = selectedFile.type;
+        console.log("[VisitorConversation] File uploaded:", mediaUrl);
+      }
+
       // Insert as a new visitor_message (continuing the conversation)
       const { error } = await supabase
         .from("visitor_messages")
@@ -351,7 +387,9 @@ const VisitorConversation = () => {
           habitation_id: habitationId,
           visitor_device_id: deviceId,
           business_card_id: cardId,
-          message: newMessage.trim(),
+          message: newMessage.trim() || null,
+          media_url: mediaUrl,
+          media_type: mediaType,
         });
 
       if (error) {
@@ -361,6 +399,7 @@ const VisitorConversation = () => {
 
       console.log("[VisitorConversation] Message sent successfully");
       setNewMessage("");
+      clearSelectedFile();
       toast({
         title: "Message envoyé",
         description: "Votre message a été envoyé au résident.",
@@ -373,6 +412,102 @@ const VisitorConversation = () => {
       toast({
         title: "Erreur",
         description: error?.message || "Impossible d'envoyer le message.",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // File attachment handlers
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Fichier trop volumineux",
+        description: "La taille maximale est de 10 Mo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedFile(file);
+
+    // Create preview for images and videos
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+      const url = URL.createObjectURL(file);
+      setFilePreview(url);
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const clearSelectedFile = () => {
+    if (filePreview) {
+      URL.revokeObjectURL(filePreview);
+    }
+    setSelectedFile(null);
+    setFilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Video recording handlers
+  const handleVideoRecordingComplete = (blob: Blob) => {
+    setVideoBlob(blob);
+  };
+
+  const sendVideoMessage = async () => {
+    if (!videoBlob || !habitationId) return;
+
+    try {
+      setSending(true);
+      console.log("[VisitorConversation] Sending video message");
+
+      const cardId = await getOrCreateBusinessCard();
+
+      // Upload video
+      const fileName = `video_${deviceId}_${Date.now()}.webm`;
+      const { error: uploadError } = await supabase.storage
+        .from("visitor-voice-messages")
+        .upload(fileName, videoBlob, { contentType: "video/webm" });
+
+      if (uploadError) {
+        console.error("[VisitorConversation] Video upload error:", uploadError);
+        throw uploadError;
+      }
+
+      const { data: publicUrl } = supabase.storage
+        .from("visitor-voice-messages")
+        .getPublicUrl(fileName);
+
+      // Insert message
+      const { error } = await supabase
+        .from("visitor_messages")
+        .insert({
+          habitation_id: habitationId,
+          visitor_device_id: deviceId,
+          business_card_id: cardId,
+          media_url: publicUrl.publicUrl,
+          media_type: "video/webm",
+        });
+
+      if (error) throw error;
+
+      console.log("[VisitorConversation] Video message sent successfully");
+      toast({ title: "Vidéo envoyée" });
+      setShowVideoRecorder(false);
+      setVideoBlob(null);
+      setTimeout(() => fetchConversation(), 300);
+    } catch (error: any) {
+      console.error("[VisitorConversation] Video send error:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer la vidéo.",
         variant: "destructive",
       });
     } finally {
@@ -635,8 +770,64 @@ const VisitorConversation = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
+      {/* Video Recorder Overlay */}
+      {showVideoRecorder && (
+        <div className="fixed inset-0 z-50 bg-background/95 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <VideoRecorder
+              onRecordingComplete={handleVideoRecordingComplete}
+              onSend={sendVideoMessage}
+              onCancel={() => {
+                setShowVideoRecorder(false);
+                setVideoBlob(null);
+              }}
+              sending={sending}
+              videoBlob={videoBlob}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Input Area */}
-      <div className="sticky bottom-20 bg-background border-t border-border p-3">
+      <div className="sticky bottom-20 bg-background border-t border-border p-3 space-y-2">
+        {/* File preview */}
+        {selectedFile && (
+          <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+            {filePreview && selectedFile.type.startsWith("image/") ? (
+              <img src={filePreview} alt="Preview" className="w-12 h-12 object-cover rounded" />
+            ) : filePreview && selectedFile.type.startsWith("video/") ? (
+              <video src={filePreview} className="w-12 h-12 object-cover rounded" />
+            ) : (
+              <div className="w-12 h-12 bg-primary/10 rounded flex items-center justify-center">
+                <FileText className="w-6 h-6 text-primary" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {(selectedFile.size / 1024).toFixed(1)} Ko
+              </p>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="flex-shrink-0"
+              onClick={clearSelectedFile}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+
         {isRecording ? (
           <div className="flex items-center justify-between bg-destructive/10 rounded-full px-4 py-2">
             <div className="flex items-center gap-2">
@@ -654,6 +845,29 @@ const VisitorConversation = () => {
           </div>
         ) : (
           <div className="flex items-end gap-2">
+            {/* Attachment button */}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="flex-shrink-0"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending}
+            >
+              <Paperclip className="h-5 w-5" />
+            </Button>
+            
+            {/* Video button */}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="flex-shrink-0"
+              onClick={() => setShowVideoRecorder(true)}
+              disabled={sending}
+            >
+              <Video className="h-5 w-5" />
+            </Button>
+            
+            {/* Mic button */}
             <Button
               size="icon"
               variant="ghost"
@@ -663,6 +877,7 @@ const VisitorConversation = () => {
             >
               <Mic className="h-5 w-5" />
             </Button>
+            
             <Textarea
               placeholder="Écrire un message..."
               value={newMessage}
@@ -680,7 +895,7 @@ const VisitorConversation = () => {
               size="icon"
               className="flex-shrink-0 rounded-full"
               onClick={handleSendMessage}
-              disabled={!newMessage.trim() || sending}
+              disabled={(!newMessage.trim() && !selectedFile) || sending}
             >
               {sending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
