@@ -12,6 +12,7 @@ import { geocodeAddress as geocodeAddressApi } from "@/lib/geocoding";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import RegistrationBusinessCardStep from "./RegistrationBusinessCardStep";
+import { useAppConfig } from "@/hooks/useAppConfig";
 
 type Step = "credentials" | "email-sent" | "profile" | "address" | "payment" | "business-card" | "success";
 interface AddressData {
@@ -1019,11 +1020,12 @@ const PaymentStep = ({
 }) => {
   const [extraDomings, setExtraDomings] = useState(0);
   const [acceptedCGU, setAcceptedCGU] = useState(false);
-  const {
-    toast
-  } = useToast();
-  const subscriptionPrice = 36; // 36€/an (prix annuel)
-  const domingPrice = 7; // 7€
+  const { toast } = useToast();
+  const { getConfig, isLoading: configLoading } = useAppConfig();
+  
+  // Prix dynamiques depuis la config - avec fallback 36€ et 5€
+  const subscriptionPrice = getConfig("particulier_annual_price") ?? 36;
+  const domingPrice = getConfig("particulier_doming_price") ?? 5;
   const extraDomingsTotal = extraDomings * domingPrice;
   const total = subscriptionPrice + extraDomingsTotal;
   const handlePayment = async () => {
@@ -1076,6 +1078,16 @@ const PaymentStep = ({
       setLoading(false);
     }
   };
+
+  // Afficher un loader pendant le chargement de la config
+  if (configLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return <div className="space-y-6">
       <div className="text-center">
         <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
