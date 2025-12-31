@@ -290,6 +290,11 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
           const {
             data: resident
           } = await supabase.from("residents").select("id").eq("user_id", user.id).maybeSingle();
+          
+          // Pre-fill name fields if available from profile
+          if (profile?.first_name) setFirstName(profile.first_name);
+          if (profile?.last_name) setLastName(profile.last_name);
+          
           if (!profile?.first_name || !profile?.last_name) {
             setStep("profile");
           } else if (!resident) {
@@ -971,7 +976,7 @@ const PaymentStep = ({
   const {
     toast
   } = useToast();
-  const subscriptionPrice = 12; // 12€
+  const subscriptionPrice = 36; // 36€/an (prix annuel)
   const domingPrice = 7; // 7€
   const extraDomingsTotal = extraDomings * domingPrice;
   const total = subscriptionPrice + extraDomingsTotal;

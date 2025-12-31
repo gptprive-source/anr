@@ -64,12 +64,6 @@ const RegistrationSuccess = () => {
       }
 
       // Success!
-      if (data?.alreadyProcessed) {
-        setStatus("already_processed");
-      } else {
-        setStatus("success");
-      }
-      
       setHabitationName(data?.habitationName || "");
       setAnrCode(data?.anrCode || "");
 
@@ -81,8 +75,13 @@ const RegistrationSuccess = () => {
 
       toast({
         title: data?.alreadyProcessed ? "Inscription déjà finalisée" : "Inscription réussie !",
-        description: "Votre compte est maintenant actif"
+        description: "Redirection vers la création de votre carte de visite..."
       });
+
+      // Redirect automatically to business card creation
+      setTimeout(() => {
+        navigate("/onboarding/business-card", { replace: true });
+      }, 1500);
 
     } catch (error: any) {
       console.error("[RegistrationSuccess] Verification error:", error);
