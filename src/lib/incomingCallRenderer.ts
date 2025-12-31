@@ -1,6 +1,7 @@
 /**
  * Ultra-simple vanilla JS renderer for incoming call screen
  * OPTIMISÉ: Pré-chargement Daily + Room URL pour connexion instantanée
+ * Supports custom ringtones from user profile
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -15,84 +16,365 @@ interface IncomingCallData {
 
 let currentCallData: IncomingCallData | null = null;
 let audioContext: AudioContext | null = null;
-let oscillator: OscillatorNode | null = null;
-let gainNode: GainNode | null = null;
+let audioElement: HTMLAudioElement | null = null;
 let ringtoneInterval: NodeJS.Timeout | null = null;
 let vibrationInterval: NodeJS.Timeout | null = null;
 let prefetchedRoomUrl: string | null = null;
 let preCreatedCallObject: DailyCall | null = null;
 let isMuted = false;
+let isAlertsStopped = false; // Flag to prevent restart after stop
+
+// Sound definitions for preset ringtones (copied from RingtonePluginWeb)
+const SOUND_DEFINITIONS: Record<string, (ctx: AudioContext, time: number) => void> = {
+  'ding-dong': (ctx, time) => {
+    const ding = ctx.createOscillator();
+    const dong = ctx.createOscillator();
+    const gainDing = ctx.createGain();
+    const gainDong = ctx.createGain();
+    ding.connect(gainDing).connect(ctx.destination);
+    dong.connect(gainDong).connect(ctx.destination);
+    ding.frequency.value = 783.99;
+    dong.frequency.value = 523.25;
+    ding.type = 'sine';
+    dong.type = 'sine';
+    gainDing.gain.setValueAtTime(0.4, time);
+    gainDing.gain.exponentialRampToValueAtTime(0.01, time + 0.8);
+    gainDong.gain.setValueAtTime(0.001, time);
+    gainDong.gain.setValueAtTime(0.4, time + 0.4);
+    gainDong.gain.exponentialRampToValueAtTime(0.01, time + 1.2);
+    ding.start(time);
+    dong.start(time + 0.4);
+    ding.stop(time + 0.8);
+    dong.stop(time + 1.2);
+  },
+  'westminster': (ctx, time) => {
+    const notes = [659.25, 523.25, 587.33, 392.00];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain).connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, time + i * 0.5);
+      gain.gain.setValueAtTime(0.01, time + i * 0.5 + 0.45);
+      osc.start(time + i * 0.5);
+      osc.stop(time + i * 0.5 + 0.5);
+    });
+  },
+  'chime-3': (ctx, time) => {
+    const notes = [523.25, 659.25, 783.99];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain).connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'triangle';
+      gain.gain.setValueAtTime(0.35, time + i * 0.25);
+      gain.gain.setValueAtTime(0.01, time + i * 0.25 + 0.4);
+      osc.start(time + i * 0.25);
+      osc.stop(time + i * 0.25 + 0.45);
+    });
+  },
+  'chime-melody': (ctx, time) => {
+    const notes = [523.25, 587.33, 659.25, 783.99, 659.25];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain).connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, time + i * 0.2);
+      gain.gain.setValueAtTime(0.01, time + i * 0.2 + 0.3);
+      osc.start(time + i * 0.2);
+      osc.stop(time + i * 0.2 + 0.35);
+    });
+  },
+  'doorbell-classic': (ctx, time) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain).connect(ctx.destination);
+    osc.frequency.value = 440;
+    osc.type = 'square';
+    gain.gain.setValueAtTime(0.15, time);
+    gain.gain.setValueAtTime(0.15, time + 0.3);
+    gain.gain.setValueAtTime(0, time + 0.35);
+    gain.gain.setValueAtTime(0.15, time + 0.5);
+    gain.gain.setValueAtTime(0.01, time + 0.8);
+    osc.start(time);
+    osc.stop(time + 0.85);
+  },
+  'doorbell-modern': (ctx, time) => {
+    const notes = [880, 1046.50];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain).connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.25, time + i * 0.15);
+      gain.gain.setValueAtTime(0.01, time + i * 0.15 + 0.3);
+      osc.start(time + i * 0.15);
+      osc.stop(time + i * 0.15 + 0.35);
+    });
+  },
+  'doorbell-retro': (ctx, time) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain).connect(ctx.destination);
+    osc.frequency.value = 2000;
+    osc.type = 'triangle';
+    for (let i = 0; i < 6; i++) {
+      gain.gain.setValueAtTime(0.2, time + i * 0.1);
+      gain.gain.setValueAtTime(0.05, time + i * 0.1 + 0.05);
+    }
+    gain.gain.setValueAtTime(0.01, time + 0.6);
+    osc.start(time);
+    osc.stop(time + 0.65);
+  },
+  'door-knock': (ctx, time) => {
+    for (let i = 0; i < 3; i++) {
+      const noise = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      noise.connect(filter).connect(gain).connect(ctx.destination);
+      noise.frequency.value = 150 + Math.random() * 50;
+      noise.type = 'triangle';
+      filter.type = 'lowpass';
+      filter.frequency.value = 800;
+      gain.gain.setValueAtTime(0.4, time + i * 0.2);
+      gain.gain.setValueAtTime(0.01, time + i * 0.2 + 0.08);
+      noise.start(time + i * 0.2);
+      noise.stop(time + i * 0.2 + 0.1);
+    }
+  },
+  'bell-simple': (ctx, time) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain).connect(ctx.destination);
+    osc.frequency.value = 880;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.35, time);
+    gain.gain.setValueAtTime(0.01, time + 0.8);
+    osc.start(time);
+    osc.stop(time + 0.85);
+  },
+  'tone-gentle': (ctx, time) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain).connect(ctx.destination);
+    osc.frequency.value = 440;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.2, time);
+    gain.gain.setValueAtTime(0.25, time + 0.3);
+    gain.gain.setValueAtTime(0.01, time + 1);
+    osc.start(time);
+    osc.stop(time + 1.05);
+  },
+  'tone-bright': (ctx, time) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain).connect(ctx.destination);
+    osc.frequency.value = 1046.50;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.3, time);
+    gain.gain.setValueAtTime(0.01, time + 0.5);
+    osc.start(time);
+    osc.stop(time + 0.55);
+  },
+  'default': (ctx, time) => {
+    const notes = [659.25, 783.99];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain).connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, time + i * 0.3);
+      gain.gain.setValueAtTime(0.01, time + i * 0.3 + 0.4);
+      osc.start(time + i * 0.3);
+      osc.stop(time + i * 0.3 + 0.45);
+    });
+  },
+};
+
+// Play preset ringtone with Web Audio API
+const playPresetRingtone = (uri: string) => {
+  if (isAlertsStopped) return;
+  try {
+    if (audioContext) {
+      try { audioContext.close(); } catch(e) {}
+    }
+    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const time = audioContext.currentTime;
+    const playSound = SOUND_DEFINITIONS[uri] || SOUND_DEFINITIONS['default'];
+    playSound(audioContext, time);
+  } catch (err) {
+    console.error("[Ringtone] Error playing preset:", err);
+  }
+};
+
+// Play custom ringtone from URL
+const playCustomRingtone = (url: string) => {
+  if (isAlertsStopped) return;
+  try {
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.src = '';
+    }
+    audioElement = new Audio(url);
+    audioElement.loop = false;
+    audioElement.volume = 1.0;
+    audioElement.play().catch(err => {
+      console.error("[Ringtone] Error playing custom audio:", err);
+    });
+  } catch (err) {
+    console.error("[Ringtone] Error creating audio element:", err);
+  }
+};
 
 // Force stop all alerts - exported for use in other components
 export const forceStopAllAlerts = () => {
   console.log("[CALL] forceStopAllAlerts called");
-  stopRingtone();
-  stopVibration();
-  // Double security - stop vibration again
+  isAlertsStopped = true;
+  
+  // Stop interval first to prevent restart
+  if (ringtoneInterval) {
+    clearInterval(ringtoneInterval);
+    ringtoneInterval = null;
+  }
+  if (vibrationInterval) {
+    clearInterval(vibrationInterval);
+    vibrationInterval = null;
+  }
+  
+  // Stop audio
+  if (audioContext) {
+    try { audioContext.close(); } catch(e) {}
+    audioContext = null;
+  }
+  if (audioElement) {
+    try {
+      audioElement.pause();
+      audioElement.src = '';
+    } catch(e) {}
+    audioElement = null;
+  }
+  
+  // Stop vibration multiple times for reliability
   if ("vibrate" in navigator) {
     navigator.vibrate(0);
+    setTimeout(() => navigator.vibrate(0), 50);
+    setTimeout(() => navigator.vibrate(0), 100);
+    setTimeout(() => navigator.vibrate(0), 200);
   }
 };
 
-const startRingtone = () => {
+let cachedRingtoneUri: string | null = null;
+
+const startRingtone = async () => {
+  if (isAlertsStopped) return;
+  
   try {
-    if (audioContext) return;
-    
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    oscillator = audioContext.createOscillator();
-    gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.value = 440;
-    oscillator.type = 'sine';
-    gainNode.gain.value = 0;
-    
-    oscillator.start();
-    
-    let isOn = true;
-    const toggleRing = () => {
-      if (gainNode) {
-        gainNode.gain.setValueAtTime(isOn ? 0.3 : 0, audioContext!.currentTime);
+    // Load user's ringtone preference if not cached
+    if (!cachedRingtoneUri) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("ringtone_uri")
+          .eq("id", user.id)
+          .single();
+        
+        cachedRingtoneUri = profile?.ringtone_uri || 'ding-dong';
+      } else {
+        cachedRingtoneUri = 'ding-dong';
       }
-      isOn = !isOn;
+    }
+    
+    console.log("[Ringtone] Using ringtone:", cachedRingtoneUri);
+    
+    // Check if it's a custom URL or preset
+    const isCustomUrl = cachedRingtoneUri.startsWith('http');
+    
+    const playRingtone = () => {
+      if (isAlertsStopped) return;
+      if (isCustomUrl) {
+        playCustomRingtone(cachedRingtoneUri!);
+      } else {
+        playPresetRingtone(cachedRingtoneUri!);
+      }
     };
     
-    toggleRing();
-    ringtoneInterval = setInterval(toggleRing, isOn ? 1000 : 2000);
+    // Play immediately
+    playRingtone();
+    
+    // Loop every 2 seconds
+    ringtoneInterval = setInterval(() => {
+      if (!isAlertsStopped) {
+        playRingtone();
+      }
+    }, 2000);
+    
   } catch (err) {
-    console.error("[Ringtone] Error:", err);
+    console.error("[Ringtone] Error starting ringtone:", err);
+    // Fallback to default
+    playPresetRingtone('ding-dong');
+    ringtoneInterval = setInterval(() => {
+      if (!isAlertsStopped) playPresetRingtone('ding-dong');
+    }, 2000);
   }
 };
 
 const stopRingtone = () => {
-  if (ringtoneInterval) clearInterval(ringtoneInterval);
-  ringtoneInterval = null;
-  if (oscillator) {
-    try { oscillator.stop(); } catch(e) {}
+  console.log("[Ringtone] stopRingtone called");
+  
+  // Stop interval first
+  if (ringtoneInterval) {
+    clearInterval(ringtoneInterval);
+    ringtoneInterval = null;
   }
-  oscillator = null;
-  gainNode = null;
+  
+  // Stop audio context
   if (audioContext) {
     try { audioContext.close(); } catch(e) {}
+    audioContext = null;
   }
-  audioContext = null;
+  
+  // Stop audio element
+  if (audioElement) {
+    try {
+      audioElement.pause();
+      audioElement.src = '';
+    } catch(e) {}
+    audioElement = null;
+  }
 };
 
 const startVibration = () => {
+  if (isAlertsStopped) return;
   if ("vibrate" in navigator) {
     navigator.vibrate([500, 200, 500, 200, 500]);
     vibrationInterval = setInterval(() => {
-      navigator.vibrate([500, 200, 500, 200, 500]);
+      if (!isAlertsStopped) {
+        navigator.vibrate([500, 200, 500, 200, 500]);
+      }
     }, 2000);
   }
 };
 
 const stopVibration = () => {
-  if (vibrationInterval) clearInterval(vibrationInterval);
-  vibrationInterval = null;
-  if ("vibrate" in navigator) navigator.vibrate(0);
+  console.log("[Vibration] stopVibration called");
+  
+  // Stop interval first
+  if (vibrationInterval) {
+    clearInterval(vibrationInterval);
+    vibrationInterval = null;
+  }
+  
+  // Stop vibration multiple times for reliability
+  if ("vibrate" in navigator) {
+    navigator.vibrate(0);
+  }
 };
 
 // OPTIMISÉ: Nettoyage du callObject pré-créé
@@ -118,6 +400,8 @@ export const showIncomingCall = (data: IncomingCallData) => {
   
   currentCallData = data;
   prefetchedRoomUrl = null;
+  isAlertsStopped = false; // Reset flag for new call
+  cachedRingtoneUri = null; // Reset cache to reload user preference
   
   // OPTIMISÉ: Pré-fetch room URL ET pré-création du callObject en parallèle
   const prefetchPromise = (async () => {
@@ -334,6 +618,7 @@ export const showIncomingCall = (data: IncomingCallData) => {
         muteBtn.style.background = '#22c55e';
         muteLabel.textContent = 'Son activé';
       } else {
+        isAlertsStopped = false; // Allow restart
         startRingtone();
         startVibration();
         muteBtn.style.background = '#6b7280';
@@ -421,6 +706,9 @@ export const showIncomingCall = (data: IncomingCallData) => {
       event.stopPropagation();
       console.log("[CALL] Answer clicked");
       
+      // STOP alerts FIRST before any async operation
+      forceStopAllAlerts();
+      
       // Cleanup preview
       if ((window as any).__previewCallFrame) {
         try {
@@ -455,6 +743,9 @@ export const showIncomingCall = (data: IncomingCallData) => {
       event.preventDefault();
       event.stopPropagation();
       console.log("[CALL] Decline clicked");
+      
+      // STOP alerts FIRST before any async operation
+      forceStopAllAlerts();
       
       // Cleanup
       if ((window as any).__previewCallFrame) {
@@ -524,16 +815,7 @@ export const hideIncomingCall = () => {
   console.log("[CALL] hideIncomingCall called");
   
   // FORCE stop all alerts immediately
-  stopRingtone();
-  stopVibration();
-  if ("vibrate" in navigator) navigator.vibrate(0);
-  
-  // Double security after 100ms
-  setTimeout(() => {
-    stopRingtone();
-    stopVibration();
-    if ("vibrate" in navigator) navigator.vibrate(0);
-  }, 100);
+  forceStopAllAlerts();
   
   // Cleanup all call objects
   if ((window as any).__previewCallFrame) {

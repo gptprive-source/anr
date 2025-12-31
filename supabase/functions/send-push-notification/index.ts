@@ -219,8 +219,10 @@ async function getFirebaseAccessToken(): Promise<string | null> {
   }
 }
 
-// Send FCM notification to Android device
-async function sendFCMNotification(fcmToken: string, payload: any): Promise<boolean> {
+// Send FCM notification to Android device with retry
+async function sendFCMNotification(fcmToken: string, payload: any, retryCount = 0): Promise<boolean> {
+  const MAX_RETRIES = 2;
+  
   try {
     const serviceAccountJson = Deno.env.get("FCM_SERVICE_ACCOUNT");
     if (!serviceAccountJson) {
@@ -237,7 +239,7 @@ async function sendFCMNotification(fcmToken: string, payload: any): Promise<bool
       return false;
     }
 
-    console.log("[FCM] Sending to token:", fcmToken.substring(0, 20) + "...");
+    console.log("[FCM] Sending to token:", fcmToken.substring(0, 20) + "... (attempt", retryCount + 1, ")");
 
     const fcmPayload = {
       message: {
@@ -252,6 +254,17 @@ async function sendFCMNotification(fcmToken: string, payload: any): Promise<bool
             channel_id: payload.data?.type === "incoming_call" ? "incoming_calls" : "default",
             sound: payload.data?.type === "incoming_call" ? "ringtone" : "default",
             visibility: "public",
+          },
+        },
+        apns: {
+          headers: {
+            "apns-priority": "10",
+          },
+          payload: {
+            aps: {
+              sound: payload.data?.type === "incoming_call" ? "ringtone.caf" : "default",
+              badge: 1,
+            },
           },
         },
         data: payload.data || {},
@@ -271,8 +284,31 @@ async function sendFCMNotification(fcmToken: string, payload: any): Promise<bool
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("[FCM] Send failed:", response.status, error);
+      const errorText = await response.text();
+      console.error("[FCM] Send failed:", response.status, errorText);
+      
+      // Parse error to check for specific issues
+      try {
+        const errorJson = JSON.parse(errorText);
+        const errorCode = errorJson?.error?.details?.[0]?.errorCode || errorJson?.error?.code;
+        
+        // Token is invalid/unregistered - don't retry, mark for deletion
+        if (errorCode === "UNREGISTERED" || response.status === 404) {
+          console.log("[FCM] Token is unregistered/invalid, should be deleted");
+          return false;
+        }
+        
+        // Quota exceeded or server error - can retry
+        if ((response.status === 429 || response.status >= 500) && retryCount < MAX_RETRIES) {
+          const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+          console.log("[FCM] Retrying in", delay, "ms...");
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return sendFCMNotification(fcmToken, payload, retryCount + 1);
+        }
+      } catch (e) {
+        console.error("[FCM] Could not parse error response");
+      }
+      
       return false;
     }
 
@@ -281,6 +317,15 @@ async function sendFCMNotification(fcmToken: string, payload: any): Promise<bool
     return true;
   } catch (error) {
     console.error("[FCM] Error sending:", error);
+    
+    // Retry on network errors
+    if (retryCount < MAX_RETRIES) {
+      const delay = Math.pow(2, retryCount) * 1000;
+      console.log("[FCM] Network error, retrying in", delay, "ms...");
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return sendFCMNotification(fcmToken, payload, retryCount + 1);
+    }
+    
     return false;
   }
 }
@@ -298,6 +343,7 @@ serve(async (req) => {
     
     const payload: PushPayload = await req.json();
     console.log("[Push] Received request for users:", payload.user_ids);
+    console.log("[Push] Payload:", { title: payload.title, body: payload.body, data: payload.data });
 
     if (!payload.user_ids || payload.user_ids.length === 0) {
       return new Response(
@@ -308,7 +354,7 @@ serve(async (req) => {
 
     const { data: tokens, error: tokensError } = await supabase
       .from("push_tokens")
-      .select("token, platform, user_id")
+      .select("token, platform, user_id, updated_at")
       .in("user_id", payload.user_ids);
 
     if (tokensError) {
@@ -328,6 +374,11 @@ serve(async (req) => {
     }
 
     console.log(`[Push] Found ${tokens.length} tokens`);
+    
+    // Log token details
+    tokens.forEach((t, i) => {
+      console.log(`[Push] Token ${i + 1}: platform=${t.platform}, user=${t.user_id}, updated=${t.updated_at}`);
+    });
 
     const pushPayload = {
       title: payload.title,
@@ -336,9 +387,11 @@ serve(async (req) => {
     };
 
     const results = [];
+    const tokensToDelete: string[] = [];
+    
     for (const tokenData of tokens) {
       try {
-        console.log(`[Push] Sending to ${tokenData.platform} device...`);
+        console.log(`[Push] Sending to ${tokenData.platform} device for user ${tokenData.user_id}...`);
         
         if (tokenData.platform === "web") {
           const subscription = JSON.parse(tokenData.token);
@@ -346,42 +399,44 @@ serve(async (req) => {
           results.push({ user_id: tokenData.user_id, platform: "web", success });
           
           if (!success) {
-            await supabase.from("push_tokens").delete().eq("token", tokenData.token);
+            tokensToDelete.push(tokenData.token);
           }
-        } else if (tokenData.platform === "android") {
-          // Send via FCM for Android
+        } else if (tokenData.platform === "android" || tokenData.platform === "ios") {
+          // Both Android and iOS use FCM in Capacitor
           const success = await sendFCMNotification(tokenData.token, pushPayload);
-          results.push({ user_id: tokenData.user_id, platform: "android", success });
-          
-          // Remove invalid token if sending failed
-          if (!success) {
-            console.log("[Push] Removing invalid Android token");
-            await supabase.from("push_tokens").delete().eq("token", tokenData.token);
-          }
-        } else if (tokenData.platform === "ios") {
-          // iOS also uses FCM in Capacitor
-          const success = await sendFCMNotification(tokenData.token, pushPayload);
-          results.push({ user_id: tokenData.user_id, platform: "ios", success });
+          results.push({ user_id: tokenData.user_id, platform: tokenData.platform, success });
           
           if (!success) {
-            console.log("[Push] Removing invalid iOS token");
-            await supabase.from("push_tokens").delete().eq("token", tokenData.token);
+            console.log(`[Push] Marking ${tokenData.platform} token for deletion`);
+            tokensToDelete.push(tokenData.token);
           }
         } else {
           console.log("[Push] Unknown platform:", tokenData.platform);
           results.push({ user_id: tokenData.user_id, platform: tokenData.platform, success: false });
         }
       } catch (error) {
-        console.error("[Push] Error:", error);
-        results.push({ user_id: tokenData.user_id, platform: tokenData.platform, success: false });
+        console.error("[Push] Error processing token:", error);
+        results.push({ user_id: tokenData.user_id, platform: tokenData.platform, success: false, error: String(error) });
+      }
+    }
+
+    // Batch delete invalid tokens
+    if (tokensToDelete.length > 0) {
+      console.log(`[Push] Deleting ${tokensToDelete.length} invalid tokens...`);
+      for (const token of tokensToDelete) {
+        const { error } = await supabase.from("push_tokens").delete().eq("token", token);
+        if (error) {
+          console.error("[Push] Error deleting token:", error);
+        }
       }
     }
 
     const successCount = results.filter(r => r.success).length;
     console.log(`[Push] Sent ${successCount}/${tokens.length} notifications`);
+    console.log("[Push] Results:", JSON.stringify(results));
 
     return new Response(
-      JSON.stringify({ success: true, sent: successCount, total: tokens.length }),
+      JSON.stringify({ success: true, sent: successCount, total: tokens.length, results }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
