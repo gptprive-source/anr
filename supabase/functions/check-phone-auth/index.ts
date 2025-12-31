@@ -181,13 +181,17 @@ Deno.serve(async (req) => {
         const callDetail = await detailRes.json();
         console.log("[check-phone-auth] Call detail:", JSON.stringify(callDetail));
 
-        // Check if this is an incoming call after started_at
+        // Check if this is an incoming call within the valid time window
+        // Accept calls up to 5 minutes BEFORE started_at (user might call before initiating verification)
         const callDate = new Date(callDetail.creationDatetime || callDetail.datetime);
+        const fiveMinutesBefore = new Date(startedAt.getTime() - 5 * 60 * 1000);
         
-        if (callDate < startedAt) {
-          console.log("[check-phone-auth] Call is before started_at, skipping");
+        if (callDate < fiveMinutesBefore) {
+          console.log("[check-phone-auth] Call is more than 5 min before started_at, skipping. Call:", callDate.toISOString(), "Window starts:", fiveMinutesBefore.toISOString());
           continue;
         }
+        
+        console.log("[check-phone-auth] Call is within valid time window. Call:", callDate.toISOString(), "Started at:", startedAt.toISOString());
 
         // Check if wayType is incoming
         if (callDetail.wayType !== "incoming") {
