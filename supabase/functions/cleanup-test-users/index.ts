@@ -15,7 +15,8 @@ const TEST_USER_IDS = [
   'b7c0791d-6f90-4959-bced-3fe512c74a6f', // m.pro.walid@gmail.com
   'd6f0a769-1c7d-4fd9-85c2-c5335a1ccd51', // ilyesbbsh@icloud.com
   'c04d6ee5-e118-4bcb-bf15-17b65252ef22', // ilyesbbsh93@gmail.com
-  '1eaf3a87-03ff-4c97-acf1-f714cc8959d1', // aminikhalid@gmail.com
+  '1eaf3a87-03ff-4c97-acf1-f714cc8959d1', // aminikhalid@gmail.com (old)
+  '9723f853-07d4-46e5-a9b0-e546a7de0382', // aminikhalid@gmail.com (current)
 ];
 
 Deno.serve(async (req) => {
