@@ -228,10 +228,10 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
       // Check if user is authenticated first
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      // For logged-in users, auto-attach or create their business card
+      // For logged-in users, use their existing business card (must be created via onboarding)
       let finalBusinessCardId = businessCardId || null;
       if (currentUser && !finalBusinessCardId) {
-        // First try to find existing card
+        // Try to find existing card - don't auto-create, user must complete onboarding
         const { data: userCard } = await supabase
           .from("visitor_business_cards")
           .select("id")
@@ -241,33 +241,8 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         if (userCard) {
           finalBusinessCardId = userCard.id;
           console.log("[useVisitorMessages] Auto-attached existing business card:", finalBusinessCardId);
-        } else {
-          // If no card exists, create one from user profile
-          const { data: profile } = await (supabase
-            .from("profiles" as any)
-            .select("first_name, last_name, email")
-            .eq("id", currentUser.id)
-            .maybeSingle() as any);
-          
-          if (profile && (profile.first_name || profile.last_name)) {
-            const { data: newCard } = await (supabase
-              .from("visitor_business_cards" as any)
-              .insert({
-                user_id: currentUser.id,
-                card_type: "individual",
-                first_name: profile.first_name || null,
-                last_name: profile.last_name || null,
-                email: profile.email || currentUser.email || null,
-              })
-              .select("id")
-              .single() as any);
-            
-            if (newCard) {
-              finalBusinessCardId = newCard.id;
-              console.log("[useVisitorMessages] Created new business card for logged-in user:", finalBusinessCardId);
-            }
-          }
         }
+        // No auto-creation - user must complete business card onboarding first
       }
       
       const insertData: Record<string, any> = {
