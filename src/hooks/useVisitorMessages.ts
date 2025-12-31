@@ -395,9 +395,9 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
   const deleteConversation = async (visitorId: string) => {
     try {
       // Get all message IDs for this visitor
-      // IMPORTANT: Must match the grouping logic in Messages.tsx (visitor_device_id first)
+      // IMPORTANT: Must match the grouping logic in Messages.tsx (business_card_id first for connected users)
       const messagesToDelete = messages.filter(m => {
-        const msgVisitorId = m.visitor_device_id || m.business_card_id || m.visitor_phone || `anon-${m.id}`;
+        const msgVisitorId = m.business_card_id || m.visitor_device_id || m.visitor_phone || `anon-${m.id}`;
         return msgVisitorId === visitorId;
       });
 
@@ -419,7 +419,7 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
       // Update local state
       const unreadDeleted = messagesToDelete.filter(m => !m.is_read).length;
       setMessages(prev => prev.filter(m => {
-        const msgVisitorId = m.visitor_device_id || m.business_card_id || m.visitor_phone || `anon-${m.id}`;
+        const msgVisitorId = m.business_card_id || m.visitor_device_id || m.visitor_phone || `anon-${m.id}`;
         return msgVisitorId !== visitorId;
       }));
       setUnreadCount(prev => Math.max(0, prev - unreadDeleted));

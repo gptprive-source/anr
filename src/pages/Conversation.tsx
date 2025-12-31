@@ -234,21 +234,21 @@ const Conversation = () => {
           data = result.data;
           error = result.error;
         } else if (isUuid) {
-          // UUID can be visitor_device_id OR business_card_id
-          // Priority: visitor_device_id (WhatsApp-like consistent grouping)
-          const byDeviceId = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_device_id", id).order("created_at", {
+          // UUID can be business_card_id OR visitor_device_id
+          // Priority: business_card_id (stable identifier for connected users)
+          const byCardId = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("business_card_id", id).order("created_at", {
             ascending: true
           });
-          if (byDeviceId.data && byDeviceId.data.length > 0) {
-            data = byDeviceId.data;
-            error = byDeviceId.error;
-          } else {
-            // Fallback: search by business_card_id
-            const byCardId = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("business_card_id", id).order("created_at", {
-              ascending: true
-            });
+          if (byCardId.data && byCardId.data.length > 0) {
             data = byCardId.data;
             error = byCardId.error;
+          } else {
+            // Fallback: search by visitor_device_id (anonymous visitors)
+            const byDeviceId = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_device_id", id).order("created_at", {
+              ascending: true
+            });
+            data = byDeviceId.data;
+            error = byDeviceId.error;
           }
         } else {
           // Default: treat as visitor_device_id
