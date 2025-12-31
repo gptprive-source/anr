@@ -16,15 +16,33 @@ const Dashboard = () => {
   const { isComplete: cardComplete, isLoading: cardLoading, userType } = useBusinessCardRequired();
 
   // Redirect to onboarding if business card not complete (for residents only)
-  // Visitors without resident status should go to no-habitation
+  // Visitors without resident status should go to no-habitation OR register
   useEffect(() => {
     if (cardLoading || authLoading || !user) return;
     
     console.log("[Dashboard] Card check:", { cardComplete, userType, cardLoading });
     
     if (userType === "visitor") {
-      // User has no resident/company - redirect to no-habitation
-      navigate("/no-habitation", { replace: true });
+      // User has no resident/company - check if they have an active subscription
+      const checkSubscription = async () => {
+        const { data: subscription } = await supabase
+          .from("subscriptions")
+          .select("status")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .maybeSingle();
+        
+        if (subscription) {
+          // Has subscription but no habitation - go to no-habitation to add address
+          console.log("[Dashboard] User has subscription but no habitation, redirecting to no-habitation");
+          navigate("/no-habitation", { replace: true });
+        } else {
+          // No subscription - need to complete registration
+          console.log("[Dashboard] User has no subscription, redirecting to register to complete payment");
+          navigate("/register", { replace: true });
+        }
+      };
+      checkSubscription();
       return;
     }
     
