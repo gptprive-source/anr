@@ -63,12 +63,12 @@ serve(async (req) => {
       .eq("key", `${planType}_stripe_price_id`)
       .single();
 
-    // Fallback price IDs (correct IDs)
+    // Fallback price IDs (correct IDs - 36€ for particulier)
     const PLAN_PRICE_IDS: Record<string, string> = {
-      particulier: "price_1SdGE9EDmI80OIpdZ204i5Uv",
-      pro: "price_1SdGECEDmI80OIpdJluqIU4B",
-      entreprise: "price_1SdGEDEDmI80OIpdFgHCHzpB",
-      collectivites: "price_1SdGEFEDmI80OIpdNqCXiO0w",
+      particulier: "price_1Sjek0EDmI80OIpd5u0tBrqD", // 36€/an
+      pro: "price_1SjerpEDmI80OIpdVZZPNVfD",
+      entreprise: "price_1SjelEEDmI80OIpd141Bj7nR",
+      collectivites: "price_1SjelFEDmI80OIpd7gw4KmcF",
     };
 
     const subscriptionPriceId = priceConfig?.value as string || PLAN_PRICE_IDS[planType];
