@@ -252,7 +252,6 @@ async function sendFCMNotification(fcmToken: string, payload: any): Promise<bool
             channel_id: payload.data?.type === "incoming_call" ? "incoming_calls" : "default",
             sound: payload.data?.type === "incoming_call" ? "ringtone" : "default",
             visibility: "public",
-            priority: "max",
           },
         },
         data: payload.data || {},
