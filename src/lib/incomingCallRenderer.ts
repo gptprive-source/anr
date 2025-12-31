@@ -23,6 +23,17 @@ let prefetchedRoomUrl: string | null = null;
 let preCreatedCallObject: DailyCall | null = null;
 let isMuted = false;
 
+// Force stop all alerts - exported for use in other components
+export const forceStopAllAlerts = () => {
+  console.log("[CALL] forceStopAllAlerts called");
+  stopRingtone();
+  stopVibration();
+  // Double security - stop vibration again
+  if ("vibrate" in navigator) {
+    navigator.vibrate(0);
+  }
+};
+
 const startRingtone = () => {
   try {
     if (audioContext) return;
@@ -511,8 +522,18 @@ export const showIncomingCall = (data: IncomingCallData) => {
 
 export const hideIncomingCall = () => {
   console.log("[CALL] hideIncomingCall called");
+  
+  // FORCE stop all alerts immediately
   stopRingtone();
   stopVibration();
+  if ("vibrate" in navigator) navigator.vibrate(0);
+  
+  // Double security after 100ms
+  setTimeout(() => {
+    stopRingtone();
+    stopVibration();
+    if ("vibrate" in navigator) navigator.vibrate(0);
+  }, 100);
   
   // Cleanup all call objects
   if ((window as any).__previewCallFrame) {

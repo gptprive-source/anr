@@ -36,6 +36,14 @@ const Call = () => {
   const visitorLon = location.state?.visitorLon;
   const selectedHabitationId = location.state?.habitationId;
 
+  // Stop any incoming call alerts when entering call page
+  useEffect(() => {
+    import("@/lib/incomingCallRenderer").then(({ forceStopAllAlerts, hideIncomingCall }) => {
+      forceStopAllAlerts();
+      hideIncomingCall();
+    });
+  }, []);
+
   useEffect(() => {
     // Empêcher la double exécution
     if (hasInitializedRef.current) {
