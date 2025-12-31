@@ -96,8 +96,10 @@ const BusinessCardForm = ({
     }
   };
 
+  // Hide company field for particuliers (only show for pro and visitors)
   const showCompanyField = userType === "professionnel" || userType === "visitor";
   const isAnrReadOnly = userType !== "visitor";
+  const isParticulier = userType === "particulier";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -144,7 +146,7 @@ const BusinessCardForm = ({
             id="first_name"
             value={formData.first_name}
             onChange={(e) => updateField("first_name", e.target.value)}
-            placeholder="Prénom"
+            placeholder=""
             disabled={loading}
             className={errors.first_name ? "border-destructive" : ""}
           />
@@ -160,7 +162,7 @@ const BusinessCardForm = ({
             id="last_name"
             value={formData.last_name}
             onChange={(e) => updateField("last_name", e.target.value)}
-            placeholder="Nom"
+            placeholder=""
             disabled={loading}
             className={errors.last_name ? "border-destructive" : ""}
           />
