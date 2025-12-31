@@ -360,24 +360,59 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
           emailRedirectTo: 'https://anr.lovable.app/register'
         }
       });
-      if (error) throw error;
-      setStep("email-sent");
-    } catch (error: any) {
-      if (error.message?.includes("already registered") || error.message?.includes("User already registered")) {
-        toast({
-          title: "Compte existant",
-          description: "Cet email est déjà associé à un compte. Redirection vers la connexion..."
+      
+      if (error) {
+        // Check if user already exists
+        if (error.message?.includes("already registered") || error.message?.includes("User already registered")) {
+          // Try to resend confirmation email for unconfirmed accounts
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: email.trim()
+          });
+          
+          if (!resendError) {
+            toast({
+              title: "Email de confirmation renvoyé",
+              description: "Un nouvel email de confirmation a été envoyé."
+            });
+            setStep("email-sent");
+            return;
+          }
+          
+          // If resend fails, the account might be confirmed - redirect to login
+          toast({
+            title: "Compte existant",
+            description: "Cet email est déjà associé à un compte. Redirection vers la connexion..."
+          });
+          setTimeout(() => {
+            navigate("/login");
+          }, 2000);
+          return;
+        }
+        throw error;
+      }
+      
+      // Check if user was created but needs confirmation (identities empty = email not confirmed yet)
+      // Supabase returns user data even for existing unconfirmed users
+      if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+        // User exists but not confirmed - resend email
+        await supabase.auth.resend({
+          type: 'signup',
+          email: email.trim()
         });
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
-      } else {
         toast({
-          title: "Erreur",
-          description: error.message || "Erreur lors de la création du compte",
-          variant: "destructive"
+          title: "Email de confirmation renvoyé",
+          description: "Un nouvel email de confirmation a été envoyé."
         });
       }
+      
+      setStep("email-sent");
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la création du compte",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
