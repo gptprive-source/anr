@@ -461,7 +461,33 @@ serve(async (req) => {
           .eq("id", anrId)
           .single();
 
-        const subscriptionAmount = 12; // 12€ annual
+        // Fetch subscription price from app_config based on plan type
+        const priceKey = `${planType}_annual_price`;
+        const { data: priceConfigData } = await supabaseAdmin
+          .from("app_config")
+          .select("value")
+          .eq("key", priceKey)
+          .single();
+        
+        // Default prices per plan (in euros)
+        const defaultPrices: Record<string, number> = {
+          particulier: 36,
+          pro: 348,
+          entreprise: 2400,
+          collectivites: 4800
+        };
+        
+        let rawPrice = priceConfigData?.value;
+        if (typeof rawPrice === 'string') {
+          try {
+            rawPrice = JSON.parse(rawPrice);
+          } catch {
+            // Not JSON, just a plain string
+          }
+        }
+        const subscriptionAmount = Number(rawPrice) || defaultPrices[planType] || 36;
+        console.log("[VERIFY-PAYMENT] Subscription amount for plan", planType, ":", subscriptionAmount);
+        
         const domingUnitPrice = 7;
         const totalDomingAmount = extraDomings * domingUnitPrice;
         const totalAmount = subscriptionAmount + totalDomingAmount;

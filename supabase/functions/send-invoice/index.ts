@@ -307,7 +307,7 @@ serve(async (req) => {
             // Not JSON, just a plain string
           }
         }
-        const annualPrice = Number(rawPrice) || defaultPrices[planType] || 12;
+        const annualPrice = Number(rawPrice) || defaultPrices[planType] || 36;
         
         const planLabels: Record<string, string> = {
           particulier: "Particulier",
