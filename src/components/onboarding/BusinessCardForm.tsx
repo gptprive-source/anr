@@ -224,26 +224,25 @@ const BusinessCardForm = ({
         />
       </div>
 
-      {/* ANR Code */}
-      <div className="space-y-2">
-        <Label htmlFor="anr_code" className="flex items-center gap-2">
-          <MapPin className="w-4 h-4" />
-          Code ANR
-        </Label>
-        <Input
-          id="anr_code"
-          value={formData.anr_code}
-          onChange={(e) => updateField("anr_code", e.target.value.toUpperCase())}
-          placeholder={isAnrReadOnly ? "" : "ABC123"}
-          disabled={loading || isAnrReadOnly}
-          className={isAnrReadOnly ? "bg-muted" : ""}
-        />
-        {isAnrReadOnly && formData.anr_code && (
+      {/* ANR Code - Always read-only */}
+      {formData.anr_code && (
+        <div className="space-y-2">
+          <Label htmlFor="anr_code" className="flex items-center gap-2">
+            <MapPin className="w-4 h-4" />
+            Code ANR
+          </Label>
+          <Input
+            id="anr_code"
+            value={formData.anr_code}
+            readOnly
+            disabled
+            className="bg-muted cursor-not-allowed"
+          />
           <p className="text-xs text-muted-foreground">
-            Code ANR associé à votre compte
+            Code ANR associé à votre compte (non modifiable)
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Message templates */}
       <div className="pt-4 border-t">
