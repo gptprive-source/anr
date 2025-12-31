@@ -134,7 +134,7 @@ const Messages = () => {
       
       if (existing) {
         if (new Date(msg.created_at) > existing.lastMessageDate) {
-          existing.lastMessage = msg.message || (msg.voice_message_url ? "🎤 Message vocal" : null);
+          existing.lastMessage = msg.message || (msg.voice_message_url ? "🎤 Message vocal" : msg.media_url ? (msg.media_type?.startsWith('video') ? "🎥 Vidéo" : "📷 Photo") : null);
           existing.lastMessageDate = new Date(msg.created_at);
           existing.hasReply = msg.has_reply || existing.hasReply;
         }
@@ -154,7 +154,7 @@ const Messages = () => {
           displayName,
           isCompany,
           jobTitle: card?.job_title || null,
-          lastMessage: msg.message || (msg.voice_message_url ? "🎤 Message vocal" : null),
+          lastMessage: msg.message || (msg.voice_message_url ? "🎤 Message vocal" : msg.media_url ? (msg.media_type?.startsWith('video') ? "🎥 Vidéo" : "📷 Photo") : null),
           lastMessageDate: new Date(msg.created_at),
           unreadCount: msg.is_read ? 0 : 1,
           totalMessages: 1,
