@@ -11,7 +11,9 @@ import { z } from "zod";
 import { geocodeAddress as geocodeAddressApi } from "@/lib/geocoding";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
-type Step = "credentials" | "email-sent" | "profile" | "address" | "payment" | "success";
+import RegistrationBusinessCardStep from "./RegistrationBusinessCardStep";
+
+type Step = "credentials" | "email-sent" | "profile" | "address" | "payment" | "business-card" | "success";
 interface AddressData {
   address: string;
   latitude: number;
@@ -29,6 +31,7 @@ interface RegisterFormProps {
 
 const RegisterForm = ({ onBack }: RegisterFormProps) => {
   const [step, setStep] = useState<Step>("credentials");
+  const [anrCode, setAnrCode] = useState<string>("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -219,15 +222,18 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
       localStorage.removeItem("anr_pending_session_id");
       sessionStorage.removeItem("anr_referral_code");
       
+      // Get ANR code for business card step
+      if (data.anrCode) {
+        setAnrCode(data.anrCode);
+      }
+      
       toast({
         title: data.alreadyProcessed ? "Inscription déjà finalisée" : data.isNewAnr ? "ANR créé avec succès !" : "Habitation ajoutée !",
-        description: "Votre paiement a été validé. Redirection..."
+        description: "Continuez avec votre carte de visite"
       });
       
-      // Redirect to dashboard after short delay
-      setTimeout(() => {
-        navigate("/dashboard", { replace: true });
-      }, 1500);
+      // Go to business card step instead of dashboard
+      setStep("business-card");
     } catch (error: any) {
       console.error("[RegisterForm] ========== VERIFY PAYMENT ERROR ==========");
       console.error("[RegisterForm] Error:", error);
@@ -556,7 +562,7 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
       <div className="w-full max-w-md">
         {/* Progress indicator */}
         <div className="flex justify-center gap-2 mb-8">
-          {["credentials", "email-sent", "profile", "address", "payment", "success"].map((s, i) => <div key={s} className={`h-1 w-8 rounded-full transition-colors ${["credentials", "email-sent", "profile", "address", "payment", "success"].indexOf(step) >= i ? "bg-primary" : "bg-secondary"}`} />)}
+          {["credentials", "email-sent", "profile", "address", "payment", "business-card", "success"].map((s, i) => <div key={s} className={`h-1 w-8 rounded-full transition-colors ${["credentials", "email-sent", "profile", "address", "payment", "business-card", "success"].indexOf(step) >= i ? "bg-primary" : "bg-secondary"}`} />)}
         </div>
 
         <div className="glass-effect rounded-3xl p-8 card-shadow">
@@ -565,6 +571,7 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
           {step === "profile" && <ProfileStep firstName={firstName} lastName={lastName} setFirstName={setFirstName} setLastName={setLastName} onSubmit={handleProfileSubmit} loading={loading} onFinishLater={handleFinishLater} />}
           {step === "address" && <AddressStep addressFields={addressFields} setAddressFields={setAddressFields} onSubmit={handleAddressSubmit} onBack={() => setStep("profile")} loading={loading} onFinishLater={handleFinishLater} />}
           {step === "payment" && addressData && <PaymentStep addressData={addressData} onBack={() => setStep("address")} loading={loading} setLoading={setLoading} onFinishLater={handleFinishLater} referralCode={referralCode} />}
+          {step === "business-card" && <RegistrationBusinessCardStep userType="particulier" anrCode={anrCode} onComplete={() => navigate("/dashboard", { replace: true })} />}
           {step === "success" && <SuccessStep onGoToDashboard={() => navigate("/dashboard")} />}
         </div>
 

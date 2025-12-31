@@ -69,9 +69,18 @@ const Register = () => {
   });
   const getPrice = (planId: string) => {
     const annualPrice = getConfig(`${planId}_annual_price`);
+    // For particuliers, show annual price directly (36€/an)
+    if (planId === 'particulier') {
+      return {
+        value: annualPrice || 36,
+        isAnnual: true
+      };
+    }
+    // For pro plans, show monthly price
     const monthlyPrice = annualPrice ? Math.round(annualPrice / 12 * 100) / 100 : 1;
     return {
-      value: monthlyPrice
+      value: monthlyPrice,
+      isAnnual: false
     };
   };
   const getDescription = (planId: string) => {
@@ -186,7 +195,7 @@ const Register = () => {
                         </div>}
                       
                       <div className={`text-sm font-medium ${plan.color}`}>
-                        {price.value}€/mois
+                        {price.value}€/{price.isAnnual ? 'an' : 'mois'}
                       </div>
                     </div>
                   </div>
