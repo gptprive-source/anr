@@ -90,6 +90,19 @@ async function sendWebPush(subscription: any, payload: any): Promise<boolean> {
     const endpoint = subscription.endpoint;
     console.log("[WebPush] Sending to endpoint:", endpoint);
     
+    // Check if this is an FCM endpoint - use FCM API directly instead of Web Push
+    if (endpoint.includes("fcm.googleapis.com")) {
+      // Extract the FCM token from the Web Push endpoint
+      // Format: https://fcm.googleapis.com/fcm/send/TOKEN
+      const tokenMatch = endpoint.match(/\/fcm\/send\/(.+)$/);
+      if (tokenMatch && tokenMatch[1]) {
+        const fcmToken = tokenMatch[1];
+        console.log("[WebPush] FCM endpoint detected, using FCM API with extracted token");
+        return await sendFCMNotification(fcmToken, payload);
+      }
+    }
+    
+    // For non-FCM endpoints (Firefox, Safari), use VAPID
     const jwt = await createVapidJWT(endpoint);
     console.log("[WebPush] JWT created successfully");
 
