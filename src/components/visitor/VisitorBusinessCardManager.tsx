@@ -40,9 +40,11 @@ const VisitorBusinessCardManager = ({
     phone: "",
     email: "",
     avatar_url: null as string | null,
+    show_email: true,
+    show_phone: true,
+    anr_code: null as string | null,
   });
 
-  // Populate form when card loads
   useEffect(() => {
     if (card) {
       setFormData({
@@ -54,12 +56,14 @@ const VisitorBusinessCardManager = ({
         phone: card.phone || "",
         email: card.email || "",
         avatar_url: card.avatar_url || null,
+        show_email: card.show_email ?? true,
+        show_phone: card.show_phone ?? true,
+        anr_code: card.anr_code || null,
       });
     }
   }, [card]);
 
   const handleSubmit = async () => {
-    // Validation
     if (formData.card_type === "individual" && !formData.first_name && !formData.last_name) {
       toast({
         title: "Informations requises",
@@ -109,6 +113,9 @@ const VisitorBusinessCardManager = ({
         phone: "",
         email: "",
         avatar_url: null,
+        show_email: true,
+        show_phone: true,
+        anr_code: null,
       });
     } else {
       toast({
@@ -146,7 +153,6 @@ const VisitorBusinessCardManager = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Avatar upload */}
           <div className="flex justify-center">
             <AvatarUpload
               currentUrl={formData.avatar_url}
@@ -157,7 +163,6 @@ const VisitorBusinessCardManager = ({
             />
           </div>
 
-          {/* Type selection */}
           <div className="space-y-2">
             <Label>Type</Label>
             <RadioGroup
@@ -182,7 +187,6 @@ const VisitorBusinessCardManager = ({
             </RadioGroup>
           </div>
 
-          {/* Individual fields */}
           {formData.card_type === "individual" && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -206,7 +210,6 @@ const VisitorBusinessCardManager = ({
             </div>
           )}
 
-          {/* Company fields */}
           {formData.card_type === "company" && (
             <div className="space-y-3">
               <div className="space-y-2">
@@ -230,7 +233,6 @@ const VisitorBusinessCardManager = ({
             </div>
           )}
 
-          {/* Contact info */}
           <div className="space-y-3 pt-2 border-t">
             <div className="space-y-2">
               <Label htmlFor="card_phone">Téléphone</Label>
@@ -254,7 +256,6 @@ const VisitorBusinessCardManager = ({
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex gap-2 pt-2">
             {card && (
               <Button
@@ -276,7 +277,6 @@ const VisitorBusinessCardManager = ({
             </Button>
           </div>
 
-          {/* RGPD notice */}
           <p className="text-xs text-muted-foreground text-center">
             Vos données sont conservées 1 an maximum et peuvent être supprimées à tout moment.
           </p>

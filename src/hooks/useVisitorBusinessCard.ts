@@ -14,6 +14,9 @@ export interface VisitorBusinessCard {
   avatar_url: string | null;
   device_id: string;
   user_id: string | null;
+  show_email: boolean;
+  show_phone: boolean;
+  anr_code: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -72,6 +75,8 @@ export const useVisitorBusinessCard = () => {
             first_name: profile?.first_name || "Utilisateur",
             last_name: profile?.last_name || "",
             card_type: "individual",
+            show_email: true,
+            show_phone: true,
           })
           .select()
           .single();

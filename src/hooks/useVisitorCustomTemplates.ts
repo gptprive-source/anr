@@ -14,12 +14,15 @@ export interface VisitorCustomTemplate {
   updated_at: string;
 }
 
-// Get or create device ID (fallback for non-authenticated users)
+const DEVICE_ID_KEY = 'anr_visitor_device_id';
+const MAX_TEMPLATES = 3;
+
+// Get or create device ID - harmonized with useVisitorBusinessCard
 const getDeviceId = (): string => {
-  let deviceId = localStorage.getItem('visitor_device_id');
+  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
     deviceId = crypto.randomUUID();
-    localStorage.setItem('visitor_device_id', deviceId);
+    localStorage.setItem(DEVICE_ID_KEY, deviceId);
   }
   return deviceId;
 };
@@ -35,7 +38,8 @@ export const useVisitorCustomTemplates = () => {
       let query = supabase
         .from('visitor_custom_templates')
         .select('*')
-        .order('usage_count', { ascending: false });
+        .order('usage_count', { ascending: false })
+        .limit(MAX_TEMPLATES);
 
       // For authenticated users, fetch by user_id; otherwise by device_id
       if (user?.id) {
@@ -60,6 +64,11 @@ export const useVisitorCustomTemplates = () => {
   }, [fetchTemplates]);
 
   const saveTemplate = async (name: string, content: string, icon: string = '📝') => {
+    // Check max limit
+    if (templates.length >= MAX_TEMPLATES) {
+      throw new Error(`Maximum ${MAX_TEMPLATES} templates autorisés`);
+    }
+
     try {
       const { data, error } = await supabase
         .from('visitor_custom_templates')
@@ -74,7 +83,7 @@ export const useVisitorCustomTemplates = () => {
         .single();
 
       if (error) throw error;
-      setTemplates(prev => [data as VisitorCustomTemplate, ...prev]);
+      setTemplates(prev => [data as VisitorCustomTemplate, ...prev].slice(0, MAX_TEMPLATES));
       return data;
     } catch (error) {
       console.error('Error saving custom template:', error);
@@ -164,6 +173,8 @@ export const useVisitorCustomTemplates = () => {
     }
   };
 
+  const canAddMore = templates.length < MAX_TEMPLATES;
+
   return {
     templates,
     loading,
@@ -171,6 +182,8 @@ export const useVisitorCustomTemplates = () => {
     updateTemplate,
     deleteTemplate,
     incrementUsage,
-    refetch: fetchTemplates
+    refetch: fetchTemplates,
+    canAddMore,
+    maxTemplates: MAX_TEMPLATES,
   };
 };
