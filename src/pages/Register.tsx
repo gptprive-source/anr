@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Home, Building, Building2, Landmark, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,8 +48,14 @@ const PLAN_CONFIGS = [{
   isPro: true
 }];
 const Register = () => {
-  const [accountType, setAccountType] = useState<AccountType>("choice");
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  // Restore account type from localStorage if returning after email verification
+  const [accountType, setAccountType] = useState<AccountType>(() => {
+    const saved = localStorage.getItem("anr_register_account_type") as AccountType;
+    return saved || "choice";
+  });
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(() => {
+    return localStorage.getItem("anr_register_selected_plan") || null;
+  });
   const navigate = useNavigate();
   const {
     getConfig
@@ -98,24 +104,34 @@ const Register = () => {
     };
   };
 
-  // Handle account type selection
+  // Handle account type selection and persist to localStorage
   const handlePlanSelect = (planId: string) => {
     if (planId === 'particulier') {
+      localStorage.setItem("anr_register_account_type", "particulier");
       setAccountType('particulier');
     } else {
+      localStorage.setItem("anr_register_account_type", "entreprise");
+      localStorage.setItem("anr_register_selected_plan", planId);
       setSelectedPlan(planId);
       setAccountType('entreprise');
     }
   };
+  
+  // Clear account type from localStorage when going back to choice
+  const handleBackToChoice = () => {
+    localStorage.removeItem("anr_register_account_type");
+    localStorage.removeItem("anr_register_selected_plan");
+    setAccountType("choice");
+  };
   if (accountType === "particulier") {
     return <>
-        <RegisterForm onBack={() => setAccountType("choice")} />
+        <RegisterForm onBack={handleBackToChoice} />
         <VisitorFooter />
       </>;
   }
   if (accountType === "entreprise" || accountType === "pro" || accountType === "collectivites") {
     return <>
-        <RegisterProForm onBack={() => setAccountType("choice")} initialPlan={selectedPlan || 'pro'} />
+        <RegisterProForm onBack={handleBackToChoice} initialPlan={selectedPlan || 'pro'} />
         <VisitorFooter />
       </>;
   }
