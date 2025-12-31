@@ -1,19 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Lock, Home, Mic, Square, Loader2, Paperclip, Video, X, Image, FileText, Smile } from "lucide-react";
+import { ArrowLeft, Send, Lock, Home, Mic, Loader2, Paperclip, X, Image, Video, Camera, Check, CheckCheck, Smile } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getDeviceId } from "@/hooks/useVisitorDeviceMessages";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VideoRecorder from "@/components/messages/VideoRecorder";
+import VoiceRecorder from "@/components/visitor/VoiceRecorder";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import VisitorFooter from "@/components/layout/VisitorFooter";
+
+// Emoji categories (same as Conversation.tsx)
+const EMOJI_CATEGORIES = {
+  "😊 Smileys": ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "☺️", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🤐", "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "🥸", "😎", "🤓", "🧐", "😕", "😟", "🙁", "☹️", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬"],
+  "👋 Gestes": ["👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪"],
+  "❤️ Coeurs": ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "❤️‍🔥", "❤️‍🩹", "💌"],
+  "🎉 Objets": ["🎉", "🎊", "🎈", "🎁", "🎀", "🏆", "🏅", "🥇", "🥈", "🥉", "⚽", "🎯", "🎮", "📱", "💻", "📧", "📞", "⏰", "📍", "🏠", "🚪", "🔑", "🔔", "✅", "❌", "⭐", "🌟", "✨", "🔥", "💯"],
+};
 
 interface Message {
   id: string;
@@ -24,6 +34,7 @@ interface Message {
   media_type: string | null;
   created_at: string;
   is_encrypted: boolean;
+  is_read?: boolean;
 }
 
 interface HabitationInfo {
@@ -31,6 +42,12 @@ interface HabitationInfo {
   anr_code: string;
   anr_address: string;
 }
+
+const formatDateSeparator = (date: Date) => {
+  if (isToday(date)) return "Aujourd'hui";
+  if (isYesterday(date)) return "Hier";
+  return format(date, "EEEE d MMMM", { locale: fr });
+};
 
 const VisitorConversation = () => {
   const { habitationId } = useParams<{ habitationId: string }>();
@@ -47,11 +64,8 @@ const VisitorConversation = () => {
   const [originalMessageId, setOriginalMessageId] = useState<string | null>(null);
 
   // Voice recording
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 
   // Video recording
   const [showVideoRecorder, setShowVideoRecorder] = useState(false);
@@ -61,22 +75,6 @@ const VisitorConversation = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Emoji picker
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const commonEmojis = [
-    "😀", "😊", "😂", "🥰", "😍", "🤩", "😘", "😎",
-    "🤔", "😅", "😢", "😭", "😡", "🥳", "🤗", "😴",
-    "👍", "👎", "👏", "🙌", "🤝", "✌️", "👋", "🙏",
-    "❤️", "💕", "💖", "💙", "💚", "💛", "🧡", "💜",
-    "🎉", "🎊", "🔥", "⭐", "✨", "💯", "🏠", "📦",
-    "📞", "📧", "⏰", "📍", "🚪", "🔑", "🔔", "✅"
-  ];
-
-  const insertEmoji = (emoji: string) => {
-    setNewMessage((prev) => prev + emoji);
-    setShowEmojiPicker(false);
-  };
 
   // Fetch conversation data
   const fetchConversation = useCallback(async () => {
@@ -532,54 +530,12 @@ const VisitorConversation = () => {
     }
   };
 
-  // Voice recording handlers
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach((track) => track.stop());
-        
-        if (audioChunksRef.current.length > 0) {
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-          await sendVoiceMessage(audioBlob);
-        }
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingTime(0);
-
-      recordingIntervalRef.current = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
-      }, 1000);
-    } catch (error) {
-      console.error("[VisitorConversation] Recording error:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'accéder au microphone.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
-      }
-    }
+  // Voice recording handler using VoiceRecorder component
+  const handleSendVoice = async () => {
+    if (!audioBlob || !habitationId) return;
+    await sendVoiceMessage(audioBlob);
+    setAudioBlob(null);
+    setShowVoiceRecorder(false);
   };
 
   const sendVoiceMessage = async (audioBlob: Blob) => {
@@ -640,11 +596,6 @@ const VisitorConversation = () => {
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
 
   if (loading) {
     return (
@@ -674,116 +625,115 @@ const VisitorConversation = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col pb-20">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-primary text-primary-foreground p-4 shadow-md">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/visitor-messages")}
-            className="text-primary-foreground hover:bg-primary-foreground/10"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-              <Home className="h-5 w-5" />
+    <div className="min-h-screen flex flex-col pb-16 bg-secondary/30">
+      {/* Blue Header - WhatsApp style */}
+      <div className="sticky top-0 z-10 bg-primary shadow-md">
+        <div className="max-w-2xl mx-auto w-full px-2 py-3">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/10"
+              onClick={() => navigate("/visitor-messages")}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+
+            <Avatar className="w-10 h-10 flex-shrink-0 border-2 border-white/20">
+              <AvatarFallback className="bg-white/20">
+                <Home className="w-5 h-5 text-white" />
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-white truncate">
+                {habitationInfo?.name || "Résidence"}
+              </p>
+              <div className="flex items-center gap-2">
+                {habitationInfo?.anr_address && (
+                  <p className="text-xs text-white/70 truncate">{habitationInfo.anr_address}</p>
+                )}
+                <div className="flex items-center gap-1 text-[10px] text-white/60" title="Chiffrement E2E">
+                  <Lock className="w-2.5 h-2.5" />
+                  <span className="text-xs">E2E</span>
+                </div>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h1 className="font-semibold truncate">
-                {habitationInfo?.name || "Conversation"}
-              </h1>
-              {habitationInfo?.anr_code && (
-                <p className="text-xs opacity-80 truncate">
-                  {habitationInfo.anr_code}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-xs opacity-80">
-            <Lock className="h-3 w-3" />
-            <span>E2E</span>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground space-y-2">
-            <p className="font-medium text-foreground">Le résident n'est pas disponible</p>
-            <p>Laissez-lui un message texte ou vocal ci-dessous.</p>
-            <p className="text-sm">Il recevra une notification et pourra vous répondre.</p>
+      {/* Messages Area - WhatsApp style */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 pb-40 space-y-2 max-w-2xl mx-auto w-full">
+        {/* Empty conversation welcome */}
+        {messages.length === 0 && (
+          <div className="flex justify-center my-8">
+            <div className="bg-[#E1F2FB] text-[#54656F] text-sm px-4 py-3 rounded-lg shadow-sm text-center max-w-xs">
+              <p className="font-medium mb-1">📝 Le résident n'est pas disponible</p>
+              <p className="text-xs">Laissez-lui un message texte ou vocal ci-dessous.</p>
+            </div>
           </div>
-        ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "flex",
-                msg.type === "sent" ? "justify-end" : "justify-start"
-              )}
-            >
+        )}
+
+        {messages.map((msg) => {
+          const isMine = msg.type === "sent";
+          const hasVoice = msg.voice_url;
+          const hasMedia = msg.media_url;
+
+          return (
+            <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
               <div
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2 shadow-sm",
-                  msg.type === "sent"
-                    ? "bg-primary text-primary-foreground rounded-br-md"
-                    : "bg-card text-card-foreground rounded-bl-md"
+                  "max-w-[85%] rounded-lg px-3 py-2 shadow-sm relative",
+                  isMine
+                    ? "bg-[#D9FDD3] text-[#111B21] rounded-tr-none"
+                    : "bg-white text-[#111B21] rounded-tl-none"
                 )}
               >
-                {msg.voice_url ? (
-                  <WhatsAppAudioPlayer
-                    audioUrl={msg.voice_url}
-                    isOwn={msg.type === "sent"}
-                  />
-                ) : msg.media_url ? (
-                  <div className="space-y-2">
+                {/* Voice message */}
+                {hasVoice ? (
+                  <WhatsAppAudioPlayer audioUrl={msg.voice_url!} isOwn={isMine} />
+                ) : hasMedia ? (
+                  <div className="space-y-1">
                     {msg.media_type?.startsWith("image") ? (
-                      <img
-                        src={msg.media_url}
-                        alt="Media"
-                        className="max-w-full rounded-lg"
-                      />
+                      <img src={msg.media_url!} alt="Media" className="max-w-full rounded-lg" />
                     ) : msg.media_type?.startsWith("video") ? (
-                      <video
-                        src={msg.media_url}
-                        controls
-                        className="max-w-full rounded-lg"
-                      />
+                      <video src={msg.media_url!} controls className="max-w-full rounded-lg" />
                     ) : (
                       <a
-                        href={msg.media_url}
+                        href={msg.media_url!}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm underline"
+                        className="text-sm text-blue-500 underline flex items-center gap-1"
                       >
-                        📎 Pièce jointe
+                        <Paperclip className="w-4 h-4" />
+                        Pièce jointe
                       </a>
                     )}
-                    {msg.text && <p className="text-sm">{msg.text}</p>}
+                    {msg.text && <p className="text-sm whitespace-pre-wrap">{msg.text}</p>}
                   </div>
                 ) : (
                   <p className="text-sm whitespace-pre-wrap">
                     {msg.text || (msg.is_encrypted ? "🔐 Message chiffré" : "")}
                   </p>
                 )}
-                <div
-                  className={cn(
-                    "text-[10px] mt-1 flex items-center gap-1",
-                    msg.type === "sent"
-                      ? "text-primary-foreground/70 justify-end"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {msg.is_encrypted && <Lock className="h-2.5 w-2.5" />}
-                  {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+
+                {/* Time and status */}
+                <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : ''}`}>
+                  {msg.is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
+                  <span className="text-[11px] text-[#667781]">
+                    {format(new Date(msg.created_at), "HH:mm", { locale: fr })}
+                  </span>
+                  {isMine && (msg.is_read ? (
+                    <CheckCheck className="w-4 h-4 text-[#53BDEB]" />
+                  ) : (
+                    <Check className="w-4 h-4 text-[#667781]" />
+                  ))}
                 </div>
               </div>
             </div>
-          ))
-        )}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
@@ -796,12 +746,40 @@ const VisitorConversation = () => {
         onChange={handleFileSelect}
       />
 
-      {/* Video Recorder Overlay */}
-      {showVideoRecorder && (
-        <div className="fixed inset-0 z-50 bg-background/95 flex items-center justify-center p-4">
-          <div className="w-full max-w-md">
+
+      {/* Input Area - WhatsApp style */}
+      <div className="fixed bottom-16 left-0 right-0 bg-[#F0F2F5] px-2 py-2">
+        <div className="max-w-2xl mx-auto w-full">
+          {/* Media Preview */}
+          {selectedFile && filePreview && (
+            <div className="mb-2 relative inline-block">
+              <div className="relative rounded-lg overflow-hidden bg-white shadow-sm max-w-48">
+                {selectedFile.type.startsWith('video/') ? (
+                  <video src={filePreview} className="max-h-32 object-cover" />
+                ) : selectedFile.type.startsWith('image/') ? (
+                  <img src={filePreview} alt="Preview" className="max-h-32 object-cover" />
+                ) : (
+                  <div className="h-16 w-32 flex items-center justify-center bg-muted">
+                    <Paperclip className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                )}
+                <button
+                  onClick={clearSelectedFile}
+                  className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-black/80"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/60 rounded text-xs text-white flex items-center gap-1">
+                  {selectedFile.type.startsWith('video/') ? <Video className="w-3 h-3" /> : <Image className="w-3 h-3" />}
+                  {(selectedFile.size / 1024 / 1024).toFixed(1)} Mo
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showVideoRecorder ? (
             <VideoRecorder
-              onRecordingComplete={handleVideoRecordingComplete}
+              onRecordingComplete={(blob) => setVideoBlob(blob)}
               onSend={sendVideoMessage}
               onCancel={() => {
                 setShowVideoRecorder(false);
@@ -810,146 +788,107 @@ const VisitorConversation = () => {
               sending={sending}
               videoBlob={videoBlob}
             />
-          </div>
-        </div>
-      )}
-
-      {/* Input Area */}
-      <div className="sticky bottom-20 bg-background border-t border-border p-3 space-y-2">
-        {/* File preview */}
-        {selectedFile && (
-          <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
-            {filePreview && selectedFile.type.startsWith("image/") ? (
-              <img src={filePreview} alt="Preview" className="w-12 h-12 object-cover rounded" />
-            ) : filePreview && selectedFile.type.startsWith("video/") ? (
-              <video src={filePreview} className="w-12 h-12 object-cover rounded" />
-            ) : (
-              <div className="w-12 h-12 bg-primary/10 rounded flex items-center justify-center">
-                <FileText className="w-6 h-6 text-primary" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{selectedFile.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {(selectedFile.size / 1024).toFixed(1)} Ko
-              </p>
-            </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="flex-shrink-0"
-              onClick={clearSelectedFile}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-        )}
-
-        {isRecording ? (
-          <div className="flex items-center justify-between bg-destructive/10 rounded-full px-4 py-2">
+          ) : showVoiceRecorder ? (
+            <VoiceRecorder
+              onRecordingComplete={(blob) => setAudioBlob(blob)}
+              onSend={handleSendVoice}
+              onCancel={() => {
+                setShowVoiceRecorder(false);
+                setAudioBlob(null);
+              }}
+              sending={sending}
+              audioBlob={audioBlob}
+            />
+          ) : (
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
-              <span className="text-sm font-medium">{formatTime(recordingTime)}</span>
-            </div>
-            <Button
-              size="icon"
-              variant="destructive"
-              className="rounded-full"
-              onClick={stopRecording}
-            >
-              <Square className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-end gap-2">
-            {/* Attachment button */}
-            <Button
-              size="icon"
-              variant="ghost"
-              className="flex-shrink-0"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={sending}
-            >
-              <Paperclip className="h-5 w-5" />
-            </Button>
-            
-            {/* Video button */}
-            <Button
-              size="icon"
-              variant="ghost"
-              className="flex-shrink-0"
-              onClick={() => setShowVideoRecorder(true)}
-              disabled={sending}
-            >
-              <Video className="h-5 w-5" />
-            </Button>
-            
-            {/* Mic button */}
-            <Button
-              size="icon"
-              variant="ghost"
-              className="flex-shrink-0"
-              onClick={startRecording}
-              disabled={sending}
-            >
-              <Mic className="h-5 w-5" />
-            </Button>
+              {/* Left icons */}
+              <div className="flex items-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors">
+                      <Smile className="w-6 h-6" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-2 max-h-72 overflow-y-auto" side="top" align="start">
+                    <div className="space-y-3">
+                      {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => (
+                        <div key={category}>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">{category}</p>
+                          <div className="grid grid-cols-8 gap-1">
+                            {emojis.map((emoji, i) => (
+                              <button
+                                key={i}
+                                className="text-xl p-1 hover:bg-muted rounded transition-colors"
+                                onClick={() => setNewMessage((prev) => prev + emoji)}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
-            {/* Emoji picker */}
-            <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-              <PopoverTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="flex-shrink-0"
+                <button
+                  className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip className="w-6 h-6" />
+                </button>
+
+                <button
+                  className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors"
+                  onClick={() => setShowVideoRecorder(true)}
+                >
+                  <Camera className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Input */}
+              <div className="flex-1 bg-white rounded-full px-4 py-2 shadow-sm">
+                <Textarea
+                  placeholder="Message"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="w-full border-0 p-0 min-h-[24px] max-h-24 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none overflow-y-auto text-[#111B21]"
+                  rows={1}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && (newMessage.trim() || selectedFile)) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  style={{ height: 'auto', minHeight: '24px' }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = Math.min(target.scrollHeight, 96) + 'px';
+                  }}
+                />
+              </div>
+
+              {/* Send/Mic button */}
+              {newMessage.trim() || selectedFile ? (
+                <button
+                  className="p-3 rounded-full bg-[#075E54] text-white hover:bg-[#064E46] transition-colors shadow-md"
+                  onClick={handleSendMessage}
                   disabled={sending}
                 >
-                  <Smile className="h-5 w-5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-2" align="start" side="top">
-                <div className="grid grid-cols-8 gap-1">
-                  {commonEmojis.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      className="text-xl hover:bg-muted rounded p-1 transition-colors"
-                      onClick={() => insertEmoji(emoji)}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            
-            <Textarea
-              placeholder="Écrire un message..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 min-h-[44px] max-h-32 resize-none"
-              rows={1}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-            />
-            <Button
-              size="icon"
-              className="flex-shrink-0 rounded-full"
-              onClick={handleSendMessage}
-              disabled={(!newMessage.trim() && !selectedFile) || sending}
-            >
-              {sending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                  {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                </button>
               ) : (
-                <Send className="h-4 w-4" />
+                <button
+                  onClick={() => setShowVoiceRecorder(true)}
+                  className="p-3 rounded-full text-white transition-colors shadow-md bg-[#2266ba]"
+                >
+                  <Mic className="w-5 h-5" />
+                </button>
               )}
-            </Button>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
 
       <VisitorFooter />
