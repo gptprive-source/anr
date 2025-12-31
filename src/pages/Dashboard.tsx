@@ -6,12 +6,21 @@ import BottomNav from "@/components/layout/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useBusinessCardRequired } from "@/hooks/useBusinessCardRequired";
 
 const Dashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isRecoveringPayment, setIsRecoveringPayment] = useState(false);
+  const { isComplete: cardComplete, isLoading: cardLoading } = useBusinessCardRequired();
+
+  // Redirect to onboarding if business card not complete
+  useEffect(() => {
+    if (!cardLoading && !cardComplete && user) {
+      navigate("/onboarding/business-card", { replace: true });
+    }
+  }, [cardLoading, cardComplete, user, navigate]);
 
   // Check for pending payment that wasn't processed
   useEffect(() => {
@@ -82,11 +91,13 @@ const Dashboard = () => {
     checkPendingPayment();
   }, [user, authLoading, toast]);
 
-  if (isRecoveringPayment) {
+  if (isRecoveringPayment || cardLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center flex-col gap-4 bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Récupération du paiement en cours...</p>
+        <p className="text-muted-foreground">
+          {isRecoveringPayment ? "Récupération du paiement en cours..." : "Chargement..."}
+        </p>
       </div>
     );
   }

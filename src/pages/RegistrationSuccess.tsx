@@ -154,11 +154,11 @@ const RegistrationSuccess = () => {
 
                 <div className="space-y-3">
                   <Button 
-                    onClick={() => navigate("/dashboard", { replace: true })}
+                    onClick={() => navigate("/onboarding/business-card", { replace: true })}
                     className="w-full bg-green-500 hover:bg-green-600"
                   >
                     <Home className="w-4 h-4 mr-2" />
-                    Accéder à mon tableau de bord
+                    Créer ma carte de visite
                   </Button>
                 </div>
               </CardContent>

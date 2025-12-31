@@ -31,7 +31,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import DeleteAccountDialog from "@/components/account/DeleteAccountDialog";
 import ChangeAddressDialog from "@/components/account/ChangeAddressDialog";
 import RGPDRequestDialog from "@/components/account/RGPDRequestDialog";
-import VisitorModeSection from "@/components/account/VisitorModeSection";
+// VisitorModeSection removed - replaced by mandatory onboarding flow
 import LeaveHabitationDialog from "@/components/account/LeaveHabitationDialog";
 import GrantedAccessSection from "@/components/resident/GrantedAccessSection";
 import ChangePlanDialog from "@/components/account/ChangePlanDialog";
@@ -466,9 +466,6 @@ const Account = () => {
 
         {/* Ringtone Settings */}
         <RingtoneSettingsCard />
-
-        {/* Visitor Mode Section */}
-        <VisitorModeSection className="border-white bg-white shadow-neumorphic" />
 
         {/* Danger zone */}
         <Card className="p-4 space-y-4 py-[18px] pt-[18px]">

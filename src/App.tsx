@@ -56,6 +56,9 @@ import VisitorConversation from "./pages/VisitorConversation";
 import NotFound from "./pages/NotFound";
 import PhoneVerification from "./pages/PhoneVerification";
 import RingtoneSettings from "./pages/RingtoneSettings";
+import OnboardingBusinessCard from "./pages/OnboardingBusinessCard";
+import VisitorLogin from "./pages/VisitorLogin";
+import VisitorCard from "./pages/VisitorCard";
 
 // Relay pages
 import RelayDashboard from "./pages/relay/RelayDashboard";
@@ -138,6 +141,9 @@ const AppContent = () => {
           <Route path="/invitation" element={<Invitation />} />
           <Route path="/registration-success" element={<RegistrationSuccess />} />
           <Route path="/phone-verification" element={<ProtectedRoute skipPhoneCheck><PhoneVerification /></ProtectedRoute>} />
+          <Route path="/onboarding/business-card" element={<ProtectedRoute skipPhoneCheck><OnboardingBusinessCard /></ProtectedRoute>} />
+          <Route path="/visitor-login" element={<VisitorLogin />} />
+          <Route path="/visitor-card" element={<VisitorCard />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/update-gps" element={<ProtectedRoute>
                 <UpdateGPS />
