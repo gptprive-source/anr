@@ -166,3 +166,6 @@ verify_jwt = true
 
 [functions.check-phone-auth]
 verify_jwt = true
+
+[functions.cleanup-test-users]
+verify_jwt = false
