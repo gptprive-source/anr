@@ -68,7 +68,10 @@ const ChangePlanDialog = ({ open, onOpenChange, currentPlan }: ChangePlanDialogP
 
   const getPrice = (planId: string) => {
     const annualPrice = getConfig(`${planId}_annual_price`);
-    const monthlyPrice = annualPrice ? Math.round(annualPrice / 12 * 100) / 100 : 1;
+    // Use nullish coalescing - defaults for each plan type
+    const defaultPrice = planId === 'particulier' ? 36 : 348;
+    const price = annualPrice ?? defaultPrice;
+    const monthlyPrice = Math.round(price / 12 * 100) / 100;
     return monthlyPrice;
   };
 
