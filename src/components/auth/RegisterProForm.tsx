@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useAppConfig } from "@/hooks/useAppConfig";
 
-type Step = "company" | "contact" | "plan" | "credentials" | "payment";
+type Step = "company" | "contact" | "credentials";
 
 interface RegisterProFormProps {
   onBack: () => void;
@@ -191,10 +191,6 @@ const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) 
     }
 
     setEmail(contactEmail);
-    setStep("plan");
-  };
-
-  const handlePlanSubmit = () => {
     setStep("credentials");
   };
 
@@ -336,11 +332,11 @@ const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) 
       <div className="w-full max-w-lg">
         {/* Progress */}
         <div className="flex justify-center gap-2 mb-8">
-          {["company", "contact", "plan", "credentials"].map((s, i) => (
+          {["company", "contact", "credentials"].map((s, i) => (
             <div
               key={s}
               className={`h-1 w-8 rounded-full transition-colors ${
-                ["company", "contact", "plan", "credentials"].indexOf(step) >= i
+                ["company", "contact", "credentials"].indexOf(step) >= i
                   ? "bg-gradient-to-r from-blue-600 to-cyan-500"
                   : "bg-secondary"
               }`}
@@ -529,132 +525,6 @@ const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) 
             </div>
           )}
 
-          {step === "plan" && (
-            <div className="space-y-6" data-copilot-id="pro-register-plan-step">
-              <div className="text-center">
-                <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-r from-blue-600/20 to-cyan-500/20 flex items-center justify-center mb-4">
-                  <CreditCard className="h-6 w-6 text-blue-600" />
-                </div>
-                <h2 className="text-xl font-semibold">Choisissez votre plan</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Sélectionnez l'offre adaptée à vos besoins
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                {PLANS.map(plan => (
-                  <div
-                    key={plan.id}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      selectedPlan === plan.id
-                        ? "border-blue-600 bg-blue-600/5"
-                        : "border-border hover:border-blue-600/50"
-                    }`}
-                    onClick={() => {
-                      setSelectedPlan(plan.id);
-                      setEmployeeCount([Math.min(employeeCount[0], plan.maxEmployees)]);
-                    }}
-                    data-copilot-id={`plan-${plan.id}`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">{plan.name}</span>
-                        {'popular' in plan && plan.popular && (
-                          <span className="px-2 py-0.5 text-xs bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-full">
-                            Populaire
-                          </span>
-                        )}
-                      </div>
-                      <span className="font-bold text-blue-600">{plan.price}</span>
-                    </div>
-                    <ul className="text-xs text-muted-foreground space-y-1">
-                      {plan.features.map((f, i) => (
-                        <li key={i}>✓ {f}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-
-              {/* Employee count slider */}
-              <div className="p-4 bg-muted/50 rounded-xl">
-                <Label className="mb-3 block">
-                  Nombre d'employés prévus: <span className="font-bold">{employeeCount[0]}</span>
-                </Label>
-                <Slider
-                  value={employeeCount}
-                  onValueChange={setEmployeeCount}
-                  min={10}
-                  max={getMaxEmployeesForPlan()}
-                  step={10}
-                  className="mt-2"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>10</span>
-                  <span>{getMaxEmployeesForPlan()}</span>
-                </div>
-              </div>
-
-              {/* PRO addons */}
-              {selectedPlan === "pro" && (
-                <div className="space-y-3 p-4 bg-muted/50 rounded-xl">
-                  <Label>Options supplémentaires (PRO)</Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="copilot"
-                        checked={wantsCopilot}
-                        onCheckedChange={(c) => setWantsCopilot(c === true)}
-                      />
-                      <label htmlFor="copilot" className="text-sm">
-                        Co-Pilot IA (+{copilotAddonPrice}€/mois)
-                      </label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="geofencing"
-                        checked={wantsGeofencing}
-                        onCheckedChange={(c) => setWantsGeofencing(c === true)}
-                      />
-                      <label htmlFor="geofencing" className="text-sm">
-                        Géofencing avancé (+{geofencingAddonPrice}€/mois)
-                      </label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="faceRecog"
-                        checked={wantsFaceRecognition}
-                        onCheckedChange={(c) => setWantsFaceRecognition(c === true)}
-                      />
-                      <label htmlFor="faceRecog" className="text-sm">
-                        Reconnaissance faciale (+{facialRecognitionAddonPrice}€/mois)
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Price summary */}
-              <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Total mensuel</span>
-                  <span className="text-xl font-bold text-primary">{calculateTotalPrice()}€/mois</span>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep("contact")} className="flex-1">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Retour
-                </Button>
-                <Button onClick={handlePlanSubmit} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-500">
-                  Continuer
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
-            </div>
-          )}
-
           {step === "credentials" && (
             <div className="space-y-6" data-copilot-id="pro-register-credentials-step">
               <div className="text-center">
@@ -754,7 +624,7 @@ const RegisterProForm = ({ onBack, initialPlan = 'pro' }: RegisterProFormProps) 
               </div>
 
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep("plan")} className="flex-1">
+                <Button variant="outline" onClick={() => setStep("contact")} className="flex-1">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Retour
                 </Button>
