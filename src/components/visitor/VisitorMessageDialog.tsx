@@ -21,7 +21,7 @@ import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
 import { useAuth } from "@/hooks/useAuth";
 import { Send, Loader2, MessageSquare, Info, User, Building2, CreditCard, Plus, X, Save, Mic, Lock } from "lucide-react";
 import VisitorBusinessCardManager from "./VisitorBusinessCardManager";
-import SaveCustomTemplateDialog from "./SaveCustomTemplateDialog";
+import TemplateFormDialog from "./TemplateFormDialog";
 import VoiceRecorder from "./VoiceRecorder";
 import AccountIncentiveDialog from "./AccountIncentiveDialog";
 
@@ -457,10 +457,11 @@ const VisitorMessageDialog = ({
         </DialogContent>
       </Dialog>
 
-      <SaveCustomTemplateDialog
+      <TemplateFormDialog
         open={showSaveTemplateDialog}
         onOpenChange={setShowSaveTemplateDialog}
         messageContent={message}
+        mode="create"
         onSave={handleSaveTemplate}
       />
 

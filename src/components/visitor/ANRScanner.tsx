@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { isWithinProximity, calculateDistance } from "@/lib/geocoding";
 import { Html5Qrcode } from "html5-qrcode";
@@ -32,10 +33,42 @@ const ANRScanner = () => {
   const [mode, setMode] = useState<ScanMode>("qr");
   const [anrCode, setAnrCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [testMode, setTestMode] = useState(DEV_MODE);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { getCurrentPosition } = useGeolocation();
+  const { user, loading: authLoading } = useAuth();
+
+  // Check if visitor needs to login or complete business card
+  useEffect(() => {
+    const checkVisitorStatus = async () => {
+      if (authLoading) return;
+      
+      if (!user) {
+        // Visitor not logged in - redirect to visitor login
+        navigate("/visitor-login?redirect=/visitor", { replace: true });
+        return;
+      }
+
+      // Check if business card is complete
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("business_card_completed")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!profile?.business_card_completed) {
+        // Business card not complete - redirect to visitor card
+        navigate("/visitor-card?redirect=/visitor", { replace: true });
+        return;
+      }
+
+      setCheckingAuth(false);
+    };
+
+    checkVisitorStatus();
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (code?: string) => {
     const targetCode = code || anrCode.trim();
@@ -106,6 +139,15 @@ const ANRScanner = () => {
       setLoading(false);
     }
   };
+
+  // Show loading while checking auth
+  if (authLoading || checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col pb-20 bg-background">

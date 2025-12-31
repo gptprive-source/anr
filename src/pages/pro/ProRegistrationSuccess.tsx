@@ -99,18 +99,11 @@ const ProRegistrationSuccess = () => {
 
             <div className="flex flex-col gap-3">
               <Button 
-                onClick={() => navigate("/pro")}
+                onClick={() => navigate("/onboarding/business-card")}
                 className="w-full bg-gradient-to-r from-blue-600 to-cyan-500"
               >
                 <Building2 className="h-4 w-4 mr-2" />
-                Accéder à l'espace PRO
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={() => navigate("/dashboard")}
-                className="w-full"
-              >
-                Aller au tableau de bord
+                Créer ma carte de visite
               </Button>
             </div>
           </>
