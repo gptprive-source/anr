@@ -13,14 +13,26 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isRecoveringPayment, setIsRecoveringPayment] = useState(false);
-  const { isComplete: cardComplete, isLoading: cardLoading } = useBusinessCardRequired();
+  const { isComplete: cardComplete, isLoading: cardLoading, userType } = useBusinessCardRequired();
 
-  // Redirect to onboarding if business card not complete
+  // Redirect to onboarding if business card not complete (for residents only)
+  // Visitors without resident status should go to no-habitation
   useEffect(() => {
-    if (!cardLoading && !cardComplete && user) {
+    if (cardLoading || authLoading || !user) return;
+    
+    console.log("[Dashboard] Card check:", { cardComplete, userType, cardLoading });
+    
+    if (userType === "visitor") {
+      // User has no resident/company - redirect to no-habitation
+      navigate("/no-habitation", { replace: true });
+      return;
+    }
+    
+    if (!cardComplete) {
+      // User has resident/company but no business card - redirect to onboarding
       navigate("/onboarding/business-card", { replace: true });
     }
-  }, [cardLoading, cardComplete, user, navigate]);
+  }, [cardLoading, authLoading, cardComplete, userType, user, navigate]);
 
   // Check for pending payment that wasn't processed
   useEffect(() => {
