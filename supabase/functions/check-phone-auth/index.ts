@@ -193,11 +193,13 @@ Deno.serve(async (req) => {
         
         console.log("[check-phone-auth] Call is within valid time window. Call:", callDate.toISOString(), "Started at:", startedAt.toISOString());
 
-        // Check if wayType is incoming
-        if (callDetail.wayType !== "incoming") {
-          console.log("[check-phone-auth] Not an incoming call, skipping");
+        // Check if wayType is incoming or transfer (OVH uses "transfer" for redirected calls)
+        if (callDetail.wayType !== "incoming" && callDetail.wayType !== "transfer") {
+          console.log("[check-phone-auth] Not an incoming/transfer call, skipping. wayType:", callDetail.wayType);
           continue;
         }
+        
+        console.log("[check-phone-auth] Valid wayType:", callDetail.wayType);
 
         // Compare caller number
         const callerPhone = normalizeForComparison(callDetail.calling || callDetail.callingNumber || "");
