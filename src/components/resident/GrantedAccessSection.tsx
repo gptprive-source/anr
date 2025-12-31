@@ -8,6 +8,7 @@ import { fr } from "date-fns/locale";
 import { FaceRegistrationDialog } from "@/components/door/FaceRegistrationDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const COLORS = ["blue", "orange", "purple", "green", "pink", "cyan"] as const;
@@ -15,6 +16,7 @@ const COLORS = ["blue", "orange", "purple", "green", "pink", "cyan"] as const;
 const GrantedAccessSection = () => {
   const { loading, grantedAccess, refetch } = useGrantedAccess();
   const { user } = useAuth();
+  const { flags, loading: flagsLoading } = useFeatureFlags();
   const [expanded, setExpanded] = useState(false);
   const [showFaceDialog, setShowFaceDialog] = useState(false);
   const [hasFaceRegistered, setHasFaceRegistered] = useState(false);
@@ -43,6 +45,11 @@ const GrantedAccessSection = () => {
   const requiresFaceRecognition = grantedAccess.some(
     a => a.require_face_recognition_entry || a.require_face_recognition_exit
   );
+
+  // Don't show if door features are disabled
+  if (!flagsLoading && !flags.doorOpeningEnabled && !flags.scheduledAccessEnabled) {
+    return null;
+  }
 
   if (loading || grantedAccess.length === 0) {
     return null;
