@@ -289,12 +289,12 @@ serve(async (req) => {
           .eq('key', priceKey)
           .single();
         
-        // Default annual prices per plan
+        // Default annual prices per plan (in euros)
         const defaultPrices: Record<string, number> = {
-          particulier: 12,
-          pro: 348,        // 29€/month * 12
-          entreprise: 1188, // 99€/month * 12
-          collectivites: 2388 // 199€/month * 12
+          particulier: 36,    // 36€/an
+          pro: 348,           // 29€/month * 12
+          entreprise: 2400,   // From app_config entreprise_annual_price
+          collectivites: 4800 // From app_config collectivites_annual_price
         };
         
         // The price in app_config is already annual - ensure it's a number
