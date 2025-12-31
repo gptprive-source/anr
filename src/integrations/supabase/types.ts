@@ -2450,6 +2450,7 @@ export type Database = {
           phone_number: string | null
           phone_verified: boolean | null
           referral_balance: number | null
+          ringtone_uri: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2464,6 +2465,7 @@ export type Database = {
           phone_number?: string | null
           phone_verified?: boolean | null
           referral_balance?: number | null
+          ringtone_uri?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2478,6 +2480,7 @@ export type Database = {
           phone_number?: string | null
           phone_verified?: boolean | null
           referral_balance?: number | null
+          ringtone_uri?: string | null
           updated_at?: string | null
         }
         Relationships: []
