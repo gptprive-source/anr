@@ -122,6 +122,157 @@ async function sendWebPush(subscription: any, payload: any): Promise<boolean> {
   }
 }
 
+// Get Firebase access token using service account
+async function getFirebaseAccessToken(): Promise<string | null> {
+  try {
+    const serviceAccountJson = Deno.env.get("FCM_SERVICE_ACCOUNT");
+    if (!serviceAccountJson) {
+      console.error("[FCM] FCM_SERVICE_ACCOUNT not configured");
+      return null;
+    }
+
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    const now = Math.floor(Date.now() / 1000);
+
+    // Create JWT header
+    const header = {
+      alg: "RS256",
+      typ: "JWT",
+    };
+
+    // Create JWT claims
+    const claims = {
+      iss: serviceAccount.client_email,
+      scope: "https://www.googleapis.com/auth/firebase.messaging",
+      aud: "https://oauth2.googleapis.com/token",
+      iat: now,
+      exp: now + 3600,
+    };
+
+    // Encode header and claims
+    const headerB64 = btoa(JSON.stringify(header)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+    const claimsB64 = btoa(JSON.stringify(claims)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+    const unsignedToken = `${headerB64}.${claimsB64}`;
+
+    // Import RSA private key
+    const pemContents = serviceAccount.private_key
+      .replace(/-----BEGIN PRIVATE KEY-----/, "")
+      .replace(/-----END PRIVATE KEY-----/, "")
+      .replace(/\n/g, "");
+    
+    const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+    
+    const privateKey = await crypto.subtle.importKey(
+      "pkcs8",
+      binaryKey,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    // Sign the token
+    const signatureBuffer = await crypto.subtle.sign(
+      "RSASSA-PKCS1-v1_5",
+      privateKey,
+      new TextEncoder().encode(unsignedToken)
+    );
+    
+    const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=/g, "");
+
+    const signedJwt = `${unsignedToken}.${signatureB64}`;
+
+    // Exchange JWT for access token
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${signedJwt}`,
+    });
+
+    if (!tokenResponse.ok) {
+      const error = await tokenResponse.text();
+      console.error("[FCM] Token exchange failed:", error);
+      return null;
+    }
+
+    const tokenData = await tokenResponse.json();
+    console.log("[FCM] Got access token successfully");
+    return tokenData.access_token;
+  } catch (error) {
+    console.error("[FCM] Error getting access token:", error);
+    return null;
+  }
+}
+
+// Send FCM notification to Android device
+async function sendFCMNotification(fcmToken: string, payload: any): Promise<boolean> {
+  try {
+    const serviceAccountJson = Deno.env.get("FCM_SERVICE_ACCOUNT");
+    if (!serviceAccountJson) {
+      console.error("[FCM] FCM_SERVICE_ACCOUNT not configured");
+      return false;
+    }
+
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    const projectId = serviceAccount.project_id;
+    
+    const accessToken = await getFirebaseAccessToken();
+    if (!accessToken) {
+      console.error("[FCM] Could not get access token");
+      return false;
+    }
+
+    console.log("[FCM] Sending to token:", fcmToken.substring(0, 20) + "...");
+
+    const fcmPayload = {
+      message: {
+        token: fcmToken,
+        notification: {
+          title: payload.title,
+          body: payload.body,
+        },
+        android: {
+          priority: "high",
+          notification: {
+            channel_id: payload.data?.type === "incoming_call" ? "incoming_calls" : "default",
+            sound: payload.data?.type === "incoming_call" ? "ringtone" : "default",
+            visibility: "public",
+            priority: "max",
+          },
+        },
+        data: payload.data || {},
+      },
+    };
+
+    const response = await fetch(
+      `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(fcmPayload),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("[FCM] Send failed:", response.status, error);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log("[FCM] ✅ Sent successfully:", result.name);
+    return true;
+  } catch (error) {
+    console.error("[FCM] Error sending:", error);
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -185,8 +336,27 @@ serve(async (req) => {
           if (!success) {
             await supabase.from("push_tokens").delete().eq("token", tokenData.token);
           }
+        } else if (tokenData.platform === "android") {
+          // Send via FCM for Android
+          const success = await sendFCMNotification(tokenData.token, pushPayload);
+          results.push({ user_id: tokenData.user_id, platform: "android", success });
+          
+          // Remove invalid token if sending failed
+          if (!success) {
+            console.log("[Push] Removing invalid Android token");
+            await supabase.from("push_tokens").delete().eq("token", tokenData.token);
+          }
+        } else if (tokenData.platform === "ios") {
+          // iOS also uses FCM in Capacitor
+          const success = await sendFCMNotification(tokenData.token, pushPayload);
+          results.push({ user_id: tokenData.user_id, platform: "ios", success });
+          
+          if (!success) {
+            console.log("[Push] Removing invalid iOS token");
+            await supabase.from("push_tokens").delete().eq("token", tokenData.token);
+          }
         } else {
-          console.log("[Push] Native FCM not configured for:", tokenData.platform);
+          console.log("[Push] Unknown platform:", tokenData.platform);
           results.push({ user_id: tokenData.user_id, platform: tokenData.platform, success: false });
         }
       } catch (error) {

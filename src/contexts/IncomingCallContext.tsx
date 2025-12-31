@@ -14,15 +14,75 @@ const IncomingCallContext = createContext<IncomingCallContextType>({
 export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
 
-  // Realtime subscription to immediately stop ringing when call status changes
+  // Realtime subscription to immediately detect new calls AND stop ringing when status changes
   useEffect(() => {
     if (!user?.id) return;
 
     console.log("[REALTIME] Setting up call status subscription for user:", user.id);
 
-    // Subscribe to both call_logs AND call_participants for faster response
+    // Subscribe to INSERT (new calls) AND UPDATE (status changes) on call_participants
     const callChannel = supabase
-      .channel('call-status-realtime-v2')
+      .channel('call-status-realtime-v3')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'call_participants',
+          filter: `user_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          console.log("[REALTIME] 🆕 New call_participant INSERT:", payload.new);
+          const participant = payload.new as any;
+          
+          // Check if this is a ringing call for us
+          if (participant.status === "ringing" && participant.role === "resident") {
+            console.log("[REALTIME] ✅ New incoming call detected via realtime!");
+            
+            // Check if muted
+            const { data: resident } = await supabase
+              .from("residents")
+              .select("is_muted")
+              .eq("user_id", user.id)
+              .eq("status", "verified")
+              .maybeSingle();
+            
+            if (resident?.is_muted) {
+              console.log("[REALTIME] User is muted, ignoring call");
+              return;
+            }
+            
+            // Verify call_logs is still active
+            const { data: callLog } = await supabase
+              .from("call_logs")
+              .select("status")
+              .eq("id", participant.call_id)
+              .single();
+            
+            if (!callLog || callLog.status === "ended" || callLog.status === "missed") {
+              console.log("[REALTIME] Call already ended, skipping");
+              return;
+            }
+            
+            // Get habitation info
+            const { data: hab } = await supabase
+              .from("habitations")
+              .select("name, anrs(address)")
+              .eq("id", participant.habitation_id)
+              .single();
+            
+            if (hab) {
+              console.log("[REALTIME] 📞 Showing incoming call screen immediately!");
+              showIncomingCall({
+                participantId: participant.id,
+                callId: participant.call_id,
+                habitationName: hab.name,
+                address: (hab.anrs as any)?.address || "",
+              });
+            }
+          }
+        }
+      )
       .on(
         'postgres_changes',
         {
@@ -226,8 +286,8 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
     // Check immediately
     checkForCalls();
     
-    // Poll every 1.5 seconds for faster detection when visitor hangs up
-    const interval = setInterval(checkForCalls, 1000);
+    // Poll every 500ms for faster detection as backup to realtime
+    const interval = setInterval(checkForCalls, 500);
 
     return () => {
       console.log("[POLL] Stopping polling");
