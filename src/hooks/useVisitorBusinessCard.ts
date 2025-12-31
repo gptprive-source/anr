@@ -59,35 +59,8 @@ export const useVisitorBusinessCard = () => {
 
       if (error) throw error;
       
-      // Auto-create business card for authenticated users if they don't have one
-      if (!data && user?.id) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("first_name, last_name")
-          .eq("id", user.id)
-          .maybeSingle();
-        
-        const { data: newCard, error: insertError } = await (supabase as any)
-          .from("visitor_business_cards")
-          .insert({
-            user_id: user.id,
-            device_id: deviceId,
-            first_name: profile?.first_name || "Utilisateur",
-            last_name: profile?.last_name || "",
-            card_type: "individual",
-            show_email: true,
-            show_phone: true,
-          })
-          .select()
-          .single();
-        
-        if (insertError) {
-          console.error("[useVisitorBusinessCard] Error creating card:", insertError);
-        } else {
-          setCard(newCard as VisitorBusinessCard);
-          return;
-        }
-      }
+      // Don't auto-create business card - users must explicitly fill the form
+      // This ensures the onboarding flow is properly completed
       
       setCard(data as VisitorBusinessCard | null);
     } catch (err) {
