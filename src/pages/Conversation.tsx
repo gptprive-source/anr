@@ -1142,9 +1142,7 @@ const Conversation = () => {
                     <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : ''}`}>
                       {msg.is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
                       <span className="text-[11px] text-[#667781]">
-                        {format(new Date(msg.created_at), "HH:mm", {
-                    locale: fr
-                  })}
+                        {format(safeParseDate(msg.created_at), "HH:mm", { locale: fr })}
                       </span>
                       {isMine && (msg.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />)}
                     </div>
@@ -1156,9 +1154,7 @@ const Conversation = () => {
                     {text && <p className="text-sm text-[#111B21] whitespace-pre-wrap px-2 py-1">{renderTextWithLinks(text)}</p>}
                     <div className={`flex items-center gap-1 px-2 py-1 ${isMine ? 'justify-end' : ''}`}>
                       <span className="text-[11px] text-[#667781]">
-                        {format(new Date(msg.created_at), "HH:mm", {
-                    locale: fr
-                  })}
+                        {format(safeParseDate(msg.created_at), "HH:mm", { locale: fr })}
                       </span>
                       {isMine && (msg.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />)}
                     </div>
@@ -1170,9 +1166,7 @@ const Conversation = () => {
                     <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : ''}`}>
                       {msg.is_encrypted && <Lock className="w-3 h-3 text-[#667781]" />}
                       <span className="text-[11px] text-[#667781]">
-                        {format(new Date(msg.created_at), "HH:mm", {
-                    locale: fr
-                  })}
+                        {format(safeParseDate(msg.created_at), "HH:mm", { locale: fr })}
                       </span>
                       {isMine && (msg.is_read ? <CheckCheck className="w-4 h-4 text-[#53BDEB]" /> : <Check className="w-4 h-4 text-[#667781]" />)}
                     </div>
