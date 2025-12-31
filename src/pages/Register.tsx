@@ -58,7 +58,8 @@ const Register = () => {
   });
   const navigate = useNavigate();
   const {
-    getConfig
+    getConfig,
+    isLoading: configLoading
   } = useAppConfig();
   const {
     flags,
@@ -77,13 +78,16 @@ const Register = () => {
     const annualPrice = getConfig(`${planId}_annual_price`);
     // For particuliers, show annual price directly (36€/an)
     if (planId === 'particulier') {
+      // Use nullish coalescing to only fallback if truly null/undefined
+      const price = annualPrice ?? 36;
       return {
-        value: annualPrice || 36,
+        value: price,
         isAnnual: true
       };
     }
     // For pro plans, show monthly price
-    const monthlyPrice = annualPrice ? Math.round(annualPrice / 12 * 100) / 100 : 1;
+    const price = annualPrice ?? 348; // Default pro annual price
+    const monthlyPrice = Math.round(price / 12 * 100) / 100;
     return {
       value: monthlyPrice,
       isAnnual: false
@@ -135,7 +139,7 @@ const Register = () => {
         <VisitorFooter />
       </>;
   }
-  if (flagsLoading) {
+  if (flagsLoading || configLoading) {
     return <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>;
