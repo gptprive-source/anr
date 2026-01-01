@@ -46,6 +46,7 @@ const CallInterface = memo(({
   const hasJoinedRef = useRef(false);
   const channelRef = useRef<any>(null);
   const callStartTimeRef = useRef<number>(Date.now());
+  const missedCallSentRef = useRef(false); // Track if missed call message was already sent
   
   // Ringing timeout: 30 seconds before showing message dialog
   const RINGING_TIMEOUT_MS = 30000;
@@ -182,7 +183,7 @@ const CallInterface = memo(({
     if (isResident || callWasAnswered || callState === "ended") return;
 
     const timeout = setTimeout(async () => {
-      if (!callWasAnswered && habitationId) {
+      if (!callWasAnswered && habitationId && !missedCallSentRef.current) {
         logger.log("[CallInterface] 30s timeout - creating missed call message and redirecting");
         
         // Get visitor's user_id from Supabase Auth
@@ -202,6 +203,7 @@ const CallInterface = memo(({
           
           if (recipientId) {
             // Send missed call message using the chat system
+            missedCallSentRef.current = true;
             await sendMissedCall(recipientId);
             logger.log("[CallInterface] Missed call message sent to", recipientId);
           }
@@ -328,12 +330,13 @@ const CallInterface = memo(({
         const recipientId = targetUserId || residents?.[0]?.user_id;
         
         if (recipientId) {
-          if (!callWasAnswered) {
-            // Call wasn't answered - create missed call message
+          if (!callWasAnswered && !missedCallSentRef.current) {
+            // Call wasn't answered - create missed call message (only if not already sent by timeout)
             logger.log("[CallInterface] Visitor hangup without answer - creating missed call message");
+            missedCallSentRef.current = true;
             await sendMissedCall(recipientId);
             logger.log("[CallInterface] Missed call message sent to", recipientId);
-          } else {
+          } else if (callWasAnswered) {
             // Call was answered - create call ended message with duration
             const callDuration = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
             logger.log("[CallInterface] Call ended, duration:", callDuration, "seconds");
