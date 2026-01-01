@@ -103,13 +103,18 @@ const Messages = () => {
     deleteConversation
   } = useSentMessages();
 
-  // Group messages by visitor (for residents) - internal processing
+  // Group messages by visitor AND recipient (for residents) - internal processing
+  // This creates separate conversations for:
+  // 1. Messages to the whole residence (recipient_user_id = null)
+  // 2. Private messages to each specific resident
   const groupedReceivedConversations = useMemo(() => {
     if (!isResident) return [];
     const groups = new Map<string, {
       visitorId: string;
+      conversationKey: string; // Unique key: visitorId + recipient type
       displayName: string;
       isCompany: boolean;
+      isPrivate: boolean; // true if this is a private conversation
       jobTitle: string | null;
       lastMessage: string | null;
       lastMessageDate: Date;
@@ -122,15 +127,28 @@ const Messages = () => {
     messages.forEach(msg => {
       // Use business_card_id as primary key for connected users (stable identifier)
       // Fall back to visitor_device_id for anonymous visitors, then visitor_phone
-      const visitorId = msg.business_card_id || msg.visitor_device_id || msg.visitor_phone || `anon-${msg.id}`;
-      const existing = groups.get(visitorId);
+      const baseVisitorId = msg.business_card_id || msg.visitor_device_id || msg.visitor_phone || `anon-${msg.id}`;
+      
+      // Create separate conversation keys for residence vs private messages
+      // Format: visitorId__residence OR visitorId__private
+      const isPrivateMessage = !!(msg as any).recipient_user_id;
+      const conversationKey = isPrivateMessage 
+        ? `${baseVisitorId}__private` 
+        : `${baseVisitorId}__residence`;
+      
+      const existing = groups.get(conversationKey);
       const card = msg.business_card;
       const isCompany = card?.card_type === "company";
-      const displayName = card 
+      const baseName = card 
         ? isCompany 
           ? card.company_name || "Entreprise" 
           : `${card.first_name || ""} ${card.last_name || ""}`.trim() || "Visiteur" 
         : msg.visitor_phone || "Visiteur";
+      
+      // Add suffix to distinguish private vs residence conversations
+      const displayName = isPrivateMessage 
+        ? `${baseName} (privé)` 
+        : baseName;
       
       if (existing) {
         if (new Date(msg.created_at) > existing.lastMessageDate) {
@@ -149,10 +167,12 @@ const Messages = () => {
           existing.avatarUrl = card.avatar_url;
         }
       } else {
-        groups.set(visitorId, {
-          visitorId,
+        groups.set(conversationKey, {
+          visitorId: baseVisitorId,
+          conversationKey,
           displayName,
           isCompany,
+          isPrivate: isPrivateMessage,
           jobTitle: card?.job_title || null,
           lastMessage: msg.message || (msg.voice_message_url ? "🎤 Message vocal" : msg.media_url ? (msg.media_type?.startsWith('video') ? "🎥 Vidéo" : "📷 Photo") : null),
           lastMessageDate: new Date(msg.created_at),
@@ -174,10 +194,10 @@ const Messages = () => {
     groupedReceivedConversations.forEach(conv => {
       if (!isBlocked(conv.visitorId)) {
         unified.push({
-          id: conv.visitorId,
+          id: conv.conversationKey, // Use conversationKey for unique identification
           type: 'received',
           displayName: conv.displayName,
-          subtitle: conv.jobTitle,
+          subtitle: conv.isPrivate ? "Message privé" : conv.jobTitle,
           lastMessage: conv.lastMessage,
           lastMessageDate: conv.lastMessageDate,
           unreadCount: conv.unreadCount,
