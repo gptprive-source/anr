@@ -60,14 +60,23 @@ const VisitorConversation = () => {
   const deviceId = getDeviceId();
   
   // Parse conversation key to extract habitationId and recipient info
-  // Format: habitationId__residence OR habitationId__private_userId
+  // Format: habitationId__residence OR habitationId__private_userId OR just habitationId (legacy)
   const isPrivateConversation = conversationKey?.includes("__private_") || false;
   const isResidenceConversation = conversationKey?.includes("__residence") || false;
+  const isLegacyUrl = !isPrivateConversation && !isResidenceConversation;
   const habitationId = conversationKey?.split("__")[0] || conversationKey;
   const recipientUserIdFromKey = isPrivateConversation ? conversationKey?.split("__private_")[1] : null;
   
   // Get targetUserId from navigation state (for NEW private messages) OR from URL (for existing conversations)
   const targetUserId = recipientUserIdFromKey || (location.state as { targetUserId?: string })?.targetUserId || null;
+  
+  // For legacy URLs, redirect to messages list so user can pick the right conversation
+  useEffect(() => {
+    if (isLegacyUrl && habitationId) {
+      console.log("[VisitorConversation] Legacy URL detected, redirecting to messages list");
+      navigate("/visitor-messages", { replace: true });
+    }
+  }, [isLegacyUrl, habitationId, navigate]);
 
   // Templates
   const { templates: customTemplates, incrementUsage } = useVisitorCustomTemplates();
@@ -186,10 +195,9 @@ const VisitorConversation = () => {
         } else if (isResidenceConversation) {
           // Residence conversation: only show messages to the whole residence
           return !msg.recipient_user_id;
-        } else {
-          // Legacy URL without __residence or __private: show all messages
-          return true;
         }
+        // This shouldn't happen as legacy URLs redirect, but fallback to residence messages
+        return !msg.recipient_user_id;
       });
 
       const allMessages: Message[] = [];

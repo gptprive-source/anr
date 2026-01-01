@@ -203,10 +203,14 @@ const CallInterface = memo(({
   // Auto-navigate when call ends
   useEffect(() => {
     if (callState === "ended") {
-      // If visitor should go to conversation, redirect there with targetUserId
+      // If visitor should go to conversation, redirect there with proper conversation_key
       if (!isResident && shouldRedirectToConversation && habitationId) {
-        logger.log("[CallInterface] Redirecting visitor to conversation page, targetUserId:", targetUserId);
-        navigate(`/visitor-conversation/${habitationId}`, { 
+        // Build conversation key based on whether this was a private or residence call
+        const conversationKey = targetUserId 
+          ? `${habitationId}__private_${targetUserId}`
+          : `${habitationId}__residence`;
+        logger.log("[CallInterface] Redirecting visitor to conversation page, conversationKey:", conversationKey);
+        navigate(`/visitor-conversation/${conversationKey}`, { 
           replace: true,
           state: { targetUserId }
         });
