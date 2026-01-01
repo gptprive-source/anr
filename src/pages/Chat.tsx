@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useChats, ChatMessage } from "@/hooks/useChats";
 import { useAuth } from "@/hooks/useAuth";
+import { useOnlinePresence } from "@/hooks/useOnlinePresence";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday } from "date-fns";
@@ -231,6 +232,7 @@ const Chat = () => {
   const { recipientId } = useParams<{ recipientId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isOnline } = useOnlinePresence();
   const { getOrCreateChat, getChatMessages, sendMessage, markAsRead, deleteForMe, deleteForEveryone, forwardMessage, deleteChat, chats } = useChats();
   
   const [chatId, setChatId] = useState<string | null>(null);
@@ -511,15 +513,23 @@ const Chat = () => {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={recipient?.avatar_url || undefined} />
-          <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={recipient?.avatar_url || undefined} />
+            <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          {recipientId && isOnline(recipientId) && (
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-primary rounded-full" />
+          )}
+        </div>
         
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate">{displayName}</p>
+          {recipientId && isOnline(recipientId) && (
+            <p className="text-xs text-primary-foreground/70">En ligne</p>
+          )}
         </div>
 
         <DropdownMenu>
