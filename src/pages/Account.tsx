@@ -20,6 +20,7 @@ import {
   Gift,
   ArrowLeft,
   Receipt,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
@@ -474,7 +475,22 @@ const Account = () => {
             </Card>
           </Link>
 
-          {/* Orders section */}
+          {/* Residents section */}
+          <Link to="/residents" className="block">
+            <Card className="p-4 flex items-center justify-between hover:shadow-neumorphic-pressed transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shadow-neumorphic-inset">
+                  <Users className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Résidents</p>
+                  <p className="text-xs text-muted-foreground">Gérer les co-résidents</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </Card>
+          </Link>
+
           <Link to="/orders" className="block">
             <Card className="p-4 flex items-center justify-between hover:shadow-neumorphic-pressed transition-all">
               <div className="flex items-center gap-3">
