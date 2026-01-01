@@ -241,6 +241,10 @@ const Chat = () => {
     const anrCode = anrContext.anrCode || recipientAnr?.code;
     const habitationId = anrContext.habitationId || recipientAnr?.habitationId;
 
+    console.log("[Chat] handleCallClick - anrContext:", anrContext);
+    console.log("[Chat] handleCallClick - recipientAnr:", recipientAnr);
+    console.log("[Chat] Navigating to call with anrCode:", anrCode, "habitationId:", habitationId);
+
     if (anrCode) {
       navigate(`/call/${anrCode}`, {
         state: {
@@ -249,7 +253,7 @@ const Chat = () => {
         }
       });
     } else {
-      // No ANR found: redirect to scanner
+      console.log("[Chat] No ANR code found, redirecting to visitor scanner");
       navigate(`/visitor?target=${recipientId}`);
     }
   };

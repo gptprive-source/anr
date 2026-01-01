@@ -1,4 +1,4 @@
-import { useParams, useSearchParams, useLocation } from "react-router-dom";
+import { useParams, useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CallInterface from "@/components/call/CallInterface";
@@ -22,6 +22,7 @@ const Call = () => {
   const { anrId } = useParams<{ anrId: string }>();
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isResident = searchParams.get("resident") === "true";
   
@@ -297,12 +298,12 @@ const Call = () => {
           </div>
           <p className="text-destructive font-medium mb-4">{error || "Erreur"}</p>
           <Button 
-            onClick={() => window.history.back()}
+            onClick={() => navigate("/messages", { replace: true })}
             variant="outline"
             className="border-2 border-blue-500"
           >
             <ArrowLeft className="w-4 h-4 mr-2 text-blue-500" />
-            Retour
+            Retour aux messages
           </Button>
         </div>
       </div>
