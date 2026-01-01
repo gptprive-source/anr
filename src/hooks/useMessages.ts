@@ -346,8 +346,30 @@ export const useMessages = (conversationUserId?: string) => {
   const deleteConversation = async (conversationId: string) => {
     if (!user) return;
 
-    const conversationMessages = getConversationMessages(conversationId);
+    // Parse conversation ID to extract recipientId (and optionally habitationId)
+    const parts = conversationId.split("__");
+    const recipientId = parts[0];
+    const habitationId = parts[1] || null;
     
+    // Find all messages with this recipient
+    const conversationMessages = messages.filter((msg) => {
+      const isParticipant = 
+        (msg.sender_id === user.id && msg.recipient_id === recipientId) ||
+        (msg.sender_id === recipientId && msg.recipient_id === user.id);
+      
+      if (!isParticipant) return false;
+      
+      // If habitationId is specified in conversationId, filter by it for deletion
+      if (habitationId && msg.habitation_id !== habitationId) return false;
+      
+      // Exclude already deleted messages
+      if (msg.sender_id === user.id && msg.deleted_by_sender) return false;
+      if (msg.recipient_id === user.id && msg.deleted_by_recipient) return false;
+      
+      return true;
+    });
+    
+    // Delete all messages in this conversation
     for (const msg of conversationMessages) {
       await deleteMessage(msg.id);
     }
