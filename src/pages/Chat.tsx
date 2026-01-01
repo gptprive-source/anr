@@ -93,64 +93,99 @@ const MessageBubble = ({
         return <p className="text-sm whitespace-pre-wrap break-words font-semibold">{message.content}</p>;
     }
   };
-  return <div className={cn("flex mb-2 group", isOwn ? "justify-end" : "justify-start")}>
-      <div className={cn("relative max-w-[80%] px-3 py-2 rounded-lg", isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm")} onContextMenu={e => {
-      e.preventDefault();
-      setShowActions(true);
-    }} onClick={() => setShowActions(!showActions)}>
-        {/* Forwarded indicator */}
-        {message.forwarded_from_id && <div className={cn("flex items-center gap-1 text-xs mb-1", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
-            <Forward className="w-3 h-3" />
-            <span>Transféré</span>
-          </div>}
+  return (
+    <>
+      {/* Overlay to close menu when clicking outside */}
+      {showActions && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setShowActions(false)}
+        />
+      )}
+      <div className={cn("flex mb-2 group", isOwn ? "justify-end" : "justify-start")}>
+        <div 
+          className={cn("relative max-w-[80%] px-3 py-2 rounded-lg", isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm")} 
+          onContextMenu={e => {
+            e.preventDefault();
+            setShowActions(true);
+          }} 
+          onClick={() => setShowActions(!showActions)}
+        >
+          {/* Forwarded indicator */}
+          {message.forwarded_from_id && (
+            <div className={cn("flex items-center gap-1 text-xs mb-1", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
+              <Forward className="w-3 h-3" />
+              <span>Transféré</span>
+            </div>
+          )}
 
-        {renderContent()}
+          {renderContent()}
 
-        {/* Time and read status */}
-        <div className={cn("flex items-center justify-end gap-1 mt-1", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
-          <span className="text-[10px]">
-            {message.created_at && formatMessageTime(message.created_at)}
-          </span>
-          {isOwn && (message.is_read ? <CheckCheck className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />)}
+          {/* Time and read status */}
+          <div className={cn("flex items-center justify-end gap-1 mt-1", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
+            <span className="text-[10px]">
+              {message.created_at && formatMessageTime(message.created_at)}
+            </span>
+            {isOwn && (message.is_read ? <CheckCheck className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />)}
+          </div>
+
+          {/* Actions menu */}
+          {showActions && (
+            <div className={cn("absolute top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]", isOwn ? "right-0" : "left-0")}>
+              {message.message_type === "text" && message.content && (
+                <button 
+                  onClick={e => {
+                    e.stopPropagation();
+                    onCopy();
+                    setShowActions(false);
+                  }} 
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copier
+                </button>
+              )}
+              <button 
+                onClick={e => {
+                  e.stopPropagation();
+                  onForward();
+                  setShowActions(false);
+                }} 
+                className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
+              >
+                <Forward className="w-4 h-4" />
+                Transférer
+              </button>
+              <button 
+                onClick={e => {
+                  e.stopPropagation();
+                  onDelete();
+                  setShowActions(false);
+                }} 
+                className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
+              >
+                <Trash2 className="w-4 h-4" />
+                Supprimer pour moi
+              </button>
+              {canDeleteForEveryone && (
+                <button 
+                  onClick={e => {
+                    e.stopPropagation();
+                    onDeleteForEveryone();
+                    setShowActions(false);
+                  }} 
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
+                >
+                  <Clock className="w-4 h-4" />
+                  Supprimer pour tous
+                </button>
+              )}
+            </div>
+          )}
         </div>
-
-        {/* Actions menu */}
-        {showActions && <div className={cn("absolute top-full mt-1 z-10 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]", isOwn ? "right-0" : "left-0")}>
-            {message.message_type === "text" && message.content && <button onClick={e => {
-          e.stopPropagation();
-          onCopy();
-          setShowActions(false);
-        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2">
-                <Copy className="w-4 h-4" />
-                Copier
-              </button>}
-            <button onClick={e => {
-          e.stopPropagation();
-          onForward();
-          setShowActions(false);
-        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2">
-              <Forward className="w-4 h-4" />
-              Transférer
-            </button>
-            <button onClick={e => {
-          e.stopPropagation();
-          onDelete();
-          setShowActions(false);
-        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive">
-              <Trash2 className="w-4 h-4" />
-              Supprimer pour moi
-            </button>
-            {canDeleteForEveryone && <button onClick={e => {
-          e.stopPropagation();
-          onDeleteForEveryone();
-          setShowActions(false);
-        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive">
-                <Clock className="w-4 h-4" />
-                Supprimer pour tous
-              </button>}
-          </div>}
       </div>
-    </div>;
+    </>
+  );
 };
 const Chat = () => {
   const {
