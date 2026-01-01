@@ -79,7 +79,9 @@ const BusinessCardForm = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[BusinessCardForm] Submit triggered, formData.avatar_url:", formData.avatar_url);
     if (!validate()) return;
+    console.log("[BusinessCardForm] Validation passed, calling onSubmit");
     await onSubmit(formData);
   };
 

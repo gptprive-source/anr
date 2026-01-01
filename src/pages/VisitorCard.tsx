@@ -78,11 +78,12 @@ const VisitorCard = () => {
   };
 
   const handleSubmit = async (data: BusinessCardFormData) => {
+    console.log("[VisitorCard] handleSubmit called with avatar_url:", data.avatar_url);
     setSaving(true);
 
     try {
       // Save business card
-      const cardResult = await saveCard({
+      const cardData = {
         card_type: data.company_name ? "company" : "individual",
         first_name: data.first_name,
         last_name: data.last_name,
@@ -94,7 +95,9 @@ const VisitorCard = () => {
         show_email: data.show_email,
         show_phone: data.show_phone,
         anr_code: data.anr_code || null,
-      });
+      };
+      console.log("[VisitorCard] Calling saveCard with:", cardData);
+      const cardResult = await saveCard(cardData as any);
 
       if (!cardResult.success) {
         throw new Error(cardResult.error || "Erreur lors de la sauvegarde");

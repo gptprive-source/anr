@@ -77,6 +77,7 @@ export const useVisitorBusinessCard = () => {
   const saveCard = async (
     cardData: Omit<VisitorBusinessCard, "id" | "device_id" | "user_id" | "created_at" | "updated_at">
   ): Promise<{ success: boolean; error?: string }> => {
+    console.log("[useVisitorBusinessCard] saveCard called with avatar_url:", cardData.avatar_url);
     try {
       // Check if card exists for this user (authenticated) or device (guest)
       let existingQuery = (supabase as any)
@@ -92,27 +93,40 @@ export const useVisitorBusinessCard = () => {
       }
 
       const { data: existingCard } = await existingQuery.maybeSingle();
+      console.log("[useVisitorBusinessCard] Existing card:", existingCard);
 
       if (existingCard) {
         // Update existing card
-        const { error } = await (supabase as any)
+        const updateData = {
+          ...cardData,
+          user_id: user?.id || null,
+          updated_at: new Date().toISOString(),
+        };
+        console.log("[useVisitorBusinessCard] Updating card with:", updateData);
+        
+        const { error, data } = await (supabase as any)
           .from("visitor_business_cards")
-          .update({
-            ...cardData,
-            user_id: user?.id || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingCard.id);
+          .update(updateData)
+          .eq("id", existingCard.id)
+          .select();
 
+        console.log("[useVisitorBusinessCard] Update result:", { error, data });
         if (error) throw error;
       } else {
         // Create new card
-        const { error } = await (supabase as any).from("visitor_business_cards").insert({
+        const insertData = {
           ...cardData,
           device_id: deviceId,
           user_id: user?.id || null,
-        });
+        };
+        console.log("[useVisitorBusinessCard] Inserting new card:", insertData);
+        
+        const { error, data } = await (supabase as any)
+          .from("visitor_business_cards")
+          .insert(insertData)
+          .select();
 
+        console.log("[useVisitorBusinessCard] Insert result:", { error, data });
         if (error) throw error;
       }
 
