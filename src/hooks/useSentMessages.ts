@@ -294,9 +294,9 @@ export const useSentMessages = () => {
           conv.anrAddress = habInfo.address;
           
           if (conv.isPrivate && conv.recipientUserId) {
-            // For private conversations, show recipient name
+            // For private conversations, show just the recipient name
             const recipientName = profileCache.get(conv.recipientUserId) || "Résident";
-            conv.residentName = `${habInfo.name} - ${recipientName}`;
+            conv.residentName = recipientName;
           } else {
             // For residence conversations, show owner name
             conv.residentName = habInfo.ownerName;
