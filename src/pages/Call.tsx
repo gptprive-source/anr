@@ -35,6 +35,7 @@ const Call = () => {
   const visitorLat = location.state?.visitorLat;
   const visitorLon = location.state?.visitorLon;
   const selectedHabitationId = location.state?.habitationId;
+  const targetUserId = location.state?.targetUserId; // For private calls
 
   // Stop any incoming call alerts when entering call page
   useEffect(() => {
@@ -164,7 +165,7 @@ const Call = () => {
           return;
         }
 
-        // Créer call log
+        // Créer call log avec target_user_id pour les appels privés
         const { data: callLog, error: callLogError } = await supabase
           .from("call_logs")
           .insert({
@@ -172,12 +173,13 @@ const Call = () => {
             visitor_latitude: visitorLat || null,
             visitor_longitude: visitorLon || null,
             status: "ringing",
+            target_user_id: targetUserId || null, // Private call target
           })
           .select()
           .single();
 
         if (callLogError) throw callLogError;
-        logger.log("[Call] Created call log:", callLog.id);
+        logger.log("[Call] Created call log:", callLog.id, targetUserId ? "(private call)" : "(collective call)");
 
         // OPTIMISÉ: Récupérer résidents et créer participants en parallèle si possible
         const { data: residents } = await supabase
@@ -188,9 +190,17 @@ const Call = () => {
 
         // Créer les participants et envoyer les notifications en parallèle
         if (residents && residents.length > 0) {
-          const residentsToNotify = user?.id 
-            ? residents.filter(r => r.user_id !== user.id)
-            : residents;
+          // Filter residents based on targetUserId (private call) or all except caller (collective call)
+          let residentsToNotify;
+          if (targetUserId) {
+            // Private call - only notify the target user
+            residentsToNotify = residents.filter(r => r.user_id === targetUserId);
+          } else {
+            // Collective call - notify all residents except caller
+            residentsToNotify = user?.id 
+              ? residents.filter(r => r.user_id !== user.id)
+              : residents;
+          }
 
           if (residentsToNotify.length > 0) {
             const participantsToInsert = residentsToNotify.map(r => ({
@@ -250,7 +260,7 @@ const Call = () => {
     };
 
     initializeCall();
-  }, [anrId, isResident, visitorLat, visitorLon, selectedHabitationId, user?.id]);
+  }, [anrId, isResident, visitorLat, visitorLon, selectedHabitationId, targetUserId, user?.id]);
 
   if (loading) {
     return (
