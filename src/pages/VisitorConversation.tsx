@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Send, Lock, Home, Mic, Loader2, Paperclip, X, Image, Video, Camera, Check, CheckCheck, Smile, MessageSquare } from "lucide-react";
+import { ArrowLeft, Send, Lock, Home, Mic, Loader2, Paperclip, X, Image, Video, Camera, Check, CheckCheck, Smile, MessageSquare, User } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +43,7 @@ interface HabitationInfo {
   name: string;
   anr_code: string;
   anr_address: string;
+  recipientName?: string | null; // Name of the recipient for private conversations
 }
 
 const formatDateSeparator = (date: Date) => {
@@ -135,14 +136,29 @@ const VisitorConversation = () => {
         console.error("[VisitorConversation] Error fetching habitation:", habError);
       }
 
+      // Fetch recipient name for private conversations
+      let recipientName: string | null = null;
+      if (isPrivateConversation && targetUserId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("id", targetUserId)
+          .maybeSingle();
+        
+        if (profile) {
+          recipientName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Résident";
+        }
+      }
+
       if (habitation) {
         const anrData = habitation.anr as { code: string; address: string } | null;
         setHabitationInfo({
           name: habitation.name,
           anr_code: anrData?.code || "",
           anr_address: anrData?.address || "",
+          recipientName,
         });
-        console.log("[VisitorConversation] Habitation found:", habitation.name);
+        console.log("[VisitorConversation] Habitation found:", habitation.name, "recipient:", recipientName);
       } else {
         console.log("[VisitorConversation] No habitation found for id:", habitationId);
       }
@@ -693,16 +709,25 @@ const VisitorConversation = () => {
 
             <Avatar className="w-10 h-10 flex-shrink-0 border-2 border-white/20">
               <AvatarFallback className="bg-white/20">
-                <Home className="w-5 h-5 text-white" />
+                {isPrivateConversation ? (
+                  <User className="w-5 h-5 text-white" />
+                ) : (
+                  <Home className="w-5 h-5 text-white" />
+                )}
               </AvatarFallback>
             </Avatar>
 
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-white truncate">
-                {habitationInfo?.name || "Résidence"}
+                {isPrivateConversation && habitationInfo?.recipientName 
+                  ? habitationInfo.recipientName 
+                  : (habitationInfo?.name || "Résidence")}
               </p>
               <div className="flex items-center gap-2">
-                {habitationInfo?.anr_address && (
+                {isPrivateConversation && habitationInfo?.name && (
+                  <p className="text-xs text-white/70 truncate">{habitationInfo.name}</p>
+                )}
+                {!isPrivateConversation && habitationInfo?.anr_address && (
                   <p className="text-xs text-white/70 truncate">{habitationInfo.anr_address}</p>
                 )}
                 <div className="flex items-center gap-1 text-[10px] text-white/60" title="Chiffrement E2E">
