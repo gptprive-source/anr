@@ -253,10 +253,23 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
+  // Prevent double initialization
+  const initRef = useRef(false);
+  const currentRecipientRef = useRef<string | null>(null);
+
   // Initialize chat
   useEffect(() => {
+    // Skip if already initialized for this recipient
+    if (currentRecipientRef.current === recipientId && initRef.current) {
+      return;
+    }
+
     const initChat = async () => {
       if (!recipientId || !user) return;
+      
+      // Mark as initializing
+      initRef.current = true;
+      currentRecipientRef.current = recipientId;
       
       setLoading(true);
       try {
@@ -289,7 +302,8 @@ const Chat = () => {
     };
 
     initChat();
-  }, [recipientId, user, getOrCreateChat, getChatMessages, markAsRead]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipientId, user?.id]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
