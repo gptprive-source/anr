@@ -75,13 +75,23 @@ export const ResidentSelector = ({
           (profilesData || []).map(p => [p.id, p])
         );
 
+        // Step 3: Fetch avatar_urls from visitor_business_cards
+        const { data: cardsData } = await supabase
+          .from("visitor_business_cards")
+          .select("user_id, avatar_url")
+          .in("user_id", userIds);
+
+        const cardsMap = new Map(
+          (cardsData || []).map(c => [c.user_id, c.avatar_url])
+        );
+
         const formattedResidents = residentsData.map(r => {
           const profile = profilesMap.get(r.user_id);
           return {
             user_id: r.user_id,
             first_name: profile?.first_name || null,
             last_name: profile?.last_name || null,
-            avatar_url: null,
+            avatar_url: cardsMap.get(r.user_id) || null,
           };
         });
 
