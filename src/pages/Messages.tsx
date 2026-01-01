@@ -35,6 +35,7 @@ const Messages = () => {
     unreadCount,
     loading,
     deleteConversation,
+    refetch,
   } = useMessages();
 
   // Filter conversations
@@ -123,6 +124,8 @@ const Messages = () => {
     setIsDeleting(true);
     try {
       await deleteConversation(deleteConfirm.id);
+      // Refresh the messages list to ensure UI is updated
+      await refetch();
       toast.success("Conversation supprimée");
     } catch (err) {
       console.error("Error deleting conversation:", err);
