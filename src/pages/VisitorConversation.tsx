@@ -47,6 +47,7 @@ interface HabitationInfo {
   name: string;
   anr_code: string;
   anr_address: string;
+  ownerName?: string | null; // Name of the owner for residence conversations
   recipientName?: string | null; // Name of the recipient for private conversations
   recipientFirstName?: string | null;
   recipientLastName?: string | null;
@@ -147,6 +148,45 @@ const VisitorConversation = () => {
         console.error("[VisitorConversation] Error fetching habitation:", habError);
       }
 
+      // Fetch owner name for residence conversations
+      let ownerDisplayName: string | null = null;
+      if (!isPrivateConversation && habitationId) {
+        // Get the owner of the habitation
+        const { data: ownerResident } = await supabase
+          .from("residents")
+          .select("user_id")
+          .eq("habitation_id", habitationId)
+          .eq("is_owner", true)
+          .eq("status", "verified")
+          .maybeSingle();
+
+        if (ownerResident?.user_id) {
+          // Try business card first
+          const { data: ownerCard } = await supabase
+            .from("visitor_business_cards")
+            .select("first_name, last_name")
+            .eq("user_id", ownerResident.user_id)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (ownerCard) {
+            ownerDisplayName = `${ownerCard.first_name || ""} ${ownerCard.last_name || ""}`.trim();
+          } else {
+            // Fallback to profiles
+            const { data: ownerProfile } = await supabase
+              .from("profiles")
+              .select("first_name, last_name")
+              .eq("id", ownerResident.user_id)
+              .maybeSingle();
+
+            if (ownerProfile) {
+              ownerDisplayName = `${ownerProfile.first_name || ""} ${ownerProfile.last_name || ""}`.trim();
+            }
+          }
+        }
+      }
+
       // Fetch recipient info for private conversations
       let recipientName: string | null = null;
       let recipientFirstName: string | null = null;
@@ -204,6 +244,7 @@ const VisitorConversation = () => {
           name: habitation.name,
           anr_code: anrData?.code || "",
           anr_address: anrData?.address || "",
+          ownerName: ownerDisplayName,
           recipientName,
           recipientFirstName,
           recipientLastName,
@@ -211,7 +252,7 @@ const VisitorConversation = () => {
           recipientEmail,
           recipientAvatarUrl,
         });
-        console.log("[VisitorConversation] Habitation found:", habitation.name, "recipient:", recipientName);
+        console.log("[VisitorConversation] Habitation found:", habitation.name, "owner:", ownerDisplayName, "recipient:", recipientName);
       } else {
         console.log("[VisitorConversation] No habitation found for id:", habitationId);
       }
@@ -774,11 +815,11 @@ const VisitorConversation = () => {
               <p className="font-semibold text-white truncate">
                 {isPrivateConversation && habitationInfo?.recipientName 
                   ? habitationInfo.recipientName 
-                  : (habitationInfo?.name || "Résidence")}
+                  : (habitationInfo?.ownerName || "Résident")}
               </p>
               <div className="flex items-center gap-2">
-                {isPrivateConversation && habitationInfo?.name && (
-                  <p className="text-xs text-white/70 truncate">{habitationInfo.name}</p>
+                {isPrivateConversation && habitationInfo?.ownerName && (
+                  <p className="text-xs text-white/70 truncate">{habitationInfo.ownerName}</p>
                 )}
                 {!isPrivateConversation && habitationInfo?.anr_address && (
                   <p className="text-xs text-white/70 truncate">{habitationInfo.anr_address}</p>
