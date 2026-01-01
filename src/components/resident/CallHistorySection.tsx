@@ -14,9 +14,11 @@ interface CallLog {
   ended_at: string | null;
   answered_by: string | null;
   visitor_phone: string | null;
+  visitor_device_id: string | null;
   answeredByName?: string;
   anrCode?: string;
   anrAddress?: string;
+  businessCardId?: string;
 }
 
 interface CallHistorySectionProps {
@@ -53,10 +55,11 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
 
       if (error) throw error;
 
-      // Fetch answered_by names
+      // Fetch answered_by names and business cards for visitor device_ids
       const callsWithDetails = await Promise.all(
         (data || []).map(async (call: any) => {
           let answeredByName = "";
+          let businessCardId = "";
           
           if (call.answered_by) {
             const { data: profile } = await supabase
@@ -70,9 +73,21 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
               : "Inconnu";
           }
 
+          // Find business card for this visitor device
+          if (call.visitor_device_id) {
+            const { data: businessCard } = await supabase
+              .from("visitor_business_cards")
+              .select("id")
+              .eq("device_id", call.visitor_device_id)
+              .maybeSingle();
+            
+            businessCardId = businessCard?.id || "";
+          }
+
           return {
             ...call,
             answeredByName,
+            businessCardId,
             anrCode: call.habitations?.anrs?.code || "",
             anrAddress: call.habitations?.anrs?.address || "",
           };
@@ -216,16 +231,26 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
                   {formatCallDate(call.started_at)}
                 </p>
                 
-                {/* Message Button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 w-full"
-                  onClick={() => navigate(`/visitor-conversation/${habitationId}__residence`)}
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Envoyer un message
-                </Button>
+                {/* Message Button - only show if we have visitor identification */}
+                {call.visitor_device_id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 w-full"
+                    onClick={() => {
+                      // Navigate to conversation with this visitor using business_card_id
+                      if (call.businessCardId) {
+                        navigate(`/conversation/${call.businessCardId}`);
+                      } else {
+                        // Fallback to device_id if no business card exists
+                        navigate(`/conversation/${call.visitor_device_id}`);
+                      }
+                    }}
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Envoyer un message
+                  </Button>
+                )}
               </div>
             </div>
           </div>

@@ -177,15 +177,54 @@ const CallInterface = memo(({
   useEffect(() => {
     if (isResident || callWasAnswered || callState === "ended") return;
 
-    const timeout = setTimeout(() => {
+    const timeout = setTimeout(async () => {
       if (!callWasAnswered && habitationId) {
-        logger.log("[CallInterface] 30s timeout - redirecting to conversation");
+        logger.log("[CallInterface] 30s timeout - creating missed call message and redirecting");
+        
+        // Create missed call message for resident to reply
+        const visitorDeviceId = localStorage.getItem("visitor_device_id");
+        if (visitorDeviceId) {
+          // Get or create visitor business card
+          let businessCardId: string | null = null;
+          const { data: existingCard } = await supabase
+            .from("visitor_business_cards")
+            .select("id")
+            .eq("device_id", visitorDeviceId)
+            .maybeSingle();
+          
+          if (existingCard) {
+            businessCardId = existingCard.id;
+          } else {
+            const { data: newCard } = await supabase
+              .from("visitor_business_cards")
+              .insert({
+                device_id: visitorDeviceId,
+                card_type: "particulier",
+                first_name: "Visiteur",
+              })
+              .select("id")
+              .single();
+            businessCardId = newCard?.id || null;
+          }
+          
+          if (businessCardId) {
+            await supabase.from("visitor_messages").insert({
+              habitation_id: habitationId,
+              business_card_id: businessCardId,
+              visitor_device_id: visitorDeviceId,
+              message: "📞 Appel manqué",
+              recipient_user_id: targetUserId || null,
+              is_read: false,
+            });
+          }
+        }
+        
         setShouldRedirectToConversation(true);
       }
     }, RINGING_TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
-  }, [isResident, callWasAnswered, callState, habitationId]);
+  }, [isResident, callWasAnswered, callState, habitationId, targetUserId]);
 
   // Update call state based on Daily connection
   useEffect(() => {
@@ -271,8 +310,52 @@ const CallInterface = memo(({
     } else if (callId && !isResident) {
       // Visitor hanging up - check if call was answered
       if (!callWasAnswered && habitationId) {
-        // Call wasn't answered - redirect to conversation
-        logger.log("[CallInterface] Visitor hangup without answer - redirecting to conversation");
+        // Call wasn't answered - create a "missed call" message so resident can reply
+        logger.log("[CallInterface] Visitor hangup without answer - creating missed call message");
+        
+        // Get visitor device_id
+        const visitorDeviceId = localStorage.getItem("visitor_device_id");
+        
+        if (visitorDeviceId) {
+          // Get or create visitor business card
+          let businessCardId: string | null = null;
+          const { data: existingCard } = await supabase
+            .from("visitor_business_cards")
+            .select("id")
+            .eq("device_id", visitorDeviceId)
+            .maybeSingle();
+          
+          if (existingCard) {
+            businessCardId = existingCard.id;
+          } else {
+            // Create a minimal business card for anonymous visitor
+            const { data: newCard } = await supabase
+              .from("visitor_business_cards")
+              .insert({
+                device_id: visitorDeviceId,
+                card_type: "particulier",
+                first_name: "Visiteur",
+              })
+              .select("id")
+              .single();
+            businessCardId = newCard?.id || null;
+          }
+          
+          // Create "missed call" visitor message
+          if (businessCardId) {
+            await supabase.from("visitor_messages").insert({
+              habitation_id: habitationId,
+              business_card_id: businessCardId,
+              visitor_device_id: visitorDeviceId,
+              message: "📞 Appel manqué",
+              recipient_user_id: targetUserId || null,
+              is_read: false,
+            });
+            logger.log("[CallInterface] Created missed call message for resident to reply");
+          }
+        }
+        
+        // Redirect visitor to conversation
         setShouldRedirectToConversation(true);
       }
       
