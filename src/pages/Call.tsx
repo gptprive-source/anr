@@ -301,6 +301,7 @@ const Call = () => {
       userId={user?.id}
       anrId={callData.anrId}
       anrCode={callData.anrCode}
+      targetUserId={targetUserId}
     />
   );
 };

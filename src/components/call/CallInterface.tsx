@@ -22,6 +22,7 @@ interface CallInterfaceProps {
   userId?: string;
   anrId?: string;
   anrCode?: string;
+  targetUserId?: string | null; // For private calls - recipient of the message
 }
 
 const CallInterface = memo(({ 
@@ -33,6 +34,7 @@ const CallInterface = memo(({
   userId,
   anrId = "",
   anrCode = "",
+  targetUserId = null,
 }: CallInterfaceProps) => {
   const navigate = useNavigate();
   const [callState, setCallState] = useState<CallState>(isResident ? "ringing" : "connecting");
@@ -201,10 +203,13 @@ const CallInterface = memo(({
   // Auto-navigate when call ends
   useEffect(() => {
     if (callState === "ended") {
-      // If visitor should go to conversation, redirect there
+      // If visitor should go to conversation, redirect there with targetUserId
       if (!isResident && shouldRedirectToConversation && habitationId) {
-        logger.log("[CallInterface] Redirecting visitor to conversation page");
-        navigate(`/visitor-conversation/${habitationId}`, { replace: true });
+        logger.log("[CallInterface] Redirecting visitor to conversation page, targetUserId:", targetUserId);
+        navigate(`/visitor-conversation/${habitationId}`, { 
+          replace: true,
+          state: { targetUserId }
+        });
         return;
       }
       
