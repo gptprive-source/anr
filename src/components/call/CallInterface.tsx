@@ -240,10 +240,10 @@ const CallInterface = memo(({
         return;
       }
       
-      // If call was answered (normal end), just navigate back after a delay
+      // If call was answered (normal end), navigate to messages after a delay
       const timeout = setTimeout(() => {
-        logger.log("[CallInterface] Auto-navigating back after call ended");
-        navigate(-1);
+        logger.log("[CallInterface] Auto-navigating to messages after call ended");
+        navigate("/messages", { replace: true });
       }, 1500);
       return () => clearTimeout(timeout);
     }
@@ -269,14 +269,14 @@ const CallInterface = memo(({
       logger.log("[CallInterface] User chose to leave message, redirecting to chat:", recipientId);
       navigate(`/chat/${recipientId}`, { replace: true });
     } else {
-      logger.log("[CallInterface] No recipient found, navigating back");
-      navigate(-1);
+      logger.log("[CallInterface] No recipient found, navigating to messages");
+      navigate("/messages", { replace: true });
     }
   };
 
   const handleSkipMessage = () => {
     logger.log("[CallInterface] User skipped leaving message");
-    navigate(-1);
+    navigate("/messages", { replace: true });
   };
 
   // Individual hangup - only ends call if no other residents are active
@@ -465,7 +465,7 @@ const CallInterface = memo(({
             <p className="text-foreground font-medium mb-4">
               {callWasDeclined ? "Appel refusé" : "Appel terminé"}
             </p>
-            <Button variant="glass" onClick={() => window.history.back()}>
+            <Button variant="glass" onClick={() => navigate("/messages", { replace: true })}>
               Retour
             </Button>
           </div>
