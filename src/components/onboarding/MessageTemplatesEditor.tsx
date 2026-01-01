@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Plus, Trash2, MessageSquare, Edit2, Check, X } from "lucide-react";
 
-const MAX_TEMPLATES = 3;
 const MAX_TITLE_LENGTH = 30;
 const MAX_MESSAGE_LENGTH = 200;
 
@@ -32,8 +31,6 @@ const MessageTemplatesEditor = ({
   const [editMessage, setEditMessage] = useState("");
 
   const handleAdd = () => {
-    if (templates.length >= MAX_TEMPLATES) return;
-    
     const newTemplate: MessageTemplate = {
       id: crypto.randomUUID(),
       title: "",
@@ -100,7 +97,7 @@ const MessageTemplatesEditor = ({
           Messages pré-enregistrés
         </Label>
         <span className="text-xs text-muted-foreground">
-          {templates.length}/{MAX_TEMPLATES}
+          {templates.length} template{templates.length > 1 ? 's' : ''}
         </span>
       </div>
 
@@ -193,7 +190,7 @@ const MessageTemplatesEditor = ({
         ))}
       </div>
 
-      {templates.length < MAX_TEMPLATES && !editingId && (
+      {!editingId && (
         <Button
           type="button"
           variant="outline"
@@ -203,7 +200,7 @@ const MessageTemplatesEditor = ({
           className="w-full"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Ajouter un message ({templates.length}/{MAX_TEMPLATES})
+          Ajouter un message
         </Button>
       )}
     </div>
