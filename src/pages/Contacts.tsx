@@ -175,8 +175,15 @@ const Contacts = () => {
     setEditingContact(contact);
   };
 
-  // Navigate to conversation - resolve ANR code to habitation_id if needed, or use direct contact
+  // Navigate to conversation - resolve to existing conversation or create new
   const handleNavigateToConversation = async (contact: ResidentContact) => {
+    // PRIORITY 0: If contact comes from a visitor message (has source_business_card_id), use that conversation
+    if (contact.source_business_card_id) {
+      // This contact was added from a visitor message - navigate to that conversation
+      navigate(`/conversation/${contact.source_business_card_id}`);
+      return;
+    }
+
     // PRIORITY 1: If we have an anr_code, resolve it to habitation_id (only real ANR codes)
     if (contact.anr_code) {
       try {
@@ -253,8 +260,8 @@ const Contacts = () => {
       }
     }
 
-    // PRIORITY 3: No ANR, no subscriber - navigate to direct message conversation
-    // Use contact_id as identifier for direct messaging
+    // PRIORITY 3: Check if there's already an existing direct_messages conversation with this contact
+    // If yes, continue it. If not, navigate to create/continue direct conversation
     navigate(`/conversation/contact/${contact.id}`);
   };
 
