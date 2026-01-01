@@ -56,15 +56,21 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
   const [retentionDays, setRetentionDays] = useState(30);
 
   // Fetch only unread count (fast - for dashboard)
+  // Only count messages for this resident OR messages to the whole residence
   const fetchUnreadCount = async () => {
     if (!habitationId) return;
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+      
+      // Filter: recipient_user_id IS NULL (whole residence) OR recipient_user_id = current user
       const { count, error } = await supabase
         .from("visitor_messages")
         .select("*", { count: "exact", head: true })
         .eq("habitation_id", habitationId)
-        .eq("is_read", false);
+        .eq("is_read", false)
+        .or(`recipient_user_id.is.null${userId ? `,recipient_user_id.eq.${userId}` : ''}`);
       
       if (error) throw error;
       setUnreadCount(count || 0);
@@ -76,17 +82,31 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
   };
 
   // Fetch full messages for residents (with business card join)
+  // Only fetch messages for this resident OR messages to the whole residence
   const fetchMessages = async () => {
     if (!habitationId) return;
     
     try {
-      const { data, error } = await (supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+      
+      // Build query with recipient filter
+      let query = supabase
         .from("visitor_messages" as any)
         .select("*, business_card:visitor_business_cards(*)")
         .eq("habitation_id", habitationId)
-        .or("deleted_by_resident.is.null,deleted_by_resident.eq.false")
+        .or("deleted_by_resident.is.null,deleted_by_resident.eq.false");
+      
+      // Filter: recipient_user_id IS NULL (whole residence) OR recipient_user_id = current user
+      if (userId) {
+        query = query.or(`recipient_user_id.is.null,recipient_user_id.eq.${userId}`);
+      } else {
+        query = query.is("recipient_user_id", null);
+      }
+      
+      const { data, error } = await (query
         .order("created_at", { ascending: false })
-        .limit(50) as any); // Limit to 50 messages
+        .limit(50) as any);
       
       if (error) throw error;
       
