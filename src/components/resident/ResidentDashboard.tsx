@@ -226,7 +226,16 @@ const ResidentDashboard = () => {
                 </Button>
               </div>
               
-              
+              <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
+                <span className="px-3 py-1 rounded-full bg-success/10 text-success text-xs font-medium flex items-center gap-1 shadow-neumorphic-sm">
+                  <Shield className="w-3 h-3" />
+                  Validé
+                </span>
+                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center gap-1 shadow-neumorphic-sm">
+                  <MapPin className="w-3 h-3" />
+                  GPS configuré
+                </span>
+              </div>
               
               <div className="flex flex-col gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)} className="w-full">
