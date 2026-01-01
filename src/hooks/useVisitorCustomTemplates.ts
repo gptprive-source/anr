@@ -15,7 +15,6 @@ export interface VisitorCustomTemplate {
 }
 
 const DEVICE_ID_KEY = 'anr_visitor_device_id';
-const MAX_TEMPLATES = 3;
 
 // Get or create device ID - harmonized with useVisitorBusinessCard
 const getDeviceId = (): string => {
@@ -38,8 +37,7 @@ export const useVisitorCustomTemplates = () => {
       let query = supabase
         .from('visitor_custom_templates')
         .select('*')
-        .order('usage_count', { ascending: false })
-        .limit(MAX_TEMPLATES);
+        .order('usage_count', { ascending: false });
 
       // For authenticated users, fetch by user_id; otherwise by device_id
       if (user?.id) {
@@ -64,11 +62,6 @@ export const useVisitorCustomTemplates = () => {
   }, [fetchTemplates]);
 
   const saveTemplate = async (name: string, content: string, icon: string = '📝') => {
-    // Check max limit
-    if (templates.length >= MAX_TEMPLATES) {
-      throw new Error(`Maximum ${MAX_TEMPLATES} templates autorisés`);
-    }
-
     try {
       const { data, error } = await supabase
         .from('visitor_custom_templates')
@@ -83,7 +76,7 @@ export const useVisitorCustomTemplates = () => {
         .single();
 
       if (error) throw error;
-      setTemplates(prev => [data as VisitorCustomTemplate, ...prev].slice(0, MAX_TEMPLATES));
+      setTemplates(prev => [data as VisitorCustomTemplate, ...prev]);
       return data;
     } catch (error) {
       console.error('Error saving custom template:', error);
@@ -173,8 +166,6 @@ export const useVisitorCustomTemplates = () => {
     }
   };
 
-  const canAddMore = templates.length < MAX_TEMPLATES;
-
   return {
     templates,
     loading,
@@ -183,7 +174,5 @@ export const useVisitorCustomTemplates = () => {
     deleteTemplate,
     incrementUsage,
     refetch: fetchTemplates,
-    canAddMore,
-    maxTemplates: MAX_TEMPLATES,
   };
 };

@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera, Lock, Ban, ShieldCheck, Trash2, Home } from "lucide-react";
+import { ArrowLeft, Mic, Building2, User, Phone, Mail, MapPin, Check, CheckCheck, Loader2, Smile, Send, UserPlus, Paperclip, X, Image, Video, Camera, Lock, Ban, ShieldCheck, Trash2, Home, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +14,7 @@ import { useEncryptedMessages } from "@/hooks/useEncryptedMessages";
 import { useBlockedVisitors } from "@/hooks/useBlockedVisitors";
 import { useSentMessages } from "@/hooks/useSentMessages";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
+import { useVisitorCustomTemplates } from "@/hooks/useVisitorCustomTemplates";
 import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
@@ -21,6 +23,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 const EMOJI_CATEGORIES = {
   "😊 Smileys": ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "☺️", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🤐", "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "🥸", "😎", "🤓", "🧐", "😕", "😟", "🙁", "☹️", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿", "💀", "☠️", "💩", "🤡", "👹", "👺", "👻", "👽", "👾", "🤖", "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿", "😾"],
   "👋 Gestes": ["👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦿", "🦵", "🦶", "👂", "🦻", "👃", "🧠", "🫀", "🫁", "🦷", "🦴", "👀", "👁️", "👅", "👄", "💋", "🩸"],
@@ -123,6 +126,17 @@ const Conversation = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteConversationDialog, setShowDeleteConversationDialog] = useState(false);
   const [deletingConversation, setDeletingConversation] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  // Templates hook
+  const { templates: customTemplates, incrementUsage } = useVisitorCustomTemplates();
+
+  // Handle template selection
+  const handleTemplateClick = (template: { id: string; content: string }) => {
+    setReplyText(template.content);
+    incrementUsage(template.id);
+    setShowTemplates(false);
+  };
 
   // Hooks for "received from visitor" mode (resident viewing)
   // Pass ALL message IDs to get replies for the entire conversation (WhatsApp-like)
@@ -1183,6 +1197,37 @@ const Conversation = () => {
         <div className="max-w-2xl mx-auto w-full">
           <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
 
+          {/* Templates Section */}
+          {showTemplates && customTemplates.length > 0 && (
+            <div className="mb-2 p-2 bg-white rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" />
+                  Mes templates
+                </p>
+                <button
+                  onClick={() => setShowTemplates(false)}
+                  className="p-1 hover:bg-muted rounded-full"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {customTemplates.map((template) => (
+                  <Badge
+                    key={template.id}
+                    variant="secondary"
+                    className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3"
+                    onClick={() => handleTemplateClick(template)}
+                  >
+                    <span className="mr-1">{template.icon}</span>
+                    {template.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Media Preview */}
           {selectedMedia && mediaPreview && <div className="mb-2 relative inline-block">
               <div className="relative rounded-lg overflow-hidden bg-white shadow-sm max-w-48">
@@ -1225,6 +1270,20 @@ const Conversation = () => {
                     </div>
                   </PopoverContent>
                 </Popover>
+
+                {/* Templates button - only show if templates exist */}
+                {customTemplates.length > 0 && (
+                  <button
+                    className={cn(
+                      "p-2 transition-colors",
+                      showTemplates ? "text-[#075E54]" : "text-[#54656F] hover:text-[#075E54]"
+                    )}
+                    onClick={() => setShowTemplates(!showTemplates)}
+                    title="Mes templates"
+                  >
+                    <MessageSquare className="w-6 h-6" />
+                  </button>
+                )}
 
                 <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors" onClick={() => fileInputRef.current?.click()}>
                   <Paperclip className="w-6 h-6" />
