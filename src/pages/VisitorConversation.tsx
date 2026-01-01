@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import VisitorFooter from "@/components/layout/VisitorFooter";
+import BottomNav from "@/components/layout/BottomNav";
+import { useAuth } from "@/hooks/useAuth";
 
 // Emoji categories (same as Conversation.tsx)
 const EMOJI_CATEGORIES = {
@@ -57,6 +59,7 @@ const VisitorConversation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const deviceId = getDeviceId();
   
@@ -1013,7 +1016,7 @@ const VisitorConversation = () => {
         </div>
       </div>
 
-      <VisitorFooter />
+      {user ? <BottomNav /> : <VisitorFooter />}
     </div>
   );
 };
