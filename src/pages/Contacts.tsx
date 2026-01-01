@@ -170,7 +170,12 @@ const Contacts = () => {
   const handleNavigateToConversation = async (contact: ResidentContact) => {
     // If contact has contact_user_id, navigate directly to chat with that user
     if (contact.contact_user_id) {
-      navigate(`/chat/${contact.contact_user_id}`);
+      // Include habitation_id if available for context
+      if (contact.habitation_id) {
+        navigate(`/chat/${contact.contact_user_id}__${contact.habitation_id}`);
+      } else {
+        navigate(`/chat/${contact.contact_user_id}`);
+      }
       return;
     }
 
@@ -179,7 +184,7 @@ const Contacts = () => {
       try {
         const { data: message } = await supabase
           .from("messages")
-          .select("sender_id, recipient_id")
+          .select("sender_id, recipient_id, habitation_id")
           .eq("id", contact.source_message_id)
           .maybeSingle();
         
@@ -187,7 +192,11 @@ const Contacts = () => {
           // Navigate to conversation with the other party
           const { data: { user } } = await supabase.auth.getUser();
           const otherUserId = message.sender_id === user?.id ? message.recipient_id : message.sender_id;
-          navigate(`/chat/${otherUserId}`);
+          if (message.habitation_id) {
+            navigate(`/chat/${otherUserId}__${message.habitation_id}`);
+          } else {
+            navigate(`/chat/${otherUserId}`);
+          }
           return;
         }
       } catch (err) {
@@ -195,16 +204,30 @@ const Contacts = () => {
       }
     }
 
-    // Fallback: try to find user by email
+    // Fallback: try to find user by email in profiles
     if (contact.email) {
       try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", contact.email) // This won't work, we need a different approach
-          .maybeSingle();
+        // Use the helper function to find user by email
+        const { data: habitationId } = await supabase.rpc('find_habitation_by_email', { 
+          contact_email: contact.email 
+        });
         
-        // For now, show a toast that we can't find the user
+        if (habitationId) {
+          // Find the owner of that habitation
+          const { data: owner } = await supabase
+            .from("residents")
+            .select("user_id")
+            .eq("habitation_id", habitationId)
+            .eq("is_owner", true)
+            .eq("status", "verified")
+            .maybeSingle();
+          
+          if (owner?.user_id) {
+            navigate(`/chat/${owner.user_id}__${habitationId}`);
+            return;
+          }
+        }
+        
         toast({
           title: "Contact sans compte",
           description: "Ce contact n'a pas de compte utilisateur associé",
@@ -212,6 +235,11 @@ const Contacts = () => {
         });
       } catch (err) {
         console.log("No user found:", err);
+        toast({
+          title: "Contact sans compte",
+          description: "Ce contact n'a pas de compte utilisateur associé",
+          variant: "destructive",
+        });
       }
       return;
     }
