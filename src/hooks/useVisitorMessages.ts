@@ -64,16 +64,22 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id;
       
-      // Filter: recipient_user_id IS NULL (whole residence) OR recipient_user_id = current user
-      const { count, error } = await supabase
+      // Fetch unread messages and filter client-side for accuracy
+      const { data, error } = await supabase
         .from("visitor_messages")
-        .select("*", { count: "exact", head: true })
+        .select("id, recipient_user_id")
         .eq("habitation_id", habitationId)
-        .eq("is_read", false)
-        .or(`recipient_user_id.is.null${userId ? `,recipient_user_id.eq.${userId}` : ''}`);
+        .eq("is_read", false);
       
       if (error) throw error;
-      setUnreadCount(count || 0);
+      
+      // Filter: only count messages for whole residence OR for this user
+      const filteredCount = (data || []).filter((m: any) => {
+        if (!m.recipient_user_id) return true;
+        return m.recipient_user_id === userId;
+      }).length;
+      
+      setUnreadCount(filteredCount);
     } catch (error) {
       console.error("[useVisitorMessages] Error fetching count:", error);
     } finally {
@@ -90,27 +96,31 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id;
       
-      // Build query with recipient filter
-      let query = supabase
+      console.log("[useVisitorMessages] Fetching messages for user:", userId, "habitation:", habitationId);
+      
+      // Fetch all messages for this habitation, then filter client-side
+      // This is more reliable than complex PostgREST OR conditions
+      const { data, error } = await (supabase
         .from("visitor_messages" as any)
         .select("*, business_card:visitor_business_cards(*)")
         .eq("habitation_id", habitationId)
-        .or("deleted_by_resident.is.null,deleted_by_resident.eq.false");
-      
-      // Filter: recipient_user_id IS NULL (whole residence) OR recipient_user_id = current user
-      if (userId) {
-        query = query.or(`recipient_user_id.is.null,recipient_user_id.eq.${userId}`);
-      } else {
-        query = query.is("recipient_user_id", null);
-      }
-      
-      const { data, error } = await (query
+        .or("deleted_by_resident.is.null,deleted_by_resident.eq.false")
         .order("created_at", { ascending: false })
-        .limit(50) as any);
+        .limit(100) as any);
       
       if (error) throw error;
       
-      const messagesWithCards = (data || []).map((m: any) => ({
+      // Filter messages: only show if recipient_user_id is NULL OR equals current user
+      const filteredData = (data || []).filter((m: any) => {
+        // If no recipient specified, message is for whole residence
+        if (!m.recipient_user_id) return true;
+        // If recipient specified, only show to that user
+        return m.recipient_user_id === userId;
+      });
+      
+      console.log("[useVisitorMessages] Total messages:", data?.length, "After filter:", filteredData.length);
+      
+      const messagesWithCards = filteredData.map((m: any) => ({
         ...m,
         business_card: m.business_card || null,
       })) as VisitorMessage[];
