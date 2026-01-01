@@ -229,17 +229,10 @@ const CallInterface = memo(({
   // Auto-navigate when call ends
   useEffect(() => {
     if (callState === "ended") {
-      // If visitor should go to conversation, redirect there with proper conversation_key
-      if (!isResident && shouldRedirectToConversation && habitationId) {
-        // Build conversation key based on whether this was a private or residence call
-        const conversationKey = targetUserId 
-          ? `${habitationId}__private_${targetUserId}`
-          : `${habitationId}__residence`;
-        logger.log("[CallInterface] Redirecting visitor to conversation page, conversationKey:", conversationKey);
-        navigate(`/visitor-conversation/${conversationKey}`, { 
-          replace: true,
-          state: { targetUserId }
-        });
+      // If visitor should go to conversation, redirect to chat page
+      if (!isResident && shouldRedirectToConversation && targetUserId) {
+        logger.log("[CallInterface] Redirecting visitor to chat page with targetUserId:", targetUserId);
+        navigate(`/chat/${targetUserId}`, { replace: true });
         return;
       }
       
@@ -249,7 +242,7 @@ const CallInterface = memo(({
       }, 1500);
       return () => clearTimeout(timeout);
     }
-  }, [callState, navigate, isResident, shouldRedirectToConversation, habitationId]);
+  }, [callState, navigate, isResident, shouldRedirectToConversation, targetUserId]);
 
   // Individual hangup - only ends call if no other residents are active
   const handleHangup = async () => {
