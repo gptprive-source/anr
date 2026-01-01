@@ -217,17 +217,15 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
                 </p>
                 
                 {/* Message Button */}
-                {call.visitor_phone && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 w-full"
-                    onClick={() => navigate(`/visitor-conversation/${habitationId}__residence`)}
-                  >
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Envoyer un message
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full"
+                  onClick={() => navigate(`/visitor-conversation/${habitationId}__residence`)}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Envoyer un message
+                </Button>
               </div>
             </div>
           </div>
