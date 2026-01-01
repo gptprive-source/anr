@@ -14,7 +14,8 @@ import VisitorFooter from "@/components/layout/VisitorFooter";
 import logoAnr from "@/assets/logo-anr.png";
 import { BleOpenDoorButton } from "@/components/door/BleOpenDoorButton";
 import { FaceVerificationDialog } from "@/components/door/FaceVerificationDialog";
-
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 interface ANRData {
   id: string;
   code: string;
@@ -35,6 +36,7 @@ interface ScheduledAccess {
 const ANRLanding = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [anrData, setAnrData] = useState<ANRData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,27 @@ const ANRLanding = () => {
   const [checkingAccess, setCheckingAccess] = useState(false);
   const [faceVerificationOpen, setFaceVerificationOpen] = useState(false);
   const [faceVerified, setFaceVerified] = useState(false);
+  const [hasBusinessCard, setHasBusinessCard] = useState<boolean | null>(null);
+
+  // Check if user has a business card
+  useEffect(() => {
+    const checkBusinessCard = async () => {
+      if (!user) {
+        setHasBusinessCard(false);
+        return;
+      }
+      
+      const { data: card } = await supabase
+        .from("visitor_business_cards")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      setHasBusinessCard(!!card);
+    };
+    
+    checkBusinessCard();
+  }, [user]);
 
   useEffect(() => {
     const fetchANR = async () => {
@@ -201,6 +224,30 @@ const ANRLanding = () => {
 
   const handleCall = () => {
     if (!anrData) return;
+    
+    // Check if user is authenticated
+    if (!user) {
+      toast.info("Vous devez vous inscrire pour appeler", {
+        description: "Créez un compte pour contacter ce résident",
+        action: {
+          label: "S'inscrire",
+          onClick: () => navigate("/register", { state: { returnTo: `/anr/${code}` } }),
+        },
+      });
+      return;
+    }
+    
+    // Check if user has a business card
+    if (hasBusinessCard === false) {
+      toast.info("Complétez votre carte de visite", {
+        description: "Votre carte de visite est requise pour contacter les résidents",
+        action: {
+          label: "Compléter",
+          onClick: () => navigate("/onboarding-business-card", { state: { returnTo: `/anr/${code}` } }),
+        },
+      });
+      return;
+    }
     
     if (anrData.habitationCount > 1) {
       // Multi-habitat: go to selection page (pass code, not UUID)
