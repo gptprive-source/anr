@@ -231,7 +231,7 @@ const Chat = () => {
   const { recipientId } = useParams<{ recipientId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getOrCreateChat, getChatMessages, sendMessage, markAsRead, deleteForMe, deleteForEveryone, forwardMessage, chats } = useChats();
+  const { getOrCreateChat, getChatMessages, sendMessage, markAsRead, deleteForMe, deleteForEveryone, forwardMessage, deleteChat, chats } = useChats();
   
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -540,10 +540,11 @@ const Chat = () => {
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               className="text-destructive"
-              onClick={() => {
+              onClick={async () => {
                 if (chatId) {
-                  // Could add delete chat functionality
-                  toast.info("Fonctionnalité à venir");
+                  await deleteChat(chatId);
+                  toast.success("Conversation supprimée");
+                  navigate("/messages");
                 }
               }}
             >
