@@ -143,14 +143,14 @@ const Messages = () => {
         </div>
 
         {/* Search bar */}
-        <div className="mt-3 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-foreground/60" />
+        <div className="mt-2 relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary-foreground/60" />
           <Input
             type="text"
-            placeholder="Rechercher une conversation..."
+            placeholder="Rechercher..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/60"
+            className="h-8 pl-8 text-sm bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/60"
           />
         </div>
       </div>
