@@ -17,7 +17,7 @@ const VisitorFooter = () => {
 
   const navItems: NavItem[] = [
     { icon: <Home className="w-6 h-6" />, label: "Accueil", path: "/" },
-    { icon: <MessageSquare className="w-6 h-6" />, label: "Messages", path: "/visitor-messages", badge: unreadCount },
+    { icon: <MessageSquare className="w-6 h-6" />, label: "Messages", path: "/messages", badge: unreadCount },
     { icon: <UserPlus className="w-6 h-6" />, label: "Créer un compte", path: "/register" },
   ];
 

@@ -51,7 +51,7 @@ import ShopSuccess from "./pages/ShopSuccess";
 import Orders from "./pages/Orders";
 import Referral from "./pages/Referral";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
-import VisitorMessages from "./pages/VisitorMessages";
+// VisitorMessages removed - /visitor-messages now redirects to Messages
 import VisitorConversation from "./pages/VisitorConversation";
 import NotFound from "./pages/NotFound";
 import PhoneVerification from "./pages/PhoneVerification";
@@ -219,8 +219,8 @@ const AppContent = () => {
           <Route path="/carrier/scan" element={<FeatureFlagRoute flagKey="carrierModuleEnabled"><DeliveryScan /></FeatureFlagRoute>} />
           <Route path="/parcel/receive" element={<FeatureFlagRoute flagKey="parcelDeliveryEnabled"><ParcelReceive /></FeatureFlagRoute>} />
 
-          {/* Visitor messages (non-authenticated) */}
-          <Route path="/visitor-messages" element={<VisitorMessages />} />
+          {/* Visitor messages - redirect old URL to /messages */}
+          <Route path="/visitor-messages" element={<Messages />} />
           <Route path="/visitor-conversation/:habitationId" element={<VisitorConversation />} />
 
           {/* Public legal pages */}
