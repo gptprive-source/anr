@@ -1,4 +1,4 @@
-import { Home, QrCode, User, Building2, Users, MessageSquare } from "lucide-react";
+import { Home, User, Building2, Users, MessageSquare } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useProCompanyCheck } from "@/hooks/useProCompanyCheck";
@@ -18,7 +18,6 @@ const BottomNav = () => {
 
   const navItems: NavItem[] = [
     { icon: <Home className="w-6 h-6" />, label: "Dashboard", path: "/dashboard" },
-    { icon: <QrCode className="w-6 h-6" />, label: "Visiteur", path: "/visitor" },
     { 
       icon: <MessageSquare className="w-6 h-6" />, 
       label: "Messages", 
