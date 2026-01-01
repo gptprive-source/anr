@@ -237,12 +237,12 @@ const ResidentDashboard = () => {
                 </span>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-2 my-0 py-0">
-                <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
+              <div className="flex flex-col gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)} className="w-full">
                   <Share2 className="w-4 h-4 mr-2" />
                   Partager mon ANR
                 </Button>
-                <Button variant="default" size="sm" onClick={() => navigate(`/visitor?code=${habitationData.anr.code}`)} className="py-0 my-[17px]">
+                <Button variant="default" size="sm" onClick={() => navigate(`/visitor?code=${habitationData.anr.code}`)} className="w-full">
                   <Phone className="w-4 h-4 mr-2" />
                   Appel Interphone
                 </Button>
