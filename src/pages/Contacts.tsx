@@ -28,6 +28,7 @@ import {
   Loader2,
   MessageSquare,
   ArrowLeft,
+  Plus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -45,6 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import NewMessageToAnrDialog from "@/components/messages/NewMessageToAnrDialog";
 
 type FilterType = "all" | "favorites" | "companies" | "individuals";
 
@@ -68,6 +70,7 @@ const Contacts = () => {
   });
   const [deletingContact, setDeletingContact] = useState<ResidentContact | null>(null);
   const contactRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [showNewMessage, setShowNewMessage] = useState(false);
 
   // Scroll to contact if scrollTo param is present
   useEffect(() => {
@@ -241,12 +244,21 @@ const Contacts = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-lg font-semibold">Mes contacts ANR</h1>
             <p className="text-primary-foreground/70 text-xs">
               {contacts.length} contact{contacts.length !== 1 ? "s" : ""} enregistré{contacts.length !== 1 ? "s" : ""}
             </p>
           </div>
+          
+          <Button
+            size="icon"
+            variant="ghost"
+            className="text-primary-foreground hover:bg-primary-foreground/10"
+            onClick={() => setShowNewMessage(true)}
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
         </div>
       </div>
 
@@ -556,6 +568,9 @@ const Contacts = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* New message dialog */}
+      <NewMessageToAnrDialog open={showNewMessage} onOpenChange={setShowNewMessage} />
 
       <BottomNav />
     </div>
