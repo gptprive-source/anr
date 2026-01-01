@@ -19,6 +19,7 @@ import {
   Lock,
   Gift,
   ArrowLeft,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
@@ -472,6 +473,40 @@ const Account = () => {
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </Card>
           </Link>
+
+          {/* Orders section */}
+          <Link to="/orders" className="block">
+            <Card className="p-4 flex items-center justify-between hover:shadow-neumorphic-pressed transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center shadow-neumorphic-inset">
+                  <Receipt className="w-5 h-5 text-teal-500" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Mes commandes</p>
+                  <p className="text-xs text-muted-foreground">Historique des commandes</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </Card>
+          </Link>
+
+          {/* GPS Position section - only for owners */}
+          {habitation?.is_owner && (
+            <Link to="/update-gps" className="block">
+              <Card className="p-4 flex items-center justify-between hover:shadow-neumorphic-pressed transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shadow-neumorphic-inset">
+                    <MapPin className="w-5 h-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Position GPS</p>
+                    <p className="text-xs text-muted-foreground">Modifier les coordonnées de l'ANR</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </Card>
+            </Link>
+          )}
         </div>
 
         {/* Granted Access Section */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Shield, MapPin, Copy, Check, Loader2, BellOff, BellRing, Share2, MessageSquare, DoorOpen, ShoppingCart, Receipt, Sparkles, Mail, Package, Gift, Phone } from "lucide-react";
+import { Users, Shield, MapPin, Copy, Check, Loader2, BellOff, BellRing, Share2, MessageSquare, DoorOpen, ShoppingCart, Sparkles, Mail, Package, Gift, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -257,10 +257,8 @@ const ResidentDashboard = () => {
           {flags.visitorTextMessagesEnabled && <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" onClick={() => navigate("/messages")} color="purple" />}
           
           <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Recevoir appels"} onClick={toggleMute} active={isMuted} color="orange" />
-          <QuickAction icon={<Receipt className="w-6 h-6" />} label="Commandes" onClick={() => navigate("/orders")} color="teal" />
           <QuickAction icon={<ShoppingCart className="w-6 h-6" />} label="Boutique" onClick={() => navigate("/shop")} color="pink" />
           {flags.doorOpeningEnabled && <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />}
-          {isOwner && <QuickAction icon={<MapPin className="w-6 h-6" />} label="Position GPS" onClick={() => navigate("/update-gps")} color="green" />}
           {copilotEnabled && flags.copilotModuleEnabled && <QuickAction icon={<Sparkles className="w-6 h-6" />} label="Co-Pilot" onClick={() => navigate("/pro")} color="cyan" />}
           {flags.relayModuleEnabled && <QuickAction icon={<Package className="w-6 h-6" />} label="Devenir relais" onClick={() => navigate("/relay")} color="teal" />}
           {flags.referralEnabled && <QuickAction icon={<Gift className="w-6 h-6" />} label="Parrainage" onClick={() => navigate("/referral")} color="purple" />}
