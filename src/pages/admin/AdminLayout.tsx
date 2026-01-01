@@ -2,7 +2,6 @@ import { ReactNode, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { usePendingSupport } from "@/hooks/usePendingSupport";
-import { usePendingMessages } from "@/hooks/usePendingMessages";
 import { 
   LayoutDashboard, 
   Settings, 
@@ -60,7 +59,7 @@ const navItems = [
   { path: '/admin/subscriptions', label: 'Abonnements', icon: CreditCard },
   { path: '/admin/referrals', label: 'Affiliations', icon: Gift },
   { path: '/admin/communications', label: 'Communications', icon: MessageCircle },
-  { path: '/admin/messages', label: 'Messages', icon: Mail, badgeKey: 'messages' },
+  { path: '/admin/messages', label: 'Messages', icon: Mail },
   { path: '/admin/support', label: 'Support', icon: MessageCircle, badgeKey: 'support' },
   { path: '/admin/chatbot', label: 'Stats Chatbot', icon: Bot },
   { path: '/admin/chatbot-corrections', label: 'Corrections IA', icon: BookOpen },
@@ -80,12 +79,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { isAdmin, isSuperAdmin, role, loading } = useAdminAuth();
   const { signOut } = useAuth();
   const { pendingCount: supportCount } = usePendingSupport();
-  const { pendingCount: messagesCount } = usePendingMessages();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  const totalBadgeCount = supportCount + messagesCount;
+  const totalBadgeCount = supportCount;
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -119,7 +117,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
-          const badgeCount = item.badgeKey === 'support' ? supportCount : item.badgeKey === 'messages' ? messagesCount : 0;
+          const badgeCount = item.badgeKey === 'support' ? supportCount : 0;
           const showBadge = badgeCount > 0;
           
           return (

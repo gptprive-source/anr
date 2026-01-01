@@ -197,15 +197,8 @@ const CallInterface = memo(({
           const recipientId = targetUserId || residents?.[0]?.user_id;
           
           if (recipientId) {
-            // Create missed call message in the unified messages table
-            await supabase.from("messages").insert({
-              sender_id: visitorUserId,
-              recipient_id: recipientId,
-              habitation_id: habitationId,
-              message: "📞 Appel manqué",
-              is_read: false,
-            });
-            logger.log("[CallInterface] Created missed call message from", visitorUserId, "to", recipientId);
+            // TODO: Create missed call message using new chat system (Phase 6)
+            logger.log("[CallInterface] Missed call from", visitorUserId, "to", recipientId);
           }
         }
         
@@ -319,15 +312,9 @@ const CallInterface = memo(({
           const recipientId = targetUserId || residents?.[0]?.user_id;
           
           if (recipientId) {
-            // Create missed call message in the unified messages table
-            await supabase.from("messages").insert({
-              sender_id: visitorUserId,
-              recipient_id: recipientId,
-              habitation_id: habitationId,
-              message: "📞 Appel manqué",
-              is_read: false,
-            });
-            logger.log("[CallInterface] Created missed call message from", visitorUserId, "to", recipientId);
+            // TODO: Create missed call message using new chat system (Phase 6)
+            logger.log("[CallInterface] Missed call from", visitorUserId, "to", recipientId);
+          }
           }
         }
         

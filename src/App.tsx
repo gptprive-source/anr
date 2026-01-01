@@ -33,9 +33,6 @@ import Residents from "./pages/Residents";
 
 import Messages from "./pages/Messages";
 import Contacts from "./pages/Contacts";
-import DirectConversation from "./pages/DirectConversation";
-import NotificationConversation from "./pages/NotificationConversation";
-import MessageBackup from "./pages/MessageBackup";
 import DoorAccess from "./pages/DoorAccess";
 import EmployeeScan from "./pages/EmployeeScan";
 import ProDashboard from "./pages/pro/ProDashboard";
@@ -50,7 +47,6 @@ import ShopSuccess from "./pages/ShopSuccess";
 import Orders from "./pages/Orders";
 import Referral from "./pages/Referral";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
-import UnifiedConversation from "./pages/UnifiedConversation";
 import NotFound from "./pages/NotFound";
 import PhoneVerification from "./pages/PhoneVerification";
 import RingtoneSettings from "./pages/RingtoneSettings";
@@ -155,25 +151,6 @@ const AppContent = () => {
           <Route path="/contacts" element={<ProtectedRoute>
                 <Contacts />
               </ProtectedRoute>} />
-          <Route path="/conversation/:id" element={<ProtectedRoute>
-                <UnifiedConversation />
-              </ProtectedRoute>} />
-          <Route path="/chat/:id" element={<ProtectedRoute>
-                <UnifiedConversation />
-              </ProtectedRoute>} />
-          <Route path="/conversation/contact/:contactId" element={<ProtectedRoute>
-                <DirectConversation />
-              </ProtectedRoute>} />
-          {/* Redirect old route for compatibility */}
-          <Route path="/conversation-sent/:id" element={<ProtectedRoute>
-                <UnifiedConversation />
-              </ProtectedRoute>} />
-          <Route path="/notification/communication/:communicationId" element={<ProtectedRoute>
-                <NotificationConversation />
-              </ProtectedRoute>} />
-          <Route path="/message-backup" element={<ProtectedRoute>
-                <MessageBackup />
-              </ProtectedRoute>} />
           <Route path="/door-access" element={<ProtectedRoute>
                 <DoorAccess />
               </ProtectedRoute>} />
@@ -217,9 +194,8 @@ const AppContent = () => {
           <Route path="/carrier/scan" element={<FeatureFlagRoute flagKey="carrierModuleEnabled"><DeliveryScan /></FeatureFlagRoute>} />
           <Route path="/parcel/receive" element={<FeatureFlagRoute flagKey="parcelDeliveryEnabled"><ParcelReceive /></FeatureFlagRoute>} />
 
-          {/* Visitor messages - redirect old URL to unified */}
+          {/* Visitor messages - redirect old URL */}
           <Route path="/visitor-messages" element={<Messages />} />
-          <Route path="/visitor-conversation/:habitationId" element={<UnifiedConversation />} />
 
           {/* Public legal pages */}
           <Route path="/mentions-legales" element={<MentionsLegales />} />

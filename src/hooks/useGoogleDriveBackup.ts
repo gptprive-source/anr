@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { encryptBackup, decryptBackup } from "@/lib/backupEncryption";
 
 interface BackupFile {
   id: string;
@@ -15,6 +14,92 @@ interface GoogleDriveStatus {
   connected: boolean;
   email?: string;
   expiresAt?: string;
+}
+
+// Simple encryption using Web Crypto API
+async function encryptBackup(data: object, password: string): Promise<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  const jsonStr = JSON.stringify(data);
+  const dataBytes = encoder.encode(jsonStr);
+  
+  const passwordBytes = encoder.encode(password);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    passwordBytes,
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits", "deriveKey"]
+  );
+  
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt"]
+  );
+  
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    dataBytes
+  );
+  
+  // Combine salt + iv + encrypted data
+  const result = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+  result.set(salt, 0);
+  result.set(iv, salt.length);
+  result.set(new Uint8Array(encrypted), salt.length + iv.length);
+  
+  return result.buffer;
+}
+
+async function decryptBackup(encryptedBuffer: ArrayBuffer, password: string): Promise<object> {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  
+  const data = new Uint8Array(encryptedBuffer);
+  const salt = data.slice(0, 16);
+  const iv = data.slice(16, 28);
+  const encrypted = data.slice(28);
+  
+  const passwordBytes = encoder.encode(password);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    passwordBytes,
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits", "deriveKey"]
+  );
+  
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"]
+  );
+  
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    encrypted
+  );
+  
+  const jsonStr = decoder.decode(decrypted);
+  return JSON.parse(jsonStr);
 }
 
 export function useGoogleDriveBackup() {

@@ -46,7 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import NewMessageToAnrDialog from "@/components/messages/NewMessageToAnrDialog";
+// NewMessageToAnrDialog removed - will be rebuilt
 
 type FilterType = "all" | "favorites" | "companies" | "individuals";
 
@@ -179,30 +179,8 @@ const Contacts = () => {
       return;
     }
 
-    // If contact has source_message_id, get the sender from that message
-    if (contact.source_message_id) {
-      try {
-        const { data: message } = await supabase
-          .from("messages")
-          .select("sender_id, recipient_id, habitation_id")
-          .eq("id", contact.source_message_id)
-          .maybeSingle();
-        
-        if (message) {
-          // Navigate to conversation with the other party
-          const { data: { user } } = await supabase.auth.getUser();
-          const otherUserId = message.sender_id === user?.id ? message.recipient_id : message.sender_id;
-          if (message.habitation_id) {
-            navigate(`/chat/${otherUserId}__${message.habitation_id}`);
-          } else {
-            navigate(`/chat/${otherUserId}`);
-          }
-          return;
-        }
-      } catch (err) {
-        console.error("Error fetching source message:", err);
-      }
-    }
+    // source_message_id references old messages table - skip for now
+    // Will be handled with new chat_messages table in Phase 5
 
     // Fallback: try to find user by email in profiles
     if (contact.email) {
@@ -597,8 +575,7 @@ const Contacts = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* New message dialog */}
-      <NewMessageToAnrDialog open={showNewMessage} onOpenChange={setShowNewMessage} />
+      {/* New message dialog - will be rebuilt in Phase 4 */}
 
       <BottomNav />
     </div>

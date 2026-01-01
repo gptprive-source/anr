@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ShareANRDialog from "./ShareANRDialog";
 import BottomNav from "@/components/layout/BottomNav";
-import { useMessages } from "@/hooks/useMessages";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useSupportChat } from "@/contexts/SupportChatContext";
@@ -59,8 +58,6 @@ const ResidentDashboard = () => {
   const {
     flags
   } = useFeatureFlags();
-  // Use unified messages hook
-  const { unreadCount: unreadMessagesCount } = useMessages();
   const {
     setIsOpen: setSupportChatOpen
   } = useSupportChat();
@@ -298,7 +295,7 @@ const ResidentDashboard = () => {
         {/* Quick actions - Neumorphic grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <QuickAction icon={<Users className="w-6 h-6" />} label="Résidents" count={habitationData.residents.length} onClick={() => navigate("/residents")} color="blue" />
-          {flags.visitorTextMessagesEnabled && <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" badge={unreadMessagesCount} onClick={() => navigate("/messages")} color="purple" />}
+          {flags.visitorTextMessagesEnabled && <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" onClick={() => navigate("/messages")} color="purple" />}
           
           <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Notifications"} onClick={toggleMute} active={isMuted} color="orange" />
           <QuickAction icon={<Receipt className="w-6 h-6" />} label="Commandes" onClick={() => navigate("/orders")} color="teal" />
