@@ -200,6 +200,29 @@ export const useChats = () => {
     });
   }, [user]);
 
+  // Helper to send push notification
+  const sendPushNotification = useCallback(async (recipientId: string, title: string, body: string, data?: Record<string, string>) => {
+    try {
+      await supabase.functions.invoke("send-push-notification", {
+        body: {
+          user_ids: [recipientId],
+          title,
+          body,
+          data,
+        },
+      });
+    } catch (error) {
+      console.error("Error sending push notification:", error);
+    }
+  }, []);
+
+  // Get recipient ID from chat
+  const getRecipientIdFromChat = useCallback((chatId: string): string | null => {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat || !user) return null;
+    return chat.participant1_id === user.id ? chat.participant2_id : chat.participant1_id;
+  }, [chats, user]);
+
   // Send a message
   const sendMessage = useCallback(async (chatId: string, params: SendMessageParams): Promise<ChatMessage | null> => {
     if (!user) return null;
@@ -225,8 +248,34 @@ export const useChats = () => {
       return null;
     }
 
+    // Send push notification to recipient
+    const recipientId = getRecipientIdFromChat(chatId);
+    if (recipientId) {
+      // Get sender's name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      const senderName = profile 
+        ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Quelqu'un"
+        : "Quelqu'un";
+      
+      let notifBody = params.content || "";
+      if (params.voiceUrl) notifBody = "🎤 Message vocal";
+      if (params.mediaUrl) notifBody = "📷 Photo/Vidéo";
+      
+      await sendPushNotification(
+        recipientId,
+        `Message de ${senderName}`,
+        notifBody,
+        { type: "new_message", chat_id: chatId, sender_id: user.id }
+      );
+    }
+
     return data;
-  }, [user]);
+  }, [user, getRecipientIdFromChat, sendPushNotification]);
 
   // Send a missed call message
   const sendMissedCall = useCallback(async (recipientId: string): Promise<void> => {
@@ -242,7 +291,25 @@ export const useChats = () => {
         sender_id: user.id,
         message_type: "missed_call",
       });
-  }, [user, getOrCreateChat]);
+
+    // Send push notification for missed call
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("first_name, last_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    
+    const callerName = profile 
+      ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Quelqu'un"
+      : "Quelqu'un";
+    
+    await sendPushNotification(
+      recipientId,
+      "Appel manqué",
+      `${callerName} a essayé de vous appeler`,
+      { type: "missed_call", chat_id: chat.id, caller_id: user.id }
+    );
+  }, [user, getOrCreateChat, sendPushNotification]);
 
   // Send a call ended message with duration
   const sendCallEnded = useCallback(async (recipientId: string, durationSeconds: number): Promise<void> => {
@@ -259,6 +326,8 @@ export const useChats = () => {
         message_type: "call_ended",
         call_duration_seconds: durationSeconds,
       });
+    
+    // No push notification needed for call ended (user was in the call)
   }, [user, getOrCreateChat]);
 
   // Mark all messages in a chat as read
