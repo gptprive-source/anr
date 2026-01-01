@@ -1271,19 +1271,17 @@ const Conversation = () => {
                   </PopoverContent>
                 </Popover>
 
-                {/* Templates button - only show if templates exist */}
-                {customTemplates.length > 0 && (
-                  <button
-                    className={cn(
-                      "p-2 transition-colors",
-                      showTemplates ? "text-[#075E54]" : "text-[#54656F] hover:text-[#075E54]"
-                    )}
-                    onClick={() => setShowTemplates(!showTemplates)}
-                    title="Mes templates"
-                  >
-                    <MessageSquare className="w-6 h-6" />
-                  </button>
-                )}
+                {/* Templates button - always visible */}
+                <button
+                  className={cn(
+                    "p-2 transition-colors",
+                    showTemplates ? "text-[#075E54]" : "text-[#54656F] hover:text-[#075E54]"
+                  )}
+                  onClick={() => setShowTemplates(!showTemplates)}
+                  title="Mes templates"
+                >
+                  <MessageSquare className="w-6 h-6" />
+                </button>
 
                 <button className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors" onClick={() => fileInputRef.current?.click()}>
                   <Paperclip className="w-6 h-6" />
