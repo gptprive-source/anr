@@ -64,19 +64,23 @@ const AvatarUpload = ({
     }
 
     setUploading(true);
+    console.log("[AvatarUpload] Starting upload for file:", file.name, "size:", file.size);
 
     try {
       // Generate unique filename
       const fileExt = file.name.split(".").pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      console.log("[AvatarUpload] Generated fileName:", fileName);
 
       // Upload to Supabase Storage (directly to bucket root, not avatars/avatars/)
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from("avatars")
         .upload(fileName, file, {
           cacheControl: "3600",
           upsert: false,
         });
+
+      console.log("[AvatarUpload] Upload result:", { error: uploadError, data: uploadData });
 
       if (uploadError) throw uploadError;
 
@@ -85,13 +89,17 @@ const AvatarUpload = ({
         .from("avatars")
         .getPublicUrl(fileName);
 
-      onUpload(urlData.publicUrl);
+      const publicUrl = urlData.publicUrl;
+      console.log("[AvatarUpload] Public URL generated:", publicUrl);
+      console.log("[AvatarUpload] Calling onUpload callback with URL");
+      
+      onUpload(publicUrl);
       toast({ title: "Photo téléchargée" });
     } catch (error: any) {
-      console.error("[AvatarUpload] Error:", error);
+      console.error("[AvatarUpload] Upload error:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de télécharger l'image",
+        title: "Erreur d'upload",
+        description: error?.message || "Impossible de télécharger l'image",
         variant: "destructive",
       });
     } finally {
