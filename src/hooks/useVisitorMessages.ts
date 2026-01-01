@@ -432,23 +432,38 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
   };
 
   // Delete all messages from a specific visitor (conversation)
-  const deleteConversation = async (visitorId: string) => {
+  // conversationKey can be: visitorId, visitorId__residence, or visitorId__private
+  const deleteConversation = async (conversationKey: string) => {
     try {
-      // Get all message IDs for this visitor
-      // IMPORTANT: Must match the grouping logic in Messages.tsx (business_card_id first for connected users)
+      // Extract visitorId and conversation type from key
+      // Format: visitorId__residence OR visitorId__private OR just visitorId (legacy)
+      const isPrivate = conversationKey.includes("__private");
+      const isResidence = conversationKey.includes("__residence");
+      const visitorId = conversationKey.split("__")[0];
+      
+      // Get all message IDs for this visitor, filtered by conversation type
       const messagesToDelete = messages.filter(m => {
         const msgVisitorId = m.business_card_id || m.visitor_device_id || m.visitor_phone || `anon-${m.id}`;
-        return msgVisitorId === visitorId;
+        if (msgVisitorId !== visitorId) return false;
+        
+        // Filter by conversation type if specified
+        if (isPrivate) {
+          return !!m.recipient_user_id;
+        } else if (isResidence) {
+          return !m.recipient_user_id;
+        }
+        // Legacy: delete all messages from this visitor
+        return true;
       });
 
       if (messagesToDelete.length === 0) {
-        console.log("[useVisitorMessages] No messages found to delete for visitorId:", visitorId);
+        console.log("[useVisitorMessages] No messages found to delete for conversationKey:", conversationKey);
         return { success: true };
       }
 
-      console.log("[useVisitorMessages] Soft-deleting", messagesToDelete.length, "messages for visitor:", visitorId);
+      console.log("[useVisitorMessages] Soft-deleting", messagesToDelete.length, "messages for conversationKey:", conversationKey);
 
-      // Soft delete all messages for this visitor (mark as deleted by resident)
+      // Soft delete all messages for this conversation (mark as deleted by resident)
       for (const msg of messagesToDelete) {
         await supabase
           .from("visitor_messages" as any)
@@ -456,11 +471,20 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
           .eq("id", msg.id);
       }
 
-      // Update local state
+      // Update local state - filter by the same logic
       const unreadDeleted = messagesToDelete.filter(m => !m.is_read).length;
       setMessages(prev => prev.filter(m => {
         const msgVisitorId = m.business_card_id || m.visitor_device_id || m.visitor_phone || `anon-${m.id}`;
-        return msgVisitorId !== visitorId;
+        if (msgVisitorId !== visitorId) return true; // Keep messages from other visitors
+        
+        // Filter by conversation type if specified
+        if (isPrivate) {
+          return !m.recipient_user_id; // Keep residence messages
+        } else if (isResidence) {
+          return !!m.recipient_user_id; // Keep private messages
+        }
+        // Legacy: remove all messages from this visitor
+        return false;
       }));
       setUnreadCount(prev => Math.max(0, prev - unreadDeleted));
       
