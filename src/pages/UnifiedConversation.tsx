@@ -43,6 +43,8 @@ const UnifiedConversation = () => {
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [showDeleteConversationDialog, setShowDeleteConversationDialog] = useState(false);
+  const [deletingConversation, setDeletingConversation] = useState(false);
   const [fallbackConversation, setFallbackConversation] = useState<Conversation | null>(null);
   const [loadingFallback, setLoadingFallback] = useState(false);
 
@@ -182,6 +184,29 @@ const UnifiedConversation = () => {
     setShowDeleteDialog(false);
   };
 
+  // Handle delete entire conversation
+  const handleDeleteConversation = async () => {
+    if (!id) return;
+    setDeletingConversation(true);
+    try {
+      await deleteConversation(id);
+      toast({
+        title: "Conversation supprimée",
+        description: "La conversation a été supprimée de votre liste.",
+      });
+      navigate("/messages");
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la conversation",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingConversation(false);
+      setShowDeleteConversationDialog(false);
+    }
+  };
+
   // Handle voice recording complete
   const handleVoiceComplete = (blob: Blob) => {
     setAudioBlob(blob);
@@ -244,6 +269,14 @@ const UnifiedConversation = () => {
               </p>
             )}
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowDeleteConversationDialog(true)}
+            className="text-primary-foreground hover:bg-primary-foreground/10"
+          >
+            <Trash2 className="w-5 h-5" />
+          </Button>
         </div>
       </div>
 
@@ -448,6 +481,29 @@ const UnifiedConversation = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteMessage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Conversation Dialog */}
+      <AlertDialog open={showDeleteConversationDialog} onOpenChange={setShowDeleteConversationDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette conversation ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              La conversation sera supprimée de votre liste. L'autre participant gardera sa copie.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingConversation}>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConversation} 
+              disabled={deletingConversation}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingConversation ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>

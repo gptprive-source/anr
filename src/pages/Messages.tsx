@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, ChevronRight, Trash2, Plus, Home, Loader2 } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, ChevronRight, Plus, Home, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -276,24 +276,6 @@ const Messages = () => {
                       </Badge>
                     )}
                     
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteConfirm({ id: conv.id, name: conv.recipientName });
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Supprimer</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
 
                     <ChevronRight 
                       className="w-5 h-5 text-muted-foreground" 
