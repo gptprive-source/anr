@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Send, Lock, Home, Mic, Loader2, Paperclip, X, Image, Video, Camera, Check, CheckCheck, Smile, MessageSquare } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -54,9 +54,13 @@ const formatDateSeparator = (date: Date) => {
 const VisitorConversation = () => {
   const { habitationId } = useParams<{ habitationId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const deviceId = getDeviceId();
+  
+  // Get targetUserId from navigation state (for private messages)
+  const targetUserId = (location.state as { targetUserId?: string })?.targetUserId || null;
 
   // Templates
   const { templates: customTemplates, incrementUsage } = useVisitorCustomTemplates();
@@ -409,6 +413,7 @@ const VisitorConversation = () => {
       }
 
       // Insert as a new visitor_message (continuing the conversation)
+      // Include recipient_user_id for private messages
       const { error } = await supabase
         .from("visitor_messages")
         .insert({
@@ -418,6 +423,7 @@ const VisitorConversation = () => {
           message: newMessage.trim() || null,
           media_url: mediaUrl,
           media_type: mediaType,
+          recipient_user_id: targetUserId, // Private message to specific resident
         });
 
       if (error) {
@@ -513,7 +519,7 @@ const VisitorConversation = () => {
         .from("visitor-voice-messages")
         .getPublicUrl(fileName);
 
-      // Insert message
+      // Insert message with recipient_user_id for private messages
       const { error } = await supabase
         .from("visitor_messages")
         .insert({
@@ -522,6 +528,7 @@ const VisitorConversation = () => {
           business_card_id: cardId,
           media_url: publicUrl.publicUrl,
           media_type: "video/webm",
+          recipient_user_id: targetUserId,
         });
 
       if (error) throw error;
@@ -576,7 +583,7 @@ const VisitorConversation = () => {
         .from("visitor-voice-messages")
         .getPublicUrl(fileName);
 
-      // Insert message with device_id and business_card_id
+      // Insert message with device_id, business_card_id, and recipient_user_id for private messages
       const { error } = await supabase
         .from("visitor_messages")
         .insert({
@@ -584,6 +591,7 @@ const VisitorConversation = () => {
           visitor_device_id: deviceId,
           business_card_id: cardId,
           voice_message_url: publicUrl.publicUrl,
+          recipient_user_id: targetUserId,
         });
 
       if (error) {
