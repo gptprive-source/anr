@@ -2836,9 +2836,11 @@ export type Database = {
           avatar_url: string | null
           company_name: string | null
           contact_type: string | null
+          contact_user_id: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
+          habitation_id: string | null
           id: string
           is_favorite: boolean | null
           job_title: string | null
@@ -2855,9 +2857,11 @@ export type Database = {
           avatar_url?: string | null
           company_name?: string | null
           contact_type?: string | null
+          contact_user_id?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
+          habitation_id?: string | null
           id?: string
           is_favorite?: boolean | null
           job_title?: string | null
@@ -2874,9 +2878,11 @@ export type Database = {
           avatar_url?: string | null
           company_name?: string | null
           contact_type?: string | null
+          contact_user_id?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
+          habitation_id?: string | null
           id?: string
           is_favorite?: boolean | null
           job_title?: string | null
@@ -2888,7 +2894,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_resident_contacts_habitation"
+            columns: ["habitation_id"]
+            isOneToOne: false
+            referencedRelation: "habitations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resident_invitations: {
         Row: {

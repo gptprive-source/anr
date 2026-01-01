@@ -19,6 +19,9 @@ export interface ResidentContact {
   is_favorite: boolean;
   created_at: string;
   updated_at: string;
+  // New fields for visitor-added contacts
+  contact_user_id: string | null;
+  habitation_id: string | null;
 }
 
 interface BusinessCard {
@@ -31,6 +34,9 @@ interface BusinessCard {
   phone: string | null;
   email: string | null;
   avatar_url?: string | null;
+  // New fields for visitor-added contacts
+  contact_user_id?: string | null;
+  habitation_id?: string | null;
 }
 
 export const useResidentContacts = () => {
@@ -91,6 +97,8 @@ export const useResidentContacts = () => {
           notes: notes || null,
           source_business_card_id: businessCard.id || null,
           source_message_id: sourceMessageId || null,
+          contact_user_id: businessCard.contact_user_id || null,
+          habitation_id: businessCard.habitation_id || null,
         })
         .select()
         .single() as any);

@@ -177,14 +177,21 @@ const Contacts = () => {
 
   // Navigate to conversation - resolve to existing conversation or create new
   const handleNavigateToConversation = async (contact: ResidentContact) => {
-    // PRIORITY 0: If contact comes from a visitor message (has source_business_card_id), use that conversation
+    // PRIORITY 0: If contact has habitation_id and contact_user_id (visitor-added resident contact)
+    // Navigate to visitor conversation
+    if (contact.habitation_id && contact.contact_user_id) {
+      navigate(`/visitor-conversation/${contact.habitation_id}__private_${contact.contact_user_id}`);
+      return;
+    }
+
+    // PRIORITY 1: If contact comes from a visitor message (has source_business_card_id), use that conversation
     if (contact.source_business_card_id) {
       // This contact was added from a visitor message - navigate to that conversation
       navigate(`/conversation/${contact.source_business_card_id}`);
       return;
     }
 
-    // PRIORITY 1: If we have an anr_code, resolve it to habitation_id (only real ANR codes)
+    // PRIORITY 2: If we have an anr_code, resolve it to habitation_id (only real ANR codes)
     if (contact.anr_code) {
       try {
         // Find the ANR by code
@@ -245,7 +252,7 @@ const Contacts = () => {
       }
     }
 
-    // PRIORITY 2: Check if contact email matches a subscriber
+    // PRIORITY 3: Check if contact email matches a subscriber
     if (contact.email) {
       try {
         const { data: habitationId } = await supabase
@@ -260,7 +267,7 @@ const Contacts = () => {
       }
     }
 
-    // PRIORITY 3: Check if there's already an existing direct_messages conversation with this contact
+    // PRIORITY 4: Check if there's already an existing direct_messages conversation with this contact
     // If yes, continue it. If not, navigate to create/continue direct conversation
     navigate(`/conversation/contact/${contact.id}`);
   };
