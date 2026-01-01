@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { MessageSquare, Search, Plus, Loader2, Mic, Image, Phone, PhoneMissed } from "lucide-react";
+import { MessageSquare, Search, Plus, Loader2, Mic, Image, Phone, PhoneMissed, QrCode } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/layout/BottomNav";
 import { Input } from "@/components/ui/input";
@@ -225,6 +225,16 @@ const Messages = () => {
           </div>
         )}
       </div>
+
+      {/* FAB pour appel interphone - Scanner ANR */}
+      <Button
+        onClick={() => navigate("/visitor")}
+        className="fixed bottom-40 right-4 w-14 h-14 rounded-full shadow-lg z-40 bg-green-600 hover:bg-green-700"
+        size="icon"
+        title="Appel interphone"
+      >
+        <QrCode className="w-6 h-6" />
+      </Button>
 
       {/* FAB for new message */}
       <Button
