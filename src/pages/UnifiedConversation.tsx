@@ -55,7 +55,8 @@ const UnifiedConversation = () => {
   const conversation = conversations.find((c) => c.id === id) || 
                        conversations.find((c) => c.recipientId === recipientId);
   
-  const conversationMessages = recipientId ? getConversationMessages(recipientId) : [];
+  // Use full ID for messages (includes habitation if present)
+  const conversationMessages = id ? getConversationMessages(id) : [];
 
   // Fetch recipient info if no existing conversation
   useEffect(() => {
