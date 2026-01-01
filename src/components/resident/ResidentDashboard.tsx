@@ -212,7 +212,7 @@ const ResidentDashboard = () => {
         </div>
 
         {/* ANR Card - Neumorphic */}
-        <div className="bg-card rounded-3xl p-6 shadow-neumorphic">
+        <div className="bg-card rounded-3xl p-6 shadow-neumorphic py-[17px] pb-[12px]">
           <div className="flex flex-col md:flex-row gap-6 items-center">
             <div className="w-20 h-20 flex-shrink-0 bg-primary/10 rounded-2xl p-2 shadow-neumorphic-inset flex items-center justify-center">
               <img src={logoAnr} alt="ANR" className="w-full h-full object-contain" />
@@ -237,12 +237,12 @@ const ResidentDashboard = () => {
                 </span>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 my-0 py-0">
                 <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
                   <Share2 className="w-4 h-4 mr-2" />
                   Partager mon ANR
                 </Button>
-                <Button variant="default" size="sm" onClick={() => navigate(`/visitor?code=${habitationData.anr.code}`)}>
+                <Button variant="default" size="sm" onClick={() => navigate(`/visitor?code=${habitationData.anr.code}`)} className="py-0 my-[17px]">
                   <Phone className="w-4 h-4 mr-2" />
                   Appel Interphone
                 </Button>
