@@ -16,7 +16,6 @@ export interface DirectMessage {
   read_at: string | null;
   created_at: string;
   updated_at: string;
-  // For display
   is_mine: boolean;
 }
 
@@ -29,12 +28,12 @@ export const useDirectMessages = (contactId?: string) => {
   const fetchContact = useCallback(async () => {
     if (!contactId || !user) return;
     
-    const { data } = await supabase
+    const { data } = await (supabase
       .from("resident_contacts" as any)
       .select("*")
       .eq("id", contactId)
       .eq("user_id", user.id)
-      .single();
+      .single() as any);
     
     if (data) {
       setContact(data);
@@ -42,32 +41,35 @@ export const useDirectMessages = (contactId?: string) => {
   }, [contactId, user]);
 
   const fetchMessages = useCallback(async () => {
-    if (!contactId || !user) {
+    if (!contactId || !user || !contact) {
       setLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase
+      // Get messages I sent to this contact
+      const { data: sentMessages, error: sentError } = await (supabase
         .from("direct_messages")
         .select("*")
+        .eq("sender_id", user.id)
         .eq("recipient_contact_id", contactId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true }) as any);
 
-      if (error) throw error;
+      if (sentError) throw sentError;
 
-      const messagesWithMine = (data || []).map(msg => ({
-        ...msg,
-        is_mine: msg.sender_id === user.id
+      // Combine and mark as mine
+      const allMessages = (sentMessages || []).map((m: any) => ({ 
+        ...m, 
+        is_mine: true 
       }));
 
-      setMessages(messagesWithMine);
+      setMessages(allMessages);
     } catch (error) {
       console.error("[useDirectMessages] Error fetching messages:", error);
     } finally {
       setLoading(false);
     }
-  }, [contactId, user]);
+  }, [contactId, user, contact]);
 
   const sendMessage = async (params: {
     message?: string;
@@ -92,9 +94,7 @@ export const useDirectMessages = (contactId?: string) => {
             contentType: "audio/webm"
           });
 
-        if (uploadError) {
-          console.warn("Voice upload failed, bucket may not exist:", uploadError);
-        } else {
+        if (!uploadError && uploadData) {
           const { data: urlData } = supabase.storage
             .from("direct-messages")
             .getPublicUrl(uploadData.path);
@@ -110,9 +110,7 @@ export const useDirectMessages = (contactId?: string) => {
           .from("direct-messages")
           .upload(`${user.id}/${fileName}`, params.mediaFile);
 
-        if (uploadError) {
-          console.warn("Media upload failed, bucket may not exist:", uploadError);
-        } else {
+        if (!uploadError && uploadData) {
           const { data: urlData } = supabase.storage
             .from("direct-messages")
             .getPublicUrl(uploadData.path);
@@ -139,7 +137,6 @@ export const useDirectMessages = (contactId?: string) => {
 
       if (error) throw error;
 
-      // Add to local state immediately
       setMessages(prev => [...prev, { ...data, is_mine: true }]);
 
       return { success: true, message: data };
@@ -167,13 +164,16 @@ export const useDirectMessages = (contactId?: string) => {
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     fetchContact();
-    fetchMessages();
-  }, [fetchContact, fetchMessages]);
+  }, [fetchContact]);
 
-  // Real-time subscription
+  useEffect(() => {
+    if (contact) {
+      fetchMessages();
+    }
+  }, [contact, fetchMessages]);
+
   useEffect(() => {
     if (!contactId || !user) return;
 
