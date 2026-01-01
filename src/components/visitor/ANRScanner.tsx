@@ -213,22 +213,20 @@ const ANRScanner = () => {
               loading={loading}
             />
           )}
-        </div>
-      </div>
-      </div>
 
-      {/* Test mode toggle - fixed at bottom */}
-      {DEV_MODE && (
-        <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto">
-          <div className="flex items-center justify-between p-3 rounded-xl bg-warning/10 border border-warning/20 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-warning" />
-              <span className="text-sm">Mode test (sans GPS)</span>
+          {/* Test mode toggle - at bottom of card */}
+          {DEV_MODE && (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-warning/10 border border-warning/20 mt-6">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-warning" />
+                <span className="text-sm">Mode test (sans GPS)</span>
+              </div>
+              <Switch checked={testMode} onCheckedChange={setTestMode} />
             </div>
-            <Switch checked={testMode} onCheckedChange={setTestMode} />
-          </div>
+          )}
         </div>
-      )}
+      </div>
+      </div>
     </div>
   );
 };
