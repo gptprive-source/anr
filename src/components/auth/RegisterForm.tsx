@@ -1024,10 +1024,11 @@ const PaymentStep = ({
   const { getConfig, isLoading: configLoading } = useAppConfig();
   
   // Prix dynamiques depuis la config - avec fallback 36€ et 5€
-  const subscriptionPrice = getConfig("particulier_annual_price") ?? 36;
+  const subscriptionPriceAnnual = getConfig("particulier_annual_price") ?? 36;
+  const subscriptionPriceMonthly = Math.round((subscriptionPriceAnnual / 12) * 100) / 100;
   const domingPrice = getConfig("particulier_doming_price") ?? 5;
   const extraDomingsTotal = extraDomings * domingPrice;
-  const total = subscriptionPrice + extraDomingsTotal;
+  const total = subscriptionPriceAnnual + extraDomingsTotal;
   const handlePayment = async () => {
     if (!acceptedCGU) {
       toast({
@@ -1117,10 +1118,10 @@ const PaymentStep = ({
           {/* Subscription */}
           <div className="flex justify-between items-center">
             <div>
-              <p className="font-medium">Abonnement ANR (1 an)</p>
-              <p className="text-xs text-muted-foreground">Reconduction tacite annuelle</p>
+              <p className="font-medium">Abonnement ANR</p>
+              <p className="text-xs text-muted-foreground">{subscriptionPriceMonthly.toFixed(0)} €/mois • Facturation annuelle</p>
             </div>
-            <p className="font-semibold">{subscriptionPrice},00 €</p>
+            <p className="font-semibold">{subscriptionPriceAnnual},00 €/an</p>
           </div>
 
           {/* Free Doming */}
