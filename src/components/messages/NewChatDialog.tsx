@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { QrCode, Users, Loader2, Search, Keyboard } from "lucide-react";
+import { QrCode, Users, Loader2, Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -29,12 +29,11 @@ interface Contact {
 
 const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogProps) => {
   const { user } = useAuth();
-  const [mode, setMode] = useState<"menu" | "scan" | "manual" | "contacts">("menu");
+  const [mode, setMode] = useState<"menu" | "scan" | "contacts">("menu");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [scanning, setScanning] = useState(false);
-  const [manualAnrCode, setManualAnrCode] = useState("");
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -42,7 +41,6 @@ const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogP
       setMode("menu");
       setSearchQuery("");
       setScanning(false);
-      setManualAnrCode("");
     }
   }, [open]);
 
@@ -213,7 +211,6 @@ const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogP
           <DialogTitle className="text-center sm:text-left">
             {mode === "menu" && "Nouvelle conversation"}
             {mode === "scan" && "Scanner un code ANR"}
-            {mode === "manual" && "Saisir un code ANR"}
             {mode === "contacts" && "Choisir un contact"}
           </DialogTitle>
         </DialogHeader>
@@ -232,22 +229,6 @@ const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogP
                 <p className="font-medium">Scanner un ANR</p>
                 <p className="text-sm text-muted-foreground whitespace-normal">
                   Scannez le QR code pour contacter un résident
-                </p>
-              </div>
-            </Button>
-
-            <Button
-              variant="outline"
-              className="h-auto py-4 px-3 justify-start gap-3 w-full overflow-hidden"
-              onClick={() => setMode("manual")}
-            >
-              <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
-                <Keyboard className="w-5 h-5 text-primary" />
-              </div>
-              <div className="text-left flex-1 min-w-0">
-                <p className="font-medium">Saisir un code ANR</p>
-                <p className="text-sm text-muted-foreground whitespace-normal">
-                  Entrez manuellement le code pour contacter un résident
                 </p>
               </div>
             </Button>
@@ -278,77 +259,6 @@ const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogP
                 Placez le code QR dans le cadre
               </p>
             )}
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setMode("menu")}
-            >
-              Retour
-            </Button>
-          </div>
-        )}
-
-        {mode === "manual" && (
-          <div className="space-y-4">
-            <Input
-              placeholder="Entrez le code ANR (ex: ABC123)"
-              value={manualAnrCode}
-              onChange={(e) => setManualAnrCode(e.target.value.toUpperCase())}
-              className="text-center text-lg font-mono tracking-wider"
-              maxLength={10}
-            />
-            <Button
-              className="w-full"
-              disabled={!manualAnrCode.trim() || loading}
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  const { data: anr } = await supabase
-                    .from("anrs")
-                    .select("id")
-                    .eq("code", manualAnrCode.trim().toUpperCase())
-                    .maybeSingle();
-
-                  if (!anr) {
-                    toast.error("Code ANR non trouvé");
-                    return;
-                  }
-
-                  const { data: habitation } = await supabase
-                    .from("habitations")
-                    .select("id")
-                    .eq("anr_id", anr.id)
-                    .maybeSingle();
-
-                  if (!habitation) {
-                    toast.error("Aucune habitation associée à ce code ANR");
-                    return;
-                  }
-
-                  const { data: residents } = await supabase
-                    .from("residents")
-                    .select("user_id")
-                    .eq("habitation_id", habitation.id)
-                    .eq("status", "verified")
-                    .limit(1);
-
-                  if (!residents?.length) {
-                    toast.error("Aucun résident trouvé pour cette habitation");
-                    return;
-                  }
-
-                  onSelectRecipient(residents[0].user_id);
-                } catch (error) {
-                  console.error("Error finding ANR:", error);
-                  toast.error("Erreur lors de la recherche");
-                } finally {
-                  setLoading(false);
-                }
-              }}
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Rechercher
-            </Button>
             <Button
               variant="outline"
               className="w-full"

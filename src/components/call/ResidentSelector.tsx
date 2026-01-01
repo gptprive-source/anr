@@ -242,7 +242,6 @@ const ResidentSelectorPage = () => {
   const habitationId = location.state?.habitationId;
   const habitationName = location.state?.habitationName || "Résidence";
   const address = location.state?.address || "";
-  const fromScanner = location.state?.fromScanner;
 
   if (!habitationId || !anrId) {
     return (
@@ -253,24 +252,12 @@ const ResidentSelectorPage = () => {
   }
 
   const handleSelect = (targetUserId: string | null) => {
-    if (targetUserId) {
-      // Specific resident: go to chat with ANR context
-      navigate(`/chat/${targetUserId}`, {
-        state: {
-          anrCode: anrId,
-          habitationId,
-          address,
-        }
-      });
-    } else {
-      // All residents (group call): go to call page
-      navigate(`/call/${anrId}`, {
-        state: {
-          habitationId,
-          targetUserId: null,
-        },
-      });
-    }
+    navigate(`/call/${anrId}`, {
+      state: {
+        habitationId,
+        targetUserId,
+      },
+    });
   };
 
   return (

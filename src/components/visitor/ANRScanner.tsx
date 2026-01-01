@@ -122,81 +122,13 @@ const ANRScanner = () => {
         }
       }
 
-      // Count habitations for this ANR
-      const { data: habitations, count: habitationCount } = await supabase
-        .from("habitations")
-        .select("id", { count: "exact" })
-        .eq("anr_id", anr.id);
-
-      // Multi-habitat case: go to habitat selector (which will then redirect to chat)
-      if (habitationCount && habitationCount > 1) {
-        navigate(`/multi-habitat/${targetCode}`, { 
-          state: { 
-            visitorLat: visitorPosition.latitude, 
-            visitorLon: visitorPosition.longitude,
-            fromScanner: true 
-          } 
-        });
-        return;
-      }
-
-      // Single habitat case: check resident count
-      const singleHabitationId = habitations?.[0]?.id;
-      if (!singleHabitationId) {
-        toast({
-          title: "Aucune habitation",
-          description: "Cet ANR n'a pas d'habitation configurée.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Get residents for the single habitation
-      const { data: residents } = await supabase
-        .from("residents")
-        .select("user_id")
-        .eq("habitation_id", singleHabitationId)
-        .eq("status", "verified");
-
-      const residentCount = residents?.length || 0;
-
-      // Multiple residents: go to resident selector (which will redirect to chat)
-      if (residentCount > 1) {
-        navigate(`/resident-selector/${targetCode}`, {
-          state: {
-            habitationId: singleHabitationId,
-            habitationName: anr.address,
-            address: anr.address,
-            fromScanner: true,
-            visitorLat: visitorPosition.latitude,
-            visitorLon: visitorPosition.longitude,
-          }
-        });
-        return;
-      }
-
-      // Single resident: go directly to chat with ANR context
-      const recipientId = residents?.[0]?.user_id;
-      if (recipientId) {
-        navigate(`/chat/${recipientId}`, {
-          state: {
-            anrCode: targetCode,
-            anrId: anr.id,
-            habitationId: singleHabitationId,
-            address: anr.address,
-            visitorLat: visitorPosition.latitude,
-            visitorLon: visitorPosition.longitude,
-          }
-        });
-      } else {
-        // No residents found - go to ANR landing for other options
-        navigate(`/anr/${targetCode}`, { 
-          state: { 
-            visitorLat: visitorPosition.latitude, 
-            visitorLon: visitorPosition.longitude 
-          } 
-        });
-      }
+      // Redirect to ANRLanding page which shows navigation/call options
+      navigate(`/anr/${targetCode}`, { 
+        state: { 
+          visitorLat: visitorPosition.latitude, 
+          visitorLon: visitorPosition.longitude 
+        } 
+      });
     } catch (error: any) {
       toast({
         title: "Erreur",

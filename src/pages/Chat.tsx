@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square, MapPin } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,14 +15,6 @@ import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import ForwardMessageDialog from "@/components/messages/ForwardMessageDialog";
-
-// ANR context passed from scanner/landing
-interface AnrContext {
-  anrCode?: string;
-  anrId?: string;
-  habitationId?: string;
-  address?: string;
-}
 interface RecipientProfile {
   id: string;
   first_name: string | null;
@@ -79,8 +71,8 @@ const MessageBubble = ({
           </div>;
       case "missed_call":
         return <div className="flex items-center gap-2 text-destructive">
-            <Phone className="w-4 h-4 text-[#050505]" />
-            <span className="text-sm font-semibold text-black">Appel manqué</span>
+            <Phone className="w-4 h-4 text-[#fcfcfc]" />
+            <span className="text-sm text-white font-semibold">Appel manqué</span>
           </div>;
       case "call_ended":
         return <div className="flex items-center gap-2 text-primary">
@@ -93,99 +85,64 @@ const MessageBubble = ({
         return <p className="text-sm whitespace-pre-wrap break-words font-semibold">{message.content}</p>;
     }
   };
-  return (
-    <>
-      {/* Overlay to close menu when clicking outside */}
-      {showActions && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setShowActions(false)}
-        />
-      )}
-      <div className={cn("flex mb-2 group", isOwn ? "justify-end" : "justify-start")}>
-        <div 
-          className={cn("relative max-w-[80%] px-3 py-2 rounded-lg", isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm")} 
-          onContextMenu={e => {
-            e.preventDefault();
-            setShowActions(true);
-          }} 
-          onClick={() => setShowActions(!showActions)}
-        >
-          {/* Forwarded indicator */}
-          {message.forwarded_from_id && (
-            <div className={cn("flex items-center gap-1 text-xs mb-1", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
-              <Forward className="w-3 h-3" />
-              <span>Transféré</span>
-            </div>
-          )}
+  return <div className={cn("flex mb-2 group", isOwn ? "justify-end" : "justify-start")}>
+      <div className={cn("relative max-w-[80%] px-3 py-2 rounded-lg", isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm")} onContextMenu={e => {
+      e.preventDefault();
+      setShowActions(true);
+    }} onClick={() => setShowActions(!showActions)}>
+        {/* Forwarded indicator */}
+        {message.forwarded_from_id && <div className={cn("flex items-center gap-1 text-xs mb-1", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
+            <Forward className="w-3 h-3" />
+            <span>Transféré</span>
+          </div>}
 
-          {renderContent()}
+        {renderContent()}
 
-          {/* Time and read status */}
-          <div className={cn("flex items-center justify-end gap-1 mt-1", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
-            <span className="text-[10px]">
-              {message.created_at && formatMessageTime(message.created_at)}
-            </span>
-            {isOwn && (message.is_read ? <CheckCheck className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />)}
-          </div>
-
-          {/* Actions menu */}
-          {showActions && (
-            <div className={cn("absolute top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]", isOwn ? "right-0" : "left-0")}>
-              {message.message_type === "text" && message.content && (
-                <button 
-                  onClick={e => {
-                    e.stopPropagation();
-                    onCopy();
-                    setShowActions(false);
-                  }} 
-                  className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
-                >
-                  <Copy className="w-4 h-4" />
-                  Copier
-                </button>
-              )}
-              <button 
-                onClick={e => {
-                  e.stopPropagation();
-                  onForward();
-                  setShowActions(false);
-                }} 
-                className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
-              >
-                <Forward className="w-4 h-4" />
-                Transférer
-              </button>
-              <button 
-                onClick={e => {
-                  e.stopPropagation();
-                  onDelete();
-                  setShowActions(false);
-                }} 
-                className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
-              >
-                <Trash2 className="w-4 h-4" />
-                Supprimer pour moi
-              </button>
-              {canDeleteForEveryone && (
-                <button 
-                  onClick={e => {
-                    e.stopPropagation();
-                    onDeleteForEveryone();
-                    setShowActions(false);
-                  }} 
-                  className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
-                >
-                  <Clock className="w-4 h-4" />
-                  Supprimer pour tous
-                </button>
-              )}
-            </div>
-          )}
+        {/* Time and read status */}
+        <div className={cn("flex items-center justify-end gap-1 mt-1", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
+          <span className="text-[10px]">
+            {message.created_at && formatMessageTime(message.created_at)}
+          </span>
+          {isOwn && (message.is_read ? <CheckCheck className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />)}
         </div>
+
+        {/* Actions menu */}
+        {showActions && <div className={cn("absolute top-full mt-1 z-10 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]", isOwn ? "right-0" : "left-0")}>
+            {message.message_type === "text" && message.content && <button onClick={e => {
+          e.stopPropagation();
+          onCopy();
+          setShowActions(false);
+        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2">
+                <Copy className="w-4 h-4" />
+                Copier
+              </button>}
+            <button onClick={e => {
+          e.stopPropagation();
+          onForward();
+          setShowActions(false);
+        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2">
+              <Forward className="w-4 h-4" />
+              Transférer
+            </button>
+            <button onClick={e => {
+          e.stopPropagation();
+          onDelete();
+          setShowActions(false);
+        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive">
+              <Trash2 className="w-4 h-4" />
+              Supprimer pour moi
+            </button>
+            {canDeleteForEveryone && <button onClick={e => {
+          e.stopPropagation();
+          onDeleteForEveryone();
+          setShowActions(false);
+        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive">
+                <Clock className="w-4 h-4" />
+                Supprimer pour tous
+              </button>}
+          </div>}
       </div>
-    </>
-  );
+    </div>;
 };
 const Chat = () => {
   const {
@@ -194,7 +151,6 @@ const Chat = () => {
     recipientId: string;
   }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const {
     user
   } = useAuth();
@@ -212,18 +168,9 @@ const Chat = () => {
     deleteChat,
     chats
   } = useChats();
-
-  // Get ANR context from navigation state (when coming from ANR scan)
-  const anrContext: AnrContext = {
-    anrCode: location.state?.anrCode,
-    anrId: location.state?.anrId,
-    habitationId: location.state?.habitationId,
-    address: location.state?.address
-  };
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [recipient, setRecipient] = useState<RecipientProfile | null>(null);
-  const [recipientAnr, setRecipientAnr] = useState<{ code: string; habitationId: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState("");
@@ -234,29 +181,6 @@ const Chat = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initChatRef = useRef(false);
   const currentRecipientRef = useRef<string | null>(null);
-
-  // Handle call button - navigates to call page with ANR context
-  const handleCallClick = () => {
-    // Priority: navigation state context > fetched recipient ANR
-    const anrCode = anrContext.anrCode || recipientAnr?.code;
-    const habitationId = anrContext.habitationId || recipientAnr?.habitationId;
-
-    console.log("[Chat] handleCallClick - anrContext:", anrContext);
-    console.log("[Chat] handleCallClick - recipientAnr:", recipientAnr);
-    console.log("[Chat] Navigating to call with anrCode:", anrCode, "habitationId:", habitationId);
-
-    if (anrCode) {
-      navigate(`/call/${anrCode}`, {
-        state: {
-          habitationId,
-          targetUserId: recipientId
-        }
-      });
-    } else {
-      console.log("[Chat] No ANR code found, redirecting to visitor scanner");
-      navigate(`/visitor?target=${recipientId}`);
-    }
-  };
 
   // Scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -271,13 +195,15 @@ const Chat = () => {
     if (currentRecipientRef.current === recipientId && initChatRef.current) {
       return;
     }
+
     const initChat = async () => {
       if (!recipientId || !user) return;
-
+      
       // Mark as initializing for this recipient
       currentRecipientRef.current = recipientId;
       initChatRef.current = true;
       setLoading(true);
+      
       try {
         // Get or create chat
         const chat = await getOrCreateChat(recipientId);
@@ -293,40 +219,12 @@ const Chat = () => {
         }
 
         // Fetch recipient profile
-        const {
-          data: profile
-        } = await supabase.from("profiles").select("id, first_name, last_name, avatar_url").eq("id", recipientId).maybeSingle();
-        setRecipient(profile);
-
-        // Fetch recipient's ANR for calling (if they are a resident)
-        const { data: residentData } = await supabase
-          .from("residents")
-          .select("habitation_id")
-          .eq("user_id", recipientId)
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, avatar_url")
+          .eq("id", recipientId)
           .maybeSingle();
-
-        if (residentData?.habitation_id) {
-          const { data: habData } = await supabase
-            .from("habitations")
-            .select("id, anr_id")
-            .eq("id", residentData.habitation_id)
-            .maybeSingle();
-          
-          if (habData?.anr_id) {
-            const { data: anrData } = await supabase
-              .from("anrs")
-              .select("code")
-              .eq("id", habData.anr_id)
-              .maybeSingle();
-            
-            if (anrData?.code) {
-              setRecipientAnr({
-                code: anrData.code,
-                habitationId: habData.id
-              });
-            }
-          }
-        }
+        setRecipient(profile);
       } catch (error) {
         console.error("Error initializing chat:", error);
         // Reset on error to allow retry
@@ -538,16 +436,8 @@ const Chat = () => {
         
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate">{displayName}</p>
-          {anrContext.address ? <p className="text-xs text-primary-foreground/70 flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {anrContext.address.length > 30 ? anrContext.address.substring(0, 30) + '...' : anrContext.address}
-            </p> : recipientId && isOnline(recipientId) && <p className="text-xs text-primary-foreground/70">En ligne</p>}
+          {recipientId && isOnline(recipientId) && <p className="text-xs text-primary-foreground/70">En ligne</p>}
         </div>
-
-        {/* Call button - always visible */}
-        <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={handleCallClick}>
-          <Phone className="w-5 h-5" />
-        </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -556,7 +446,7 @@ const Chat = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleCallClick}>
+            <DropdownMenuItem onClick={() => navigate(`/visitor?target=${recipientId}`)}>
               <Phone className="w-4 h-4 mr-2" />
               Appeler
             </DropdownMenuItem>
