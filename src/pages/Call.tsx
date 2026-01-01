@@ -176,6 +176,12 @@ const Call = () => {
         };
         const visitorDeviceId = getVisitorDeviceId();
 
+        // Store visitor user_id if logged in (for missed call association)
+        const { data: { user: visitorUser } } = await supabase.auth.getUser();
+        if (visitorUser?.id) {
+          localStorage.setItem("visitor_user_id", visitorUser.id);
+        }
+
         // Créer call log avec target_user_id pour les appels privés et visitor_device_id
         const { data: callLog, error: callLogError } = await supabase
           .from("call_logs")
