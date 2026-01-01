@@ -254,6 +254,10 @@ const MultiHabitatSelector = () => {
                   {habitat.floor && (
                     <p className="text-sm text-muted-foreground">{habitat.floor}</p>
                   )}
+                  {/* Show resident count */}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {habitat.residentCount} résident{habitat.residentCount > 1 ? "s" : ""}
+                  </p>
                 </div>
 
                 {/* Call indicator */}
