@@ -21,7 +21,7 @@ const AccountIncentiveDialog = ({
 
   const handleViewMessages = () => {
     onOpenChange(false);
-    navigate("/visitor-messages");
+    navigate("/messages");
   };
 
   return (

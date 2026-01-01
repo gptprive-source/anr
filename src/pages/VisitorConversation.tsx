@@ -74,7 +74,7 @@ const VisitorConversation = () => {
   useEffect(() => {
     if (isLegacyUrl && habitationId) {
       console.log("[VisitorConversation] Legacy URL detected, redirecting to messages list");
-      navigate("/visitor-messages", { replace: true });
+      navigate("/messages", { replace: true });
     }
   }, [isLegacyUrl, habitationId, navigate]);
 
@@ -657,7 +657,7 @@ const VisitorConversation = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/visitor-messages")}
+              onClick={() => navigate("/messages")}
               className="text-primary-foreground hover:bg-primary-foreground/10"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -686,7 +686,7 @@ const VisitorConversation = () => {
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/10"
-              onClick={() => navigate("/visitor-messages")}
+              onClick={() => navigate("/messages")}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>

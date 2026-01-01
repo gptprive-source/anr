@@ -26,6 +26,7 @@ interface SentMessage {
   is_encrypted?: boolean;
   media_url?: string | null;
   media_type?: string | null;
+  recipient_user_id?: string | null;
 }
 
 interface MessageReply {
@@ -44,13 +45,17 @@ interface MessageReply {
 interface Conversation {
   habitationId: string;
   habitationName: string;
-  residentName: string; // Name of the owner/resident
+  residentName: string; // Name of the owner/resident OR recipient for private
   anrAddress: string;
   lastMessage: string | null;
   lastMessageDate: Date;
   unreadRepliesCount: number;
   totalMessages: number;
   hasReplies: boolean;
+  // New fields for private conversations
+  recipientUserId: string | null; // null = residence, string = private
+  isPrivate: boolean;
+  conversationKey: string; // Unique key: habitationId__residence OR habitationId__private_userId
 }
 
 export const useSentMessages = () => {
@@ -87,7 +92,7 @@ export const useSentMessages = () => {
     return deviceId;
   };
 
-  // Fetch sent messages and replies - NO LONGER BLOCKED BY BUSINESS CARD
+  // Fetch sent messages and replies - grouped by habitation + recipient
   const fetchSentMessages = async () => {
     if (!user) return;
 
@@ -101,9 +106,6 @@ export const useSentMessages = () => {
       console.log("[useSentMessages] Searching with user_id:", user.id, "card:", card?.id || "none", "device:", deviceId);
 
       // Fetch messages sent by this visitor via MULTIPLE identifiers:
-      // 1. business_card_id (if they have one)
-      // 2. visitor_device_id (their device fingerprint)
-      // 3. All business cards linked to this user_id
       let orConditions: string[] = [];
       
       if (card?.id) {
@@ -111,7 +113,7 @@ export const useSentMessages = () => {
       }
       orConditions.push(`visitor_device_id.eq.${deviceId}`);
       
-      // Also fetch all business cards linked to this user (in case they have multiple or old ones)
+      // Also fetch all business cards linked to this user
       const { data: userCards } = await supabase
         .from("visitor_business_cards")
         .select("id")
@@ -119,7 +121,7 @@ export const useSentMessages = () => {
       
       if (userCards && userCards.length > 0) {
         for (const uc of userCards) {
-          if (uc.id !== card?.id) { // Avoid duplicate condition
+          if (uc.id !== card?.id) {
             orConditions.push(`business_card_id.eq.${uc.id}`);
           }
         }
@@ -127,13 +129,13 @@ export const useSentMessages = () => {
 
       const { data: messagesData, error: messagesError } = await (supabase
         .from("visitor_messages" as any)
-        .select("*")
+        .select("*, recipient_user_id")
         .or(orConditions.join(","))
         .order("created_at", { ascending: false }) as any);
 
       if (messagesError) throw messagesError;
 
-      // Filter out messages deleted by visitor (double .or() doesn't work correctly)
+      // Filter out messages deleted by visitor
       const sentMessages = ((messagesData || []) as SentMessage[]).filter(
         (m: any) => m.deleted_by_visitor !== true
       );
@@ -148,7 +150,7 @@ export const useSentMessages = () => {
         return;
       }
 
-      // Fetch replies to these messages - exclude soft-deleted for visitor
+      // Fetch replies to these messages
       const messageIds = sentMessages.map(m => m.id);
       const { data: repliesData, error: repliesError } = await (supabase
         .from("message_replies" as any)
@@ -167,11 +169,18 @@ export const useSentMessages = () => {
       const unread = allReplies.filter(r => !r.is_read).length;
       setUnreadRepliesCount(unread);
 
-      // Group by habitation to create conversations
+      // Group by habitation + recipient_user_id to create separate conversations
+      // Key format: habitationId__residence OR habitationId__private_userId
       const conversationsMap = new Map<string, Conversation>();
 
       for (const msg of sentMessages) {
         const habId = msg.habitation_id;
+        const recipientId = msg.recipient_user_id;
+        const isPrivate = !!recipientId;
+        const conversationKey = isPrivate 
+          ? `${habId}__private_${recipientId}` 
+          : `${habId}__residence`;
+        
         const msgReplies = allReplies.filter(r => r.original_message_id === msg.id);
         const hasUnreadReplies = msgReplies.some(r => !r.is_read);
         
@@ -185,7 +194,7 @@ export const useSentMessages = () => {
           ? (msgReplies[0].reply_text || "🎤 Message vocal")
           : (msg.message || "🎤 Message vocal");
 
-        const existing = conversationsMap.get(habId);
+        const existing = conversationsMap.get(conversationKey);
         if (existing) {
           existing.totalMessages++;
           if (hasUnreadReplies) {
@@ -199,7 +208,7 @@ export const useSentMessages = () => {
             existing.hasReplies = true;
           }
         } else {
-          conversationsMap.set(habId, {
+          conversationsMap.set(conversationKey, {
             habitationId: habId,
             habitationName: "", // Will be fetched separately
             residentName: "", // Will be fetched separately
@@ -209,12 +218,25 @@ export const useSentMessages = () => {
             unreadRepliesCount: msgReplies.filter(r => !r.is_read).length,
             totalMessages: 1,
             hasReplies: msgReplies.length > 0,
+            recipientUserId: recipientId || null,
+            isPrivate,
+            conversationKey,
           });
         }
       }
 
-      // Fetch habitation details and resident names
-      const habIds = Array.from(conversationsMap.keys());
+      // Fetch habitation details and recipient names
+      const habIds = [...new Set(Array.from(conversationsMap.values()).map(c => c.habitationId))];
+      const recipientIds = [...new Set(
+        Array.from(conversationsMap.values())
+          .filter(c => c.recipientUserId)
+          .map(c => c.recipientUserId!)
+      )];
+      
+      // Cache for habitation and profile data
+      const habCache = new Map<string, { name: string; address: string; ownerName: string }>();
+      const profileCache = new Map<string, string>();
+
       if (habIds.length > 0) {
         // Fetch habitations with ANR address
         const { data: habData } = await supabase
@@ -232,22 +254,52 @@ export const useSentMessages = () => {
 
         if (habData) {
           for (const hab of habData as any[]) {
-            const conv = conversationsMap.get(hab.id);
-            if (conv) {
-              conv.habitationName = hab.name || "Résidence";
-              conv.anrAddress = hab.anr?.address || "";
-              
-              // Find owner's name for this habitation
-              const owner = residentsData?.find(r => r.habitation_id === hab.id);
-              if (owner?.profiles) {
-                const profile = owner.profiles as any;
-                const firstName = profile.first_name || "";
-                const lastName = profile.last_name || "";
-                conv.residentName = `${firstName} ${lastName}`.trim() || conv.habitationName;
-              } else {
-                conv.residentName = conv.habitationName;
-              }
+            const owner = residentsData?.find(r => r.habitation_id === hab.id);
+            let ownerName = hab.name || "Résidence";
+            if (owner?.profiles) {
+              const profile = owner.profiles as any;
+              const firstName = profile.first_name || "";
+              const lastName = profile.last_name || "";
+              ownerName = `${firstName} ${lastName}`.trim() || hab.name || "Résidence";
             }
+            habCache.set(hab.id, {
+              name: hab.name || "Résidence",
+              address: hab.anr?.address || "",
+              ownerName,
+            });
+          }
+        }
+      }
+
+      // Fetch profiles for private message recipients
+      if (recipientIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name")
+          .in("id", recipientIds);
+
+        if (profilesData) {
+          for (const profile of profilesData) {
+            const name = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Résident";
+            profileCache.set(profile.id, name);
+          }
+        }
+      }
+
+      // Update conversation names
+      for (const conv of conversationsMap.values()) {
+        const habInfo = habCache.get(conv.habitationId);
+        if (habInfo) {
+          conv.habitationName = habInfo.name;
+          conv.anrAddress = habInfo.address;
+          
+          if (conv.isPrivate && conv.recipientUserId) {
+            // For private conversations, show recipient name
+            const recipientName = profileCache.get(conv.recipientUserId) || "Résident";
+            conv.residentName = `${habInfo.name} - ${recipientName}`;
+          } else {
+            // For residence conversations, show owner name
+            conv.residentName = habInfo.ownerName;
           }
         }
       }
@@ -256,6 +308,7 @@ export const useSentMessages = () => {
       const sortedConversations = Array.from(conversationsMap.values())
         .sort((a, b) => b.lastMessageDate.getTime() - a.lastMessageDate.getTime());
 
+      console.log("[useSentMessages] Created conversations:", sortedConversations.length, sortedConversations.map(c => c.conversationKey));
       setConversations(sortedConversations);
     } catch (error) {
       console.error("[useSentMessages] Error:", error);
@@ -286,15 +339,28 @@ export const useSentMessages = () => {
     }
   };
 
-  // Get messages and replies for a specific habitation
-  const getConversationMessages = (habitationId: string) => {
-    const habMessages = messages.filter(m => m.habitation_id === habitationId);
+  // Get messages and replies for a specific conversation (by conversation key)
+  const getConversationMessages = (conversationKey: string) => {
+    // Parse conversation key to get habitationId and recipientUserId
+    const isPrivate = conversationKey.includes("__private_");
+    const habitationId = conversationKey.split("__")[0];
+    const recipientUserId = isPrivate ? conversationKey.split("__private_")[1] : null;
+    
+    const habMessages = messages.filter(m => {
+      if (m.habitation_id !== habitationId) return false;
+      if (isPrivate) {
+        return m.recipient_user_id === recipientUserId;
+      } else {
+        return !m.recipient_user_id;
+      }
+    });
+    
     const messageIds = habMessages.map(m => m.id);
     const habReplies = replies.filter(r => messageIds.includes(r.original_message_id));
     return { messages: habMessages, replies: habReplies };
   };
 
-  // Soft delete a sent message (mark as deleted, don't remove from DB)
+  // Soft delete a sent message
   const deleteSentMessage = async (messageId: string) => {
     console.log("[useSentMessages] deleteSentMessage called for:", messageId);
     try {
@@ -305,7 +371,6 @@ export const useSentMessages = () => {
       
       if (error) throw error;
       
-      // Update local state immediately
       setMessages(prev => prev.filter(m => m.id !== messageId));
       console.log("[useSentMessages] Message deleted from local state");
       
@@ -316,11 +381,27 @@ export const useSentMessages = () => {
     }
   };
 
-  // Soft delete an entire conversation (mark all messages as deleted)
-  const deleteConversation = async (habitationId: string) => {
+  // Soft delete an entire conversation by conversation key
+  const deleteConversation = async (conversationKey: string) => {
     try {
-      const habMessages = messages.filter(m => m.habitation_id === habitationId);
-      const messageIds = habMessages.map(m => m.id);
+      // Parse conversation key
+      const isPrivate = conversationKey.includes("__private_");
+      const isResidence = conversationKey.includes("__residence");
+      const habitationId = conversationKey.split("__")[0];
+      const recipientUserId = isPrivate ? conversationKey.split("__private_")[1] : null;
+      
+      // Find messages for this specific conversation
+      const messagesToDelete = messages.filter(m => {
+        if (m.habitation_id !== habitationId) return false;
+        if (isPrivate && recipientUserId) {
+          return m.recipient_user_id === recipientUserId;
+        } else if (isResidence) {
+          return !m.recipient_user_id;
+        }
+        return true; // Legacy key format - delete all for this habitation
+      });
+      
+      const messageIds = messagesToDelete.map(m => m.id);
       
       if (messageIds.length > 0) {
         const { error } = await (supabase
@@ -331,8 +412,10 @@ export const useSentMessages = () => {
         if (error) throw error;
       }
       
-      setMessages(prev => prev.filter(m => m.habitation_id !== habitationId));
-      setConversations(prev => prev.filter(c => c.habitationId !== habitationId));
+      // Update local state
+      setMessages(prev => prev.filter(m => !messageIds.includes(m.id)));
+      setConversations(prev => prev.filter(c => c.conversationKey !== conversationKey));
+      
       return { success: true };
     } catch (error: any) {
       console.error("[useSentMessages] Error deleting conversation:", error);
@@ -365,7 +448,6 @@ export const useSentMessages = () => {
           if (messageIds.includes(newReply.original_message_id)) {
             setReplies(prev => [newReply, ...prev]);
             setUnreadRepliesCount(prev => prev + 1);
-            // Refresh conversations
             fetchSentMessages();
           }
         }

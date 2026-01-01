@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Ban, Home, Send, Trash2, Plus, Lock } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, User, Building2, Inbox, MailOpen, Mail as MailClosed, ChevronRight, Ban, Home, Send, Trash2, Plus, Lock, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useAuth } from "@/hooks/useAuth";
 import { useVisitorMessages } from "@/hooks/useVisitorMessages";
 import { useSentMessages } from "@/hooks/useSentMessages";
+import { useVisitorDeviceMessages } from "@/hooks/useVisitorDeviceMessages";
 import { useBlockedVisitors } from "@/hooks/useBlockedVisitors";
 import { useUserPlan } from "@/hooks/useUserPlan";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow, isToday, isThisWeek, isThisMonth } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
+import VisitorFooter from "@/components/layout/VisitorFooter";
 import { Loader2 } from "lucide-react";
 
 import NewMessageToAnrDialog from "@/components/messages/NewMessageToAnrDialog";
@@ -38,6 +40,7 @@ interface UnifiedConversation {
   hasReply: boolean;
   avatarUrl: string | null;
   isCompany: boolean;
+  isPrivate?: boolean; // For sent conversations: true = private, false = residence
 }
 
 const Messages = () => {
@@ -94,7 +97,7 @@ const Messages = () => {
   const { isBlocked, blockedVisitors, unblockVisitor } = useBlockedVisitors();
   const [showBlocked, setShowBlocked] = useState(false);
 
-  // Hooks for visitor (sent messages)
+  // Hooks for visitor (sent messages) - for logged-in users
   const {
     conversations: sentConversations,
     unreadRepliesCount,
@@ -102,6 +105,13 @@ const Messages = () => {
     businessCard,
     deleteConversation
   } = useSentMessages();
+
+  // Hooks for anonymous visitors (using device ID)
+  const {
+    conversations: deviceConversations,
+    unreadCount: deviceUnreadCount,
+    loading: loadingDevice,
+  } = useVisitorDeviceMessages();
 
   // Group messages by visitor AND recipient (for residents) - internal processing
   // This creates separate conversations for:
@@ -210,26 +220,48 @@ const Messages = () => {
       }
     });
     
-    // Add sent conversations (to ANRs) - use resident name instead of habitation name
+    // Add sent conversations (to ANRs) - use conversationKey as ID for proper routing
+    // These now include separate entries for residence vs private conversations
     sentConversations.forEach(conv => {
       unified.push({
-        id: conv.habitationId,
+        id: conv.conversationKey, // Use conversationKey for unique identification
         type: 'sent',
         displayName: conv.residentName || conv.habitationName,
-        subtitle: conv.anrAddress,
+        subtitle: conv.isPrivate ? "Message privé" : conv.anrAddress,
         lastMessage: conv.lastMessage,
         lastMessageDate: conv.lastMessageDate,
         unreadCount: conv.unreadRepliesCount,
         totalMessages: conv.totalMessages,
         hasReply: conv.hasReplies,
         avatarUrl: null,
-        isCompany: false
+        isCompany: false,
+        isPrivate: conv.isPrivate,
       });
     });
+
+    // For anonymous visitors (not logged in), add device-based conversations
+    if (!user) {
+      deviceConversations.forEach(conv => {
+        unified.push({
+          id: conv.conversation_key,
+          type: 'sent',
+          displayName: conv.habitation_name,
+          subtitle: conv.is_private ? "Message privé" : conv.anr_address || null,
+          lastMessage: conv.messages[conv.messages.length - 1]?.message || "🎤 Message vocal",
+          lastMessageDate: new Date(conv.last_activity),
+          unreadCount: conv.unread_count,
+          totalMessages: conv.messages.length,
+          hasReply: conv.messages.some(m => m.replies.length > 0),
+          avatarUrl: null,
+          isCompany: false,
+          isPrivate: conv.is_private,
+        });
+      });
+    }
     
     // Sort by last message date (newest first)
     return unified.sort((a, b) => b.lastMessageDate.getTime() - a.lastMessageDate.getTime());
-  }, [groupedReceivedConversations, sentConversations, isBlocked]);
+  }, [groupedReceivedConversations, sentConversations, deviceConversations, user, isBlocked]);
 
   // Filter unified conversations
   const filteredConversations = useMemo(() => {
@@ -253,7 +285,7 @@ const Messages = () => {
     });
   }, [unifiedConversations, statusFilter, dateFilter, searchQuery]);
 
-  const loading = loadingRole || loadingReceived || loadingSent;
+  const loading = loadingRole || loadingReceived || loadingSent || (!user && loadingDevice);
   
   if (loading) {
     return (
@@ -263,8 +295,50 @@ const Messages = () => {
     );
   }
 
+  // Anonymous visitor (not logged in) with messages - show visitor-friendly view
+  if (!user && deviceConversations.length > 0) {
+    // Will fall through to main view below
+  }
+
+  // Anonymous visitor (not logged in) without messages - empty state
+  if (!user && deviceConversations.length === 0) {
+    return (
+      <div className="min-h-screen pb-20">
+        <div className="max-w-2xl mx-auto p-4 space-y-4">
+          <div className="flex items-center gap-4 pt-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-purple-500" />
+                Mes messages
+              </h1>
+            </div>
+          </div>
+
+          <div className="text-center py-12 space-y-4">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <Send className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-lg font-medium">Aucun message</p>
+              <p className="text-muted-foreground mt-1">
+                Scannez un ANR et envoyez un message à un résident
+              </p>
+            </div>
+            <Button onClick={() => navigate("/visitor")} className="mt-4">
+              Scanner un ANR
+            </Button>
+          </div>
+        </div>
+        <VisitorFooter />
+      </div>
+    );
+  }
+
   // Connected visitor without messages AND not a resident - empty state
-  if (isResident === false && sentConversations.length === 0) {
+  if (user && isResident === false && sentConversations.length === 0) {
     return (
       <div className="min-h-screen pb-20">
         <div className="max-w-2xl mx-auto p-4 space-y-4">
@@ -316,12 +390,18 @@ const Messages = () => {
 
   // Calculate stats - combined
   const totalConversations = unifiedConversations.length;
-  const totalUnread = unreadCount + unreadRepliesCount;
-  const totalMessages = messages.length + sentConversations.reduce((acc, c) => acc + c.totalMessages, 0);
+  const totalUnread = unreadCount + unreadRepliesCount + (!user ? deviceUnreadCount : 0);
+  const totalMessages = messages.length + sentConversations.reduce((acc, c) => acc + c.totalMessages, 0) + 
+    (!user ? deviceConversations.reduce((acc, c) => acc + c.messages.length, 0) : 0);
 
   const handleNavigate = (conv: UnifiedConversation) => {
-    // All conversations now use the unified /conversation/:id route
-    navigate(`/conversation/${conv.id}`);
+    // For sent conversations (visitor side), use VisitorConversation
+    if (conv.type === 'sent') {
+      navigate(`/visitor-conversation/${conv.id}`);
+    } else {
+      // For received conversations (resident side), use Conversation
+      navigate(`/conversation/${conv.id}`);
+    }
   };
 
   const handleDelete = (conv: UnifiedConversation) => {
@@ -337,7 +417,7 @@ const Messages = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => navigate("/dashboard")} 
+              onClick={() => navigate(user ? "/dashboard" : "/")} 
               className="text-primary-foreground hover:bg-primary-foreground/10"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -584,7 +664,20 @@ const Messages = () => {
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          {/* Private/Residence indicator for sent conversations */}
+                          {conv.type === 'sent' && conv.isPrivate && (
+                            <Badge variant="outline" className="text-xs h-5 text-purple-600 border-purple-600">
+                              <User className="w-3 h-3 mr-1" />
+                              Privé
+                            </Badge>
+                          )}
+                          {conv.type === 'sent' && !conv.isPrivate && (
+                            <Badge variant="outline" className="text-xs h-5 text-blue-600 border-blue-600">
+                              <Users className="w-3 h-3 mr-1" />
+                              Résidence
+                            </Badge>
+                          )}
                           {conv.unreadCount > 0 && (
                             <Badge variant="destructive" className="text-xs h-5">
                               {conv.unreadCount} {conv.type === 'received' ? `nouveau${conv.unreadCount > 1 ? "x" : ""}` : `réponse${conv.unreadCount > 1 ? "s" : ""}`}
@@ -660,7 +753,7 @@ const Messages = () => {
         onOpenChange={setShowNewMessageDialog} 
       />
 
-      <BottomNav />
+      {user ? <BottomNav /> : <VisitorFooter />}
     </div>
   );
 };
