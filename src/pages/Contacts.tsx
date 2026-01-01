@@ -28,7 +28,6 @@ import {
   Loader2,
   MessageSquare,
   ArrowLeft,
-  MapPin,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -48,12 +47,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 type FilterType = "all" | "favorites" | "companies" | "individuals";
-
-interface HabitationOption {
-  id: string;
-  name: string;
-  address: string;
-}
 
 const Contacts = () => {
   const { toast } = useToast();
@@ -75,11 +68,6 @@ const Contacts = () => {
   });
   const [deletingContact, setDeletingContact] = useState<ResidentContact | null>(null);
   const contactRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  
-  // State for habitation selection dialog
-  const [habitationsToSelect, setHabitationsToSelect] = useState<HabitationOption[]>([]);
-  const [showHabitationDialog, setShowHabitationDialog] = useState(false);
-  const [navigatingContact, setNavigatingContact] = useState<ResidentContact | null>(null);
 
   // Scroll to contact if scrollTo param is present
   useEffect(() => {
@@ -175,101 +163,61 @@ const Contacts = () => {
     setEditingContact(contact);
   };
 
-  // Navigate to conversation - resolve to existing conversation or create new
+  // Navigate to conversation with this contact
   const handleNavigateToConversation = async (contact: ResidentContact) => {
-    // PRIORITY 0: If contact has habitation_id and contact_user_id (visitor-added resident contact)
-    // Navigate to visitor conversation
-    if (contact.habitation_id && contact.contact_user_id) {
-      navigate(`/visitor-conversation/${contact.habitation_id}__private_${contact.contact_user_id}`);
+    // If contact has contact_user_id, navigate directly to chat with that user
+    if (contact.contact_user_id) {
+      navigate(`/chat/${contact.contact_user_id}`);
       return;
     }
 
-    // PRIORITY 1: If contact comes from a visitor message (has source_business_card_id), use that conversation
-    if (contact.source_business_card_id) {
-      // This contact was added from a visitor message - navigate to that conversation
-      navigate(`/conversation/${contact.source_business_card_id}`);
-      return;
-    }
-
-    // PRIORITY 2: If we have an anr_code, resolve it to habitation_id (only real ANR codes)
-    if (contact.anr_code) {
+    // If contact has source_message_id, get the sender from that message
+    if (contact.source_message_id) {
       try {
-        // Find the ANR by code
-        const { data: anr, error: anrError } = await supabase
-          .from("anrs")
-          .select("id, address")
-          .eq("code", contact.anr_code.toUpperCase())
+        const { data: message } = await supabase
+          .from("messages")
+          .select("sender_id, recipient_id")
+          .eq("id", contact.source_message_id)
           .maybeSingle();
-
-        if (anrError || !anr) {
-          toast({
-            title: "ANR introuvable",
-            description: "Le code ANR de ce contact n'existe plus",
-            variant: "destructive",
-          });
+        
+        if (message) {
+          // Navigate to conversation with the other party
+          const { data: { user } } = await supabase.auth.getUser();
+          const otherUserId = message.sender_id === user?.id ? message.recipient_id : message.sender_id;
+          navigate(`/chat/${otherUserId}`);
           return;
         }
-
-        // Get habitations for this ANR
-        const { data: habitations, error: habError } = await supabase
-          .from("habitations")
-          .select("id, name")
-          .eq("anr_id", anr.id);
-
-        if (habError || !habitations || habitations.length === 0) {
-          toast({
-            title: "Aucune habitation",
-            description: "Aucune habitation trouvée pour ce code ANR",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // If only one habitation, navigate directly
-        if (habitations.length === 1) {
-          navigate(`/conversation/${habitations[0].id}`);
-          return;
-        }
-
-        // Multiple habitations - show selection dialog
-        setHabitationsToSelect(habitations.map(h => ({
-          id: h.id,
-          name: h.name,
-          address: anr.address
-        })));
-        setNavigatingContact(contact);
-        setShowHabitationDialog(true);
-        return;
-
       } catch (err) {
-        console.error("Error resolving ANR:", err);
-        toast({
-          title: "Erreur",
-          description: "Impossible de résoudre l'ANR de ce contact",
-          variant: "destructive",
-        });
-        return;
+        console.error("Error fetching source message:", err);
       }
     }
 
-    // PRIORITY 3: Check if contact email matches a subscriber
+    // Fallback: try to find user by email
     if (contact.email) {
       try {
-        const { data: habitationId } = await supabase
-          .rpc("find_habitation_by_email", { contact_email: contact.email });
-
-        if (habitationId) {
-          navigate(`/conversation/${habitationId}`);
-          return;
-        }
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", contact.email) // This won't work, we need a different approach
+          .maybeSingle();
+        
+        // For now, show a toast that we can't find the user
+        toast({
+          title: "Contact sans compte",
+          description: "Ce contact n'a pas de compte utilisateur associé",
+          variant: "destructive",
+        });
       } catch (err) {
-        console.log("No subscriber found by email:", err);
+        console.log("No user found:", err);
       }
+      return;
     }
 
-    // PRIORITY 4: Check if there's already an existing direct_messages conversation with this contact
-    // If yes, continue it. If not, navigate to create/continue direct conversation
-    navigate(`/conversation/contact/${contact.id}`);
+    toast({
+      title: "Contact incomplet",
+      description: "Ce contact n'a pas d'identifiant utilisateur",
+      variant: "destructive",
+    });
   };
 
   if (loading) {
@@ -608,48 +556,6 @@ const Contacts = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Habitation Selection Dialog */}
-      <Dialog open={showHabitationDialog} onOpenChange={setShowHabitationDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Home className="w-5 h-5 text-primary" />
-              Sélectionner une habitation
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground mb-4">
-              Plusieurs habitations sont liées à ce code ANR. Sélectionnez celle que vous souhaitez contacter :
-            </p>
-            {habitationsToSelect.map((hab) => (
-              <div
-                key={hab.id}
-                onClick={() => {
-                  navigate(`/conversation/${hab.id}`);
-                  setShowHabitationDialog(false);
-                  setHabitationsToSelect([]);
-                  setNavigatingContact(null);
-                }}
-                className="p-3 rounded-lg border border-border cursor-pointer transition-all hover:border-primary hover:bg-primary/5"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Home className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{hab.name}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {hab.address}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <BottomNav />
     </div>

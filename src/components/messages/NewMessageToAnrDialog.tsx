@@ -229,21 +229,23 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
   const handleGoToResidence = () => {
     if (selectedHabitation) {
       onOpenChange(false);
-      navigate(`/visitor-conversation/${selectedHabitation.id}__residence`);
+      // Navigate to unified conversation with the residence (owner)
+      navigate(`/chat/${selectedHabitation.id}`);
     }
   };
 
   const handleGoToResident = (resident: Resident) => {
     if (selectedHabitation) {
       onOpenChange(false);
-      // Navigate to private conversation with this resident
-      navigate(`/visitor-conversation/${selectedHabitation.id}__private_${resident.user_id}`);
+      // Navigate to private conversation with this specific resident
+      navigate(`/chat/${resident.user_id}`);
     }
   };
 
   const handleContactClick = (contact: typeof contactsWithHabitation[0]) => {
     onOpenChange(false);
-    navigate(`/visitor-conversation/${contact.habitation_id}__private_${contact.contact_user_id}`);
+    // Navigate to conversation with the contact
+    navigate(`/chat/${contact.contact_user_id}`);
   };
 
   const handleBack = () => {
