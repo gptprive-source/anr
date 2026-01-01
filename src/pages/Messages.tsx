@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { MessageSquare, Search, Plus, Loader2, Mic, Image, Phone, PhoneMissed } from "lucide-react";
+import { MessageSquare, Search, Plus, Loader2, Mic, Image, Phone, PhoneMissed, DoorOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/layout/BottomNav";
 import { Input } from "@/components/ui/input";
@@ -164,6 +164,15 @@ const Messages = () => {
               </span>
             )}
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/visitor")}
+            className="text-primary-foreground hover:bg-primary-foreground/10"
+          >
+            <DoorOpen className="w-4 h-4 mr-2" />
+            Appel Interphone
+          </Button>
         </div>
         
         {/* Search bar */}
