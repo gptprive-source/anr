@@ -208,7 +208,7 @@ const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-center sm:text-left">
             {mode === "menu" && "Nouvelle conversation"}
             {mode === "scan" && "Scanner un code ANR"}
             {mode === "contacts" && "Choisir un contact"}
@@ -219,15 +219,15 @@ const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogP
           <div className="grid gap-3">
             <Button
               variant="outline"
-              className="h-auto py-4 justify-start gap-4"
+              className="h-auto py-4 px-3 justify-start gap-3 sm:gap-4"
               onClick={() => setMode("scan")}
             >
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                 <QrCode className="w-5 h-5 text-primary" />
               </div>
-              <div className="text-left">
-                <p className="font-medium">Scanner un ANR</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="text-left min-w-0 flex-1">
+                <p className="font-medium truncate">Scanner un ANR</p>
+                <p className="text-sm text-muted-foreground line-clamp-2">
                   Scannez le QR code pour contacter un résident
                 </p>
               </div>
@@ -235,15 +235,15 @@ const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogP
 
             <Button
               variant="outline"
-              className="h-auto py-4 justify-start gap-4"
+              className="h-auto py-4 px-3 justify-start gap-3 sm:gap-4"
               onClick={() => setMode("contacts")}
             >
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                 <Users className="w-5 h-5 text-primary" />
               </div>
-              <div className="text-left">
-                <p className="font-medium">Contacts récents</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="text-left min-w-0 flex-1">
+                <p className="font-medium truncate">Contacts récents</p>
+                <p className="text-sm text-muted-foreground line-clamp-2">
                   Choisissez parmi vos contacts existants
                 </p>
               </div>
