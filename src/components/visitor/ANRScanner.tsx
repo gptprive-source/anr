@@ -164,17 +164,6 @@ const ANRScanner = () => {
       <div className="flex-1 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
 
-        {/* Test mode toggle */}
-        {DEV_MODE && (
-          <div className="flex items-center justify-between p-3 rounded-xl bg-warning/10 border border-warning/20 mb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-warning" />
-              <span className="text-sm">Mode test (sans GPS)</span>
-            </div>
-            <Switch checked={testMode} onCheckedChange={setTestMode} />
-          </div>
-        )}
-
         {/* Proximity notice */}
         {!testMode && (
           <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/10 border border-primary/20 mb-6">
@@ -227,6 +216,19 @@ const ANRScanner = () => {
         </div>
       </div>
       </div>
+
+      {/* Test mode toggle - fixed at bottom */}
+      {DEV_MODE && (
+        <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-warning/10 border border-warning/20 backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-warning" />
+              <span className="text-sm">Mode test (sans GPS)</span>
+            </div>
+            <Switch checked={testMode} onCheckedChange={setTestMode} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
