@@ -156,26 +156,45 @@ const VisitorConversation = () => {
       let recipientAvatarUrl: string | null = null;
       
       if (isPrivateConversation && targetUserId) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("first_name, last_name, phone_number, avatar_url")
-          .eq("id", targetUserId)
+        // First try to get info from visitor_business_cards (most complete data)
+        const { data: businessCard } = await supabase
+          .from("visitor_business_cards")
+          .select("first_name, last_name, phone, email, avatar_url")
+          .eq("user_id", targetUserId)
+          .order("updated_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
         
-        if (profile) {
-          recipientFirstName = profile.first_name;
-          recipientLastName = profile.last_name;
-          recipientPhone = profile.phone_number;
-          recipientAvatarUrl = profile.avatar_url;
-          recipientName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Résident";
-        }
+        if (businessCard) {
+          recipientFirstName = businessCard.first_name;
+          recipientLastName = businessCard.last_name;
+          recipientPhone = businessCard.phone;
+          recipientEmail = businessCard.email;
+          recipientAvatarUrl = businessCard.avatar_url;
+          recipientName = `${businessCard.first_name || ""} ${businessCard.last_name || ""}`.trim() || "Résident";
+        } else {
+          // Fallback to profiles table
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name, last_name, phone_number, avatar_url")
+            .eq("id", targetUserId)
+            .maybeSingle();
+          
+          if (profile) {
+            recipientFirstName = profile.first_name;
+            recipientLastName = profile.last_name;
+            recipientPhone = profile.phone_number;
+            recipientAvatarUrl = profile.avatar_url;
+            recipientName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Résident";
+          }
 
-        // Get email via RPC function
-        const { data: email } = await supabase.rpc("get_user_email_for_contact", { 
-          target_user_id: targetUserId 
-        });
-        if (email) {
-          recipientEmail = email;
+          // Get email via RPC function if not found
+          const { data: email } = await supabase.rpc("get_user_email_for_contact", { 
+            target_user_id: targetUserId 
+          });
+          if (email) {
+            recipientEmail = email;
+          }
         }
       }
 
