@@ -152,7 +152,7 @@ export const useMessages = (conversationUserId?: string) => {
     };
   }, [user, fetchMessages]);
 
-  // Group messages into conversations
+  // Group messages into conversations - by recipientId ONLY (ignore habitation)
   const conversations = useMemo(() => {
     if (!user) return [];
 
@@ -167,8 +167,8 @@ export const useMessages = (conversationUserId?: string) => {
       const otherUserId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
       const otherUser = msg.sender_id === user.id ? msg.recipient : msg.sender;
 
-      // Conversation key: other user ID + habitation (if any)
-      const convKey = msg.habitation_id ? `${otherUserId}__${msg.habitation_id}` : otherUserId;
+      // Conversation key: ONLY user ID (ignore habitation for grouping)
+      const convKey = otherUserId;
 
       const existing = convMap.get(convKey);
       const msgDate = new Date(msg.created_at);
@@ -178,12 +178,16 @@ export const useMessages = (conversationUserId?: string) => {
         if (msgDate > existing.lastMessageDate) {
           existing.lastMessage = msg.message || (msg.voice_message_url ? "🎤 Message vocal" : msg.media_url ? "📎 Média" : null);
           existing.lastMessageDate = msgDate;
+          // Update habitation info with the most recent message's habitation
+          existing.habitationId = msg.habitation_id;
+          existing.habitationName = msg.habitation?.name || null;
+          existing.anrAddress = msg.habitation?.anr_address || null;
         }
         if (isUnread) existing.unreadCount++;
         existing.totalMessages++;
       } else {
         convMap.set(convKey, {
-          id: convKey,
+          id: convKey, // Just the user ID now
           recipientId: otherUserId,
           recipientName: otherUser 
             ? `${otherUser.first_name || ""} ${otherUser.last_name || ""}`.trim() || "Utilisateur"
@@ -205,15 +209,12 @@ export const useMessages = (conversationUserId?: string) => {
     );
   }, [messages, user]);
 
-  // Get messages for a specific conversation
+  // Get messages for a specific conversation - by recipientId ONLY
   const getConversationMessages = useCallback((conversationId: string) => {
     if (!user) return [];
 
-    // Parse conversation ID: recipientId or recipientId__habitationId
-    const parts = conversationId.split("__");
-    const recipientId = parts[0];
-    // habitationId is only used for sending new messages, not for filtering display
-    // This allows showing all messages between two users regardless of habitation
+    // Extract recipientId (ignore any habitation suffix for backwards compatibility)
+    const recipientId = conversationId.split("__")[0];
 
     return messages
       .filter((msg) => {
@@ -223,7 +224,7 @@ export const useMessages = (conversationUserId?: string) => {
         
         if (!isParticipant) return false;
         
-        // Don't filter by habitation_id - show all messages between these users
+        // Show ALL messages between these two users (ignore habitation_id)
         
         // Exclude deleted messages
         if (msg.sender_id === user.id && msg.deleted_by_sender) return false;
@@ -349,64 +350,42 @@ export const useMessages = (conversationUserId?: string) => {
     }
   };
 
-  // Delete entire conversation (soft delete for current user only)
+  // Delete entire conversation (soft delete for current user only) - by recipientId ONLY
   const deleteConversation = async (conversationId: string) => {
     if (!user) return;
 
-    const parts = conversationId.split("__");
-    const recipientId = parts[0];
-    const habitationId = parts.length > 1 ? parts[1] : null;
+    // Extract recipientId only (ignore any habitation suffix)
+    const recipientId = conversationId.split("__")[0];
 
-    // Build query for messages where user is SENDER
-    let senderQuery = supabase
+    // Delete ALL messages between these two users (regardless of habitation)
+    const senderResult = await supabase
       .from("messages")
       .update({ deleted_by_sender: true })
       .eq("sender_id", user.id)
       .eq("recipient_id", recipientId);
 
-    // Handle null habitation_id correctly
-    if (habitationId) {
-      senderQuery = senderQuery.eq("habitation_id", habitationId);
-    } else {
-      senderQuery = senderQuery.is("habitation_id", null);
-    }
-
-    const senderResult = await senderQuery;
     if (senderResult.error) {
       console.error("[deleteConversation] Sender update error:", senderResult.error);
     }
 
-    // Build query for messages where user is RECIPIENT  
-    let recipientQuery = supabase
+    const recipientResult = await supabase
       .from("messages")
       .update({ deleted_by_recipient: true })
       .eq("recipient_id", user.id)
       .eq("sender_id", recipientId);
 
-    if (habitationId) {
-      recipientQuery = recipientQuery.eq("habitation_id", habitationId);
-    } else {
-      recipientQuery = recipientQuery.is("habitation_id", null);
-    }
-
-    const recipientResult = await recipientQuery;
     if (recipientResult.error) {
       console.error("[deleteConversation] Recipient update error:", recipientResult.error);
     }
 
-    // Remove from local state immediately
+    // Remove ALL messages with this user from local state
     setMessages((prev) => 
       prev.filter((msg) => {
         const isInConversation =
           (msg.sender_id === user.id && msg.recipient_id === recipientId) ||
           (msg.sender_id === recipientId && msg.recipient_id === user.id);
         
-        // Match habitation correctly (null === null)
-        const habitationMatches = habitationId 
-          ? msg.habitation_id === habitationId 
-          : msg.habitation_id === null;
-
-        return !(isInConversation && habitationMatches);
+        return !isInConversation;
       })
     );
   };
