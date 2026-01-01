@@ -767,6 +767,8 @@ const VisitorConversation = () => {
                   job_title: null,
                   phone: habitationInfo.recipientPhone || null,
                   email: null,
+                  contact_user_id: targetUserId,
+                  habitation_id: habitationId,
                 }}
                 variant="ghost"
                 size="icon"
