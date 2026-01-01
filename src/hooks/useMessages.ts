@@ -205,7 +205,8 @@ export const useMessages = (conversationUserId?: string) => {
     // Parse conversation ID: recipientId or recipientId__habitationId
     const parts = conversationId.split("__");
     const recipientId = parts[0];
-    const habitationId = parts[1] || null;
+    // habitationId is only used for sending new messages, not for filtering display
+    // This allows showing all messages between two users regardless of habitation
 
     return messages
       .filter((msg) => {
@@ -215,8 +216,7 @@ export const useMessages = (conversationUserId?: string) => {
         
         if (!isParticipant) return false;
         
-        // Filter by habitation if specified
-        if (habitationId && msg.habitation_id !== habitationId) return false;
+        // Don't filter by habitation_id - show all messages between these users
         
         // Exclude deleted messages
         if (msg.sender_id === user.id && msg.deleted_by_sender) return false;
