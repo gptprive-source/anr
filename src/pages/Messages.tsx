@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, ChevronRight, Trash2, Plus, Home, Users } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, ChevronRight, Trash2, Plus, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
 import { Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import NewMessageToAnrDialog from "@/components/messages/NewMessageToAnrDialog";
 
 type StatusFilter = "all" | "unread" | "read";
 type DateFilter = "all" | "today" | "week" | "month";
@@ -26,6 +27,7 @@ const Messages = () => {
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [showNewMessage, setShowNewMessage] = useState(false);
 
   const {
     conversations,
@@ -143,11 +145,22 @@ const Messages = () => {
             </div>
           </div>
           
-          {unreadCount > 0 && (
-            <Badge variant="secondary" className="text-sm">
-              {unreadCount} non lu{unreadCount > 1 ? "s" : ""}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <Badge variant="secondary" className="text-sm">
+                {unreadCount} non lu{unreadCount > 1 ? "s" : ""}
+              </Badge>
+            )}
+            
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+              onClick={() => setShowNewMessage(true)}
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Search bar */}
@@ -302,6 +315,9 @@ const Messages = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* New message dialog */}
+      <NewMessageToAnrDialog open={showNewMessage} onOpenChange={setShowNewMessage} />
 
       <BottomNav />
     </div>
