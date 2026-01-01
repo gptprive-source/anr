@@ -179,6 +179,8 @@ const Chat = () => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const initChatRef = useRef(false);
+  const currentRecipientRef = useRef<string | null>(null);
 
   // Scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -187,11 +189,21 @@ const Chat = () => {
     });
   }, []);
 
-  // Initialize chat
+  // Initialize chat - only runs once per recipientId
   useEffect(() => {
+    // Skip if already initialized for this recipient
+    if (currentRecipientRef.current === recipientId && initChatRef.current) {
+      return;
+    }
+
     const initChat = async () => {
       if (!recipientId || !user) return;
+      
+      // Mark as initializing for this recipient
+      currentRecipientRef.current = recipientId;
+      initChatRef.current = true;
       setLoading(true);
+      
       try {
         // Get or create chat
         const chat = await getOrCreateChat(recipientId);
@@ -207,18 +219,23 @@ const Chat = () => {
         }
 
         // Fetch recipient profile
-        const {
-          data: profile
-        } = await supabase.from("profiles").select("id, first_name, last_name, avatar_url").eq("id", recipientId).maybeSingle();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, avatar_url")
+          .eq("id", recipientId)
+          .maybeSingle();
         setRecipient(profile);
       } catch (error) {
         console.error("Error initializing chat:", error);
+        // Reset on error to allow retry
+        initChatRef.current = false;
       } finally {
         setLoading(false);
       }
     };
     initChat();
-  }, [recipientId, user, getOrCreateChat, getChatMessages, markAsRead]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipientId, user?.id]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
