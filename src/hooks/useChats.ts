@@ -76,29 +76,37 @@ export const useChats = () => {
 
       if (error) throw error;
 
-      // Fetch other user profiles for each chat
+      // Filter out chats deleted for the current user and fetch profiles
       const chatsWithProfiles = await Promise.all(
-        (chatsData || []).map(async (chat) => {
-          const otherUserId = chat.participant1_id === user.id 
-            ? chat.participant2_id 
-            : chat.participant1_id;
+        (chatsData || [])
+          .filter((chat) => {
+            // Check if this chat is deleted for the current user
+            const isParticipant1 = chat.participant1_id === user.id;
+            if (isParticipant1 && chat.deleted_for_p1) return false;
+            if (!isParticipant1 && chat.deleted_for_p2) return false;
+            return true;
+          })
+          .map(async (chat) => {
+            const otherUserId = chat.participant1_id === user.id 
+              ? chat.participant2_id 
+              : chat.participant1_id;
 
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("id, first_name, last_name, avatar_url")
-            .eq("id", otherUserId)
-            .maybeSingle();
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("id, first_name, last_name, avatar_url")
+              .eq("id", otherUserId)
+              .maybeSingle();
 
-          return {
-            ...chat,
-            other_user: profile || {
-              id: otherUserId,
-              first_name: null,
-              last_name: null,
-              avatar_url: null,
-            },
-          };
-        })
+            return {
+              ...chat,
+              other_user: profile || {
+                id: otherUserId,
+                first_name: null,
+                last_name: null,
+                avatar_url: null,
+              },
+            };
+          })
       );
 
       setChats(chatsWithProfiles);
@@ -452,17 +460,26 @@ export const useChats = () => {
     return data;
   }, [user]);
 
-  // Delete an entire chat
+  // Delete a chat for the current user only (not for the other participant)
   const deleteChat = useCallback(async (chatId: string): Promise<void> => {
     if (!user) return;
 
+    // Find the chat to determine which participant the user is
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    const isParticipant1 = chat.participant1_id === user.id;
+    const updateField = isParticipant1 ? "deleted_for_p1" : "deleted_for_p2";
+
+    // Mark as deleted for this user only
     await supabase
       .from("chats")
-      .delete()
+      .update({ [updateField]: true })
       .eq("id", chatId);
 
+    // Remove from local state
     setChats(prev => prev.filter(c => c.id !== chatId));
-  }, [user]);
+  }, [user, chats]);
 
   // Initial fetch
   useEffect(() => {
