@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react";
 import { Home, QrCode, User, Building2, Users, MessageSquare } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useProCompanyCheck } from "@/hooks/useProCompanyCheck";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { useChats } from "@/hooks/useChats";
 
 interface NavItem {
   icon: React.ReactNode;
@@ -16,94 +14,7 @@ interface NavItem {
 const BottomNav = () => {
   const location = useLocation();
   const { isProUser } = useProCompanyCheck();
-  const { user } = useAuth();
-  const [unreadMessages, setUnreadMessages] = useState(0);
-
-  // Fetch unread messages count
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!user) {
-        setUnreadMessages(0);
-        return;
-      }
-
-      // Check if user is a resident
-      const { data: residentData } = await supabase
-        .from("residents")
-        .select("habitation_id")
-        .eq("user_id", user.id)
-        .eq("status", "verified")
-        .maybeSingle();
-
-      if (residentData?.habitation_id) {
-        // Resident: count unread visitor messages that are for the whole residence OR for this specific user
-        const { data: messagesData } = await (supabase
-          .from("visitor_messages" as any)
-          .select("id, recipient_user_id", { count: "exact" })
-          .eq("habitation_id", residentData.habitation_id)
-          .eq("is_read", false) as any);
-        
-        // Filter: messages for everyone (null) OR specifically for this user
-        const filteredCount = (messagesData || []).filter((m: any) => 
-          !m.recipient_user_id || m.recipient_user_id === user.id
-        ).length;
-        
-        setUnreadMessages(filteredCount);
-      } else {
-        // Connected visitor: count unread replies
-        const { data: cardData } = await supabase
-          .from("visitor_business_cards")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (cardData) {
-          // Get message IDs for this visitor
-          const { data: messagesData } = await (supabase
-            .from("visitor_messages" as any)
-            .select("id")
-            .eq("business_card_id", cardData.id) as any);
-
-          if (messagesData && messagesData.length > 0) {
-            const messageIds = messagesData.map((m: any) => m.id);
-            const { count } = await (supabase
-              .from("message_replies" as any)
-              .select("*", { count: "exact", head: true })
-              .in("original_message_id", messageIds)
-              .eq("is_read", false) as any);
-            
-            setUnreadMessages(count || 0);
-          }
-        }
-      }
-    };
-
-    fetchUnreadCount();
-
-    // Subscribe to changes (all events: INSERT, UPDATE, DELETE)
-    const channel = supabase
-      .channel('unread-messages-count')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'visitor_messages' },
-        () => {
-          // Small delay to ensure DB is updated before refetching
-          setTimeout(fetchUnreadCount, 100);
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'message_replies' },
-        () => {
-          setTimeout(fetchUnreadCount, 100);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
+  const { unreadCount } = useChats();
 
   const navItems: NavItem[] = [
     { icon: <Home className="w-6 h-6" />, label: "Dashboard", path: "/dashboard" },
@@ -112,7 +23,7 @@ const BottomNav = () => {
       icon: <MessageSquare className="w-6 h-6" />, 
       label: "Messages", 
       path: "/messages",
-      badge: unreadMessages 
+      badge: unreadCount 
     },
     { icon: <Users className="w-6 h-6" />, label: "Contacts", path: "/contacts" },
     ...(isProUser ? [{ icon: <Building2 className="w-6 h-6" />, label: "PRO", path: "/pro" }] : []),

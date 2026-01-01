@@ -315,12 +315,11 @@ const CallInterface = memo(({
             // TODO: Create missed call message using new chat system (Phase 6)
             logger.log("[CallInterface] Missed call from", visitorUserId, "to", recipientId);
           }
-          }
         }
-        
-        // Redirect visitor to conversation
-        setShouldRedirectToConversation(true);
       }
+        
+      // Redirect visitor to conversation
+      setShouldRedirectToConversation(true);
       
       // End the entire call
       await supabase
