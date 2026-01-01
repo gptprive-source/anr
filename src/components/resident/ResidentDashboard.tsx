@@ -244,7 +244,7 @@ const ResidentDashboard = () => {
                 </Button>
                 <Button variant="default" size="sm" onClick={() => navigate(`/visitor?code=${habitationData.anr.code}`)}>
                   <Phone className="w-4 h-4 mr-2" />
-                  Appel interphone
+                  Appel Interphone
                 </Button>
               </div>
             </div>
