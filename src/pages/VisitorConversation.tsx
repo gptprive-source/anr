@@ -52,15 +52,22 @@ const formatDateSeparator = (date: Date) => {
 };
 
 const VisitorConversation = () => {
-  const { habitationId } = useParams<{ habitationId: string }>();
+  const { habitationId: conversationKey } = useParams<{ habitationId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const deviceId = getDeviceId();
   
-  // Get targetUserId from navigation state (for private messages)
-  const targetUserId = (location.state as { targetUserId?: string })?.targetUserId || null;
+  // Parse conversation key to extract habitationId and recipient info
+  // Format: habitationId__residence OR habitationId__private_userId
+  const isPrivateConversation = conversationKey?.includes("__private_") || false;
+  const isResidenceConversation = conversationKey?.includes("__residence") || false;
+  const habitationId = conversationKey?.split("__")[0] || conversationKey;
+  const recipientUserIdFromKey = isPrivateConversation ? conversationKey?.split("__private_")[1] : null;
+  
+  // Get targetUserId from navigation state (for NEW private messages) OR from URL (for existing conversations)
+  const targetUserId = recipientUserIdFromKey || (location.state as { targetUserId?: string })?.targetUserId || null;
 
   // Templates
   const { templates: customTemplates, incrementUsage } = useVisitorCustomTemplates();
@@ -142,6 +149,7 @@ const VisitorConversation = () => {
 
       // Get ALL messages sent to this habitation by this visitor (by device_id OR business_card_id)
       // Include deleted messages to fetch their replies
+      // Also include recipient_user_id for filtering
       let messagesQuery = supabase
         .from("visitor_messages")
         .select(`
@@ -155,7 +163,8 @@ const VisitorConversation = () => {
           is_encrypted,
           visitor_device_id,
           business_card_id,
-          deleted_by_visitor
+          deleted_by_visitor,
+          recipient_user_id
         `)
         .eq("habitation_id", habitationId)
         .order("created_at", { ascending: true });
@@ -167,7 +176,21 @@ const VisitorConversation = () => {
         messagesQuery = messagesQuery.eq("visitor_device_id", deviceId);
       }
 
-      const { data: sentMessages } = await messagesQuery;
+      const { data: sentMessagesRaw } = await messagesQuery;
+      
+      // Filter messages by recipient_user_id based on conversation type
+      const sentMessages = (sentMessagesRaw || []).filter((msg: any) => {
+        if (isPrivateConversation) {
+          // Private conversation: only show messages to this specific recipient
+          return msg.recipient_user_id === targetUserId;
+        } else if (isResidenceConversation) {
+          // Residence conversation: only show messages to the whole residence
+          return !msg.recipient_user_id;
+        } else {
+          // Legacy URL without __residence or __private: show all messages
+          return true;
+        }
+      });
 
       const allMessages: Message[] = [];
       let mostRecentNonDeletedMessageId: string | null = null;

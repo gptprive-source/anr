@@ -165,12 +165,12 @@ const VisitorMessages = () => {
 
             return (
               <Card 
-                key={conv.habitation_id}
+                key={conv.conversation_key}
                 className={cn(
                   "cursor-pointer transition-all hover:shadow-md",
                   hasUnread ? "border-primary border-2" : "border-border"
                 )}
-                onClick={() => navigate(`/visitor-conversation/${conv.habitation_id}`)}
+                onClick={() => navigate(`/visitor-conversation/${conv.conversation_key}`)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
