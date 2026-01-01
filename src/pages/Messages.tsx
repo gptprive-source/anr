@@ -130,10 +130,11 @@ const Messages = () => {
       const baseVisitorId = msg.business_card_id || msg.visitor_device_id || msg.visitor_phone || `anon-${msg.id}`;
       
       // Create separate conversation keys for residence vs private messages
-      // Format: visitorId__residence OR visitorId__private
-      const isPrivateMessage = !!(msg as any).recipient_user_id;
+      // Format: visitorId__residence OR visitorId__private_recipientUserId
+      const recipientUserId = (msg as any).recipient_user_id;
+      const isPrivateMessage = !!recipientUserId;
       const conversationKey = isPrivateMessage 
-        ? `${baseVisitorId}__private` 
+        ? `${baseVisitorId}__private_${recipientUserId}` 
         : `${baseVisitorId}__residence`;
       
       const existing = groups.get(conversationKey);
