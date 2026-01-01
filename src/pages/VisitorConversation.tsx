@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Send, Lock, Home, Mic, Loader2, Paperclip, X, Image, Video, Camera, Check, CheckCheck, Smile, MessageSquare, User } from "lucide-react";
+import { ArrowLeft, Send, Lock, Home, Mic, Loader2, Paperclip, X, Image, Video, Camera, Check, CheckCheck, Smile, MessageSquare, User, UserPlus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +20,8 @@ import { fr } from "date-fns/locale";
 import VisitorFooter from "@/components/layout/VisitorFooter";
 import BottomNav from "@/components/layout/BottomNav";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserPlan } from "@/hooks/useUserPlan";
+import { AddToContactsButton } from "@/components/messages/AddToContactsButton";
 
 // Emoji categories (same as Conversation.tsx)
 const EMOJI_CATEGORIES = {
@@ -46,6 +48,9 @@ interface HabitationInfo {
   anr_code: string;
   anr_address: string;
   recipientName?: string | null; // Name of the recipient for private conversations
+  recipientFirstName?: string | null;
+  recipientLastName?: string | null;
+  recipientPhone?: string | null;
 }
 
 const formatDateSeparator = (date: Date) => {
@@ -60,6 +65,7 @@ const VisitorConversation = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { limits } = useUserPlan();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const deviceId = getDeviceId();
   
@@ -139,16 +145,23 @@ const VisitorConversation = () => {
         console.error("[VisitorConversation] Error fetching habitation:", habError);
       }
 
-      // Fetch recipient name for private conversations
+      // Fetch recipient info for private conversations
       let recipientName: string | null = null;
+      let recipientFirstName: string | null = null;
+      let recipientLastName: string | null = null;
+      let recipientPhone: string | null = null;
+      
       if (isPrivateConversation && targetUserId) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("first_name, last_name")
+          .select("first_name, last_name, phone_number")
           .eq("id", targetUserId)
           .maybeSingle();
         
         if (profile) {
+          recipientFirstName = profile.first_name;
+          recipientLastName = profile.last_name;
+          recipientPhone = profile.phone_number;
           recipientName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Résident";
         }
       }
@@ -160,6 +173,9 @@ const VisitorConversation = () => {
           anr_code: anrData?.code || "",
           anr_address: anrData?.address || "",
           recipientName,
+          recipientFirstName,
+          recipientLastName,
+          recipientPhone,
         });
         console.log("[VisitorConversation] Habitation found:", habitation.name, "recipient:", recipientName);
       } else {
@@ -739,6 +755,24 @@ const VisitorConversation = () => {
                 </div>
               </div>
             </div>
+
+            {/* Add to contacts button for subscribed visitors in private conversations */}
+            {limits.hasActiveSubscription && isPrivateConversation && habitationInfo?.recipientName && (
+              <AddToContactsButton
+                businessCard={{
+                  card_type: "individual",
+                  first_name: habitationInfo.recipientFirstName || null,
+                  last_name: habitationInfo.recipientLastName || null,
+                  company_name: null,
+                  job_title: null,
+                  phone: habitationInfo.recipientPhone || null,
+                  email: null,
+                }}
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/10"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -1016,7 +1050,7 @@ const VisitorConversation = () => {
         </div>
       </div>
 
-      {user ? <BottomNav /> : <VisitorFooter />}
+      {limits.hasActiveSubscription ? <BottomNav /> : <VisitorFooter />}
     </div>
   );
 };
