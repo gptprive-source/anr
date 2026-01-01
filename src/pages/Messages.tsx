@@ -128,10 +128,7 @@ const Messages = () => {
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>}
           </div>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/visitor")} className="bg-[#fcfcfc] text-[#084f91]">
-            <Phone className="w-4 h-4 mr-2" />
-            Appel Interphone
-          </Button>
+          
         </div>
         
         {/* Search bar */}
