@@ -256,7 +256,7 @@ const ResidentDashboard = () => {
           <QuickAction icon={<Users className="w-6 h-6" />} label="Résidents" count={habitationData.residents.length} onClick={() => navigate("/residents")} color="blue" />
           {flags.visitorTextMessagesEnabled && <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" onClick={() => navigate("/messages")} color="purple" />}
           
-          <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Notifications"} onClick={toggleMute} active={isMuted} color="orange" />
+          <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Recevoir appels"} onClick={toggleMute} active={isMuted} color="orange" />
           <QuickAction icon={<Receipt className="w-6 h-6" />} label="Commandes" onClick={() => navigate("/orders")} color="teal" />
           <QuickAction icon={<ShoppingCart className="w-6 h-6" />} label="Boutique" onClick={() => navigate("/shop")} color="pink" />
           {flags.doorOpeningEnabled && <QuickAction icon={<DoorOpen className="w-6 h-6" />} label="Accès porte" onClick={() => navigate("/door-access")} color="rose" />}
