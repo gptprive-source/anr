@@ -59,26 +59,34 @@ const MultiHabitatSelector = () => {
       if (habitationsData && habitationsData.length > 0) {
         const habitationIds = habitationsData.map(h => h.id);
         
-        // Fetch all residents (not just owners) for count
+        // Step 1: Fetch all residents (not just owners) for count
         const { data: allResidentsData } = await supabase
           .from("residents")
           .select("habitation_id, user_id")
           .in("habitation_id", habitationIds)
           .eq("status", "verified");
 
-        // Fetch owners for display names
+        // Step 2: Fetch owners (only user_id and habitation_id)
         const { data: ownersData } = await supabase
           .from("residents")
-          .select(`
-            habitation_id,
-            user_id,
-            profiles:user_id (
-              first_name,
-              last_name
-            )
-          `)
+          .select("habitation_id, user_id")
           .in("habitation_id", habitationIds)
           .eq("is_owner", true);
+
+        // Step 3: Fetch profiles for all owner user_ids
+        const ownerUserIds = (ownersData || []).map(o => o.user_id);
+        let profilesMap = new Map<string, { first_name: string | null; last_name: string | null }>();
+        
+        if (ownerUserIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, first_name, last_name")
+            .in("id", ownerUserIds);
+          
+          profilesMap = new Map(
+            (profilesData || []).map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }])
+          );
+        }
 
         // Combine habitations with their owners and resident counts
         const formattedHabitats: Habitat[] = habitationsData.map((hab) => {
@@ -88,11 +96,14 @@ const MultiHabitatSelector = () => {
             id: hab.id,
             name: hab.name,
             floor: hab.floor,
-            residents: owners.map((r: any) => ({
-              first_name: r.profiles?.first_name || null,
-              last_name: r.profiles?.last_name || null,
-              user_id: r.user_id,
-            })),
+            residents: owners.map((r) => {
+              const profile = profilesMap.get(r.user_id);
+              return {
+                first_name: profile?.first_name || null,
+                last_name: profile?.last_name || null,
+                user_id: r.user_id,
+              };
+            }),
             residentCount: allResidents.length,
           };
         });

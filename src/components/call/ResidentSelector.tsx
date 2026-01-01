@@ -39,33 +39,53 @@ export const ResidentSelector = ({
   useEffect(() => {
     const fetchResidents = async () => {
       try {
-        // Fetch verified residents with their profiles
-        const { data: residentsData, error } = await supabase
+        // Step 1: Fetch verified residents user_ids
+        const { data: residentsData, error: residentsError } = await supabase
           .from("residents")
-          .select(`
-            user_id,
-            profiles:user_id (
-              first_name,
-              last_name
-            )
-          `)
+          .select("user_id")
           .eq("habitation_id", habitationId)
           .eq("status", "verified");
 
-        if (error) {
-          console.error("[ResidentSelector] Query error:", error);
-          throw error;
+        if (residentsError) {
+          console.error("[ResidentSelector] Residents query error:", residentsError);
+          throw residentsError;
         }
 
-        console.log("[ResidentSelector] Residents data:", residentsData);
+        if (!residentsData || residentsData.length === 0) {
+          setResidents([]);
+          setLoading(false);
+          return;
+        }
 
-        const formattedResidents = (residentsData || []).map((r: any) => ({
-          user_id: r.user_id,
-          first_name: r.profiles?.first_name || null,
-          last_name: r.profiles?.last_name || null,
-          avatar_url: null,
-        }));
+        const userIds = residentsData.map(r => r.user_id);
 
+        // Step 2: Fetch profiles for these user_ids
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name")
+          .in("id", userIds);
+
+        if (profilesError) {
+          console.error("[ResidentSelector] Profiles query error:", profilesError);
+          throw profilesError;
+        }
+
+        // Map profiles by id for easy lookup
+        const profilesMap = new Map(
+          (profilesData || []).map(p => [p.id, p])
+        );
+
+        const formattedResidents = residentsData.map(r => {
+          const profile = profilesMap.get(r.user_id);
+          return {
+            user_id: r.user_id,
+            first_name: profile?.first_name || null,
+            last_name: profile?.last_name || null,
+            avatar_url: null,
+          };
+        });
+
+        console.log("[ResidentSelector] Formatted residents:", formattedResidents);
         setResidents(formattedResidents);
       } catch (error) {
         console.error("[ResidentSelector] Error:", error);

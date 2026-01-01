@@ -26,10 +26,8 @@ import { useNavigate } from "react-router-dom";
 interface Resident {
   user_id: string;
   is_owner: boolean;
-  profiles: {
-    first_name: string | null;
-    last_name: string | null;
-  } | null;
+  first_name: string | null;
+  last_name: string | null;
 }
 
 interface DeleteAccountDialogProps {
@@ -92,23 +90,43 @@ const DeleteAccountDialog = ({ open, onOpenChange, profile }: DeleteAccountDialo
         setIsOwner(true);
         setHabitationId(residentData.habitation_id);
 
-        // Fetch other residents for this habitation
-        const { data: residents, error: residentsError } = await supabase
+        // Step 1: Fetch other residents for this habitation (just user_ids)
+        const { data: residentsData, error: residentsError } = await supabase
           .from("residents")
-          .select(`
-            user_id,
-            is_owner,
-            profiles:user_id (
-              first_name,
-              last_name
-            )
-          `)
+          .select("user_id, is_owner")
           .eq("habitation_id", residentData.habitation_id)
           .eq("status", "verified")
           .neq("user_id", user.id);
 
         if (residentsError) throw residentsError;
-        setOtherResidents(residents as unknown as Resident[]);
+
+        // Step 2: Fetch profiles for these residents
+        const userIds = (residentsData || []).map(r => r.user_id);
+        let profilesMap = new Map<string, { first_name: string | null; last_name: string | null }>();
+        
+        if (userIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, first_name, last_name")
+            .in("id", userIds);
+          
+          profilesMap = new Map(
+            (profilesData || []).map(p => [p.id, { first_name: p.first_name, last_name: p.last_name }])
+          );
+        }
+
+        // Combine residents with their profile data
+        const formattedResidents: Resident[] = (residentsData || []).map(r => {
+          const profile = profilesMap.get(r.user_id);
+          return {
+            user_id: r.user_id,
+            is_owner: r.is_owner,
+            first_name: profile?.first_name || null,
+            last_name: profile?.last_name || null,
+          };
+        });
+        
+        setOtherResidents(formattedResidents);
       } else {
         setIsOwner(false);
         setHabitationId(null);
@@ -272,7 +290,7 @@ const DeleteAccountDialog = ({ open, onOpenChange, profile }: DeleteAccountDialo
               <SelectContent>
                 {otherResidents.map((resident) => (
                   <SelectItem key={resident.user_id} value={resident.user_id}>
-                    {resident.profiles?.first_name} {resident.profiles?.last_name}
+                    {resident.first_name} {resident.last_name}
                   </SelectItem>
                 ))}
               </SelectContent>
