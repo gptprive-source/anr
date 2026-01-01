@@ -242,10 +242,6 @@ const ResidentDashboard = () => {
                   <Share2 className="w-4 h-4 mr-2" />
                   Partager mon ANR
                 </Button>
-                <Button variant="default" size="sm" onClick={() => navigate(`/visitor?code=${habitationData.anr.code}`)} className="w-full mt-[13px] mb-[8px]">
-                  <Phone className="w-4 h-4 mr-2" />
-                  Appel Interphone
-                </Button>
               </div>
             </div>
           </div>
@@ -253,7 +249,7 @@ const ResidentDashboard = () => {
 
         {/* Quick actions - Neumorphic grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <QuickAction icon={<Users className="w-6 h-6" />} label="Résidents" count={habitationData.residents.length} onClick={() => navigate("/residents")} color="blue" />
+          <QuickAction icon={<Phone className="w-6 h-6" />} label="Appel Interphone" onClick={() => navigate(`/visitor?code=${habitationData.anr.code}`)} color="blue" />
           {flags.visitorTextMessagesEnabled && <QuickAction icon={<MessageSquare className="w-6 h-6" />} label="Messages" onClick={() => navigate("/messages")} color="purple" />}
           
           <QuickAction icon={isMuted ? <BellOff className="w-6 h-6" /> : <BellRing className="w-6 h-6" />} label={isMuted ? "En sourdine" : "Recevoir appels"} onClick={toggleMute} active={isMuted} color="orange" />
