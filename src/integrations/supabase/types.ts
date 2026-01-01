@@ -887,6 +887,54 @@ export type Database = {
           },
         ]
       }
+      direct_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean | null
+          media_type: string | null
+          media_url: string | null
+          message: string | null
+          read_at: string | null
+          recipient_contact_id: string | null
+          recipient_email: string | null
+          recipient_phone: string | null
+          sender_id: string
+          updated_at: string
+          voice_message_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          message?: string | null
+          read_at?: string | null
+          recipient_contact_id?: string | null
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          sender_id: string
+          updated_at?: string
+          voice_message_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          message?: string | null
+          read_at?: string | null
+          recipient_contact_id?: string | null
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          sender_id?: string
+          updated_at?: string
+          voice_message_url?: string | null
+        }
+        Relationships: []
+      }
       doming_orders: {
         Row: {
           anr_id: string
