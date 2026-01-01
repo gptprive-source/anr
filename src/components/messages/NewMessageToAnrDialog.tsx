@@ -25,6 +25,7 @@ interface Habitation {
   name: string;
   anr_address: string;
   owner_name?: string;
+  owner_user_id: string | null;
 }
 
 interface Resident {
@@ -145,7 +146,8 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
           id: h.id,
           name: h.name,
           anr_address: anr.address,
-          owner_name: ownerName
+          owner_name: ownerName,
+          owner_user_id: ownerResident?.user_id || null
         };
       }));
 
@@ -227,10 +229,10 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
   };
 
   const handleGoToResidence = () => {
-    if (selectedHabitation) {
+    if (selectedHabitation && selectedHabitation.owner_user_id) {
       onOpenChange(false);
-      // Navigate to unified conversation with the residence (owner)
-      navigate(`/chat/${selectedHabitation.id}`);
+      // Navigate to unified conversation with the owner, passing habitation context
+      navigate(`/chat/${selectedHabitation.owner_user_id}__${selectedHabitation.id}`);
     }
   };
 

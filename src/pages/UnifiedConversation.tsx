@@ -7,7 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
-import { useMessages, Message } from "@/hooks/useMessages";
+import { useMessages, Message, Conversation } from "@/hooks/useMessages";
 import { useToast } from "@/hooks/use-toast";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
@@ -15,6 +15,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import { format, isToday, isYesterday } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 const EMOJI_LIST = ["😀", "😊", "😍", "🥰", "😎", "🤔", "👍", "👋", "❤️", "🎉", "✅", "🙏", "💪", "🔥", "⭐", "📞", "🏠", "🔑"];
 
@@ -42,21 +43,87 @@ const UnifiedConversation = () => {
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [fallbackConversation, setFallbackConversation] = useState<Conversation | null>(null);
+  const [loadingFallback, setLoadingFallback] = useState(false);
 
-  // Get conversation info and messages
-  const conversation = conversations.find((c) => c.id === id);
-  const conversationMessages = id ? getConversationMessages(id) : [];
+  // Parse ID: format can be "userId" or "userId__habitationId"
+  const parsedId = id?.includes("__") ? id.split("__") : [id, null];
+  const recipientId = parsedId[0] || "";
+  const habitationIdFromUrl = parsedId[1];
+
+  // Get conversation info - try exact match first, then by recipientId
+  const conversation = conversations.find((c) => c.id === id) || 
+                       conversations.find((c) => c.recipientId === recipientId);
+  
+  const conversationMessages = recipientId ? getConversationMessages(recipientId) : [];
+
+  // Fetch recipient info if no existing conversation
+  useEffect(() => {
+    if (!id || conversation || loading || loadingFallback) return;
+    
+    const fetchRecipientInfo = async () => {
+      setLoadingFallback(true);
+      try {
+        // Fetch profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, avatar_url")
+          .eq("id", recipientId)
+          .maybeSingle();
+
+        if (!profile) {
+          setLoadingFallback(false);
+          return;
+        }
+
+        let habitationInfo: { id: string; name: string; anr?: { address: string } | null } | null = null;
+        if (habitationIdFromUrl) {
+          const { data: hab } = await supabase
+            .from("habitations")
+            .select("id, name, anr:anrs(address)")
+            .eq("id", habitationIdFromUrl)
+            .maybeSingle();
+          habitationInfo = hab as typeof habitationInfo;
+        }
+
+        const recipientName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Utilisateur";
+
+        setFallbackConversation({
+          id: id,
+          recipientId: recipientId,
+          recipientName: recipientName,
+          recipientAvatarUrl: profile.avatar_url,
+          habitationId: habitationIdFromUrl,
+          habitationName: habitationInfo?.name || null,
+          anrAddress: habitationInfo?.anr?.address || null,
+          lastMessage: null,
+          lastMessageDate: new Date(),
+          unreadCount: 0,
+          totalMessages: 0,
+        });
+      } catch (err) {
+        console.error("Error fetching recipient info:", err);
+      } finally {
+        setLoadingFallback(false);
+      }
+    };
+
+    fetchRecipientInfo();
+  }, [id, conversation, loading, loadingFallback, recipientId, habitationIdFromUrl]);
+
+  // Use existing conversation or fallback
+  const activeConversation = conversation || fallbackConversation;
 
   // Mark messages as read
   useEffect(() => {
-    if (!user || !id) return;
+    if (!user || !recipientId) return;
     
     conversationMessages.forEach((msg) => {
       if (msg.recipient_id === user.id && !msg.is_read) {
         markAsRead(msg.id);
       }
     });
-  }, [conversationMessages, user, id, markAsRead]);
+  }, [conversationMessages, user, recipientId, markAsRead]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -76,14 +143,14 @@ const UnifiedConversation = () => {
 
   // Handle send
   const handleSend = async () => {
-    if (!id || !conversation) return;
+    if (!activeConversation) return;
     if (!newMessage.trim() && !audioBlob && !selectedFile) return;
 
     setSending(true);
     try {
       const result = await sendMessage({
-        recipientId: conversation.recipientId,
-        habitationId: conversation.habitationId || undefined,
+        recipientId: activeConversation.recipientId,
+        habitationId: activeConversation.habitationId || undefined,
         message: newMessage.trim() || undefined,
         voiceBlob: audioBlob || undefined,
         mediaFile: selectedFile || undefined,
@@ -120,7 +187,7 @@ const UnifiedConversation = () => {
     setShowVoiceRecorder(false);
   };
 
-  if (loading) {
+  if (loading || loadingFallback) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -128,7 +195,7 @@ const UnifiedConversation = () => {
     );
   }
 
-  if (!conversation) {
+  if (!activeConversation) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <p className="text-muted-foreground mb-4">Conversation introuvable</p>
@@ -159,20 +226,20 @@ const UnifiedConversation = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <Avatar className="h-10 w-10">
-            {conversation.recipientAvatarUrl ? (
-              <AvatarImage src={conversation.recipientAvatarUrl} />
+            {activeConversation.recipientAvatarUrl ? (
+              <AvatarImage src={activeConversation.recipientAvatarUrl} />
             ) : (
               <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground">
-                {conversation.recipientName.slice(0, 2).toUpperCase()}
+                {activeConversation.recipientName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             )}
           </Avatar>
           <div className="flex-1 min-w-0">
-            <h1 className="font-semibold truncate">{conversation.recipientName}</h1>
-            {conversation.habitationName && (
+            <h1 className="font-semibold truncate">{activeConversation.recipientName}</h1>
+            {activeConversation.habitationName && (
               <p className="text-xs text-primary-foreground/70 truncate">
-                {conversation.habitationName}
-                {conversation.anrAddress && ` • ${conversation.anrAddress}`}
+                {activeConversation.habitationName}
+                {activeConversation.anrAddress && ` • ${activeConversation.anrAddress}`}
               </p>
             )}
           </div>
