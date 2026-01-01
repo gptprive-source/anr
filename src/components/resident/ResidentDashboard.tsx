@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Shield, MapPin, Copy, Check, Loader2, BellOff, BellRing, Share2, MessageSquare, DoorOpen, ShoppingCart, Receipt, Sparkles, Mail, Package, Gift } from "lucide-react";
+import { Users, Shield, MapPin, Copy, Check, Loader2, BellOff, BellRing, Share2, MessageSquare, DoorOpen, ShoppingCart, Receipt, Sparkles, Mail, Package, Gift, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -237,10 +237,16 @@ const ResidentDashboard = () => {
                 </span>
               </div>
               
-              <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
-                <Share2 className="w-4 h-4 mr-2" />
-                Partager mon ANR
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)}>
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Partager mon ANR
+                </Button>
+                <Button variant="default" size="sm" onClick={() => navigate(`/visitor?code=${habitationData.anr.code}`)}>
+                  <Phone className="w-4 h-4 mr-2" />
+                  Appel interphone
+                </Button>
+              </div>
             </div>
           </div>
         </div>
