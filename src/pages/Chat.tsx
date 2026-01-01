@@ -223,6 +223,7 @@ const Chat = () => {
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [recipient, setRecipient] = useState<RecipientProfile | null>(null);
+  const [recipientAnr, setRecipientAnr] = useState<{ code: string; habitationId: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState("");
@@ -236,16 +237,19 @@ const Chat = () => {
 
   // Handle call button - navigates to call page with ANR context
   const handleCallClick = () => {
-    if (anrContext.anrCode) {
-      // Has ANR context: go to call page with full context
-      navigate(`/call/${anrContext.anrCode}`, {
+    // Priority: navigation state context > fetched recipient ANR
+    const anrCode = anrContext.anrCode || recipientAnr?.code;
+    const habitationId = anrContext.habitationId || recipientAnr?.habitationId;
+
+    if (anrCode) {
+      navigate(`/call/${anrCode}`, {
         state: {
-          habitationId: anrContext.habitationId,
+          habitationId,
           targetUserId: recipientId
         }
       });
     } else {
-      // No ANR context: redirect to scanner
+      // No ANR found: redirect to scanner
       navigate(`/visitor?target=${recipientId}`);
     }
   };
@@ -289,6 +293,36 @@ const Chat = () => {
           data: profile
         } = await supabase.from("profiles").select("id, first_name, last_name, avatar_url").eq("id", recipientId).maybeSingle();
         setRecipient(profile);
+
+        // Fetch recipient's ANR for calling (if they are a resident)
+        const { data: residentData } = await supabase
+          .from("residents")
+          .select("habitation_id")
+          .eq("user_id", recipientId)
+          .maybeSingle();
+
+        if (residentData?.habitation_id) {
+          const { data: habData } = await supabase
+            .from("habitations")
+            .select("id, anr_id")
+            .eq("id", residentData.habitation_id)
+            .maybeSingle();
+          
+          if (habData?.anr_id) {
+            const { data: anrData } = await supabase
+              .from("anrs")
+              .select("code")
+              .eq("id", habData.anr_id)
+              .maybeSingle();
+            
+            if (anrData?.code) {
+              setRecipientAnr({
+                code: anrData.code,
+                habitationId: habData.id
+              });
+            }
+          }
+        }
       } catch (error) {
         console.error("Error initializing chat:", error);
         // Reset on error to allow retry
