@@ -228,21 +228,34 @@ const Conversation = () => {
 
         // Fetch visitor messages - query will be built based on ID type
 
+        // Parse conversation key format: visitorId__private or visitorId__residence
+        let visitorId = id;
+        let isPrivateConversation = false;
+        let isResidenceConversation = false;
+        
+        if (id.includes("__private")) {
+          visitorId = id.replace("__private", "");
+          isPrivateConversation = true;
+        } else if (id.includes("__residence")) {
+          visitorId = id.replace("__residence", "");
+          isResidenceConversation = true;
+        }
+
         // Detect ID type for conversation lookup
-        const isAnonId = id.startsWith("anon-");
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-        const isPhoneNumber = /^\+?[0-9\s\-()]+$/.test(id) && id.length >= 10;
+        const isAnonId = visitorId.startsWith("anon-");
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(visitorId);
+        const isPhoneNumber = /^\+?[0-9\s\-()]+$/.test(visitorId) && visitorId.length >= 10;
         let data: any[] | null = null;
         let error: any = null;
         if (isAnonId) {
-          const messageId = id.replace("anon-", "");
+          const messageId = visitorId.replace("anon-", "");
           const result = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("id", messageId).order("created_at", {
             ascending: true
           });
           data = result.data;
           error = result.error;
         } else if (isPhoneNumber) {
-          const result = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_phone", id).order("created_at", {
+          const result = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_phone", visitorId).order("created_at", {
             ascending: true
           });
           data = result.data;
@@ -250,7 +263,7 @@ const Conversation = () => {
         } else if (isUuid) {
           // UUID can be business_card_id OR visitor_device_id
           // Priority: business_card_id (stable identifier for connected users)
-          const byCardId = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("business_card_id", id).order("created_at", {
+          const byCardId = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("business_card_id", visitorId).order("created_at", {
             ascending: true
           });
           if (byCardId.data && byCardId.data.length > 0) {
@@ -258,7 +271,7 @@ const Conversation = () => {
             error = byCardId.error;
           } else {
             // Fallback: search by visitor_device_id (anonymous visitors)
-            const byDeviceId = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_device_id", id).order("created_at", {
+            const byDeviceId = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_device_id", visitorId).order("created_at", {
               ascending: true
             });
             data = byDeviceId.data;
@@ -266,7 +279,7 @@ const Conversation = () => {
           }
         } else {
           // Default: treat as visitor_device_id
-          const result = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_device_id", id).order("created_at", {
+          const result = await supabase.from("visitor_messages" as any).select("*, business_card:visitor_business_cards(*)").eq("habitation_id", residentData.habitation_id).eq("visitor_device_id", visitorId).order("created_at", {
             ascending: true
           });
           data = result.data;
@@ -274,10 +287,19 @@ const Conversation = () => {
         }
         if (error) throw error;
         
-        // Filter messages: only show messages for the whole residence OR specifically for this user
-        const filteredData = (data || []).filter((m: any) => 
-          !m.recipient_user_id || m.recipient_user_id === user.id
-        );
+        // Filter messages based on conversation type
+        const filteredData = (data || []).filter((m: any) => {
+          if (isPrivateConversation) {
+            // Only show private messages to this user
+            return m.recipient_user_id === user.id;
+          } else if (isResidenceConversation) {
+            // Only show messages to the whole residence (no recipient)
+            return !m.recipient_user_id;
+          } else {
+            // Legacy: show all messages for this user (private + residence)
+            return !m.recipient_user_id || m.recipient_user_id === user.id;
+          }
+        });
         
         if (!filteredData || filteredData.length === 0) {
           toast({

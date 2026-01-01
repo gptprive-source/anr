@@ -39,6 +39,8 @@ interface VisitorMessage {
   // Media fields
   media_url?: string | null;
   media_type?: string | null;
+  // Recipient for private messages
+  recipient_user_id?: string | null;
 }
 
 interface MessageTemplate {
