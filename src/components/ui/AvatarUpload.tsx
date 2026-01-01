@@ -69,12 +69,11 @@ const AvatarUpload = ({
       // Generate unique filename
       const fileExt = file.name.split(".").pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
 
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage (directly to bucket root, not avatars/avatars/)
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file, {
+        .upload(fileName, file, {
           cacheControl: "3600",
           upsert: false,
         });
@@ -84,7 +83,7 @@ const AvatarUpload = ({
       // Get public URL
       const { data: urlData } = supabase.storage
         .from("avatars")
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
       onUpload(urlData.publicUrl);
       toast({ title: "Photo téléchargée" });
