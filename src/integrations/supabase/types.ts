@@ -1763,6 +1763,62 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          created_at: string | null
+          deleted_by_recipient: boolean | null
+          deleted_by_sender: boolean | null
+          habitation_id: string | null
+          id: string
+          is_read: boolean | null
+          media_type: string | null
+          media_url: string | null
+          message: string | null
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+          voice_message_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_by_recipient?: boolean | null
+          deleted_by_sender?: boolean | null
+          habitation_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          message?: string | null
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+          voice_message_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deleted_by_recipient?: boolean | null
+          deleted_by_sender?: boolean | null
+          habitation_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          message?: string | null
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
+          voice_message_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_habitation_id_fkey"
+            columns: ["habitation_id"]
+            isOneToOne: false
+            referencedRelation: "habitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parcel_proofs: {
         Row: {
           actor_carrier_id: string | null

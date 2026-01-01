@@ -53,6 +53,7 @@ import Referral from "./pages/Referral";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
 // VisitorMessages removed - /visitor-messages now redirects to Messages
 import VisitorConversation from "./pages/VisitorConversation";
+import UnifiedConversation from "./pages/UnifiedConversation";
 import NotFound from "./pages/NotFound";
 import PhoneVerification from "./pages/PhoneVerification";
 import RingtoneSettings from "./pages/RingtoneSettings";
@@ -159,6 +160,9 @@ const AppContent = () => {
               </ProtectedRoute>} />
           <Route path="/conversation/:id" element={<ProtectedRoute>
                 <Conversation />
+              </ProtectedRoute>} />
+          <Route path="/chat/:id" element={<ProtectedRoute>
+                <UnifiedConversation />
               </ProtectedRoute>} />
           <Route path="/conversation/contact/:contactId" element={<ProtectedRoute>
                 <DirectConversation />
