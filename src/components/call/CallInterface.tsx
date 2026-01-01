@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
-import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle, DoorOpen } from "lucide-react";
+import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle, DoorOpen, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDaily } from "@/hooks/useDaily";
 import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
@@ -42,6 +42,7 @@ const CallInterface = memo(({
   const [callWasAnswered, setCallWasAnswered] = useState(false);
   const [callWasDeclined, setCallWasDeclined] = useState(false);
   const [showDoorDialog, setShowDoorDialog] = useState(false);
+  const [showLeaveMessagePrompt, setShowLeaveMessagePrompt] = useState(false);
   const [shouldRedirectToConversation, setShouldRedirectToConversation] = useState(false);
   const hasJoinedRef = useRef(false);
   const channelRef = useRef<any>(null);
@@ -232,43 +233,51 @@ const CallInterface = memo(({
   // Auto-navigate when call ends
   useEffect(() => {
     if (callState === "ended") {
-      // If visitor should go to conversation, redirect to chat page
-      if (!isResident && shouldRedirectToConversation) {
-        const redirectToChat = async () => {
-          let recipientId = targetUserId;
-          
-          // If no specific targetUserId, get the first resident of this habitation
-          if (!recipientId && habitationId) {
-            const { data: residents } = await supabase
-              .from("residents")
-              .select("user_id")
-              .eq("habitation_id", habitationId)
-              .eq("status", "verified")
-              .limit(1);
-            
-            recipientId = residents?.[0]?.user_id;
-          }
-          
-          if (recipientId) {
-            logger.log("[CallInterface] Redirecting visitor to chat page with recipientId:", recipientId);
-            navigate(`/chat/${recipientId}`, { replace: true });
-          } else {
-            logger.log("[CallInterface] No recipient found, navigating back");
-            navigate(-1);
-          }
-        };
-        
-        redirectToChat();
+      // If visitor should go to conversation, show the "leave message" prompt instead of auto-redirecting
+      if (!isResident && shouldRedirectToConversation && !callWasAnswered) {
+        // Show the prompt to leave a message
+        setShowLeaveMessagePrompt(true);
         return;
       }
       
+      // If call was answered (normal end), just navigate back after a delay
       const timeout = setTimeout(() => {
         logger.log("[CallInterface] Auto-navigating back after call ended");
         navigate(-1);
       }, 1500);
       return () => clearTimeout(timeout);
     }
-  }, [callState, navigate, isResident, shouldRedirectToConversation, targetUserId, habitationId]);
+  }, [callState, navigate, isResident, shouldRedirectToConversation, callWasAnswered]);
+
+  // Handle redirect to chat when user chooses to leave a message
+  const handleLeaveMessage = async () => {
+    let recipientId = targetUserId;
+    
+    // If no specific targetUserId, get the first resident of this habitation
+    if (!recipientId && habitationId) {
+      const { data: residents } = await supabase
+        .from("residents")
+        .select("user_id")
+        .eq("habitation_id", habitationId)
+        .eq("status", "verified")
+        .limit(1);
+      
+      recipientId = residents?.[0]?.user_id;
+    }
+    
+    if (recipientId) {
+      logger.log("[CallInterface] User chose to leave message, redirecting to chat:", recipientId);
+      navigate(`/chat/${recipientId}`, { replace: true });
+    } else {
+      logger.log("[CallInterface] No recipient found, navigating back");
+      navigate(-1);
+    }
+  };
+
+  const handleSkipMessage = () => {
+    logger.log("[CallInterface] User skipped leaving message");
+    navigate(-1);
+  };
 
   // Individual hangup - only ends call if no other residents are active
   const handleHangup = async () => {
@@ -450,20 +459,48 @@ const CallInterface = memo(({
         </div>
       )}
 
-      {callState === "ended" && (
+      {callState === "ended" && !showLeaveMessagePrompt && (
         <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
           <div className="px-6 py-4 rounded-lg bg-secondary border border-border text-center">
             <p className="text-foreground font-medium mb-4">
               {callWasDeclined ? "Appel refusé" : "Appel terminé"}
             </p>
-            {callWasDeclined && (
-              <p className="text-muted-foreground text-sm mb-4">
-                Le résident n'est pas disponible. Laissez-lui un message.
-              </p>
-            )}
             <Button variant="glass" onClick={() => window.history.back()}>
               Retour
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Leave message prompt for visitors when call wasn't answered */}
+      {showLeaveMessagePrompt && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-20">
+          <div className="px-6 py-6 rounded-xl bg-card border-2 border-primary/30 text-center max-w-sm mx-4 shadow-xl">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <MessageSquare className="w-7 h-7 text-primary" />
+            </div>
+            <p className="text-foreground font-semibold text-lg mb-2">
+              Pas de réponse
+            </p>
+            <p className="text-muted-foreground text-sm mb-6">
+              Le résident n'a pas pu répondre. Souhaitez-vous lui laisser un message ?
+            </p>
+            <div className="flex flex-col gap-3">
+              <Button 
+                onClick={handleLeaveMessage}
+                className="w-full"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Laisser un message
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={handleSkipMessage}
+                className="w-full text-muted-foreground"
+              >
+                Non merci
+              </Button>
+            </div>
           </div>
         </div>
       )}
