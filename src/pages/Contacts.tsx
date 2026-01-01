@@ -175,7 +175,7 @@ const Contacts = () => {
     setEditingContact(contact);
   };
 
-  // Navigate to conversation - resolve ANR code to habitation_id if needed
+  // Navigate to conversation - resolve ANR code to habitation_id if needed, or use direct contact
   const handleNavigateToConversation = async (contact: ResidentContact) => {
     // PRIORITY 1: If we have an anr_code, resolve it to habitation_id (only real ANR codes)
     if (contact.anr_code) {
@@ -253,12 +253,9 @@ const Contacts = () => {
       }
     }
 
-    // No ANR code and no subscriber found = cannot send message
-    toast({
-      title: "Contact non abonné",
-      description: "Ce contact n'a pas de code ANR, impossible de lui envoyer un message",
-      variant: "destructive",
-    });
+    // PRIORITY 3: No ANR, no subscriber - navigate to direct message conversation
+    // Use contact_id as identifier for direct messaging
+    navigate(`/conversation/contact/${contact.id}`);
   };
 
   if (loading) {

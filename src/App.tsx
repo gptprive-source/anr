@@ -34,7 +34,7 @@ import CallHistory from "./pages/CallHistory";
 import Messages from "./pages/Messages";
 import Contacts from "./pages/Contacts";
 import Conversation from "./pages/Conversation";
-// ConversationSent removed - unified in Conversation.tsx
+import DirectConversation from "./pages/DirectConversation";
 import NotificationConversation from "./pages/NotificationConversation";
 import MessageBackup from "./pages/MessageBackup";
 import DoorAccess from "./pages/DoorAccess";
@@ -162,6 +162,9 @@ const AppContent = () => {
               </ProtectedRoute>} />
           <Route path="/conversation/:id" element={<ProtectedRoute>
                 <Conversation />
+              </ProtectedRoute>} />
+          <Route path="/conversation/contact/:contactId" element={<ProtectedRoute>
+                <DirectConversation />
               </ProtectedRoute>} />
           {/* Redirect old route for compatibility */}
           <Route path="/conversation-sent/:id" element={<ProtectedRoute>
