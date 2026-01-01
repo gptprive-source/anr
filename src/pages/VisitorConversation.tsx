@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Lock, Home, Mic, Loader2, Paperclip, X, Image, Video, Camera, Check, CheckCheck, Smile } from "lucide-react";
+import { ArrowLeft, Send, Lock, Home, Mic, Loader2, Paperclip, X, Image, Video, Camera, Check, CheckCheck, Smile, MessageSquare } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getDeviceId } from "@/hooks/useVisitorDeviceMessages";
+import { useVisitorCustomTemplates } from "@/hooks/useVisitorCustomTemplates";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import VideoRecorder from "@/components/messages/VideoRecorder";
 import VoiceRecorder from "@/components/visitor/VoiceRecorder";
@@ -56,6 +58,10 @@ const VisitorConversation = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const deviceId = getDeviceId();
 
+  // Templates
+  const { templates: customTemplates, incrementUsage } = useVisitorCustomTemplates();
+  const [showTemplates, setShowTemplates] = useState(false);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [habitationInfo, setHabitationInfo] = useState<HabitationInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,6 +81,13 @@ const VisitorConversation = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle template selection
+  const handleTemplateClick = (template: { id: string; content: string }) => {
+    setNewMessage(template.content);
+    incrementUsage(template.id);
+    setShowTemplates(false);
+  };
 
   // Fetch conversation data
   const fetchConversation = useCallback(async () => {
@@ -750,6 +763,37 @@ const VisitorConversation = () => {
       {/* Input Area - WhatsApp style */}
       <div className="fixed bottom-16 left-0 right-0 bg-[#F0F2F5] px-2 py-2">
         <div className="max-w-2xl mx-auto w-full">
+          {/* Templates Section */}
+          {showTemplates && customTemplates.length > 0 && (
+            <div className="mb-2 p-2 bg-white rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" />
+                  Mes templates
+                </p>
+                <button
+                  onClick={() => setShowTemplates(false)}
+                  className="p-1 hover:bg-muted rounded-full"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {customTemplates.map((template) => (
+                  <Badge
+                    key={template.id}
+                    variant="secondary"
+                    className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3"
+                    onClick={() => handleTemplateClick(template)}
+                  >
+                    <span className="mr-1">{template.icon}</span>
+                    {template.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Media Preview */}
           {selectedFile && filePreview && (
             <div className="mb-2 relative inline-block">
@@ -830,6 +874,20 @@ const VisitorConversation = () => {
                     </div>
                   </PopoverContent>
                 </Popover>
+
+                {/* Templates button - only show if templates exist */}
+                {customTemplates.length > 0 && (
+                  <button
+                    className={cn(
+                      "p-2 transition-colors",
+                      showTemplates ? "text-[#075E54]" : "text-[#54656F] hover:text-[#075E54]"
+                    )}
+                    onClick={() => setShowTemplates(!showTemplates)}
+                    title="Mes templates"
+                  >
+                    <MessageSquare className="w-6 h-6" />
+                  </button>
+                )}
 
                 <button
                   className="p-2 text-[#54656F] hover:text-[#075E54] transition-colors"
