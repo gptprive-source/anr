@@ -357,48 +357,51 @@ export const useMessages = (conversationUserId?: string) => {
     const recipientId = parts[0];
     const habitationId = parts[1] || null;
 
+    console.log("[deleteConversation] Starting deletion", {
+      conversationId,
+      recipientId,
+      habitationId,
+      currentUserId: user.id
+    });
+
     // Build and execute query for messages where user is SENDER
-    let senderQuery = supabase
+    const senderResult = await supabase
       .from("messages")
       .update({ deleted_by_sender: true })
       .eq("sender_id", user.id)
-      .eq("recipient_id", recipientId);
+      .eq("recipient_id", recipientId)
+      .eq("habitation_id", habitationId);
 
-    if (habitationId) {
-      senderQuery = senderQuery.eq("habitation_id", habitationId);
-    } else {
-      senderQuery = senderQuery.is("habitation_id", null);
-    }
-    await senderQuery;
+    console.log("[deleteConversation] Sender update result:", senderResult);
 
     // Build and execute query for messages where user is RECIPIENT
-    let recipientQuery = supabase
+    const recipientResult = await supabase
       .from("messages")
       .update({ deleted_by_recipient: true })
       .eq("recipient_id", user.id)
-      .eq("sender_id", recipientId);
+      .eq("sender_id", recipientId)
+      .eq("habitation_id", habitationId);
 
-    if (habitationId) {
-      recipientQuery = recipientQuery.eq("habitation_id", habitationId);
-    } else {
-      recipientQuery = recipientQuery.is("habitation_id", null);
-    }
-    await recipientQuery;
+    console.log("[deleteConversation] Recipient update result:", recipientResult);
 
     // Remove from local state immediately
-    setMessages((prev) =>
-      prev.filter((msg) => {
+    setMessages((prev) => {
+      const filtered = prev.filter((msg) => {
         const isInConversation =
           (msg.sender_id === user.id && msg.recipient_id === recipientId) ||
           (msg.sender_id === recipientId && msg.recipient_id === user.id);
         
-        const habitationMatches = habitationId
-          ? msg.habitation_id === habitationId
-          : msg.habitation_id === null;
+        const habitationMatches = msg.habitation_id === habitationId;
 
-        return !(isInConversation && habitationMatches);
-      })
-    );
+        const shouldRemove = isInConversation && habitationMatches;
+        if (shouldRemove) {
+          console.log("[deleteConversation] Removing message from state:", msg.id);
+        }
+        return !shouldRemove;
+      });
+      console.log("[deleteConversation] Messages before:", prev.length, "after:", filtered.length);
+      return filtered;
+    });
   };
 
   // Calculate unread count
