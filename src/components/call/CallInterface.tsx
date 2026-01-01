@@ -184,27 +184,45 @@ const CallInterface = memo(({
         // Create missed call message for resident to reply
         const visitorDeviceId = localStorage.getItem("visitor_device_id");
         if (visitorDeviceId) {
-          // Get or create visitor business card
+          // Try to find existing business card - first by device_id, then check for existing conversation
           let businessCardId: string | null = null;
-          const { data: existingCard } = await supabase
-            .from("visitor_business_cards")
-            .select("id")
-            .eq("device_id", visitorDeviceId)
+          
+          // Check for existing conversation with this habitation to use the same business card
+          const { data: existingMessage } = await supabase
+            .from("visitor_messages")
+            .select("business_card_id")
+            .eq("habitation_id", habitationId)
+            .eq("visitor_device_id", visitorDeviceId)
+            .not("business_card_id", "is", null)
+            .order("created_at", { ascending: false })
+            .limit(1)
             .maybeSingle();
           
-          if (existingCard) {
-            businessCardId = existingCard.id;
+          if (existingMessage?.business_card_id) {
+            businessCardId = existingMessage.business_card_id;
+            logger.log("[CallInterface] Using existing conversation business card:", businessCardId);
           } else {
-            const { data: newCard } = await supabase
+            // No existing conversation, look for or create business card
+            const { data: existingCard } = await supabase
               .from("visitor_business_cards")
-              .insert({
-                device_id: visitorDeviceId,
-                card_type: "particulier",
-                first_name: "Visiteur",
-              })
               .select("id")
-              .single();
-            businessCardId = newCard?.id || null;
+              .eq("device_id", visitorDeviceId)
+              .maybeSingle();
+            
+            if (existingCard) {
+              businessCardId = existingCard.id;
+            } else {
+              const { data: newCard } = await supabase
+                .from("visitor_business_cards")
+                .insert({
+                  device_id: visitorDeviceId,
+                  card_type: "particulier",
+                  first_name: "Visiteur",
+                })
+                .select("id")
+                .single();
+              businessCardId = newCard?.id || null;
+            }
           }
           
           if (businessCardId) {
@@ -317,28 +335,46 @@ const CallInterface = memo(({
         const visitorDeviceId = localStorage.getItem("visitor_device_id");
         
         if (visitorDeviceId) {
-          // Get or create visitor business card
+          // Try to find existing business card - first check existing conversation
           let businessCardId: string | null = null;
-          const { data: existingCard } = await supabase
-            .from("visitor_business_cards")
-            .select("id")
-            .eq("device_id", visitorDeviceId)
+          
+          // Check for existing conversation with this habitation to use the same business card
+          const { data: existingMessage } = await supabase
+            .from("visitor_messages")
+            .select("business_card_id")
+            .eq("habitation_id", habitationId)
+            .eq("visitor_device_id", visitorDeviceId)
+            .not("business_card_id", "is", null)
+            .order("created_at", { ascending: false })
+            .limit(1)
             .maybeSingle();
           
-          if (existingCard) {
-            businessCardId = existingCard.id;
+          if (existingMessage?.business_card_id) {
+            businessCardId = existingMessage.business_card_id;
+            logger.log("[CallInterface] Using existing conversation business card:", businessCardId);
           } else {
-            // Create a minimal business card for anonymous visitor
-            const { data: newCard } = await supabase
+            // No existing conversation, look for or create business card
+            const { data: existingCard } = await supabase
               .from("visitor_business_cards")
-              .insert({
-                device_id: visitorDeviceId,
-                card_type: "particulier",
-                first_name: "Visiteur",
-              })
               .select("id")
-              .single();
-            businessCardId = newCard?.id || null;
+              .eq("device_id", visitorDeviceId)
+              .maybeSingle();
+            
+            if (existingCard) {
+              businessCardId = existingCard.id;
+            } else {
+              // Create a minimal business card for anonymous visitor
+              const { data: newCard } = await supabase
+                .from("visitor_business_cards")
+                .insert({
+                  device_id: visitorDeviceId,
+                  card_type: "particulier",
+                  first_name: "Visiteur",
+                })
+                .select("id")
+                .single();
+              businessCardId = newCard?.id || null;
+            }
           }
           
           // Create "missed call" visitor message
