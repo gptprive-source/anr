@@ -52,6 +52,7 @@ interface HabitationInfo {
   recipientLastName?: string | null;
   recipientPhone?: string | null;
   recipientEmail?: string | null;
+  recipientAvatarUrl?: string | null;
 }
 
 const formatDateSeparator = (date: Date) => {
@@ -152,11 +153,12 @@ const VisitorConversation = () => {
       let recipientLastName: string | null = null;
       let recipientPhone: string | null = null;
       let recipientEmail: string | null = null;
+      let recipientAvatarUrl: string | null = null;
       
       if (isPrivateConversation && targetUserId) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("first_name, last_name, phone_number")
+          .select("first_name, last_name, phone_number, avatar_url")
           .eq("id", targetUserId)
           .maybeSingle();
         
@@ -164,6 +166,7 @@ const VisitorConversation = () => {
           recipientFirstName = profile.first_name;
           recipientLastName = profile.last_name;
           recipientPhone = profile.phone_number;
+          recipientAvatarUrl = profile.avatar_url;
           recipientName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Résident";
         }
 
@@ -187,6 +190,7 @@ const VisitorConversation = () => {
           recipientLastName,
           recipientPhone,
           recipientEmail,
+          recipientAvatarUrl,
         });
         console.log("[VisitorConversation] Habitation found:", habitation.name, "recipient:", recipientName);
       } else {
@@ -778,6 +782,7 @@ const VisitorConversation = () => {
                   job_title: null,
                   phone: habitationInfo.recipientPhone || null,
                   email: habitationInfo.recipientEmail || null,
+                  avatar_url: habitationInfo.recipientAvatarUrl || null,
                   contact_user_id: targetUserId,
                   habitation_id: habitationId,
                 }}
