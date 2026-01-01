@@ -370,7 +370,7 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">
-                        {index + 1} - {hab.owner_name || "Résident"}
+                        {hab.owner_name || "Résident"}
                       </p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
