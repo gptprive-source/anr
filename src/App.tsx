@@ -32,6 +32,7 @@ import UpdateGPS from "./pages/UpdateGPS";
 import Residents from "./pages/Residents";
 
 import Messages from "./pages/Messages";
+import Chat from "./pages/Chat";
 import Contacts from "./pages/Contacts";
 import DoorAccess from "./pages/DoorAccess";
 import EmployeeScan from "./pages/EmployeeScan";
@@ -147,6 +148,9 @@ const AppContent = () => {
               </ProtectedRoute>} />
           <Route path="/messages" element={<ProtectedRoute>
                 <Messages />
+              </ProtectedRoute>} />
+          <Route path="/chat/:recipientId" element={<ProtectedRoute>
+                <Chat />
               </ProtectedRoute>} />
           <Route path="/contacts" element={<ProtectedRoute>
                 <Contacts />
