@@ -244,7 +244,7 @@ const ANRLanding = () => {
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-  const handleCall = () => {
+  const handleCall = async () => {
     if (!anrData) return;
     
     // Check if user is authenticated and has business card
@@ -254,25 +254,63 @@ const ANRLanding = () => {
     }
     
     if (anrData.habitationCount > 1) {
-      // Multi-habitat: go to selection page (pass code, not UUID)
+      // Multi-habitat: go to selection page (which will redirect to chat)
       navigate(`/multi-habitat/${anrData.code}`);
     } else if (anrData.singleHabitationResidentCount && anrData.singleHabitationResidentCount > 1) {
       // Single habitat with multiple residents: show resident selector
       setShowResidentSelector(true);
     } else {
-      // Single habitat with single resident: go directly to call (pass code, not UUID)
-      navigate(`/call/${anrData.code}`);
+      // Single habitat with single resident: get user_id and go to chat
+      if (anrData.singleHabitationId) {
+        const { data: residents } = await supabase
+          .from("residents")
+          .select("user_id")
+          .eq("habitation_id", anrData.singleHabitationId)
+          .eq("status", "verified")
+          .limit(1)
+          .maybeSingle();
+        
+        if (residents?.user_id) {
+          navigate(`/chat/${residents.user_id}`, {
+            state: {
+              anrCode: anrData.code,
+              anrId: anrData.id,
+              habitationId: anrData.singleHabitationId,
+              address: anrData.address,
+            }
+          });
+        } else {
+          // Fallback to call page if no resident found
+          navigate(`/call/${anrData.code}`);
+        }
+      } else {
+        navigate(`/call/${anrData.code}`);
+      }
     }
   };
 
   const handleResidentSelect = (targetUserId: string | null) => {
     if (!anrData) return;
-    navigate(`/call/${anrData.code}`, {
-      state: {
-        habitationId: anrData.singleHabitationId,
-        targetUserId,
-      },
-    });
+    
+    if (targetUserId) {
+      // Specific resident: go to chat
+      navigate(`/chat/${targetUserId}`, {
+        state: {
+          anrCode: anrData.code,
+          anrId: anrData.id,
+          habitationId: anrData.singleHabitationId,
+          address: anrData.address,
+        }
+      });
+    } else {
+      // All residents: go to call page (group call)
+      navigate(`/call/${anrData.code}`, {
+        state: {
+          habitationId: anrData.singleHabitationId,
+          targetUserId: null,
+        },
+      });
+    }
   };
 
   if (loading) {

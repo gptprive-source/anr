@@ -129,36 +129,64 @@ const MultiHabitatSelector = () => {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const handleSelect = (habitat: Habitat) => {
+  const handleSelect = async (habitat: Habitat) => {
     console.log("[MultiHabitatSelector] Selected habitat:", habitat.name, "residentCount:", habitat.residentCount);
     // If more than 1 resident, show resident selector
     if (habitat.residentCount > 1) {
       console.log("[MultiHabitatSelector] Showing resident selector");
       setSelectedHabitat(habitat);
     } else {
-      // Single resident or no residents - go directly to call
-      console.log("[MultiHabitatSelector] Going directly to call");
-      navigate(`/call/${anrId}`, { 
-        state: { 
-          habitationId: habitat.id,
-          targetUserId: null,
-          visitorLat: location.state?.visitorLat,
-          visitorLon: location.state?.visitorLon,
-        } 
-      });
+      // Single resident - get user_id and go to chat
+      console.log("[MultiHabitatSelector] Getting single resident for chat");
+      const { data: residents } = await supabase
+        .from("residents")
+        .select("user_id")
+        .eq("habitation_id", habitat.id)
+        .eq("status", "verified")
+        .limit(1)
+        .maybeSingle();
+      
+      if (residents?.user_id) {
+        navigate(`/chat/${residents.user_id}`, { 
+          state: { 
+            anrCode: anrId,
+            habitationId: habitat.id,
+            address,
+          } 
+        });
+      } else {
+        // No residents - go to call page as fallback
+        navigate(`/call/${anrId}`, { 
+          state: { 
+            habitationId: habitat.id,
+            targetUserId: null,
+          } 
+        });
+      }
     }
   };
 
   const handleResidentSelect = (targetUserId: string | null) => {
     if (!selectedHabitat) return;
-    navigate(`/call/${anrId}`, { 
-      state: { 
-        habitationId: selectedHabitat.id,
-        targetUserId,
-        visitorLat: location.state?.visitorLat,
-        visitorLon: location.state?.visitorLon,
-      } 
-    });
+    
+    if (targetUserId) {
+      // Specific resident: go to chat
+      navigate(`/chat/${targetUserId}`, { 
+        state: { 
+          anrCode: anrId,
+          habitationId: selectedHabitat.id,
+          address,
+        } 
+      });
+    } else {
+      // All residents (group call): go to call page
+      navigate(`/call/${anrId}`, { 
+        state: { 
+          habitationId: selectedHabitat.id,
+          targetUserId: null,
+        } 
+      });
+    }
   };
 
   // Extract residence number from name (e.g., "Résidence 2 - Jean Dupont" -> "2")
