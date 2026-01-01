@@ -94,6 +94,7 @@ export const useResidentContacts = () => {
           job_title: businessCard.job_title,
           phone: businessCard.phone,
           email: businessCard.email,
+          avatar_url: businessCard.avatar_url || null,
           notes: notes || null,
           source_business_card_id: businessCard.id || null,
           source_message_id: sourceMessageId || null,

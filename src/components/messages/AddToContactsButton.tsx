@@ -17,6 +17,7 @@ interface BusinessCard {
   job_title: string | null;
   phone: string | null;
   email: string | null;
+  avatar_url?: string | null;
   // New fields for visitor-added contacts
   contact_user_id?: string | null;
   habitation_id?: string | null;

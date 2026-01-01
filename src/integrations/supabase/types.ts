@@ -2491,6 +2491,7 @@ export type Database = {
       profiles: {
         Row: {
           allow_emergency_access: boolean | null
+          avatar_url: string | null
           business_card_completed: boolean | null
           created_at: string | null
           device_id: string | null
@@ -2507,6 +2508,7 @@ export type Database = {
         }
         Insert: {
           allow_emergency_access?: boolean | null
+          avatar_url?: string | null
           business_card_completed?: boolean | null
           created_at?: string | null
           device_id?: string | null
@@ -2523,6 +2525,7 @@ export type Database = {
         }
         Update: {
           allow_emergency_access?: boolean | null
+          avatar_url?: string | null
           business_card_completed?: boolean | null
           created_at?: string | null
           device_id?: string | null
