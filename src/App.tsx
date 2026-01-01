@@ -30,7 +30,7 @@ import Invitation from "./pages/Invitation";
 import ResetPassword from "./pages/ResetPassword";
 import UpdateGPS from "./pages/UpdateGPS";
 import Residents from "./pages/Residents";
-import CallHistory from "./pages/CallHistory";
+
 import Messages from "./pages/Messages";
 import Contacts from "./pages/Contacts";
 import Conversation from "./pages/Conversation";
@@ -150,9 +150,6 @@ const AppContent = () => {
               </ProtectedRoute>} />
           <Route path="/residents" element={<ProtectedRoute>
                 <Residents />
-              </ProtectedRoute>} />
-          <Route path="/call-history" element={<ProtectedRoute>
-                <CallHistory />
               </ProtectedRoute>} />
           <Route path="/messages" element={<ProtectedRoute>
                 <Messages />
