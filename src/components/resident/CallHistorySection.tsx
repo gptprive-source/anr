@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Phone, PhoneOff, PhoneIncoming, PhoneMissed, Clock, Loader2, MapPin, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Phone, PhoneOff, PhoneIncoming, PhoneMissed, Clock, Loader2, MapPin, User, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
 
 interface CallLog {
   id: string;
@@ -24,6 +26,7 @@ interface CallHistorySectionProps {
 const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCallHistory();
@@ -212,6 +215,19 @@ const CallHistorySection = ({ habitationId }: CallHistorySectionProps) => {
                 <p className="text-xs text-muted-foreground mt-2">
                   {formatCallDate(call.started_at)}
                 </p>
+                
+                {/* Message Button */}
+                {call.visitor_phone && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 w-full"
+                    onClick={() => navigate(`/visitor-conversation/${habitationId}__residence`)}
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Envoyer un message
+                  </Button>
+                )}
               </div>
             </div>
           </div>
