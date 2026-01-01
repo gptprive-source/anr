@@ -24,6 +24,7 @@ interface Habitation {
   id: string;
   name: string;
   anr_address: string;
+  owner_name?: string;
 }
 
 interface Resident {
@@ -104,19 +105,56 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
         return;
       }
 
-      // Map habitations with ANR address
-      const habsWithAddress = habs.map(h => ({
-        id: h.id,
-        name: h.name,
-        anr_address: anr.address
+      // Fetch owner names for each habitation
+      const habsWithOwners = await Promise.all(habs.map(async (h) => {
+        // Get owner resident
+        const { data: ownerResident } = await supabase
+          .from("residents")
+          .select("user_id")
+          .eq("habitation_id", h.id)
+          .eq("is_owner", true)
+          .eq("status", "verified")
+          .maybeSingle();
+
+        let ownerName = "";
+        if (ownerResident?.user_id) {
+          // Try business card first
+          const { data: bc } = await supabase
+            .from("visitor_business_cards")
+            .select("first_name, last_name")
+            .eq("user_id", ownerResident.user_id)
+            .maybeSingle();
+
+          if (bc?.first_name || bc?.last_name) {
+            ownerName = `${bc.first_name || ""} ${bc.last_name || ""}`.trim();
+          } else {
+            // Fallback to profile
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("first_name, last_name")
+              .eq("id", ownerResident.user_id)
+              .maybeSingle();
+
+            if (profile?.first_name || profile?.last_name) {
+              ownerName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
+            }
+          }
+        }
+
+        return {
+          id: h.id,
+          name: h.name,
+          anr_address: anr.address,
+          owner_name: ownerName
+        };
       }));
 
-      setHabitations(habsWithAddress);
+      setHabitations(habsWithOwners);
 
       // If only one habitation, auto-select it and move to recipient selection
-      if (habsWithAddress.length === 1) {
-        setSelectedHabitation(habsWithAddress[0]);
-        await loadResidents(habsWithAddress[0].id);
+      if (habsWithOwners.length === 1) {
+        setSelectedHabitation(habsWithOwners[0]);
+        await loadResidents(habsWithOwners[0].id);
         setStep('select-recipient');
       } else {
         setStep('select-habitation');
@@ -331,7 +369,9 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
                       <span className="text-primary font-bold">{index + 1}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">Résidence {index + 1}</p>
+                      <p className="font-medium truncate">
+                        {index + 1} - {hab.owner_name || "Résident"}
+                      </p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
                         {hab.anr_address}
