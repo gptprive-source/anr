@@ -558,7 +558,7 @@ const RegisterForm = ({ onBack }: RegisterFormProps) => {
         }).eq("anr_id", existingAnrId);
         residenceNumber = (count || 0) + 1;
       }
-      const habitationName = `Résidence ${residenceNumber} - ${userFirstName} ${userLastName}`;
+      const habitationName = `Résidence - ${userFirstName} ${userLastName}`;
 
       // Store address data for payment step (don't create anything in DB yet)
       const newAddressData: AddressData = {
