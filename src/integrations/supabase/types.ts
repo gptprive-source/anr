@@ -3979,6 +3979,10 @@ export type Database = {
           table_name: string
         }[]
       }
+      get_user_email_for_contact: {
+        Args: { target_user_id: string }
+        Returns: string
+      }
       get_visitor_device_id: { Args: never; Returns: string }
       has_role: {
         Args: {

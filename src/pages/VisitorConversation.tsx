@@ -51,6 +51,7 @@ interface HabitationInfo {
   recipientFirstName?: string | null;
   recipientLastName?: string | null;
   recipientPhone?: string | null;
+  recipientEmail?: string | null;
 }
 
 const formatDateSeparator = (date: Date) => {
@@ -150,6 +151,7 @@ const VisitorConversation = () => {
       let recipientFirstName: string | null = null;
       let recipientLastName: string | null = null;
       let recipientPhone: string | null = null;
+      let recipientEmail: string | null = null;
       
       if (isPrivateConversation && targetUserId) {
         const { data: profile } = await supabase
@@ -164,6 +166,14 @@ const VisitorConversation = () => {
           recipientPhone = profile.phone_number;
           recipientName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Résident";
         }
+
+        // Get email via RPC function
+        const { data: email } = await supabase.rpc("get_user_email_for_contact", { 
+          target_user_id: targetUserId 
+        });
+        if (email) {
+          recipientEmail = email;
+        }
       }
 
       if (habitation) {
@@ -176,6 +186,7 @@ const VisitorConversation = () => {
           recipientFirstName,
           recipientLastName,
           recipientPhone,
+          recipientEmail,
         });
         console.log("[VisitorConversation] Habitation found:", habitation.name, "recipient:", recipientName);
       } else {
@@ -766,7 +777,7 @@ const VisitorConversation = () => {
                   company_name: null,
                   job_title: null,
                   phone: habitationInfo.recipientPhone || null,
-                  email: null,
+                  email: habitationInfo.recipientEmail || null,
                   contact_user_id: targetUserId,
                   habitation_id: habitationId,
                 }}
