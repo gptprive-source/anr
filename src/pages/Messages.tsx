@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChats, Chat } from "@/hooks/useChats";
 import { useAuth } from "@/hooks/useAuth";
+import { useOnlinePresence } from "@/hooks/useOnlinePresence";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday } from "date-fns";
 import NewChatDialog from "@/components/messages/NewChatDialog";
@@ -35,11 +36,13 @@ const getMessageIcon = (preview: string | null) => {
 
 const ChatListItem = ({ 
   chat, 
-  userId, 
+  userId,
+  isOnline,
   onClick 
 }: { 
   chat: Chat; 
   userId: string;
+  isOnline: boolean;
   onClick: () => void;
 }) => {
   const isParticipant1 = chat.participant1_id === userId;
@@ -65,12 +68,17 @@ const ChatListItem = ({
       onClick={onClick}
       className="w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors border-b border-border/50"
     >
-      <Avatar className="h-12 w-12 flex-shrink-0">
-        <AvatarImage src={chat.other_user?.avatar_url || undefined} />
-        <AvatarFallback className="bg-primary/10 text-primary font-medium">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
+      <div className="relative">
+        <Avatar className="h-12 w-12 flex-shrink-0">
+          <AvatarImage src={chat.other_user?.avatar_url || undefined} />
+          <AvatarFallback className="bg-primary/10 text-primary font-medium">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        {isOnline && (
+          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full" />
+        )}
+      </div>
       
       <div className="flex-1 min-w-0 text-left">
         <div className="flex items-center justify-between gap-2">
@@ -114,6 +122,7 @@ const Messages = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { chats, loading, unreadCount } = useChats();
+  const { isOnline } = useOnlinePresence();
   const [searchQuery, setSearchQuery] = useState("");
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
 
@@ -199,14 +208,20 @@ const Messages = () => {
           </div>
         ) : (
           <div className="divide-y divide-border/50">
-            {filteredChats.map(chat => (
-              <ChatListItem
-                key={chat.id}
-                chat={chat}
-                userId={userId || ""}
-                onClick={() => handleChatClick(chat)}
-              />
-            ))}
+            {filteredChats.map(chat => {
+              const recipientId = chat.participant1_id === userId 
+                ? chat.participant2_id 
+                : chat.participant1_id;
+              return (
+                <ChatListItem
+                  key={chat.id}
+                  chat={chat}
+                  userId={userId || ""}
+                  isOnline={isOnline(recipientId)}
+                  onClick={() => handleChatClick(chat)}
+                />
+              );
+            })}
           </div>
         )}
       </div>
