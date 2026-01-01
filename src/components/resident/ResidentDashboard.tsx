@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Users, Shield, MapPin, Copy, Check, Loader2, Phone, BellOff, BellRing, Share2, HelpCircle, MessageSquare, DoorOpen, ShoppingCart, Receipt, Sparkles, Mail, Package, Gift } from "lucide-react";
+import { Users, Shield, MapPin, Copy, Check, Loader2, BellOff, BellRing, Share2, MessageSquare, DoorOpen, ShoppingCart, Receipt, Sparkles, Mail, Package, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -187,53 +187,6 @@ const ResidentDashboard = () => {
       setTogglingMute(false);
     }
   };
-  const testIncomingCall = async () => {
-    if (!habitationData || !user) return;
-    try {
-      toast({
-        title: "Création appel test...",
-        description: "Attendez quelques secondes"
-      });
-      const {
-        data: callLog,
-        error: clError
-      } = await supabase.from("call_logs").insert({
-        habitation_id: habitationData.id,
-        status: "ringing"
-      }).select().single();
-      if (clError) throw clError;
-      console.log("[TEST] Created call log:", callLog.id);
-      const {
-        error: pError
-      } = await supabase.from("call_participants").insert({
-        call_id: callLog.id,
-        user_id: user.id,
-        habitation_id: habitationData.id,
-        role: "resident",
-        status: "ringing"
-      });
-      if (pError) throw pError;
-      console.log("[TEST] Created participant for user:", user.id);
-      toast({
-        title: "Appel test créé!",
-        description: "L'appel devrait s'afficher maintenant"
-      });
-      setTimeout(async () => {
-        await supabase.from("call_logs").update({
-          status: "ended",
-          ended_at: new Date().toISOString()
-        }).eq("id", callLog.id);
-        console.log("[TEST] Auto-ended test call");
-      }, 15000);
-    } catch (error: any) {
-      console.error("[TEST] Error:", error);
-      toast({
-        title: "Erreur",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -308,11 +261,6 @@ const ResidentDashboard = () => {
           <QuickAction icon={<Mail className="w-6 h-6" />} label="Support" onClick={() => setSupportChatOpen(true)} color="blue" />
         </div>
 
-        {/* Test Call Button */}
-        <Button onClick={testIncomingCall} className="w-full bg-warning hover:bg-warning/90 text-warning-foreground">
-          <Phone className="w-4 h-4 mr-2" />
-          🧪 Tester appel entrant
-        </Button>
       </div>
 
       <ShareANRDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen} anrCode={habitationData.anr.code} anrAddress={habitationData.anr.address} latitude={habitationData.anr.latitude} longitude={habitationData.anr.longitude} ownerName={currentUserName || "Résident"} />
