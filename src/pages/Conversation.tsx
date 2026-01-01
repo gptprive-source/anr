@@ -228,13 +228,16 @@ const Conversation = () => {
 
         // Fetch visitor messages - query will be built based on ID type
 
-        // Parse conversation key format: visitorId__private or visitorId__residence
+        // Parse conversation key format: visitorId__private_recipientUserId or visitorId__residence
         let visitorId = id;
         let isPrivateConversation = false;
         let isResidenceConversation = false;
+        let privateRecipientId: string | null = null;
         
-        if (id.includes("__private")) {
-          visitorId = id.replace("__private", "");
+        if (id.includes("__private_")) {
+          const parts = id.split("__private_");
+          visitorId = parts[0];
+          privateRecipientId = parts[1] || null;
           isPrivateConversation = true;
         } else if (id.includes("__residence")) {
           visitorId = id.replace("__residence", "");
@@ -289,9 +292,9 @@ const Conversation = () => {
         
         // Filter messages based on conversation type
         const filteredData = (data || []).filter((m: any) => {
-          if (isPrivateConversation) {
-            // Only show private messages to this user
-            return m.recipient_user_id === user.id;
+          if (isPrivateConversation && privateRecipientId) {
+            // Only show private messages to the specific recipient
+            return m.recipient_user_id === privateRecipientId;
           } else if (isResidenceConversation) {
             // Only show messages to the whole residence (no recipient)
             return !m.recipient_user_id;

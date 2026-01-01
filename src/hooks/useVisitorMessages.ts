@@ -436,10 +436,23 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
   const deleteConversation = async (conversationKey: string) => {
     try {
       // Extract visitorId and conversation type from key
-      // Format: visitorId__residence OR visitorId__private OR just visitorId (legacy)
-      const isPrivate = conversationKey.includes("__private");
+      // Format: visitorId__residence OR visitorId__private_recipientUserId OR just visitorId (legacy)
+      const isPrivate = conversationKey.includes("__private_");
       const isResidence = conversationKey.includes("__residence");
-      const visitorId = conversationKey.split("__")[0];
+      
+      let visitorId: string;
+      let privateRecipientId: string | null = null;
+      
+      if (isPrivate) {
+        // Format: visitorId__private_recipientUserId
+        const parts = conversationKey.split("__private_");
+        visitorId = parts[0];
+        privateRecipientId = parts[1] || null;
+      } else if (isResidence) {
+        visitorId = conversationKey.split("__residence")[0];
+      } else {
+        visitorId = conversationKey.split("__")[0];
+      }
       
       // Get all message IDs for this visitor, filtered by conversation type
       const messagesToDelete = messages.filter(m => {
@@ -447,8 +460,8 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         if (msgVisitorId !== visitorId) return false;
         
         // Filter by conversation type if specified
-        if (isPrivate) {
-          return !!m.recipient_user_id;
+        if (isPrivate && privateRecipientId) {
+          return m.recipient_user_id === privateRecipientId;
         } else if (isResidence) {
           return !m.recipient_user_id;
         }
@@ -478,8 +491,8 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         if (msgVisitorId !== visitorId) return true; // Keep messages from other visitors
         
         // Filter by conversation type if specified
-        if (isPrivate) {
-          return !m.recipient_user_id; // Keep residence messages
+        if (isPrivate && privateRecipientId) {
+          return m.recipient_user_id !== privateRecipientId; // Keep other conversations
         } else if (isResidence) {
           return !!m.recipient_user_id; // Keep private messages
         }
