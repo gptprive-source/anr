@@ -1198,7 +1198,7 @@ const Conversation = () => {
           <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
 
           {/* Templates Section */}
-          {showTemplates && customTemplates.length > 0 && (
+          {showTemplates && (
             <div className="mb-2 p-2 bg-white rounded-lg shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
@@ -1212,19 +1212,25 @@ const Conversation = () => {
                   <X className="w-3 h-3" />
                 </button>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {customTemplates.map((template) => (
-                  <Badge
-                    key={template.id}
-                    variant="secondary"
-                    className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3"
-                    onClick={() => handleTemplateClick(template)}
-                  >
-                    <span className="mr-1">{template.icon}</span>
-                    {template.name}
-                  </Badge>
-                ))}
-              </div>
+              {customTemplates.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {customTemplates.map((template) => (
+                    <Badge
+                      key={template.id}
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3"
+                      onClick={() => handleTemplateClick(template)}
+                    >
+                      <span className="mr-1">{template.icon}</span>
+                      {template.name}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  Aucun template. Créez-en dans votre <a href="/account" className="text-primary underline">carte de visite</a>.
+                </p>
+              )}
             </div>
           )}
 
