@@ -23,7 +23,6 @@ interface AnrContext {
   habitationId?: string;
   address?: string;
 }
-
 interface RecipientProfile {
   id: string;
   first_name: string | null;
@@ -80,8 +79,8 @@ const MessageBubble = ({
           </div>;
       case "missed_call":
         return <div className="flex items-center gap-2 text-destructive">
-            <Phone className="w-4 h-4 text-[#fcfcfc]" />
-            <span className="text-sm text-white font-semibold">Appel manqué</span>
+            <Phone className="w-4 h-4 text-[#050505]" />
+            <span className="text-sm font-semibold text-black">Appel manqué</span>
           </div>;
       case "call_ended":
         return <div className="flex items-center gap-2 text-primary">
@@ -178,15 +177,14 @@ const Chat = () => {
     deleteChat,
     chats
   } = useChats();
-  
+
   // Get ANR context from navigation state (when coming from ANR scan)
   const anrContext: AnrContext = {
     anrCode: location.state?.anrCode,
     anrId: location.state?.anrId,
     habitationId: location.state?.habitationId,
-    address: location.state?.address,
+    address: location.state?.address
   };
-  
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [recipient, setRecipient] = useState<RecipientProfile | null>(null);
@@ -200,7 +198,7 @@ const Chat = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initChatRef = useRef(false);
   const currentRecipientRef = useRef<string | null>(null);
-  
+
   // Handle call button - navigates to call page with ANR context
   const handleCallClick = () => {
     if (anrContext.anrCode) {
@@ -208,7 +206,7 @@ const Chat = () => {
       navigate(`/call/${anrContext.anrCode}`, {
         state: {
           habitationId: anrContext.habitationId,
-          targetUserId: recipientId,
+          targetUserId: recipientId
         }
       });
     } else {
@@ -230,15 +228,13 @@ const Chat = () => {
     if (currentRecipientRef.current === recipientId && initChatRef.current) {
       return;
     }
-
     const initChat = async () => {
       if (!recipientId || !user) return;
-      
+
       // Mark as initializing for this recipient
       currentRecipientRef.current = recipientId;
       initChatRef.current = true;
       setLoading(true);
-      
       try {
         // Get or create chat
         const chat = await getOrCreateChat(recipientId);
@@ -254,11 +250,9 @@ const Chat = () => {
         }
 
         // Fetch recipient profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name, avatar_url")
-          .eq("id", recipientId)
-          .maybeSingle();
+        const {
+          data: profile
+        } = await supabase.from("profiles").select("id, first_name, last_name, avatar_url").eq("id", recipientId).maybeSingle();
         setRecipient(profile);
       } catch (error) {
         console.error("Error initializing chat:", error);
@@ -471,23 +465,14 @@ const Chat = () => {
         
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate">{displayName}</p>
-          {anrContext.address ? (
-            <p className="text-xs text-primary-foreground/70 flex items-center gap-1">
+          {anrContext.address ? <p className="text-xs text-primary-foreground/70 flex items-center gap-1">
               <MapPin className="w-3 h-3" />
               {anrContext.address.length > 30 ? anrContext.address.substring(0, 30) + '...' : anrContext.address}
-            </p>
-          ) : (
-            recipientId && isOnline(recipientId) && <p className="text-xs text-primary-foreground/70">En ligne</p>
-          )}
+            </p> : recipientId && isOnline(recipientId) && <p className="text-xs text-primary-foreground/70">En ligne</p>}
         </div>
 
         {/* Call button - always visible */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="text-primary-foreground hover:bg-primary-foreground/10"
-          onClick={handleCallClick}
-        >
+        <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={handleCallClick}>
           <Phone className="w-5 h-5" />
         </Button>
 
