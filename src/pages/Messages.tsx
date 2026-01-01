@@ -144,7 +144,7 @@ const Messages = () => {
 
         {/* Search bar */}
         <div className="mt-3 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-2 text-primary-foreground/60" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-foreground/60" />
           <Input
             type="text"
             placeholder="Rechercher une conversation..."
