@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChats, Chat } from "@/hooks/useChats";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
-import { fr } from "date-fns/locale";
+import { format, isToday, isYesterday } from "date-fns";
 import NewChatDialog from "@/components/messages/NewChatDialog";
 
 const formatMessageTime = (dateString: string | null): string => {
@@ -112,14 +112,12 @@ const ChatListItem = ({
 
 const Messages = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { chats, loading, unreadCount } = useChats();
   const [searchQuery, setSearchQuery] = useState("");
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
 
-  // Get current user ID from first chat
-  const userId = chats[0]?.participant1_id === chats[0]?.other_user?.id 
-    ? chats[0]?.participant2_id 
-    : chats[0]?.participant1_id;
+  const userId = user?.id;
 
   // Filter chats by search query
   const filteredChats = useMemo(() => {
