@@ -4,6 +4,7 @@ import { PhoneOff, Mic, MicOff, Eye, Users2, AlertCircle, DoorOpen } from "lucid
 import { Button } from "@/components/ui/button";
 import { useDaily } from "@/hooks/useDaily";
 import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
+import { useChats } from "@/hooks/useChats";
 import { supabase } from "@/integrations/supabase/client";
 import VideoGrid from "./VideoGrid";
 import InviteResidentsPanel from "./InviteResidentsPanel";
@@ -48,6 +49,9 @@ const CallInterface = memo(({
   
   // Ringing timeout: 30 seconds before showing message dialog
   const RINGING_TIMEOUT_MS = 30000;
+
+  // Chat functions for missed/ended call messages
+  const { sendMissedCall, sendCallEnded } = useChats();
 
   // Multi-resident call management
   const {
@@ -291,29 +295,33 @@ const CallInterface = memo(({
         logger.log("[CallInterface] Other residents still in call:", activeResidents.length);
       }
     } else if (callId && !isResident) {
-      // Visitor hanging up - check if call was answered
-      if (!callWasAnswered && habitationId) {
-        // Call wasn't answered - create a "missed call" message in unified table
-        logger.log("[CallInterface] Visitor hangup without answer - creating missed call message");
+      // Visitor hanging up
+      const { data: { user: visitorUser } } = await supabase.auth.getUser();
+      const visitorUserId = visitorUser?.id;
+      
+      if (visitorUserId) {
+        // Get the first resident of this habitation to send the message to
+        const { data: residents } = await supabase
+          .from("residents")
+          .select("user_id")
+          .eq("habitation_id", habitationId)
+          .eq("status", "verified")
+          .limit(1);
         
-        // Get visitor's user_id from Supabase Auth
-        const { data: { user: visitorUser } } = await supabase.auth.getUser();
-        const visitorUserId = visitorUser?.id;
+        const recipientId = targetUserId || residents?.[0]?.user_id;
         
-        if (visitorUserId) {
-          // Get the first resident of this habitation to send the missed call message to
-          const { data: residents } = await supabase
-            .from("residents")
-            .select("user_id")
-            .eq("habitation_id", habitationId)
-            .eq("status", "verified")
-            .limit(1);
-          
-          const recipientId = targetUserId || residents?.[0]?.user_id;
-          
-          if (recipientId) {
-            // TODO: Create missed call message using new chat system (Phase 6)
-            logger.log("[CallInterface] Missed call from", visitorUserId, "to", recipientId);
+        if (recipientId) {
+          if (!callWasAnswered) {
+            // Call wasn't answered - create missed call message
+            logger.log("[CallInterface] Visitor hangup without answer - creating missed call message");
+            await sendMissedCall(recipientId);
+            logger.log("[CallInterface] Missed call message sent to", recipientId);
+          } else {
+            // Call was answered - create call ended message with duration
+            const callDuration = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
+            logger.log("[CallInterface] Call ended, duration:", callDuration, "seconds");
+            await sendCallEnded(recipientId, callDuration);
+            logger.log("[CallInterface] Call ended message sent to", recipientId);
           }
         }
       }
