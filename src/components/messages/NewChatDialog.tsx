@@ -206,7 +206,7 @@ const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle className="text-center sm:text-left">
             {mode === "menu" && "Nouvelle conversation"}
