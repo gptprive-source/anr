@@ -201,8 +201,9 @@ const CallInterface = memo(({
           const recipientId = targetUserId || residents?.[0]?.user_id;
           
           if (recipientId) {
-            // TODO: Create missed call message using new chat system (Phase 6)
-            logger.log("[CallInterface] Missed call from", visitorUserId, "to", recipientId);
+            // Send missed call message using the chat system
+            await sendMissedCall(recipientId);
+            logger.log("[CallInterface] Missed call message sent to", recipientId);
           }
         }
         
@@ -211,7 +212,7 @@ const CallInterface = memo(({
     }, RINGING_TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
-  }, [isResident, callWasAnswered, callState, habitationId, targetUserId]);
+  }, [isResident, callWasAnswered, callState, habitationId, targetUserId, sendMissedCall]);
 
   // Update call state based on Daily connection
   useEffect(() => {
@@ -230,9 +231,32 @@ const CallInterface = memo(({
   useEffect(() => {
     if (callState === "ended") {
       // If visitor should go to conversation, redirect to chat page
-      if (!isResident && shouldRedirectToConversation && targetUserId) {
-        logger.log("[CallInterface] Redirecting visitor to chat page with targetUserId:", targetUserId);
-        navigate(`/chat/${targetUserId}`, { replace: true });
+      if (!isResident && shouldRedirectToConversation) {
+        const redirectToChat = async () => {
+          let recipientId = targetUserId;
+          
+          // If no specific targetUserId, get the first resident of this habitation
+          if (!recipientId && habitationId) {
+            const { data: residents } = await supabase
+              .from("residents")
+              .select("user_id")
+              .eq("habitation_id", habitationId)
+              .eq("status", "verified")
+              .limit(1);
+            
+            recipientId = residents?.[0]?.user_id;
+          }
+          
+          if (recipientId) {
+            logger.log("[CallInterface] Redirecting visitor to chat page with recipientId:", recipientId);
+            navigate(`/chat/${recipientId}`, { replace: true });
+          } else {
+            logger.log("[CallInterface] No recipient found, navigating back");
+            navigate(-1);
+          }
+        };
+        
+        redirectToChat();
         return;
       }
       
@@ -242,7 +266,7 @@ const CallInterface = memo(({
       }, 1500);
       return () => clearTimeout(timeout);
     }
-  }, [callState, navigate, isResident, shouldRedirectToConversation, targetUserId]);
+  }, [callState, navigate, isResident, shouldRedirectToConversation, targetUserId, habitationId]);
 
   // Individual hangup - only ends call if no other residents are active
   const handleHangup = async () => {
