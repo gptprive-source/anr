@@ -33,7 +33,6 @@ import Residents from "./pages/Residents";
 
 import Messages from "./pages/Messages";
 import Contacts from "./pages/Contacts";
-import Conversation from "./pages/Conversation";
 import DirectConversation from "./pages/DirectConversation";
 import NotificationConversation from "./pages/NotificationConversation";
 import MessageBackup from "./pages/MessageBackup";
@@ -51,8 +50,6 @@ import ShopSuccess from "./pages/ShopSuccess";
 import Orders from "./pages/Orders";
 import Referral from "./pages/Referral";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
-// VisitorMessages removed - /visitor-messages now redirects to Messages
-import VisitorConversation from "./pages/VisitorConversation";
 import UnifiedConversation from "./pages/UnifiedConversation";
 import NotFound from "./pages/NotFound";
 import PhoneVerification from "./pages/PhoneVerification";
@@ -159,7 +156,7 @@ const AppContent = () => {
                 <Contacts />
               </ProtectedRoute>} />
           <Route path="/conversation/:id" element={<ProtectedRoute>
-                <Conversation />
+                <UnifiedConversation />
               </ProtectedRoute>} />
           <Route path="/chat/:id" element={<ProtectedRoute>
                 <UnifiedConversation />
@@ -169,7 +166,7 @@ const AppContent = () => {
               </ProtectedRoute>} />
           {/* Redirect old route for compatibility */}
           <Route path="/conversation-sent/:id" element={<ProtectedRoute>
-                <Conversation />
+                <UnifiedConversation />
               </ProtectedRoute>} />
           <Route path="/notification/communication/:communicationId" element={<ProtectedRoute>
                 <NotificationConversation />
@@ -220,9 +217,9 @@ const AppContent = () => {
           <Route path="/carrier/scan" element={<FeatureFlagRoute flagKey="carrierModuleEnabled"><DeliveryScan /></FeatureFlagRoute>} />
           <Route path="/parcel/receive" element={<FeatureFlagRoute flagKey="parcelDeliveryEnabled"><ParcelReceive /></FeatureFlagRoute>} />
 
-          {/* Visitor messages - redirect old URL to /messages */}
+          {/* Visitor messages - redirect old URL to unified */}
           <Route path="/visitor-messages" element={<Messages />} />
-          <Route path="/visitor-conversation/:habitationId" element={<VisitorConversation />} />
+          <Route path="/visitor-conversation/:habitationId" element={<UnifiedConversation />} />
 
           {/* Public legal pages */}
           <Route path="/mentions-legales" element={<MentionsLegales />} />

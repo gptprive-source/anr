@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ShareANRDialog from "./ShareANRDialog";
 import BottomNav from "@/components/layout/BottomNav";
-import { useVisitorMessages } from "@/hooks/useVisitorMessages";
+import { useMessages } from "@/hooks/useMessages";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useSupportChat } from "@/contexts/SupportChatContext";
@@ -59,10 +59,8 @@ const ResidentDashboard = () => {
   const {
     flags
   } = useFeatureFlags();
-  // Use countOnly mode for dashboard - much faster
-  const {
-    unreadCount: unreadMessagesCount
-  } = useVisitorMessages(habitationData?.id || "", true);
+  // Use unified messages hook
+  const { unreadCount: unreadMessagesCount } = useMessages();
   const {
     setIsOpen: setSupportChatOpen
   } = useSupportChat();

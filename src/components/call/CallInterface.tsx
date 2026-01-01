@@ -181,80 +181,32 @@ const CallInterface = memo(({
       if (!callWasAnswered && habitationId) {
         logger.log("[CallInterface] 30s timeout - creating missed call message and redirecting");
         
-        // Create missed call message for resident to reply
-        // Get visitor's user_id DIRECTLY from Supabase Auth (most reliable)
+        // Get visitor's user_id from Supabase Auth
         const { data: { user: visitorUser } } = await supabase.auth.getUser();
         const visitorUserId = visitorUser?.id;
-        const visitorDeviceId = localStorage.getItem("visitor_device_id");
         
-        // Try to find existing business card - priority: user_id (ALWAYS first if logged in)
-        let businessCardId: string | null = null;
-        
-        // Priority 1: If visitor is logged in, ALWAYS use their user-linked business card
         if (visitorUserId) {
-          const { data: userCard } = await supabase
-            .from("visitor_business_cards")
-            .select("id")
-            .eq("user_id", visitorUserId)
-            .maybeSingle();
-          
-          if (userCard) {
-            businessCardId = userCard.id;
-            logger.log("[CallInterface] Using visitor's user-linked business card:", businessCardId);
-          }
-        }
-        
-        // Priority 2: Only if NOT logged in, check for existing conversation by device_id
-        if (!businessCardId && visitorDeviceId && !visitorUserId) {
-          const { data: existingMessage } = await supabase
-            .from("visitor_messages")
-            .select("business_card_id")
+          // Get the first resident of this habitation to send the missed call message to
+          const { data: residents } = await supabase
+            .from("residents")
+            .select("user_id")
             .eq("habitation_id", habitationId)
-            .eq("visitor_device_id", visitorDeviceId)
-            .not("business_card_id", "is", null)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .eq("status", "verified")
+            .limit(1);
           
-          if (existingMessage?.business_card_id) {
-            businessCardId = existingMessage.business_card_id;
-            logger.log("[CallInterface] Using existing conversation business card:", businessCardId);
-          }
-        }
-        
-        // Priority 3: Only if NOT logged in, look for or create business card by device_id
-        if (!businessCardId && visitorDeviceId && !visitorUserId) {
-          const { data: existingCard } = await supabase
-            .from("visitor_business_cards")
-            .select("id")
-            .eq("device_id", visitorDeviceId)
-            .maybeSingle();
+          const recipientId = targetUserId || residents?.[0]?.user_id;
           
-          if (existingCard) {
-            businessCardId = existingCard.id;
-          } else {
-            const { data: newCard } = await supabase
-              .from("visitor_business_cards")
-              .insert({
-                device_id: visitorDeviceId,
-                card_type: "particulier",
-                first_name: "Visiteur",
-              })
-              .select("id")
-              .single();
-            businessCardId = newCard?.id || null;
+          if (recipientId) {
+            // Create missed call message in the unified messages table
+            await supabase.from("messages").insert({
+              sender_id: visitorUserId,
+              recipient_id: recipientId,
+              habitation_id: habitationId,
+              message: "📞 Appel manqué",
+              is_read: false,
+            });
+            logger.log("[CallInterface] Created missed call message from", visitorUserId, "to", recipientId);
           }
-        }
-        
-        if (businessCardId && visitorDeviceId) {
-          await supabase.from("visitor_messages").insert({
-            habitation_id: habitationId,
-            business_card_id: businessCardId,
-            visitor_device_id: visitorDeviceId,
-            message: "📞 Appel manqué",
-            recipient_user_id: targetUserId || null,
-            is_read: false,
-          });
         }
         
         setShouldRedirectToConversation(true);
@@ -348,84 +300,35 @@ const CallInterface = memo(({
     } else if (callId && !isResident) {
       // Visitor hanging up - check if call was answered
       if (!callWasAnswered && habitationId) {
-        // Call wasn't answered - create a "missed call" message so resident can reply
+        // Call wasn't answered - create a "missed call" message in unified table
         logger.log("[CallInterface] Visitor hangup without answer - creating missed call message");
         
-        // Get visitor's user_id DIRECTLY from Supabase Auth (most reliable)
+        // Get visitor's user_id from Supabase Auth
         const { data: { user: visitorUser } } = await supabase.auth.getUser();
         const visitorUserId = visitorUser?.id;
-        const visitorDeviceId = localStorage.getItem("visitor_device_id");
         
-        // Try to find existing business card - priority: user_id (ALWAYS first if logged in)
-        let businessCardId: string | null = null;
-        
-        // Priority 1: If visitor is logged in, ALWAYS use their user-linked business card
         if (visitorUserId) {
-          const { data: userCard } = await supabase
-            .from("visitor_business_cards")
-            .select("id")
-            .eq("user_id", visitorUserId)
-            .maybeSingle();
-          
-          if (userCard) {
-            businessCardId = userCard.id;
-            logger.log("[CallInterface] Using visitor's user-linked business card:", businessCardId);
-          }
-        }
-        
-        // Priority 2: Only if NOT logged in, check for existing conversation by device_id
-        if (!businessCardId && visitorDeviceId && !visitorUserId) {
-          const { data: existingMessage } = await supabase
-            .from("visitor_messages")
-            .select("business_card_id")
+          // Get the first resident of this habitation to send the missed call message to
+          const { data: residents } = await supabase
+            .from("residents")
+            .select("user_id")
             .eq("habitation_id", habitationId)
-            .eq("visitor_device_id", visitorDeviceId)
-            .not("business_card_id", "is", null)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .eq("status", "verified")
+            .limit(1);
           
-          if (existingMessage?.business_card_id) {
-            businessCardId = existingMessage.business_card_id;
-            logger.log("[CallInterface] Using existing conversation business card:", businessCardId);
-          }
-        }
-        
-        // Priority 3: Only if NOT logged in, look for or create business card by device_id
-        if (!businessCardId && visitorDeviceId && !visitorUserId) {
-          const { data: existingCard } = await supabase
-            .from("visitor_business_cards")
-            .select("id")
-            .eq("device_id", visitorDeviceId)
-            .maybeSingle();
+          const recipientId = targetUserId || residents?.[0]?.user_id;
           
-          if (existingCard) {
-            businessCardId = existingCard.id;
-          } else {
-            const { data: newCard } = await supabase
-              .from("visitor_business_cards")
-              .insert({
-                device_id: visitorDeviceId,
-                card_type: "particulier",
-                first_name: "Visiteur",
-              })
-              .select("id")
-              .single();
-            businessCardId = newCard?.id || null;
+          if (recipientId) {
+            // Create missed call message in the unified messages table
+            await supabase.from("messages").insert({
+              sender_id: visitorUserId,
+              recipient_id: recipientId,
+              habitation_id: habitationId,
+              message: "📞 Appel manqué",
+              is_read: false,
+            });
+            logger.log("[CallInterface] Created missed call message from", visitorUserId, "to", recipientId);
           }
-        }
-        
-        // Create "missed call" visitor message
-        if (businessCardId && visitorDeviceId) {
-          await supabase.from("visitor_messages").insert({
-            habitation_id: habitationId,
-            business_card_id: businessCardId,
-            visitor_device_id: visitorDeviceId,
-            message: "📞 Appel manqué",
-            recipient_user_id: targetUserId || null,
-            is_read: false,
-          });
-          logger.log("[CallInterface] Created missed call message for resident to reply");
         }
         
         // Redirect visitor to conversation
