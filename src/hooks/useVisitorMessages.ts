@@ -161,7 +161,8 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
       message_nonce: string;
       visitor_public_key: string;
     },
-    mediaFile?: File
+    mediaFile?: File,
+    recipientUserId?: string | null // For private messages
   ) => {
     try {
       // If audio is provided, upload to storage first
@@ -254,6 +255,7 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
         media_url: mediaUrl,
         media_type: mediaType,
         visitor_device_id: visitorDeviceId, // Track which device sent this message
+        recipient_user_id: recipientUserId || null, // For private messages
       };
 
       // Add encryption fields if provided
@@ -297,10 +299,16 @@ export const useVisitorMessages = (habitationId?: string, countOnly = false) => 
           .eq("status", "verified");
 
         if (residents && residents.length > 0) {
-          // Filter: owners always receive, others only if receive_visitor_messages is true
-          const recipientResidents = residents.filter(r => 
-            r.is_owner === true || r.receive_visitor_messages === true
-          );
+          // Filter: if recipientUserId is set, only notify that user
+          // Otherwise: owners always receive, others only if receive_visitor_messages is true
+          let recipientResidents;
+          if (recipientUserId) {
+            recipientResidents = residents.filter(r => r.user_id === recipientUserId);
+          } else {
+            recipientResidents = residents.filter(r => 
+              r.is_owner === true || r.receive_visitor_messages === true
+            );
+          }
 
           if (recipientResidents.length > 0) {
             // Get visitor name from business card if available

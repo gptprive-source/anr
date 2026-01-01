@@ -16,6 +16,8 @@ import { BleOpenDoorButton } from "@/components/door/BleOpenDoorButton";
 import { FaceVerificationDialog } from "@/components/door/FaceVerificationDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { ResidentSelector } from "@/components/call/ResidentSelector";
+
 interface ANRData {
   id: string;
   code: string;
@@ -23,6 +25,8 @@ interface ANRData {
   latitude: number;
   longitude: number;
   habitationCount: number;
+  singleHabitationId?: string;
+  singleHabitationResidentCount?: number;
 }
 
 interface ScheduledAccess {
@@ -45,6 +49,7 @@ const ANRLanding = () => {
   const [faceVerificationOpen, setFaceVerificationOpen] = useState(false);
   const [faceVerified, setFaceVerified] = useState(false);
   const [showRegistrationChoice, setShowRegistrationChoice] = useState(false);
+  const [showResidentSelector, setShowResidentSelector] = useState(false);
   const [hasBusinessCard, setHasBusinessCard] = useState<boolean | null>(null);
 
   // Check if user has a business card
@@ -91,15 +96,31 @@ const ANRLanding = () => {
           return;
         }
 
-        // Count habitations
-        const { count } = await supabase
+        // Count habitations and get single habitation details if only one
+        const { data: habitations, count } = await supabase
           .from("habitations")
-          .select("id", { count: "exact", head: true })
+          .select("id", { count: "exact" })
           .eq("anr_id", anr.id);
+
+        let singleHabitationId: string | undefined;
+        let singleHabitationResidentCount = 0;
+
+        if (count === 1 && habitations && habitations.length === 1) {
+          singleHabitationId = habitations[0].id;
+          // Count residents for this single habitation
+          const { count: residentCount } = await supabase
+            .from("residents")
+            .select("id", { count: "exact", head: true })
+            .eq("habitation_id", singleHabitationId)
+            .eq("status", "verified");
+          singleHabitationResidentCount = residentCount || 0;
+        }
 
         setAnrData({
           ...anr,
           habitationCount: count || 0,
+          singleHabitationId,
+          singleHabitationResidentCount,
         });
 
         // Check if current user has valid scheduled access
@@ -235,10 +256,23 @@ const ANRLanding = () => {
     if (anrData.habitationCount > 1) {
       // Multi-habitat: go to selection page (pass code, not UUID)
       navigate(`/multi-habitat/${anrData.code}`);
+    } else if (anrData.singleHabitationResidentCount && anrData.singleHabitationResidentCount > 1) {
+      // Single habitat with multiple residents: show resident selector
+      setShowResidentSelector(true);
     } else {
-      // Single habitat: go directly to call (pass code, not UUID)
+      // Single habitat with single resident: go directly to call (pass code, not UUID)
       navigate(`/call/${anrData.code}`);
     }
+  };
+
+  const handleResidentSelect = (targetUserId: string | null) => {
+    if (!anrData) return;
+    navigate(`/call/${anrData.code}`, {
+      state: {
+        habitationId: anrData.singleHabitationId,
+        targetUserId,
+      },
+    });
   };
 
   if (loading) {
@@ -269,6 +303,20 @@ const ANRLanding = () => {
         </div>
         <VisitorFooter />
       </div>
+    );
+  }
+
+  // Show resident selector for single habitation with multiple residents
+  if (showResidentSelector && anrData.singleHabitationId) {
+    return (
+      <ResidentSelector
+        anrCode={anrData.code}
+        habitationId={anrData.singleHabitationId}
+        habitationName={anrData.address}
+        address={anrData.address}
+        onSelect={handleResidentSelect}
+        onBack={() => setShowResidentSelector(false)}
+      />
     );
   }
 

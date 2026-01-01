@@ -3,10 +3,12 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { ResidentSelector } from "./ResidentSelector";
 
 interface Resident {
   first_name: string | null;
   last_name: string | null;
+  user_id?: string;
 }
 
 interface Habitat {
@@ -14,6 +16,7 @@ interface Habitat {
   name: string;
   floor?: string | null;
   residents: Resident[];
+  residentCount: number;
 }
 
 const COLORS = ["blue", "orange", "purple", "green", "pink", "cyan"] as const;
@@ -25,6 +28,7 @@ const MultiHabitatSelector = () => {
   const [habitats, setHabitats] = useState<Habitat[]>([]);
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedHabitat, setSelectedHabitat] = useState<Habitat | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -55,11 +59,19 @@ const MultiHabitatSelector = () => {
       if (habitationsData && habitationsData.length > 0) {
         const habitationIds = habitationsData.map(h => h.id);
         
-        // Fetch owners separately
-        const { data: residentsData } = await supabase
+        // Fetch all residents (not just owners) for count
+        const { data: allResidentsData } = await supabase
+          .from("residents")
+          .select("habitation_id, user_id")
+          .in("habitation_id", habitationIds)
+          .eq("status", "verified");
+
+        // Fetch owners for display names
+        const { data: ownersData } = await supabase
           .from("residents")
           .select(`
             habitation_id,
+            user_id,
             profiles:user_id (
               first_name,
               last_name
@@ -68,9 +80,10 @@ const MultiHabitatSelector = () => {
           .in("habitation_id", habitationIds)
           .eq("is_owner", true);
 
-        // Combine habitations with their owners
+        // Combine habitations with their owners and resident counts
         const formattedHabitats: Habitat[] = habitationsData.map((hab) => {
-          const owners = residentsData?.filter(r => r.habitation_id === hab.id) || [];
+          const owners = ownersData?.filter(r => r.habitation_id === hab.id) || [];
+          const allResidents = allResidentsData?.filter(r => r.habitation_id === hab.id) || [];
           return {
             id: hab.id,
             name: hab.name,
@@ -78,7 +91,9 @@ const MultiHabitatSelector = () => {
             residents: owners.map((r: any) => ({
               first_name: r.profiles?.first_name || null,
               last_name: r.profiles?.last_name || null,
+              user_id: r.user_id,
             })),
+            residentCount: allResidents.length,
           };
         });
         setHabitats(formattedHabitats);
@@ -103,9 +118,28 @@ const MultiHabitatSelector = () => {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const handleSelect = (habitat: Habitat) => {
+    // If more than 1 resident, show resident selector
+    if (habitat.residentCount > 1) {
+      setSelectedHabitat(habitat);
+    } else {
+      // Single resident or no residents - go directly to call
+      navigate(`/call/${anrId}`, { 
+        state: { 
+          habitationId: habitat.id,
+          targetUserId: null,
+          visitorLat: location.state?.visitorLat,
+          visitorLon: location.state?.visitorLon,
+        } 
+      });
+    }
+  };
+
+  const handleResidentSelect = (targetUserId: string | null) => {
+    if (!selectedHabitat) return;
     navigate(`/call/${anrId}`, { 
       state: { 
-        habitationId: habitat.id,
+        habitationId: selectedHabitat.id,
+        targetUserId,
         visitorLat: location.state?.visitorLat,
         visitorLon: location.state?.visitorLon,
       } 
@@ -140,6 +174,20 @@ const MultiHabitatSelector = () => {
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  // Show resident selector if a habitat is selected
+  if (selectedHabitat) {
+    return (
+      <ResidentSelector
+        anrCode={anrId || ""}
+        habitationId={selectedHabitat.id}
+        habitationName={selectedHabitat.name}
+        address={address}
+        onSelect={handleResidentSelect}
+        onBack={() => setSelectedHabitat(null)}
+      />
     );
   }
 

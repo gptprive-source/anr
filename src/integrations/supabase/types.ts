@@ -254,6 +254,7 @@ export type Database = {
           id: string
           started_at: string | null
           status: string | null
+          target_user_id: string | null
           visitor_latitude: number | null
           visitor_longitude: number | null
           visitor_phone: string | null
@@ -266,6 +267,7 @@ export type Database = {
           id?: string
           started_at?: string | null
           status?: string | null
+          target_user_id?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
@@ -278,6 +280,7 @@ export type Database = {
           id?: string
           started_at?: string | null
           status?: string | null
+          target_user_id?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
@@ -3821,6 +3824,7 @@ export type Database = {
           message: string | null
           message_nonce: string | null
           read_at: string | null
+          recipient_user_id: string | null
           replied_at: string | null
           visitor_device_id: string | null
           visitor_latitude: number | null
@@ -3846,6 +3850,7 @@ export type Database = {
           message?: string | null
           message_nonce?: string | null
           read_at?: string | null
+          recipient_user_id?: string | null
           replied_at?: string | null
           visitor_device_id?: string | null
           visitor_latitude?: number | null
@@ -3871,6 +3876,7 @@ export type Database = {
           message?: string | null
           message_nonce?: string | null
           read_at?: string | null
+          recipient_user_id?: string | null
           replied_at?: string | null
           visitor_device_id?: string | null
           visitor_latitude?: number | null

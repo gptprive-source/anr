@@ -52,15 +52,21 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
               return;
             }
             
-            // Verify call_logs is still active
+            // Verify call_logs is still active AND check if it's a private call
             const { data: callLog } = await supabase
               .from("call_logs")
-              .select("status")
+              .select("status, target_user_id")
               .eq("id", participant.call_id)
               .single();
             
             if (!callLog || callLog.status === "ended" || callLog.status === "missed") {
               console.log("[REALTIME] Call already ended, skipping");
+              return;
+            }
+
+            // Check if this is a private call and if it's meant for this user
+            if (callLog.target_user_id && callLog.target_user_id !== user.id) {
+              console.log("[REALTIME] Private call not meant for this user, skipping");
               return;
             }
             
@@ -244,10 +250,10 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
         const call = calls[0];
         console.log("[POLL] Found ringing call:", call.call_id);
 
-        // IMPORTANT: Vérifier que le call_logs n'est pas déjà terminé
+        // IMPORTANT: Vérifier que le call_logs n'est pas déjà terminé ET vérifier si c'est un appel privé
         const { data: callLog } = await supabase
           .from("call_logs")
-          .select("status")
+          .select("status, target_user_id")
           .eq("id", call.call_id)
           .single();
         
@@ -258,6 +264,12 @@ export const IncomingCallProvider = ({ children }: { children: ReactNode }) => {
             .from("call_participants")
             .update({ status: "ended", left_at: new Date().toISOString() })
             .eq("id", call.id);
+          return;
+        }
+
+        // Check if this is a private call and if it's meant for this user
+        if (callLog.target_user_id && callLog.target_user_id !== user.id) {
+          console.log("[POLL] Private call not meant for this user, skipping");
           return;
         }
 
