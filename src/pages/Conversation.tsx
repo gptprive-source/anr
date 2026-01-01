@@ -273,7 +273,13 @@ const Conversation = () => {
           error = result.error;
         }
         if (error) throw error;
-        if (!data || data.length === 0) {
+        
+        // Filter messages: only show messages for the whole residence OR specifically for this user
+        const filteredData = (data || []).filter((m: any) => 
+          !m.recipient_user_id || m.recipient_user_id === user.id
+        );
+        
+        if (!filteredData || filteredData.length === 0) {
           toast({
             title: "Erreur",
             description: "Conversation introuvable",
@@ -283,10 +289,10 @@ const Conversation = () => {
           navigate("/messages");
           return;
         }
-        setVisitorMessages(data as VisitorMessage[]);
+        setVisitorMessages(filteredData as VisitorMessage[]);
 
-        // Mark as read
-        const unreadIds = data.filter((m: any) => !m.is_read).map((m: any) => m.id);
+        // Mark as read - only mark the filtered messages as read
+        const unreadIds = filteredData.filter((m: any) => !m.is_read).map((m: any) => m.id);
         if (unreadIds.length > 0) {
           await supabase.from("visitor_messages" as any).update({
             is_read: true,
@@ -295,8 +301,8 @@ const Conversation = () => {
         }
 
         // Delete corresponding notifications
-        if (user?.id && data.length > 0) {
-          const messageIds = data.map((m: any) => m.id);
+        if (user?.id && filteredData.length > 0) {
+          const messageIds = filteredData.map((m: any) => m.id);
           const {
             data: notifs
           } = await supabase.from("user_notifications").select("id, data").eq("user_id", user.id).eq("type", "visitor_message");
