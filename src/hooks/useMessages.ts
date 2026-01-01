@@ -355,20 +355,35 @@ export const useMessages = (conversationUserId?: string) => {
 
     const parts = conversationId.split("__");
     const recipientId = parts[0];
+    const habitationId = parts[1] || null;
 
-    // Mark as deleted for messages where user is SENDER
-    await supabase
+    // Build and execute query for messages where user is SENDER
+    let senderQuery = supabase
       .from("messages")
       .update({ deleted_by_sender: true })
       .eq("sender_id", user.id)
       .eq("recipient_id", recipientId);
 
-    // Mark as deleted for messages where user is RECIPIENT  
-    await supabase
+    if (habitationId) {
+      senderQuery = senderQuery.eq("habitation_id", habitationId);
+    } else {
+      senderQuery = senderQuery.is("habitation_id", null);
+    }
+    await senderQuery;
+
+    // Build and execute query for messages where user is RECIPIENT
+    let recipientQuery = supabase
       .from("messages")
       .update({ deleted_by_recipient: true })
       .eq("recipient_id", user.id)
       .eq("sender_id", recipientId);
+
+    if (habitationId) {
+      recipientQuery = recipientQuery.eq("habitation_id", habitationId);
+    } else {
+      recipientQuery = recipientQuery.is("habitation_id", null);
+    }
+    await recipientQuery;
 
     // Remove from local state immediately
     setMessages((prev) =>
@@ -376,7 +391,12 @@ export const useMessages = (conversationUserId?: string) => {
         const isInConversation =
           (msg.sender_id === user.id && msg.recipient_id === recipientId) ||
           (msg.sender_id === recipientId && msg.recipient_id === user.id);
-        return !isInConversation;
+        
+        const habitationMatches = habitationId
+          ? msg.habitation_id === habitationId
+          : msg.habitation_id === null;
+
+        return !(isInConversation && habitationMatches);
       })
     );
   };
