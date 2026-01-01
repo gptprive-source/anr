@@ -397,7 +397,7 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
                     <Users className="w-6 h-6 text-blue-500" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium">{selectedHabitation.name}</p>
+                    <p className="font-medium">{selectedHabitation.owner_name || "Résident"}</p>
                     <p className="text-xs text-muted-foreground">
                       Message visible par tous les résidents
                     </p>
