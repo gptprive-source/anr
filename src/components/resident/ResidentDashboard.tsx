@@ -206,7 +206,7 @@ const ResidentDashboard = () => {
         <div className="pt-4 flex items-center justify-between">
           <div>
             <h1 className="font-bold text-foreground text-base">Mon Adresse Numérique Résidentielle</h1>
-            <p className="text-muted-foreground pt-1 text-sm font-extrabold">{habitationData.anr.address}</p>
+            <p className="text-muted-foreground pt-1 font-medium text-xs">{habitationData.anr.address}</p>
           </div>
           <NotificationBell />
         </div>
