@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { MapPin, Phone, Loader2, DoorOpen, ScanFace, QrCode } from "lucide-react";
+import { MapPin, Phone, Loader2, DoorOpen, ScanFace, QrCode, UserPlus, Home, Mail, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -44,6 +44,7 @@ const ANRLanding = () => {
   const [checkingAccess, setCheckingAccess] = useState(false);
   const [faceVerificationOpen, setFaceVerificationOpen] = useState(false);
   const [faceVerified, setFaceVerified] = useState(false);
+  const [showRegistrationChoice, setShowRegistrationChoice] = useState(false);
   const [hasBusinessCard, setHasBusinessCard] = useState<boolean | null>(null);
 
   // Check if user has a business card
@@ -225,27 +226,9 @@ const ANRLanding = () => {
   const handleCall = () => {
     if (!anrData) return;
     
-    // Check if user is authenticated
-    if (!user) {
-      toast.info("Vous devez vous inscrire pour appeler", {
-        description: "Créez un compte pour contacter ce résident",
-        action: {
-          label: "S'inscrire",
-          onClick: () => navigate("/register", { state: { returnTo: `/anr/${code}` } }),
-        },
-      });
-      return;
-    }
-    
-    // Check if user has a business card
-    if (hasBusinessCard === false) {
-      toast.info("Complétez votre carte de visite", {
-        description: "Votre carte de visite est requise pour contacter les résidents",
-        action: {
-          label: "Compléter",
-          onClick: () => navigate("/onboarding-business-card", { state: { returnTo: `/anr/${code}` } }),
-        },
-      });
+    // Check if user is authenticated and has business card
+    if (!user || hasBusinessCard === false) {
+      setShowRegistrationChoice(true);
       return;
     }
     
@@ -283,6 +266,125 @@ const ANRLanding = () => {
               Scanner un autre ANR
             </Button>
           </div>
+        </div>
+        <VisitorFooter />
+      </div>
+    );
+  }
+
+  // Show registration choice screen
+  if (showRegistrationChoice) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-secondary/20">
+        <div className="flex-1 flex flex-col items-center justify-center p-6">
+          {/* Back button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowRegistrationChoice(false)}
+            className="absolute top-4 left-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
+
+          {/* Logo */}
+          <img src={logoAnr} alt="ANR" className="w-16 h-16 mb-6" />
+          
+          <h1 className="text-2xl font-bold text-center mb-2">
+            Bienvenue sur ANR
+          </h1>
+          <p className="text-muted-foreground text-center mb-8 max-w-sm">
+            Pour appeler ce résident, choisissez comment vous souhaitez continuer :
+          </p>
+
+          <div className="w-full max-w-md space-y-4">
+            {/* Option 1: Free visitor registration */}
+            <Card className="border-2 border-primary hover:border-primary/80 transition-colors cursor-pointer" onClick={() => navigate("/visitor-login", { state: { returnTo: `/anr/${code}` } })}>
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-1">
+                      M'inscrire gratuitement
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Créez votre carte de visite numérique avec votre email pour contacter les résidents.
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        100% gratuit
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        Appels vidéo illimités
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        Messages aux résidents
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <Button className="w-full mt-4" variant="default">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Créer ma carte de visite gratuite
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Option 2: Subscribe and create interphone */}
+            <Card className="border-2 border-amber-500 hover:border-amber-500/80 transition-colors cursor-pointer" onClick={() => navigate("/register", { state: { returnTo: `/anr/${code}` } })}>
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                    <Home className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-1">
+                      Créer mon Interphone Numérique
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Abonnez-vous et recevez votre propre ANR pour votre domicile ou entreprise.
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        Votre propre code ANR
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        Réception de colis sécurisée
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        Gestion des accès à distance
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <Button className="w-full mt-4 bg-amber-500 hover:bg-amber-600 text-white">
+                  <Home className="w-4 h-4 mr-2" />
+                  M'abonner et créer mon ANR
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Already have account */}
+          <p className="text-sm text-muted-foreground mt-8">
+            Déjà inscrit ?{" "}
+            <Button
+              variant="link"
+              className="p-0 h-auto text-primary"
+              onClick={() => navigate("/login", { state: { returnTo: `/anr/${code}` } })}
+            >
+              Se connecter
+            </Button>
+          </p>
         </div>
         <VisitorFooter />
       </div>
