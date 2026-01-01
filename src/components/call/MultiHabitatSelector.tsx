@@ -96,6 +96,7 @@ const MultiHabitatSelector = () => {
             residentCount: allResidents.length,
           };
         });
+        console.log("[MultiHabitatSelector] Formatted habitats:", formattedHabitats.map(h => ({ name: h.name, residentCount: h.residentCount })));
         setHabitats(formattedHabitats);
       }
       setLoading(false);
@@ -118,11 +119,14 @@ const MultiHabitatSelector = () => {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const handleSelect = (habitat: Habitat) => {
+    console.log("[MultiHabitatSelector] Selected habitat:", habitat.name, "residentCount:", habitat.residentCount);
     // If more than 1 resident, show resident selector
     if (habitat.residentCount > 1) {
+      console.log("[MultiHabitatSelector] Showing resident selector");
       setSelectedHabitat(habitat);
     } else {
       // Single resident or no residents - go directly to call
+      console.log("[MultiHabitatSelector] Going directly to call");
       navigate(`/call/${anrId}`, { 
         state: { 
           habitationId: habitat.id,
