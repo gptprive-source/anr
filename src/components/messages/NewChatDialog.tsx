@@ -216,18 +216,18 @@ const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogP
         </DialogHeader>
 
         {mode === "menu" && (
-          <div className="grid gap-3">
+          <div className="grid gap-3 overflow-hidden">
             <Button
               variant="outline"
-              className="h-auto py-4 px-3 justify-start gap-3 sm:gap-4"
+              className="h-auto py-4 px-3 justify-start gap-3 w-full overflow-hidden"
               onClick={() => setMode("scan")}
             >
               <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                 <QrCode className="w-5 h-5 text-primary" />
               </div>
-              <div className="text-left min-w-0 flex-1">
+              <div className="text-left overflow-hidden flex-1">
                 <p className="font-medium truncate">Scanner un ANR</p>
-                <p className="text-sm text-muted-foreground line-clamp-2">
+                <p className="text-sm text-muted-foreground truncate">
                   Scannez le QR code pour contacter un résident
                 </p>
               </div>
@@ -235,15 +235,15 @@ const NewChatDialog = ({ open, onOpenChange, onSelectRecipient }: NewChatDialogP
 
             <Button
               variant="outline"
-              className="h-auto py-4 px-3 justify-start gap-3 sm:gap-4"
+              className="h-auto py-4 px-3 justify-start gap-3 w-full overflow-hidden"
               onClick={() => setMode("contacts")}
             >
               <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                 <Users className="w-5 h-5 text-primary" />
               </div>
-              <div className="text-left min-w-0 flex-1">
+              <div className="text-left overflow-hidden flex-1">
                 <p className="font-medium truncate">Contacts récents</p>
-                <p className="text-sm text-muted-foreground line-clamp-2">
+                <p className="text-sm text-muted-foreground truncate">
                   Choisissez parmi vos contacts existants
                 </p>
               </div>
