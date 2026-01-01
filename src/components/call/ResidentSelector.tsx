@@ -46,20 +46,24 @@ export const ResidentSelector = ({
             user_id,
             profiles:user_id (
               first_name,
-              last_name,
-              avatar_url
+              last_name
             )
           `)
           .eq("habitation_id", habitationId)
           .eq("status", "verified");
 
-        if (error) throw error;
+        if (error) {
+          console.error("[ResidentSelector] Query error:", error);
+          throw error;
+        }
+
+        console.log("[ResidentSelector] Residents data:", residentsData);
 
         const formattedResidents = (residentsData || []).map((r: any) => ({
           user_id: r.user_id,
           first_name: r.profiles?.first_name || null,
           last_name: r.profiles?.last_name || null,
-          avatar_url: r.profiles?.avatar_url || null,
+          avatar_url: null,
         }));
 
         setResidents(formattedResidents);
