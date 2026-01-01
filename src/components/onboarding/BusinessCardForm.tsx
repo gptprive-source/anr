@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -49,9 +49,13 @@ const BusinessCardForm = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const initialDataApplied = useRef(false);
 
+  // Only apply initialData once on mount to prevent overwriting user changes
   useEffect(() => {
-    if (initialData) {
+    if (initialData && !initialDataApplied.current) {
+      initialDataApplied.current = true;
+      console.log("[BusinessCardForm] Applying initial data once:", initialData.avatar_url);
       setFormData((prev) => ({
         ...prev,
         ...initialData,
