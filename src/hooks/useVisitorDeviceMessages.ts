@@ -16,7 +16,7 @@ export interface VisitorDeviceMessageItem {
   replies: VisitorDeviceReply[];
 }
 
-// Conversation grouped by habitation_id (one per resident)
+// Conversation grouped by habitation_id + recipient (separate for residence vs private)
 export interface VisitorDeviceConversation {
   habitation_id: string;
   habitation_name: string;
@@ -25,6 +25,11 @@ export interface VisitorDeviceConversation {
   messages: VisitorDeviceMessageItem[];
   last_activity: string;
   unread_count: number;
+  // New fields for private messages
+  recipient_user_id?: string | null; // null = residence, string = private to specific resident
+  recipient_name?: string | null; // Name of the recipient resident (if private)
+  is_private: boolean; // true if this is a private conversation
+  conversation_key: string; // Unique key: habitationId__residence OR habitationId__private_userId
 }
 
 export interface VisitorDeviceReply {
@@ -88,7 +93,8 @@ export const useVisitorDeviceMessages = () => {
           created_at,
           encrypted_message,
           is_encrypted,
-          deleted_by_visitor
+          deleted_by_visitor,
+          recipient_user_id
         `)
         .eq("visitor_device_id", deviceId)
         .eq("deleted_by_visitor", false)
@@ -102,29 +108,63 @@ export const useVisitorDeviceMessages = () => {
         return;
       }
 
-      // Group messages by habitation_id
-      const habitationMap = new Map<string, typeof messagesData>();
+      // Group messages by habitation_id + recipient_user_id (separate residence vs private)
+      // Key format: habitationId__residence OR habitationId__private_userId
+      const conversationMap = new Map<string, typeof messagesData>();
       for (const msg of messagesData || []) {
-        const existing = habitationMap.get(msg.habitation_id) || [];
+        const isPrivate = !!msg.recipient_user_id;
+        const conversationKey = isPrivate 
+          ? `${msg.habitation_id}__private_${msg.recipient_user_id}`
+          : `${msg.habitation_id}__residence`;
+        const existing = conversationMap.get(conversationKey) || [];
         existing.push(msg);
-        habitationMap.set(msg.habitation_id, existing);
+        conversationMap.set(conversationKey, existing);
       }
 
-      // Build conversations for each habitation
+      // Build conversations for each conversation key
       const conversationsData: VisitorDeviceConversation[] = [];
       
-      for (const [habitationId, msgs] of habitationMap.entries()) {
-        // Get habitation details (only once per habitation)
-        const { data: habitation } = await supabase
-          .from("habitations")
-          .select(`
-            name,
-            anr:anrs(code, address)
-          `)
-          .eq("id", habitationId)
-          .maybeSingle();
+      // Cache habitation data to avoid duplicate queries
+      const habitationCache = new Map<string, { name: string; anr: { code: string; address: string } | null }>();
+      
+      for (const [conversationKey, msgs] of conversationMap.entries()) {
+        // Parse conversation key to get habitationId and recipient info
+        const isPrivate = conversationKey.includes("__private_");
+        const habitationId = conversationKey.split("__")[0];
+        const recipientUserId = isPrivate ? conversationKey.split("__private_")[1] : null;
+        
+        // Get habitation details (cached)
+        let habitationData = habitationCache.get(habitationId);
+        if (!habitationData) {
+          const { data: habitation } = await supabase
+            .from("habitations")
+            .select(`
+              name,
+              anr:anrs(code, address)
+            `)
+            .eq("id", habitationId)
+            .maybeSingle();
+          
+          habitationData = {
+            name: habitation?.name || "Habitation",
+            anr: habitation?.anr as { code: string; address: string } | null
+          };
+          habitationCache.set(habitationId, habitationData);
+        }
 
-        const anrData = habitation?.anr as { code: string; address: string } | null;
+        // Get recipient name if private message
+        let recipientName: string | null = null;
+        if (isPrivate && recipientUserId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name, last_name")
+            .eq("id", recipientUserId)
+            .maybeSingle();
+          
+          if (profile) {
+            recipientName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Résident";
+          }
+        }
 
         // Get replies for ALL messages in this conversation
         const messageIds = msgs.map(m => m.id);
@@ -191,14 +231,23 @@ export const useVisitorDeviceMessages = () => {
           }
         }
 
+        // Build display name with recipient info
+        const displayName = isPrivate && recipientName 
+          ? `${habitationData.name} - ${recipientName}`
+          : habitationData.name;
+
         conversationsData.push({
           habitation_id: habitationId,
-          habitation_name: habitation?.name || "Habitation",
-          anr_code: anrData?.code,
-          anr_address: anrData?.address,
+          habitation_name: displayName,
+          anr_code: habitationData.anr?.code,
+          anr_address: habitationData.anr?.address,
           messages: messageItems,
           last_activity: lastActivity,
           unread_count: unreadRepliesCount,
+          recipient_user_id: recipientUserId,
+          recipient_name: recipientName,
+          is_private: isPrivate,
+          conversation_key: conversationKey,
         });
       }
 
