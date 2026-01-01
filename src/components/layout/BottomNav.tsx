@@ -36,14 +36,19 @@ const BottomNav = () => {
         .maybeSingle();
 
       if (residentData?.habitation_id) {
-        // Resident: count unread visitor messages
-        const { count } = await (supabase
+        // Resident: count unread visitor messages that are for the whole residence OR for this specific user
+        const { data: messagesData } = await (supabase
           .from("visitor_messages" as any)
-          .select("*", { count: "exact", head: true })
+          .select("id, recipient_user_id", { count: "exact" })
           .eq("habitation_id", residentData.habitation_id)
           .eq("is_read", false) as any);
         
-        setUnreadMessages(count || 0);
+        // Filter: messages for everyone (null) OR specifically for this user
+        const filteredCount = (messagesData || []).filter((m: any) => 
+          !m.recipient_user_id || m.recipient_user_id === user.id
+        ).length;
+        
+        setUnreadMessages(filteredCount);
       } else {
         // Connected visitor: count unread replies
         const { data: cardData } = await supabase
