@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageSquare, Search, Filter, ChevronRight, Trash2, Plus, Home } from "lucide-react";
+import { ArrowLeft, MessageSquare, Search, Filter, ChevronRight, Trash2, Plus, Home, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,9 +13,9 @@ import { useMessages, Conversation } from "@/hooks/useMessages";
 import { formatDistanceToNow, isToday, isThisWeek, isThisMonth } from "date-fns";
 import { fr } from "date-fns/locale";
 import BottomNav from "@/components/layout/BottomNav";
-import { Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import NewMessageToAnrDialog from "@/components/messages/NewMessageToAnrDialog";
+import { toast } from "sonner";
 
 type StatusFilter = "all" | "unread" | "read";
 type DateFilter = "all" | "today" | "week" | "month";
@@ -28,6 +28,7 @@ const Messages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [showNewMessage, setShowNewMessage] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     conversations,
@@ -118,9 +119,18 @@ const Messages = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteConfirm) return;
-    await deleteConversation(deleteConfirm.id);
-    setDeleteConfirm(null);
+    if (!deleteConfirm || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await deleteConversation(deleteConfirm.id);
+      toast.success("Conversation supprimée");
+    } catch (err) {
+      console.error("Error deleting conversation:", err);
+      toast.error("Erreur lors de la suppression");
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirm(null);
+    }
   };
 
   return (
@@ -153,12 +163,12 @@ const Messages = () => {
             )}
             
             <Button
-              size="icon"
-              variant="ghost"
-              className="text-primary-foreground hover:bg-primary-foreground/10"
+              size="sm"
+              className="bg-white text-primary hover:bg-white/90 font-semibold gap-1.5 shadow-sm"
               onClick={() => setShowNewMessage(true)}
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
+              Nouveau
             </Button>
           </div>
         </div>
@@ -308,9 +318,17 @@ const Messages = () => {
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Supprimer
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -318,6 +336,15 @@ const Messages = () => {
 
       {/* New message dialog */}
       <NewMessageToAnrDialog open={showNewMessage} onOpenChange={setShowNewMessage} />
+
+      {/* Floating Action Button for mobile */}
+      <Button
+        size="lg"
+        className="fixed bottom-24 right-4 z-20 rounded-full w-14 h-14 shadow-lg"
+        onClick={() => setShowNewMessage(true)}
+      >
+        <Plus className="w-6 h-6" />
+      </Button>
 
       <BottomNav />
     </div>
