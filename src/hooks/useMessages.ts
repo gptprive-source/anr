@@ -77,9 +77,16 @@ export const useMessages = (conversationUserId?: string) => {
 
       if (error) throw error;
 
+      // Filter out messages deleted by current user BEFORE processing
+      const filteredData = (data || []).filter((m: any) => {
+        if (m.sender_id === user.id && m.deleted_by_sender === true) return false;
+        if (m.recipient_id === user.id && m.deleted_by_recipient === true) return false;
+        return true;
+      });
+
       // Enrich with sender/recipient profiles
       const userIds = new Set<string>();
-      (data || []).forEach((m: any) => {
+      filteredData.forEach((m: any) => {
         userIds.add(m.sender_id);
         userIds.add(m.recipient_id);
       });
@@ -95,7 +102,7 @@ export const useMessages = (conversationUserId?: string) => {
         profileMap.set(p.id, p);
       });
 
-      const enrichedMessages = (data || []).map((m: any) => ({
+      const enrichedMessages = filteredData.map((m: any) => ({
         ...m,
         sender: profileMap.get(m.sender_id) || { id: m.sender_id, first_name: null, last_name: null, avatar_url: null },
         recipient: profileMap.get(m.recipient_id) || { id: m.recipient_id, first_name: null, last_name: null, avatar_url: null },
