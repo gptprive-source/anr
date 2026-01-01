@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square } from "lucide-react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,6 +15,15 @@ import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import ForwardMessageDialog from "@/components/messages/ForwardMessageDialog";
+
+// ANR context passed from scanner/landing
+interface AnrContext {
+  anrCode?: string;
+  anrId?: string;
+  habitationId?: string;
+  address?: string;
+}
+
 interface RecipientProfile {
   id: string;
   first_name: string | null;
@@ -151,6 +160,7 @@ const Chat = () => {
     recipientId: string;
   }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     user
   } = useAuth();
@@ -168,6 +178,15 @@ const Chat = () => {
     deleteChat,
     chats
   } = useChats();
+  
+  // Get ANR context from navigation state (when coming from ANR scan)
+  const anrContext: AnrContext = {
+    anrCode: location.state?.anrCode,
+    anrId: location.state?.anrId,
+    habitationId: location.state?.habitationId,
+    address: location.state?.address,
+  };
+  
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [recipient, setRecipient] = useState<RecipientProfile | null>(null);
@@ -181,6 +200,22 @@ const Chat = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initChatRef = useRef(false);
   const currentRecipientRef = useRef<string | null>(null);
+  
+  // Handle call button - navigates to call page with ANR context
+  const handleCallClick = () => {
+    if (anrContext.anrCode) {
+      // Has ANR context: go to call page with full context
+      navigate(`/call/${anrContext.anrCode}`, {
+        state: {
+          habitationId: anrContext.habitationId,
+          targetUserId: recipientId,
+        }
+      });
+    } else {
+      // No ANR context: redirect to scanner
+      navigate(`/visitor?target=${recipientId}`);
+    }
+  };
 
   // Scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -436,8 +471,25 @@ const Chat = () => {
         
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate">{displayName}</p>
-          {recipientId && isOnline(recipientId) && <p className="text-xs text-primary-foreground/70">En ligne</p>}
+          {anrContext.address ? (
+            <p className="text-xs text-primary-foreground/70 flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              {anrContext.address.length > 30 ? anrContext.address.substring(0, 30) + '...' : anrContext.address}
+            </p>
+          ) : (
+            recipientId && isOnline(recipientId) && <p className="text-xs text-primary-foreground/70">En ligne</p>
+          )}
         </div>
+
+        {/* Call button - always visible */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="text-primary-foreground hover:bg-primary-foreground/10"
+          onClick={handleCallClick}
+        >
+          <Phone className="w-5 h-5" />
+        </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -446,7 +498,7 @@ const Chat = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => navigate(`/visitor?target=${recipientId}`)}>
+            <DropdownMenuItem onClick={handleCallClick}>
               <Phone className="w-4 h-4 mr-2" />
               Appeler
             </DropdownMenuItem>
