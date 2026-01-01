@@ -320,7 +320,7 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
           {/* Step 2: Select habitation (if multiple) */}
           {step === 'select-habitation' && habitations.length > 0 && (
             <div className="space-y-2">
-              {habitations.map((hab) => (
+              {habitations.map((hab, index) => (
                 <div
                   key={hab.id}
                   onClick={() => handleSelectHabitation(hab)}
@@ -328,10 +328,10 @@ const NewMessageToAnrDialog = ({ open, onOpenChange }: NewMessageToAnrDialogProp
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Home className="w-5 h-5 text-primary" />
+                      <span className="text-primary font-bold">{index + 1}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{hab.name}</p>
+                      <p className="font-medium truncate">Résidence {index + 1}</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
                         {hab.anr_address}
