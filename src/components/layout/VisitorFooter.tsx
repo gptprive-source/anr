@@ -2,7 +2,6 @@ import { Home, UserPlus, MessageSquare } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { useMessages } from "@/hooks/useMessages";
 
 interface NavItem {
   icon: React.ReactNode;
@@ -13,11 +12,10 @@ interface NavItem {
 
 const VisitorFooter = () => {
   const location = useLocation();
-  const { unreadCount } = useMessages();
 
   const navItems: NavItem[] = [
     { icon: <Home className="w-6 h-6" />, label: "Accueil", path: "/" },
-    { icon: <MessageSquare className="w-6 h-6" />, label: "Messages", path: "/messages", badge: unreadCount },
+    { icon: <MessageSquare className="w-6 h-6" />, label: "Messages", path: "/messages" },
     { icon: <UserPlus className="w-6 h-6" />, label: "Créer un compte", path: "/register" },
   ];
 

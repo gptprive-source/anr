@@ -515,6 +515,78 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages: {
+        Row: {
+          call_duration_seconds: number | null
+          chat_id: string
+          content: string | null
+          created_at: string | null
+          deleted_at: string | null
+          deleted_for_everyone: boolean | null
+          deleted_for_recipient: boolean | null
+          deleted_for_sender: boolean | null
+          forwarded_from_id: string | null
+          id: string
+          is_read: boolean | null
+          media_type: string | null
+          media_url: string | null
+          message_type: string | null
+          sender_id: string
+          voice_url: string | null
+        }
+        Insert: {
+          call_duration_seconds?: number | null
+          chat_id: string
+          content?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_for_everyone?: boolean | null
+          deleted_for_recipient?: boolean | null
+          deleted_for_sender?: boolean | null
+          forwarded_from_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          message_type?: string | null
+          sender_id: string
+          voice_url?: string | null
+        }
+        Update: {
+          call_duration_seconds?: number | null
+          chat_id?: string
+          content?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_for_everyone?: boolean | null
+          deleted_for_recipient?: boolean | null
+          deleted_for_sender?: boolean | null
+          forwarded_from_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          message_type?: string | null
+          sender_id?: string
+          voice_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_forwarded_from_id_fkey"
+            columns: ["forwarded_from_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chatbot_usage: {
         Row: {
           admin_correction: string | null
@@ -576,6 +648,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      chats: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          participant1_id: string
+          participant2_id: string
+          unread_count_p1: number | null
+          unread_count_p2: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          participant1_id: string
+          participant2_id: string
+          unread_count_p1?: number | null
+          unread_count_p2?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          participant1_id?: string
+          participant2_id?: string
+          unread_count_p1?: number | null
+          unread_count_p2?: number | null
+        }
+        Relationships: []
       }
       communication_replies: {
         Row: {
@@ -680,44 +785,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      conversation_keys: {
-        Row: {
-          conversation_id: string
-          created_at: string | null
-          habitation_id: string | null
-          id: string
-          resident_public_key: string | null
-          updated_at: string | null
-          visitor_public_key: string | null
-        }
-        Insert: {
-          conversation_id: string
-          created_at?: string | null
-          habitation_id?: string | null
-          id?: string
-          resident_public_key?: string | null
-          updated_at?: string | null
-          visitor_public_key?: string | null
-        }
-        Update: {
-          conversation_id?: string
-          created_at?: string | null
-          habitation_id?: string | null
-          id?: string
-          resident_public_key?: string | null
-          updated_at?: string | null
-          visitor_public_key?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversation_keys_habitation_id_fkey"
-            columns: ["habitation_id"]
-            isOneToOne: false
-            referencedRelation: "habitations"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       copilot_sessions: {
         Row: {
@@ -892,54 +959,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      direct_messages: {
-        Row: {
-          created_at: string
-          id: string
-          is_read: boolean | null
-          media_type: string | null
-          media_url: string | null
-          message: string | null
-          read_at: string | null
-          recipient_contact_id: string | null
-          recipient_email: string | null
-          recipient_phone: string | null
-          sender_id: string
-          updated_at: string
-          voice_message_url: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_read?: boolean | null
-          media_type?: string | null
-          media_url?: string | null
-          message?: string | null
-          read_at?: string | null
-          recipient_contact_id?: string | null
-          recipient_email?: string | null
-          recipient_phone?: string | null
-          sender_id: string
-          updated_at?: string
-          voice_message_url?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_read?: boolean | null
-          media_type?: string | null
-          media_url?: string | null
-          message?: string | null
-          read_at?: string | null
-          recipient_contact_id?: string | null
-          recipient_email?: string | null
-          recipient_phone?: string | null
-          sender_id?: string
-          updated_at?: string
-          voice_message_url?: string | null
-        }
-        Relationships: []
       }
       doming_orders: {
         Row: {
@@ -1702,119 +1721,6 @@ export type Database = {
             columns: ["anr_id"]
             isOneToOne: false
             referencedRelation: "anrs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      message_replies: {
-        Row: {
-          created_at: string | null
-          deleted_by_resident: boolean | null
-          deleted_by_visitor: boolean | null
-          encrypted_reply: string | null
-          habitation_id: string
-          id: string
-          is_encrypted: boolean | null
-          is_read: boolean | null
-          original_message_id: string
-          read_at: string | null
-          reply_media_type: string | null
-          reply_media_url: string | null
-          reply_nonce: string | null
-          reply_text: string | null
-          reply_voice_url: string | null
-          resident_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          deleted_by_resident?: boolean | null
-          deleted_by_visitor?: boolean | null
-          encrypted_reply?: string | null
-          habitation_id: string
-          id?: string
-          is_encrypted?: boolean | null
-          is_read?: boolean | null
-          original_message_id: string
-          read_at?: string | null
-          reply_media_type?: string | null
-          reply_media_url?: string | null
-          reply_nonce?: string | null
-          reply_text?: string | null
-          reply_voice_url?: string | null
-          resident_id: string
-        }
-        Update: {
-          created_at?: string | null
-          deleted_by_resident?: boolean | null
-          deleted_by_visitor?: boolean | null
-          encrypted_reply?: string | null
-          habitation_id?: string
-          id?: string
-          is_encrypted?: boolean | null
-          is_read?: boolean | null
-          original_message_id?: string
-          read_at?: string | null
-          reply_media_type?: string | null
-          reply_media_url?: string | null
-          reply_nonce?: string | null
-          reply_text?: string | null
-          reply_voice_url?: string | null
-          resident_id?: string
-        }
-        Relationships: []
-      }
-      messages: {
-        Row: {
-          created_at: string | null
-          deleted_by_recipient: boolean | null
-          deleted_by_sender: boolean | null
-          habitation_id: string | null
-          id: string
-          is_read: boolean | null
-          media_type: string | null
-          media_url: string | null
-          message: string | null
-          read_at: string | null
-          recipient_id: string
-          sender_id: string
-          voice_message_url: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          deleted_by_recipient?: boolean | null
-          deleted_by_sender?: boolean | null
-          habitation_id?: string | null
-          id?: string
-          is_read?: boolean | null
-          media_type?: string | null
-          media_url?: string | null
-          message?: string | null
-          read_at?: string | null
-          recipient_id: string
-          sender_id: string
-          voice_message_url?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          deleted_by_recipient?: boolean | null
-          deleted_by_sender?: boolean | null
-          habitation_id?: string | null
-          id?: string
-          is_read?: boolean | null
-          media_type?: string | null
-          media_url?: string | null
-          message?: string | null
-          read_at?: string | null
-          recipient_id?: string
-          sender_id?: string
-          voice_message_url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "messages_habitation_id_fkey"
-            columns: ["habitation_id"]
-            isOneToOne: false
-            referencedRelation: "habitations"
             referencedColumns: ["id"]
           },
         ]
@@ -3858,132 +3764,6 @@ export type Database = {
           type?: string
         }
         Relationships: []
-      }
-      visitor_message_templates: {
-        Row: {
-          content: string
-          created_at: string | null
-          icon: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          sort_order: number | null
-        }
-        Insert: {
-          content: string
-          created_at?: string | null
-          icon?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          sort_order?: number | null
-        }
-        Update: {
-          content?: string
-          created_at?: string | null
-          icon?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          sort_order?: number | null
-        }
-        Relationships: []
-      }
-      visitor_messages: {
-        Row: {
-          business_card_id: string | null
-          conversation_token: string | null
-          created_at: string | null
-          deleted_by_resident: boolean | null
-          deleted_by_visitor: boolean | null
-          encrypted_message: string | null
-          habitation_id: string
-          has_reply: boolean | null
-          id: string
-          is_encrypted: boolean | null
-          is_read: boolean | null
-          media_type: string | null
-          media_url: string | null
-          message: string | null
-          message_nonce: string | null
-          read_at: string | null
-          recipient_user_id: string | null
-          replied_at: string | null
-          visitor_device_id: string | null
-          visitor_latitude: number | null
-          visitor_longitude: number | null
-          visitor_phone: string | null
-          visitor_public_key: string | null
-          voice_message_url: string | null
-        }
-        Insert: {
-          business_card_id?: string | null
-          conversation_token?: string | null
-          created_at?: string | null
-          deleted_by_resident?: boolean | null
-          deleted_by_visitor?: boolean | null
-          encrypted_message?: string | null
-          habitation_id: string
-          has_reply?: boolean | null
-          id?: string
-          is_encrypted?: boolean | null
-          is_read?: boolean | null
-          media_type?: string | null
-          media_url?: string | null
-          message?: string | null
-          message_nonce?: string | null
-          read_at?: string | null
-          recipient_user_id?: string | null
-          replied_at?: string | null
-          visitor_device_id?: string | null
-          visitor_latitude?: number | null
-          visitor_longitude?: number | null
-          visitor_phone?: string | null
-          visitor_public_key?: string | null
-          voice_message_url?: string | null
-        }
-        Update: {
-          business_card_id?: string | null
-          conversation_token?: string | null
-          created_at?: string | null
-          deleted_by_resident?: boolean | null
-          deleted_by_visitor?: boolean | null
-          encrypted_message?: string | null
-          habitation_id?: string
-          has_reply?: boolean | null
-          id?: string
-          is_encrypted?: boolean | null
-          is_read?: boolean | null
-          media_type?: string | null
-          media_url?: string | null
-          message?: string | null
-          message_nonce?: string | null
-          read_at?: string | null
-          recipient_user_id?: string | null
-          replied_at?: string | null
-          visitor_device_id?: string | null
-          visitor_latitude?: number | null
-          visitor_longitude?: number | null
-          visitor_phone?: string | null
-          visitor_public_key?: string | null
-          voice_message_url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "visitor_messages_business_card_id_fkey"
-            columns: ["business_card_id"]
-            isOneToOne: false
-            referencedRelation: "visitor_business_cards"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "visitor_messages_habitation_id_fkey"
-            columns: ["habitation_id"]
-            isOneToOne: false
-            referencedRelation: "habitations"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {
