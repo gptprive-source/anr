@@ -242,7 +242,7 @@ const ResidentDashboard = () => {
                   <Share2 className="w-4 h-4 mr-2" />
                   Partager mon ANR
                 </Button>
-                <Button variant="default" size="sm" onClick={() => navigate(`/visitor?code=${habitationData.anr.code}`)} className="w-full">
+                <Button variant="default" size="sm" onClick={() => navigate(`/visitor?code=${habitationData.anr.code}`)} className="w-full mt-[13px] mb-[8px]">
                   <Phone className="w-4 h-4 mr-2" />
                   Appel Interphone
                 </Button>
