@@ -349,37 +349,36 @@ export const useMessages = (conversationUserId?: string) => {
     }
   };
 
-  // Delete entire conversation
+  // Delete entire conversation (soft delete for current user only)
   const deleteConversation = async (conversationId: string) => {
     if (!user) return;
 
-    // Parse conversation ID to extract recipientId (and optionally habitationId)
     const parts = conversationId.split("__");
     const recipientId = parts[0];
-    const habitationId = parts[1] || null;
-    
-    // Find all messages with this recipient
-    const conversationMessages = messages.filter((msg) => {
-      const isParticipant = 
-        (msg.sender_id === user.id && msg.recipient_id === recipientId) ||
-        (msg.sender_id === recipientId && msg.recipient_id === user.id);
-      
-      if (!isParticipant) return false;
-      
-      // If habitationId is specified in conversationId, filter by it for deletion
-      if (habitationId && msg.habitation_id !== habitationId) return false;
-      
-      // Exclude already deleted messages
-      if (msg.sender_id === user.id && msg.deleted_by_sender) return false;
-      if (msg.recipient_id === user.id && msg.deleted_by_recipient) return false;
-      
-      return true;
-    });
-    
-    // Delete all messages in this conversation
-    for (const msg of conversationMessages) {
-      await deleteMessage(msg.id);
-    }
+
+    // Mark as deleted for messages where user is SENDER
+    await supabase
+      .from("messages")
+      .update({ deleted_by_sender: true })
+      .eq("sender_id", user.id)
+      .eq("recipient_id", recipientId);
+
+    // Mark as deleted for messages where user is RECIPIENT  
+    await supabase
+      .from("messages")
+      .update({ deleted_by_recipient: true })
+      .eq("recipient_id", user.id)
+      .eq("sender_id", recipientId);
+
+    // Remove from local state immediately
+    setMessages((prev) =>
+      prev.filter((msg) => {
+        const isInConversation =
+          (msg.sender_id === user.id && msg.recipient_id === recipientId) ||
+          (msg.sender_id === recipientId && msg.recipient_id === user.id);
+        return !isInConversation;
+      })
+    );
   };
 
   // Calculate unread count
