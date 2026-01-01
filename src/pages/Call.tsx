@@ -165,7 +165,18 @@ const Call = () => {
           return;
         }
 
-        // Créer call log avec target_user_id pour les appels privés
+        // Get visitor device_id for messaging
+        const getVisitorDeviceId = () => {
+          let deviceId = localStorage.getItem("visitor_device_id");
+          if (!deviceId) {
+            deviceId = crypto.randomUUID();
+            localStorage.setItem("visitor_device_id", deviceId);
+          }
+          return deviceId;
+        };
+        const visitorDeviceId = getVisitorDeviceId();
+
+        // Créer call log avec target_user_id pour les appels privés et visitor_device_id
         const { data: callLog, error: callLogError } = await supabase
           .from("call_logs")
           .insert({
@@ -173,7 +184,8 @@ const Call = () => {
             visitor_latitude: visitorLat || null,
             visitor_longitude: visitorLon || null,
             status: "ringing",
-            target_user_id: targetUserId || null, // Private call target
+            target_user_id: targetUserId || null,
+            visitor_device_id: visitorDeviceId,
           })
           .select()
           .single();

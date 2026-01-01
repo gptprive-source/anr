@@ -255,6 +255,7 @@ export type Database = {
           started_at: string | null
           status: string | null
           target_user_id: string | null
+          visitor_device_id: string | null
           visitor_latitude: number | null
           visitor_longitude: number | null
           visitor_phone: string | null
@@ -268,6 +269,7 @@ export type Database = {
           started_at?: string | null
           status?: string | null
           target_user_id?: string | null
+          visitor_device_id?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
@@ -281,6 +283,7 @@ export type Database = {
           started_at?: string | null
           status?: string | null
           target_user_id?: string | null
+          visitor_device_id?: string | null
           visitor_latitude?: number | null
           visitor_longitude?: number | null
           visitor_phone?: string | null
