@@ -969,7 +969,28 @@ const Chat = () => {
                             
                             if (data && !error) {
                               const fileName = pathParts[pathParts.length - 1] || 'media';
-                              const file = new File([data], fileName, { type: data.type });
+                              // Determine MIME type from file extension if blob type is empty
+                              let mimeType = data.type;
+                              if (!mimeType || mimeType === 'application/octet-stream') {
+                                const ext = fileName.split('.').pop()?.toLowerCase();
+                                const mimeTypes: Record<string, string> = {
+                                  'jpg': 'image/jpeg',
+                                  'jpeg': 'image/jpeg',
+                                  'png': 'image/png',
+                                  'gif': 'image/gif',
+                                  'webp': 'image/webp',
+                                  'mp4': 'video/mp4',
+                                  'webm': 'video/webm',
+                                  'mov': 'video/quicktime',
+                                  'mp3': 'audio/mpeg',
+                                  'wav': 'audio/wav',
+                                  'ogg': 'audio/ogg',
+                                  'm4a': 'audio/mp4',
+                                };
+                                mimeType = mimeTypes[ext || ''] || 'application/octet-stream';
+                              }
+                              console.log("Creating file:", fileName, "type:", mimeType, "size:", data.size);
+                              const file = new File([data], fileName, { type: mimeType });
                               files.push(file);
                             } else {
                               console.warn("Supabase download error:", error);
@@ -1000,13 +1021,35 @@ const Chat = () => {
                       shareData.files = files;
                     }
                     
+                    console.log("Share data:", { textContent, filesCount: files.length, files: files.map(f => ({ name: f.name, type: f.type, size: f.size })) });
+                    
                     // Check if we can share files
-                    if (files.length > 0 && navigator.canShare && navigator.canShare(shareData)) {
-                      await navigator.share(shareData);
-                      cancelSelection();
-                    } else if (files.length > 0) {
-                      // Browser doesn't support file sharing - inform user
-                      toast.error("Le partage de fichiers n'est pas supporté sur ce navigateur");
+                    if (files.length > 0) {
+                      if (navigator.canShare && navigator.canShare(shareData)) {
+                        console.log("canShare returned true, sharing...");
+                        await navigator.share(shareData);
+                        cancelSelection();
+                      } else {
+                        // Try sharing without canShare check (some browsers don't implement canShare)
+                        console.log("canShare not available or returned false, trying direct share...");
+                        try {
+                          await navigator.share(shareData);
+                          cancelSelection();
+                        } catch (shareErr) {
+                          console.error("Direct share failed:", shareErr);
+                          // Final fallback - download the file
+                          for (const file of files) {
+                            const blobUrl = URL.createObjectURL(file);
+                            const a = document.createElement('a');
+                            a.href = blobUrl;
+                            a.download = file.name;
+                            a.click();
+                            URL.revokeObjectURL(blobUrl);
+                          }
+                          toast.success("Fichier(s) téléchargé(s)");
+                          cancelSelection();
+                        }
+                      }
                     } else if (textContent) {
                       // Share text only
                       await navigator.share({ text: textContent });
@@ -1019,13 +1062,21 @@ const Chat = () => {
                     }
                   }
                 } else {
-                  // navigator.share not available - only copy text to clipboard
-                  if (textContent) {
+                  // navigator.share not available - download files directly
+                  if (mediaUrls.length > 0) {
+                    for (const url of mediaUrls) {
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = url.split('/').pop() || 'media';
+                      a.target = '_blank';
+                      a.click();
+                    }
+                    toast.success("Fichier(s) téléchargé(s)");
+                    cancelSelection();
+                  } else if (textContent) {
                     await navigator.clipboard.writeText(textContent);
                     toast.success("Texte copié dans le presse-papier");
                     cancelSelection();
-                  } else {
-                    toast.error("Le partage de fichiers n'est pas supporté sur ce navigateur");
                   }
                 }
               }}
