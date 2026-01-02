@@ -571,10 +571,16 @@ const Chat = () => {
     if (!audioPreview || !chatId) return;
     setSending(true);
     try {
-      const fileName = `voice/${user?.id}/${Date.now()}.webm`;
+      // Determine file extension based on actual blob type
+      const audioExtension = audioPreview.blob.type.includes('mp4') || audioPreview.blob.type.includes('aac') || audioPreview.blob.type.includes('mpeg') 
+        ? 'mp4' 
+        : audioPreview.blob.type.includes('ogg') 
+          ? 'ogg' 
+          : 'webm';
+      const fileName = `voice/${user?.id}/${Date.now()}.${audioExtension}`;
       const { data, error } = await supabase.storage
         .from("visitor-voice-messages")
-        .upload(fileName, audioPreview.blob);
+        .upload(fileName, audioPreview.blob, { contentType: audioPreview.blob.type });
       
       if (error) {
         toast.error("Erreur lors de l'upload du message vocal");
