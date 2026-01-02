@@ -19,6 +19,10 @@
     --primary: 215 50% 55%;
     --primary-foreground: 0 0% 100%;
 
+    /* Message bubbles - Bleu Clair #90D5FF */
+    --bubble-sent: 203 100% 78%;
+    --bubble-sent-foreground: 222 47% 11%;
+
     --secondary: 220 14% 96%;
     --secondary-foreground: 222 47% 11%;
 
