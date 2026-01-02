@@ -528,62 +528,62 @@ const CallInterface = memo(({
       {/* Controls */}
       {callState !== "ended" && (
         <div className="glass-effect border-t border-border p-6 relative z-30">
-          <div className="flex justify-center gap-4 flex-wrap items-center">
-            {/* RESIDENT CONTROLS */}
-            {isResident && (
-              <>
-                {/* Ouvrir la porte - only show if enabled in admin config */}
-                {isDoorOpeningEnabled && (
-                  <Button 
-                    variant="default"
-                    size="sm"
-                    onClick={() => setShowDoorDialog(true)}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                  >
-                    <DoorOpen className="w-5 h-5" />
-                    <span>Ouvrir</span>
-                  </Button>
-                )}
-
-                {/* Visio Simple: voir le visiteur */}
+          {/* Resident action buttons */}
+          {isResident && (
+            <div className="flex justify-center gap-3 mb-4">
+              {/* Ouvrir la porte - only show if enabled in admin config */}
+              {isDoorOpeningEnabled && (
                 <Button 
-                  variant={videoMode === "simple" ? "default" : "secondary"} 
+                  variant="default"
                   size="sm"
-                  onClick={handleVisioSimple}
-                  className="flex items-center gap-2"
+                  onClick={() => setShowDoorDialog(true)}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 h-10"
                 >
-                  <Eye className="w-5 h-5" />
-                  <span>Visio</span>
+                  <DoorOpen className="w-4 h-4" />
+                  <span>Ouvrir</span>
                 </Button>
+              )}
 
-                {/* Visio Double: résident et visiteur se voient */}
-                <Button 
-                  variant={videoMode === "double" ? "default" : "secondary"} 
-                  size="sm"
-                  onClick={handleVisioDouble}
-                  className="flex items-center gap-2"
-                >
-                  <Users2 className="w-5 h-5" />
-                  <span>Visio 2</span>
-                </Button>
+              {/* Visio Simple: voir le visiteur */}
+              <Button 
+                variant={videoMode === "simple" ? "default" : "secondary"} 
+                size="sm"
+                onClick={handleVisioSimple}
+                className="flex items-center gap-2 h-10"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Visio</span>
+              </Button>
 
-                {/* Mute */}
-                <Button 
-                  variant={isMuted ? "destructive" : "secondary"} 
-                  size="sm"
-                  onClick={toggleMute}
-                  className="flex items-center gap-2"
-                >
-                  {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                  <span>{isMuted ? "Unmute" : "Mute"}</span>
-                </Button>
-              </>
-            )}
+              {/* Visio Double: résident et visiteur se voient */}
+              <Button 
+                variant={videoMode === "double" ? "default" : "secondary"} 
+                size="sm"
+                onClick={handleVisioDouble}
+                className="flex items-center gap-2 h-10"
+              >
+                <Users2 className="w-4 h-4" />
+                <span>Visio 2</span>
+              </Button>
 
-            {/* Raccrocher - swipe vers le haut pour tous */}
+              {/* Mute */}
+              <Button 
+                variant={isMuted ? "destructive" : "secondary"} 
+                size="sm"
+                onClick={toggleMute}
+                className="flex items-center gap-2 h-10"
+              >
+                {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                <span>{isMuted ? "Unmute" : "Mute"}</span>
+              </Button>
+            </div>
+          )}
+
+          {/* Raccrocher - swipe de gauche à droite */}
+          <div className="flex justify-center">
             <SwipeButton variant="hangup" onSwipe={handleHangup}>
-              <PhoneOff className="w-5 h-5" />
-              <span>Raccrocher</span>
+              <PhoneOff className="w-4 h-4 mr-1" />
+              Raccrocher
             </SwipeButton>
           </div>
         </div>
