@@ -58,6 +58,10 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        "bubble-sent": {
+          DEFAULT: "hsl(var(--bubble-sent))",
+          foreground: "hsl(var(--bubble-sent-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

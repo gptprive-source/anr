@@ -87,12 +87,12 @@ const MessageBubble = ({
     }
   };
   return <div className={cn("flex mb-2 group", isOwn ? "justify-end" : "justify-start")}>
-      <div className={cn("relative max-w-[80%] px-3 py-2 rounded-lg", isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm")} onContextMenu={e => {
+      <div className={cn("relative max-w-[80%] px-3 py-2 rounded-lg", isOwn ? "bg-bubble-sent text-bubble-sent-foreground rounded-br-sm" : "bg-muted rounded-bl-sm")} onContextMenu={e => {
       e.preventDefault();
       setShowActions(true);
     }} onClick={() => setShowActions(!showActions)}>
         {/* Forwarded indicator */}
-        {message.forwarded_from_id && <div className={cn("flex items-center gap-1 text-xs mb-1", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
+        {message.forwarded_from_id && <div className={cn("flex items-center gap-1 text-xs mb-1", isOwn ? "text-bubble-sent-foreground/70" : "text-muted-foreground")}>
             <Forward className="w-3 h-3" />
             <span>Transféré</span>
           </div>}
@@ -100,7 +100,7 @@ const MessageBubble = ({
         {renderContent()}
 
         {/* Time and read status */}
-        <div className={cn("flex items-center justify-end gap-1 mt-1", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
+        <div className={cn("flex items-center justify-end gap-1 mt-1", isOwn ? "text-bubble-sent-foreground/70" : "text-muted-foreground")}>
           <span className="text-[10px]">
             {message.created_at && formatMessageTime(message.created_at)}
           </span>
