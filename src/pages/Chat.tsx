@@ -929,19 +929,58 @@ const Chat = () => {
               variant="outline"
               onClick={async () => {
                 const selectedMsgs = messages.filter(m => selectedMessages.has(m.id));
+                
+                // Collect text content
                 const textContent = selectedMsgs
                   .filter(m => m.message_type === "text" && m.content)
                   .map(m => m.content)
                   .join("\n\n");
                 
-                if (!textContent) {
-                  toast.error("Aucun message texte à partager");
+                // Collect media URLs
+                const mediaUrls = selectedMsgs
+                  .filter(m => m.media_url || m.voice_url)
+                  .map(m => m.media_url || m.voice_url)
+                  .filter(Boolean) as string[];
+                
+                if (!textContent && mediaUrls.length === 0) {
+                  toast.error("Aucun contenu à partager");
                   return;
                 }
                 
                 if (navigator.share) {
                   try {
-                    await navigator.share({ text: textContent });
+                    // Try to share with files if we have media
+                    if (mediaUrls.length > 0 && navigator.canShare) {
+                      // Fetch media files and create File objects
+                      const files: File[] = [];
+                      for (const url of mediaUrls) {
+                        try {
+                          const response = await fetch(url);
+                          const blob = await response.blob();
+                          const fileName = url.split('/').pop() || 'media';
+                          const file = new File([blob], fileName, { type: blob.type });
+                          files.push(file);
+                        } catch (e) {
+                          console.error("Error fetching media for share:", e);
+                        }
+                      }
+                      
+                      const shareData: ShareData = {
+                        text: textContent || undefined,
+                        files: files.length > 0 ? files : undefined,
+                      };
+                      
+                      if (navigator.canShare(shareData)) {
+                        await navigator.share(shareData);
+                        cancelSelection();
+                        return;
+                      }
+                    }
+                    
+                    // Fallback: share text with media URLs
+                    const shareText = textContent || "";
+                    const urlsText = mediaUrls.length > 0 ? "\n\n" + mediaUrls.join("\n") : "";
+                    await navigator.share({ text: shareText + urlsText });
                     cancelSelection();
                   } catch (err) {
                     if ((err as Error).name !== "AbortError") {
@@ -949,8 +988,10 @@ const Chat = () => {
                     }
                   }
                 } else {
-                  await navigator.clipboard.writeText(textContent);
-                  toast.success("Messages copiés dans le presse-papier");
+                  // Fallback: copy to clipboard
+                  const clipboardText = textContent + (mediaUrls.length > 0 ? "\n\n" + mediaUrls.join("\n") : "");
+                  await navigator.clipboard.writeText(clipboardText);
+                  toast.success("Contenu copié dans le presse-papier");
                   cancelSelection();
                 }
               }}
