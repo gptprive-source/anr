@@ -949,42 +949,32 @@ const Chat = () => {
                 
                 if (navigator.share) {
                   try {
-                    // Try to share with files if we have media
-                    if (mediaUrls.length > 0 && navigator.canShare) {
-                      // Fetch media files and create File objects
-                      const files: File[] = [];
-                      for (const url of mediaUrls) {
-                        try {
-                          const response = await fetch(url);
-                          const blob = await response.blob();
-                          const fileName = url.split('/').pop() || 'media';
-                          const file = new File([blob], fileName, { type: blob.type });
-                          files.push(file);
-                        } catch (e) {
-                          console.error("Error fetching media for share:", e);
-                        }
-                      }
-                      
-                      const shareData: ShareData = {
-                        text: textContent || undefined,
-                        files: files.length > 0 ? files : undefined,
-                      };
-                      
-                      if (navigator.canShare(shareData)) {
-                        await navigator.share(shareData);
-                        cancelSelection();
-                        return;
-                      }
+                    // Build share text - always include something meaningful
+                    let shareText = textContent;
+                    if (mediaUrls.length > 0) {
+                      const urlsText = mediaUrls.join("\n");
+                      shareText = textContent ? `${textContent}\n\n${urlsText}` : urlsText;
                     }
                     
-                    // Fallback: share text with media URLs
-                    const shareText = textContent || "";
-                    const urlsText = mediaUrls.length > 0 ? "\n\n" + mediaUrls.join("\n") : "";
-                    await navigator.share({ text: shareText + urlsText });
+                    // Share with text/url - don't try file sharing as it often fails with CORS
+                    const shareData: ShareData = {};
+                    
+                    // If we have only one URL and no text, use the url field
+                    if (!textContent && mediaUrls.length === 1) {
+                      shareData.url = mediaUrls[0];
+                    } else {
+                      shareData.text = shareText;
+                    }
+                    
+                    await navigator.share(shareData);
                     cancelSelection();
                   } catch (err) {
                     if ((err as Error).name !== "AbortError") {
-                      toast.error("Erreur lors du partage");
+                      // Fallback to clipboard on share error
+                      const clipboardText = textContent + (mediaUrls.length > 0 ? "\n\n" + mediaUrls.join("\n") : "");
+                      await navigator.clipboard.writeText(clipboardText);
+                      toast.success("Contenu copié dans le presse-papier");
+                      cancelSelection();
                     }
                   }
                 } else {
