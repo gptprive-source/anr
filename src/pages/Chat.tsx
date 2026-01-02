@@ -536,13 +536,38 @@ const Chat = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true
       });
-      const recorder = new MediaRecorder(stream);
+      
+      // Prioritize MP4/AAC for better mobile compatibility
+      const getSupportedAudioMimeType = () => {
+        const types = [
+          'audio/mp4',
+          'audio/aac',
+          'audio/mpeg',
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/ogg;codecs=opus',
+        ];
+        for (const type of types) {
+          if (MediaRecorder.isTypeSupported(type)) {
+            console.log('[Chat] Audio recording using MIME type:', type);
+            return type;
+          }
+        }
+        console.log('[Chat] No preferred audio type supported, using default');
+        return undefined;
+      };
+      
+      const mimeType = getSupportedAudioMimeType();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       const chunks: Blob[] = [];
       recorder.ondataavailable = e => chunks.push(e.data);
       recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
+        // Use the actual MIME type from recorder
+        const actualMimeType = recorder.mimeType || mimeType || 'audio/webm';
+        console.log('[Chat] Audio blob created with type:', actualMimeType);
         const blob = new Blob(chunks, {
-          type: "audio/webm"
+          type: actualMimeType
         });
 
         // Create preview URL for validation
