@@ -4,16 +4,17 @@ import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 
 // Lazy load emoji picker to avoid build issues
-const EmojiPicker = lazy(() => 
-  Promise.all([
-    import("@emoji-mart/react"),
-    import("@emoji-mart/data")
-  ]).then(([{ default: Picker }, { default: data }]) => ({
-    default: (props: { onEmojiSelect: (emoji: { native: string }) => void }) => (
-      <Picker data={data} onEmojiSelect={props.onEmojiSelect} theme="light" locale="fr" previewPosition="none" skinTonePosition="none" maxFrequentRows={2} />
-    )
-  }))
-);
+const EmojiPicker = lazy(() => Promise.all([import("@emoji-mart/react"), import("@emoji-mart/data")]).then(([{
+  default: Picker
+}, {
+  default: data
+}]) => ({
+  default: (props: {
+    onEmojiSelect: (emoji: {
+      native: string;
+    }) => void;
+  }) => <Picker data={data} onEmojiSelect={props.onEmojiSelect} theme="light" locale="fr" previewPosition="none" skinTonePosition="none" maxFrequentRows={2} />
+})));
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -57,7 +58,7 @@ const MessageBubble = ({
   onForward,
   isSelectionMode,
   isSelected,
-  onToggleSelect,
+  onToggleSelect
 }: {
   message: ChatMessage;
   isOwn: boolean;
@@ -95,7 +96,6 @@ const MessageBubble = ({
         </div>
       </div>;
   }
-
   const renderContent = () => {
     switch (message.message_type) {
       case "voice":
@@ -121,7 +121,6 @@ const MessageBubble = ({
         return <p className="text-sm whitespace-pre-wrap break-words font-medium text-black">{message.content}</p>;
     }
   };
-
   const handleClick = () => {
     if (isSelectionMode) {
       onToggleSelect();
@@ -129,47 +128,24 @@ const MessageBubble = ({
       setShowActions(!showActions);
     }
   };
-
   const handleLongPress = (e: React.TouchEvent | React.MouseEvent) => {
     if (!isSelectionMode) {
       e.preventDefault();
       onToggleSelect(); // This will trigger selection mode
     }
   };
-
-  return (
-    <div className={cn("flex mb-2 group items-center gap-2", isOwn ? "justify-end" : "justify-start")}>
+  return <div className={cn("flex mb-2 group items-center gap-2", isOwn ? "justify-end" : "justify-start")}>
       {/* Selection checkbox */}
-      {isSelectionMode && (
-        <button
-          onClick={onToggleSelect}
-          className={cn(
-            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
-            isSelected
-              ? "bg-primary border-primary text-primary-foreground"
-              : "border-muted-foreground/50 bg-background"
-          )}
-        >
+      {isSelectionMode && <button onClick={onToggleSelect} className={cn("w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0", isSelected ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/50 bg-background")}>
           {isSelected && <Check className="w-4 h-4" />}
-        </button>
-      )}
+        </button>}
 
-      <div
-        className={cn(
-          "relative max-w-[80%] px-3 py-2 rounded-lg transition-all",
-          isOwn ? "bg-bubble-sent text-bubble-sent-foreground rounded-br-sm" : "bg-muted rounded-bl-sm",
-          isSelectionMode && isSelected && "ring-2 ring-primary ring-offset-2"
-        )}
-        onContextMenu={handleLongPress}
-        onClick={handleClick}
-      >
+      <div className={cn("relative max-w-[80%] px-3 py-2 rounded-lg transition-all", isOwn ? "bg-bubble-sent text-bubble-sent-foreground rounded-br-sm" : "bg-muted rounded-bl-sm", isSelectionMode && isSelected && "ring-2 ring-primary ring-offset-2")} onContextMenu={handleLongPress} onClick={handleClick}>
         {/* Forwarded indicator */}
-        {message.forwarded_from_id && (
-          <div className={cn("flex items-center gap-1 text-xs mb-1", isOwn ? "text-bubble-sent-foreground/70" : "text-muted-foreground")}>
+        {message.forwarded_from_id && <div className={cn("flex items-center gap-1 text-xs mb-1", isOwn ? "text-bubble-sent-foreground/70" : "text-muted-foreground")}>
             <Forward className="w-3 h-3" />
             <span>Transféré</span>
-          </div>
-        )}
+          </div>}
 
         {renderContent()}
 
@@ -182,61 +158,42 @@ const MessageBubble = ({
         </div>
 
         {/* Actions menu - only show when not in selection mode */}
-        {showActions && !isSelectionMode && (
-          <div ref={menuRef} className={cn("absolute top-full mt-1 z-10 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]", isOwn ? "right-0" : "left-0")}>
-            {message.message_type === "text" && message.content && (
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  onCopy();
-                  setShowActions(false);
-                }}
-                className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-foreground"
-              >
+        {showActions && !isSelectionMode && <div ref={menuRef} className={cn("absolute top-full mt-1 z-10 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]", isOwn ? "right-0" : "left-0")}>
+            {message.message_type === "text" && message.content && <button onClick={e => {
+          e.stopPropagation();
+          onCopy();
+          setShowActions(false);
+        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-foreground">
                 <Copy className="w-4 h-4" />
                 Copier
-              </button>
-            )}
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                onToggleSelect(); // Start selection mode
-                setShowActions(false);
-              }}
-              className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-foreground"
-            >
+              </button>}
+            <button onClick={e => {
+          e.stopPropagation();
+          onToggleSelect(); // Start selection mode
+          setShowActions(false);
+        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-foreground">
               <Check className="w-4 h-4" />
               Sélectionner
             </button>
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                onDelete();
-                setShowActions(false);
-              }}
-              className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
-            >
+            <button onClick={e => {
+          e.stopPropagation();
+          onDelete();
+          setShowActions(false);
+        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive">
               <Trash2 className="w-4 h-4" />
               Supprimer pour moi
             </button>
-            {canDeleteForEveryone && (
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  onDeleteForEveryone();
-                  setShowActions(false);
-                }}
-                className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
-              >
+            {canDeleteForEveryone && <button onClick={e => {
+          e.stopPropagation();
+          onDeleteForEveryone();
+          setShowActions(false);
+        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive">
                 <Clock className="w-4 h-4" />
                 Supprimer pour tous
-              </button>
-            )}
-          </div>
-        )}
+              </button>}
+          </div>}
       </div>
-    </div>
-  );
+    </div>;
 };
 
 // Input area component with emoji picker and video recording
@@ -250,7 +207,7 @@ const InputArea = ({
   handleSendMedia,
   startVoiceRecording,
   stopVoiceRecording,
-  openVideoRecorder,
+  openVideoRecorder
 }: {
   messageText: string;
   setMessageText: (text: string) => void;
@@ -277,28 +234,24 @@ const InputArea = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showEmojiPicker]);
-
-  const handleEmojiSelect = (emoji: { native: string }) => {
+  const handleEmojiSelect = (emoji: {
+    native: string;
+  }) => {
     setMessageText(messageText + emoji.native);
   };
-
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 safe-area-bottom">
+  return <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 safe-area-bottom">
       {/* Emoji Picker */}
-      {showEmojiPicker && (
-        <div ref={emojiPickerRef} className="absolute bottom-full left-0 right-0 mb-2 flex justify-center z-50">
+      {showEmojiPicker && <div ref={emojiPickerRef} className="absolute bottom-full left-0 right-0 mb-2 flex justify-center z-50">
           <div className="shadow-lg rounded-lg overflow-hidden">
             <Suspense fallback={<div className="p-4 bg-background">Chargement...</div>}>
               <EmojiPicker onEmojiSelect={handleEmojiSelect} />
             </Suspense>
           </div>
-        </div>
-      )}
+        </div>}
       
       <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleSendMedia} />
       
-      {isRecording ? (
-        <div className="flex items-center gap-2">
+      {isRecording ? <div className="flex items-center gap-2">
           <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-destructive/10 rounded-full">
             <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
             <span className="text-sm text-destructive">Enregistrement audio...</span>
@@ -306,74 +259,38 @@ const InputArea = ({
           <Button size="icon" variant="destructive" onClick={stopVoiceRecording}>
             <Square className="w-4 h-4 fill-current" />
           </Button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
+        </div> : <div className="flex flex-col gap-2">
           {/* 4 boutons au-dessus */}
           <div className="flex items-center justify-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              disabled={sending}
-              title="Ajouter un emoji"
-            >
+            <Button variant="ghost" size="icon" onClick={() => setShowEmojiPicker(!showEmojiPicker)} disabled={sending} title="Ajouter un emoji">
               <Smile className="w-5 h-5" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => fileInputRef.current?.click()} 
-              disabled={sending}
-              title="Envoyer une image/vidéo"
-            >
+            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending} title="Envoyer une image/vidéo">
               <Paperclip className="w-5 h-5" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={openVideoRecorder} 
-              disabled={sending}
-              title="Enregistrer une vidéo selfie"
-            >
+            <Button variant="ghost" size="icon" onClick={openVideoRecorder} disabled={sending} title="Enregistrer une vidéo selfie">
               <Video className="w-5 h-5" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={startVoiceRecording} 
-              disabled={sending}
-              title="Enregistrer un message vocal"
-            >
+            <Button variant="ghost" size="icon" onClick={startVoiceRecording} disabled={sending} title="Enregistrer un message vocal">
               <Mic className="w-5 h-5" />
             </Button>
           </div>
           
           {/* Zone de saisie en dessous */}
           <div className="flex items-center gap-2">
-            <Input
-              placeholder="Message"
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              className="flex-1"
-              disabled={sending}
-            />
+            <Input placeholder="Message" value={messageText} onChange={e => setMessageText(e.target.value)} onKeyDown={e => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
+          }
+        }} className="flex-1" disabled={sending} />
             <Button size="icon" onClick={handleSendMessage} disabled={sending || !messageText.trim()}>
               {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </Button>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 };
-
 const Chat = () => {
   const {
     recipientId
@@ -406,7 +323,7 @@ const Chat = () => {
   const [messageText, setMessageText] = useState("");
   const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Voice recorder hook (replaces manual MediaRecorder logic)
   const {
     isRecording,
@@ -416,16 +333,16 @@ const Chat = () => {
     startRecording,
     stopRecording,
     resetRecording,
-    error: recordingError,
+    error: recordingError
   } = useVoiceRecorder(60);
-  
+
   // Video camera recorder
   const [showVideoRecorder, setShowVideoRecorder] = useState(false);
-  
+
   // Multi-select mode
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
-  
+
   // Preview dialog for audio
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -560,29 +477,24 @@ const Chat = () => {
     setSending(true);
     try {
       // Determine file extension based on actual blob type
-      const audioExtension = audioBlob.type.includes('mp4') || audioBlob.type.includes('aac') || audioBlob.type.includes('mpeg') 
-        ? 'mp4' 
-        : audioBlob.type.includes('ogg') 
-          ? 'ogg' 
-          : 'webm';
+      const audioExtension = audioBlob.type.includes('mp4') || audioBlob.type.includes('aac') || audioBlob.type.includes('mpeg') ? 'mp4' : audioBlob.type.includes('ogg') ? 'ogg' : 'webm';
       const fileName = `voice/${user?.id}/${Date.now()}.${audioExtension}`;
-      const { data, error } = await supabase.storage
-        .from("visitor-voice-messages")
-        .upload(fileName, audioBlob, { contentType: audioBlob.type });
-      
+      const {
+        data,
+        error
+      } = await supabase.storage.from("visitor-voice-messages").upload(fileName, audioBlob, {
+        contentType: audioBlob.type
+      });
       if (error) {
         toast.error("Erreur lors de l'upload du message vocal");
         return;
       }
-      
-      const { data: urlData } = supabase.storage
-        .from("visitor-voice-messages")
-        .getPublicUrl(data.path);
-      
+      const {
+        data: urlData
+      } = supabase.storage.from("visitor-voice-messages").getPublicUrl(data.path);
       await sendMessage(chatId, {
         voiceUrl: urlData.publicUrl
       });
-      
       toast.success("Message vocal envoyé");
     } catch (error) {
       console.error("Error sending audio:", error);
@@ -608,30 +520,28 @@ const Chat = () => {
   const handleVideoRecorded = async (blob: Blob) => {
     setShowVideoRecorder(false);
     if (!chatId) return;
-    
     setSending(true);
     try {
       // Determine file extension based on actual blob type
       const extension = blob.type.includes('mp4') ? 'mp4' : 'webm';
       const fileName = `video/${user?.id}/${Date.now()}.${extension}`;
-      const { data, error } = await supabase.storage
-        .from("visitor-voice-messages")
-        .upload(fileName, blob, { contentType: blob.type });
-      
+      const {
+        data,
+        error
+      } = await supabase.storage.from("visitor-voice-messages").upload(fileName, blob, {
+        contentType: blob.type
+      });
       if (error) {
         toast.error("Erreur lors de l'upload de la vidéo");
         return;
       }
-      
-      const { data: urlData } = supabase.storage
-        .from("visitor-voice-messages")
-        .getPublicUrl(data.path);
-      
+      const {
+        data: urlData
+      } = supabase.storage.from("visitor-voice-messages").getPublicUrl(data.path);
       await sendMessage(chatId, {
         mediaUrl: urlData.publicUrl,
         mediaType: "video"
       });
-      
       toast.success("Vidéo envoyée");
     } catch (error) {
       console.error("Error sending video:", error);
@@ -725,12 +635,10 @@ const Chat = () => {
       return newSet;
     });
   };
-
   const cancelSelection = () => {
     setIsSelectionMode(false);
     setSelectedMessages(new Set());
   };
-
   const selectAllMessages = () => {
     const allIds = new Set(messages.map(m => m.id));
     setSelectedMessages(allIds);
@@ -747,12 +655,9 @@ const Chat = () => {
       return isOwn && withinTimeLimit;
     });
   };
-
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
   const handleDeleteSelectedForMe = async () => {
     if (selectedMessages.size === 0) return;
-    
     for (const messageId of selectedMessages) {
       await deleteForMe(messageId);
     }
@@ -761,16 +666,13 @@ const Chat = () => {
     setShowDeleteDialog(false);
     cancelSelection();
   };
-
   const handleDeleteSelectedForEveryone = async () => {
     if (selectedMessages.size === 0) return;
-    
     let successCount = 0;
     for (const messageId of selectedMessages) {
       const success = await deleteForEveryone(messageId);
       if (success) successCount++;
     }
-    
     if (successCount === selectedMessages.size) {
       toast.success(`${successCount} message${successCount > 1 ? 's' : ''} supprimé${successCount > 1 ? 's' : ''} pour tous`);
     } else if (successCount > 0) {
@@ -846,8 +748,7 @@ const Chat = () => {
       </div>
 
       {/* Selection mode header */}
-      {isSelectionMode && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-secondary text-secondary-foreground p-3 shadow-md flex items-center gap-3">
+      {isSelectionMode && <div className="fixed top-0 left-0 right-0 z-50 bg-secondary text-secondary-foreground p-3 shadow-md flex items-center gap-3">
           <Button variant="ghost" size="icon" className="text-secondary-foreground hover:bg-secondary-foreground/10" onClick={cancelSelection}>
             <X className="w-5 h-5" />
           </Button>
@@ -859,12 +760,11 @@ const Chat = () => {
           <Button variant="ghost" size="sm" className="text-secondary-foreground hover:bg-secondary-foreground/10" onClick={selectAllMessages}>
             Tout
           </Button>
-        </div>
-      )}
+        </div>}
 
       {/* Messages - with top padding for fixed header */}
-      <div className="flex-1 overflow-y-auto p-4 pb-20 pt-20">
-        {Object.entries(groupedMessages).map(([date, msgs]) => <div key={date}>
+      <div className="flex-1 overflow-y-auto p-4 mb-0 pt-[70px] pb-[73px]">
+        {Object.entries(groupedMessages).map(([date, msgs]) => <div key={date} className="my-[57px] mt-0">
             {/* Date separator */}
             <div className="flex justify-center my-4">
               <span className="text-xs bg-muted px-3 py-1 rounded-full text-muted-foreground">
@@ -873,251 +773,217 @@ const Chat = () => {
             </div>
             
             {/* Messages for this date */}
-            {msgs.map(message => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                isOwn={message.sender_id === user?.id}
-                onCopy={() => handleCopy(message.content)}
-                onForward={() => setForwardingMessage(message)}
-                onDelete={() => handleDelete(message.id)}
-                onDeleteForEveryone={() => handleDeleteForEveryone(message.id)}
-                isSelectionMode={isSelectionMode}
-                isSelected={selectedMessages.has(message.id)}
-                onToggleSelect={() => toggleSelectMessage(message.id)}
-              />
-            ))}
+            {msgs.map(message => <MessageBubble key={message.id} message={message} isOwn={message.sender_id === user?.id} onCopy={() => handleCopy(message.content)} onForward={() => setForwardingMessage(message)} onDelete={() => handleDelete(message.id)} onDeleteForEveryone={() => handleDeleteForEveryone(message.id)} isSelectionMode={isSelectionMode} isSelected={selectedMessages.has(message.id)} onToggleSelect={() => toggleSelectMessage(message.id)} />)}
           </div>)}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Selection mode action bar */}
-      {isSelectionMode && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border p-3 safe-area-bottom">
+      {isSelectionMode && <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border p-3 safe-area-bottom">
           <div className="flex items-center justify-center gap-2 flex-wrap">
             {/* Copy button - only for text messages */}
             {selectedMessages.size === 1 && (() => {
-              const selectedId = Array.from(selectedMessages)[0];
-              const selectedMsg = messages.find(m => m.id === selectedId);
-              return selectedMsg?.message_type === "text" && selectedMsg?.content;
-            })() && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const selectedId = Array.from(selectedMessages)[0];
-                  const selectedMsg = messages.find(m => m.id === selectedId);
-                  if (selectedMsg?.content) {
-                    handleCopy(selectedMsg.content);
-                    cancelSelection();
-                  }
-                }}
-                className="flex items-center gap-2"
-              >
+          const selectedId = Array.from(selectedMessages)[0];
+          const selectedMsg = messages.find(m => m.id === selectedId);
+          return selectedMsg?.message_type === "text" && selectedMsg?.content;
+        })() && <Button variant="outline" onClick={() => {
+          const selectedId = Array.from(selectedMessages)[0];
+          const selectedMsg = messages.find(m => m.id === selectedId);
+          if (selectedMsg?.content) {
+            handleCopy(selectedMsg.content);
+            cancelSelection();
+          }
+        }} className="flex items-center gap-2">
                 <Copy className="w-4 h-4" />
                 Copier
-              </Button>
-            )}
+              </Button>}
             {/* Share externally button */}
-            <Button
-              variant="outline"
-              onClick={async () => {
-                const selectedMsgs = messages.filter(m => selectedMessages.has(m.id));
-                
-                // Collect text content
-                const textContent = selectedMsgs
-                  .filter(m => m.message_type === "text" && m.content)
-                  .map(m => m.content)
-                  .join("\n\n");
-                
-                // Collect media URLs
-                const mediaUrls = selectedMsgs
-                  .filter(m => m.media_url || m.voice_url)
-                  .map(m => m.media_url || m.voice_url)
-                  .filter(Boolean) as string[];
-                
-                if (!textContent && mediaUrls.length === 0) {
-                  toast.error("Aucun contenu à partager");
-                  return;
-                }
-                
-                if (navigator.share) {
+            <Button variant="outline" onClick={async () => {
+          const selectedMsgs = messages.filter(m => selectedMessages.has(m.id));
+
+          // Collect text content
+          const textContent = selectedMsgs.filter(m => m.message_type === "text" && m.content).map(m => m.content).join("\n\n");
+
+          // Collect media URLs
+          const mediaUrls = selectedMsgs.filter(m => m.media_url || m.voice_url).map(m => m.media_url || m.voice_url).filter(Boolean) as string[];
+          if (!textContent && mediaUrls.length === 0) {
+            toast.error("Aucun contenu à partager");
+            return;
+          }
+          if (navigator.share) {
+            try {
+              const files: File[] = [];
+
+              // Download media files for sharing using Supabase SDK
+              if (mediaUrls.length > 0) {
+                for (const url of mediaUrls) {
                   try {
-                    const files: File[] = [];
-                    
-                    // Download media files for sharing using Supabase SDK
-                    if (mediaUrls.length > 0) {
-                      for (const url of mediaUrls) {
-                        try {
-                          // Extract bucket and path from Supabase URL
-                          const supabaseUrl = "https://mkzpdmyymabgsntwmmir.supabase.co/storage/v1/object/public/";
-                          if (url.startsWith(supabaseUrl)) {
-                            const pathPart = url.replace(supabaseUrl, "");
-                            const [bucket, ...pathParts] = pathPart.split("/");
-                            const filePath = pathParts.join("/");
-                            
-                            // Download directly from Supabase storage SDK (avoids CORS)
-                            const { data, error } = await supabase.storage
-                              .from(bucket)
-                              .download(filePath);
-                            
-                            if (data && !error) {
-                              const fileName = pathParts[pathParts.length - 1] || 'media';
-                              // Determine MIME type from file extension if blob type is empty
-                              let mimeType = data.type;
-                              if (!mimeType || mimeType === 'application/octet-stream') {
-                                const ext = fileName.split('.').pop()?.toLowerCase();
-                                const mimeTypes: Record<string, string> = {
-                                  'jpg': 'image/jpeg',
-                                  'jpeg': 'image/jpeg',
-                                  'png': 'image/png',
-                                  'gif': 'image/gif',
-                                  'webp': 'image/webp',
-                                  'mp4': 'video/mp4',
-                                  'webm': 'video/webm',
-                                  'mov': 'video/quicktime',
-                                  'mp3': 'audio/mpeg',
-                                  'wav': 'audio/wav',
-                                  'ogg': 'audio/ogg',
-                                  'm4a': 'audio/mp4',
-                                };
-                                mimeType = mimeTypes[ext || ''] || 'application/octet-stream';
-                              }
-                              console.log("Creating file:", fileName, "type:", mimeType, "size:", data.size);
-                              const file = new File([data], fileName, { type: mimeType });
-                              files.push(file);
-                            } else {
-                              console.warn("Supabase download error:", error);
-                            }
-                          } else {
-                            // For non-Supabase URLs, try direct fetch
-                            const response = await fetch(url);
-                            if (response.ok) {
-                              const blob = await response.blob();
-                              const urlParts = url.split('/');
-                              const fileName = urlParts[urlParts.length - 1] || 'media';
-                              const file = new File([blob], fileName, { type: blob.type });
-                              files.push(file);
-                            }
-                          }
-                        } catch (fetchErr) {
-                          console.warn("Could not fetch media for sharing:", fetchErr);
+                    // Extract bucket and path from Supabase URL
+                    const supabaseUrl = "https://mkzpdmyymabgsntwmmir.supabase.co/storage/v1/object/public/";
+                    if (url.startsWith(supabaseUrl)) {
+                      const pathPart = url.replace(supabaseUrl, "");
+                      const [bucket, ...pathParts] = pathPart.split("/");
+                      const filePath = pathParts.join("/");
+
+                      // Download directly from Supabase storage SDK (avoids CORS)
+                      const {
+                        data,
+                        error
+                      } = await supabase.storage.from(bucket).download(filePath);
+                      if (data && !error) {
+                        const fileName = pathParts[pathParts.length - 1] || 'media';
+                        // Determine MIME type from file extension if blob type is empty
+                        let mimeType = data.type;
+                        if (!mimeType || mimeType === 'application/octet-stream') {
+                          const ext = fileName.split('.').pop()?.toLowerCase();
+                          const mimeTypes: Record<string, string> = {
+                            'jpg': 'image/jpeg',
+                            'jpeg': 'image/jpeg',
+                            'png': 'image/png',
+                            'gif': 'image/gif',
+                            'webp': 'image/webp',
+                            'mp4': 'video/mp4',
+                            'webm': 'video/webm',
+                            'mov': 'video/quicktime',
+                            'mp3': 'audio/mpeg',
+                            'wav': 'audio/wav',
+                            'ogg': 'audio/ogg',
+                            'm4a': 'audio/mp4'
+                          };
+                          mimeType = mimeTypes[ext || ''] || 'application/octet-stream';
                         }
-                      }
-                    }
-                    
-                    // Build share data
-                    const shareData: ShareData = {};
-                    if (textContent) {
-                      shareData.text = textContent;
-                    }
-                    if (files.length > 0) {
-                      shareData.files = files;
-                    }
-                    
-                    console.log("Share data:", { textContent, filesCount: files.length, files: files.map(f => ({ name: f.name, type: f.type, size: f.size })) });
-                    
-                    // Check if we can share files
-                    if (files.length > 0) {
-                      if (navigator.canShare && navigator.canShare(shareData)) {
-                        console.log("canShare returned true, sharing...");
-                        await navigator.share(shareData);
-                        cancelSelection();
+                        console.log("Creating file:", fileName, "type:", mimeType, "size:", data.size);
+                        const file = new File([data], fileName, {
+                          type: mimeType
+                        });
+                        files.push(file);
                       } else {
-                        // Try sharing without canShare check (some browsers don't implement canShare)
-                        console.log("canShare not available or returned false, trying direct share...");
-                        try {
-                          await navigator.share(shareData);
-                          cancelSelection();
-                        } catch (shareErr) {
-                          console.error("Direct share failed:", shareErr);
-                          // Final fallback - download the file
-                          for (const file of files) {
-                            const blobUrl = URL.createObjectURL(file);
-                            const a = document.createElement('a');
-                            a.href = blobUrl;
-                            a.download = file.name;
-                            a.click();
-                            URL.revokeObjectURL(blobUrl);
-                          }
-                          toast.success("Fichier(s) téléchargé(s)");
-                          cancelSelection();
-                        }
+                        console.warn("Supabase download error:", error);
                       }
-                    } else if (textContent) {
-                      // Share text only
-                      await navigator.share({ text: textContent });
-                      cancelSelection();
+                    } else {
+                      // For non-Supabase URLs, try direct fetch
+                      const response = await fetch(url);
+                      if (response.ok) {
+                        const blob = await response.blob();
+                        const urlParts = url.split('/');
+                        const fileName = urlParts[urlParts.length - 1] || 'media';
+                        const file = new File([blob], fileName, {
+                          type: blob.type
+                        });
+                        files.push(file);
+                      }
                     }
-                  } catch (err) {
-                    if ((err as Error).name !== "AbortError") {
-                      console.error("Share error:", err);
-                      toast.error("Erreur lors du partage");
-                    }
+                  } catch (fetchErr) {
+                    console.warn("Could not fetch media for sharing:", fetchErr);
                   }
+                }
+              }
+
+              // Build share data
+              const shareData: ShareData = {};
+              if (textContent) {
+                shareData.text = textContent;
+              }
+              if (files.length > 0) {
+                shareData.files = files;
+              }
+              console.log("Share data:", {
+                textContent,
+                filesCount: files.length,
+                files: files.map(f => ({
+                  name: f.name,
+                  type: f.type,
+                  size: f.size
+                }))
+              });
+
+              // Check if we can share files
+              if (files.length > 0) {
+                if (navigator.canShare && navigator.canShare(shareData)) {
+                  console.log("canShare returned true, sharing...");
+                  await navigator.share(shareData);
+                  cancelSelection();
                 } else {
-                  // navigator.share not available - download files directly
-                  if (mediaUrls.length > 0) {
-                    for (const url of mediaUrls) {
+                  // Try sharing without canShare check (some browsers don't implement canShare)
+                  console.log("canShare not available or returned false, trying direct share...");
+                  try {
+                    await navigator.share(shareData);
+                    cancelSelection();
+                  } catch (shareErr) {
+                    console.error("Direct share failed:", shareErr);
+                    // Final fallback - download the file
+                    for (const file of files) {
+                      const blobUrl = URL.createObjectURL(file);
                       const a = document.createElement('a');
-                      a.href = url;
-                      a.download = url.split('/').pop() || 'media';
-                      a.target = '_blank';
+                      a.href = blobUrl;
+                      a.download = file.name;
                       a.click();
+                      URL.revokeObjectURL(blobUrl);
                     }
                     toast.success("Fichier(s) téléchargé(s)");
                     cancelSelection();
-                  } else if (textContent) {
-                    await navigator.clipboard.writeText(textContent);
-                    toast.success("Texte copié dans le presse-papier");
-                    cancelSelection();
                   }
                 }
-              }}
-              disabled={selectedMessages.size === 0}
-              className="flex items-center gap-2"
-            >
+              } else if (textContent) {
+                // Share text only
+                await navigator.share({
+                  text: textContent
+                });
+                cancelSelection();
+              }
+            } catch (err) {
+              if ((err as Error).name !== "AbortError") {
+                console.error("Share error:", err);
+                toast.error("Erreur lors du partage");
+              }
+            }
+          } else {
+            // navigator.share not available - download files directly
+            if (mediaUrls.length > 0) {
+              for (const url of mediaUrls) {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = url.split('/').pop() || 'media';
+                a.target = '_blank';
+                a.click();
+              }
+              toast.success("Fichier(s) téléchargé(s)");
+              cancelSelection();
+            } else if (textContent) {
+              await navigator.clipboard.writeText(textContent);
+              toast.success("Texte copié dans le presse-papier");
+              cancelSelection();
+            }
+          }
+        }} disabled={selectedMessages.size === 0} className="flex items-center gap-2">
               <Share2 className="w-4 h-4" />
               Partager
             </Button>
             {/* Transfer button */}
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (selectedMessages.size === 1) {
-                  const selectedId = Array.from(selectedMessages)[0];
-                  const selectedMsg = messages.find(m => m.id === selectedId);
-                  if (selectedMsg) {
-                    setForwardingMessage(selectedMsg);
-                    cancelSelection();
-                  }
-                } else {
-                  toast.info("Sélectionnez un seul message pour le transférer");
-                }
-              }}
-              disabled={selectedMessages.size !== 1}
-              className="flex items-center gap-2"
-            >
+            <Button variant="outline" onClick={() => {
+          if (selectedMessages.size === 1) {
+            const selectedId = Array.from(selectedMessages)[0];
+            const selectedMsg = messages.find(m => m.id === selectedId);
+            if (selectedMsg) {
+              setForwardingMessage(selectedMsg);
+              cancelSelection();
+            }
+          } else {
+            toast.info("Sélectionnez un seul message pour le transférer");
+          }
+        }} disabled={selectedMessages.size !== 1} className="flex items-center gap-2">
               <Forward className="w-4 h-4" />
               Transférer
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={selectedMessages.size === 0}
-              className="flex items-center gap-2"
-            >
+            <Button variant="destructive" onClick={() => setShowDeleteDialog(true)} disabled={selectedMessages.size === 0} className="flex items-center gap-2">
               <Trash2 className="w-4 h-4" />
               Supprimer ({selectedMessages.size})
             </Button>
-            <Button
-              variant="outline"
-              onClick={cancelSelection}
-            >
+            <Button variant="outline" onClick={cancelSelection}>
               Annuler
             </Button>
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Delete confirmation dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -1126,29 +992,17 @@ const Chat = () => {
             <DialogTitle>Supprimer {selectedMessages.size} message{selectedMessages.size > 1 ? 's' : ''} ?</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 py-4">
-            <Button
-              variant="outline"
-              onClick={handleDeleteSelectedForMe}
-              className="w-full justify-start"
-            >
+            <Button variant="outline" onClick={handleDeleteSelectedForMe} className="w-full justify-start">
               <Trash2 className="w-4 h-4 mr-2" />
               Supprimer pour moi
             </Button>
-            {canDeleteSelectedForEveryone() && (
-              <Button
-                variant="destructive"
-                onClick={handleDeleteSelectedForEveryone}
-                className="w-full justify-start"
-              >
+            {canDeleteSelectedForEveryone() && <Button variant="destructive" onClick={handleDeleteSelectedForEveryone} className="w-full justify-start">
                 <Trash2 className="w-4 h-4 mr-2" />
                 Supprimer pour tous
-              </Button>
-            )}
-            {!canDeleteSelectedForEveryone() && selectedMessages.size > 0 && (
-              <p className="text-xs text-muted-foreground text-center">
+              </Button>}
+            {!canDeleteSelectedForEveryone() && selectedMessages.size > 0 && <p className="text-xs text-muted-foreground text-center">
                 Vous ne pouvez supprimer pour tous que vos propres messages envoyés il y a moins de 7 minutes
-              </p>
-            )}
+              </p>}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>
@@ -1159,64 +1013,29 @@ const Chat = () => {
       </Dialog>
 
       {/* Input area - hide when in selection mode */}
-      {!isSelectionMode && (
-        <InputArea
-          messageText={messageText}
-          setMessageText={setMessageText}
-          sending={sending}
-          isRecording={isRecording}
-          fileInputRef={fileInputRef}
-          handleSendMessage={handleSendMessage}
-          handleSendMedia={handleSendMedia}
-          startVoiceRecording={startRecording}
-          stopVoiceRecording={stopRecording}
-          openVideoRecorder={openVideoRecorder}
-        />
-      )}
+      {!isSelectionMode && <InputArea messageText={messageText} setMessageText={setMessageText} sending={sending} isRecording={isRecording} fileInputRef={fileInputRef} handleSendMessage={handleSendMessage} handleSendMedia={handleSendMedia} startVoiceRecording={startRecording} stopVoiceRecording={stopRecording} openVideoRecorder={openVideoRecorder} className="pb-[16px]" />}
 
       {/* Video Camera Recorder */}
-      <VideoCameraRecorder
-        isOpen={showVideoRecorder}
-        onClose={() => setShowVideoRecorder(false)}
-        onVideoRecorded={handleVideoRecorded}
-      />
+      <VideoCameraRecorder isOpen={showVideoRecorder} onClose={() => setShowVideoRecorder(false)} onVideoRecorded={handleVideoRecorded} />
 
       {/* Preview dialog for audio before sending */}
-      <Dialog open={showPreviewDialog} onOpenChange={(open) => !open && cancelPreview()}>
+      <Dialog open={showPreviewDialog} onOpenChange={open => !open && cancelPreview()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Écouter avant d'envoyer</DialogTitle>
           </DialogHeader>
           
           <div className="flex flex-col items-center gap-4 py-4">
-            {audioPreviewUrl && (
-              <audio 
-                src={audioPreviewUrl} 
-                controls 
-                className="w-full"
-                autoPlay={false}
-              />
-            )}
+            {audioPreviewUrl && <audio src={audioPreviewUrl} controls className="w-full" autoPlay={false} />}
           </div>
           
           <DialogFooter className="flex gap-2 sm:gap-2">
-            <Button 
-              variant="outline" 
-              onClick={cancelPreview}
-              disabled={sending}
-            >
+            <Button variant="outline" onClick={cancelPreview} disabled={sending}>
               <X className="w-4 h-4 mr-2" />
               Annuler
             </Button>
-            <Button 
-              onClick={confirmSendAudio}
-              disabled={sending}
-            >
-              {sending ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4 mr-2" />
-              )}
+            <Button onClick={confirmSendAudio} disabled={sending}>
+              {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
               Envoyer
             </Button>
           </DialogFooter>
