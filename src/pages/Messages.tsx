@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChats, Chat } from "@/hooks/useChats";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnlinePresence } from "@/hooks/useOnlinePresence";
+import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday } from "date-fns";
 import NewChatDialog from "@/components/messages/NewChatDialog";
@@ -109,6 +110,11 @@ const Messages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
   const userId = user?.id;
+
+  // Swipe navigation - swipe right to go back to dashboard
+  useSwipeNavigation({
+    onSwipeRight: () => navigate("/dashboard"),
+  });
 
   // Filter chats by search query
   const filteredChats = useMemo(() => {
