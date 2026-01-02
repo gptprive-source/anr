@@ -59,8 +59,10 @@ const CallInterface = memo(({
   const { sendMissedCall, sendCallEnded } = useChats();
   
   // App config for door opening feature
-  const { getConfig } = useAppConfig();
-  const isDoorOpeningEnabled = getConfig("door_opening_enabled") !== false;
+  const { getConfig, isLoading: isConfigLoading } = useAppConfig();
+  const doorOpeningConfig = getConfig("door_opening_enabled");
+  // Only show door button if explicitly enabled (true), not when undefined or false
+  const isDoorOpeningEnabled = doorOpeningConfig === true;
 
   // Multi-resident call management
   const {
@@ -526,7 +528,7 @@ const CallInterface = memo(({
       {/* Controls */}
       {callState !== "ended" && (
         <div className="glass-effect border-t border-border p-6 relative z-30">
-          <div className="flex justify-center gap-6 flex-wrap items-end">
+          <div className="flex justify-center gap-4 flex-wrap items-center">
             {/* RESIDENT CONTROLS */}
             {isResident && (
               <>
