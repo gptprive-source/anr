@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { useDaily } from "@/hooks/useDaily";
 import { useMultiResidentCall } from "@/hooks/useMultiResidentCall";
 import { useChats } from "@/hooks/useChats";
+import { useAppConfig } from "@/hooks/useAppConfig";
 import { supabase } from "@/integrations/supabase/client";
 import VideoGrid from "./VideoGrid";
 import InviteResidentsPanel from "./InviteResidentsPanel";
 import { BleOpenDoorButton } from "@/components/door/BleOpenDoorButton";
+import { SwipeButton } from "./SwipeButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
@@ -55,6 +57,10 @@ const CallInterface = memo(({
 
   // Chat functions for missed/ended call messages
   const { sendMissedCall, sendCallEnded } = useChats();
+  
+  // App config for door opening feature
+  const { getConfig } = useAppConfig();
+  const isDoorOpeningEnabled = getConfig("door_opening_enabled") !== false;
 
   // Multi-resident call management
   const {
@@ -520,20 +526,22 @@ const CallInterface = memo(({
       {/* Controls */}
       {callState !== "ended" && (
         <div className="glass-effect border-t border-border p-6 relative z-30">
-          <div className="flex justify-center gap-3 flex-wrap">
+          <div className="flex justify-center gap-6 flex-wrap items-end">
             {/* RESIDENT CONTROLS */}
             {isResident && (
               <>
-                {/* Ouvrir la porte */}
-                <Button 
-                  variant="default"
-                  size="sm"
-                  onClick={() => setShowDoorDialog(true)}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                >
-                  <DoorOpen className="w-5 h-5" />
-                  <span>Ouvrir</span>
-                </Button>
+                {/* Ouvrir la porte - only show if enabled in admin config */}
+                {isDoorOpeningEnabled && (
+                  <Button 
+                    variant="default"
+                    size="sm"
+                    onClick={() => setShowDoorDialog(true)}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                  >
+                    <DoorOpen className="w-5 h-5" />
+                    <span>Ouvrir</span>
+                  </Button>
+                )}
 
                 {/* Visio Simple: voir le visiteur */}
                 <Button 
@@ -570,11 +578,11 @@ const CallInterface = memo(({
               </>
             )}
 
-            {/* Raccrocher - pour tous */}
-            <Button variant="hangup" size="sm" onClick={handleHangup} className="flex items-center gap-2">
+            {/* Raccrocher - swipe vers le haut pour tous */}
+            <SwipeButton variant="hangup" onSwipe={handleHangup}>
               <PhoneOff className="w-5 h-5" />
               <span>Raccrocher</span>
-            </Button>
+            </SwipeButton>
           </div>
         </div>
       )}
