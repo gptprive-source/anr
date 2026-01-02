@@ -1,5 +1,6 @@
 import { useState, useRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
 
 interface SwipeButtonProps {
   onSwipe: () => void;
@@ -18,21 +19,22 @@ export const SwipeButton = ({
 }: SwipeButtonProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
-  const startYRef = useRef(0);
+  const startXRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const SWIPE_THRESHOLD = 80; // pixels to swipe up to trigger
+  const SWIPE_THRESHOLD = 100; // pixels to swipe right to trigger
+  const TRACK_WIDTH = 180; // width of the track
 
-  const handleStart = (clientY: number) => {
+  const handleStart = (clientX: number) => {
     if (disabled) return;
     setIsDragging(true);
-    startYRef.current = clientY;
+    startXRef.current = clientX;
   };
 
-  const handleMove = (clientY: number) => {
+  const handleMove = (clientX: number) => {
     if (!isDragging || disabled) return;
-    const diff = startYRef.current - clientY;
-    // Only allow upward swipe (positive diff)
+    const diff = clientX - startXRef.current;
+    // Only allow rightward swipe (positive diff)
     const offset = Math.max(0, Math.min(diff, SWIPE_THRESHOLD + 20));
     setDragOffset(offset);
   };
@@ -49,11 +51,11 @@ export const SwipeButton = ({
 
   // Touch events
   const onTouchStart = (e: React.TouchEvent) => {
-    handleStart(e.touches[0].clientY);
+    handleStart(e.touches[0].clientX);
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    handleMove(e.touches[0].clientY);
+    handleMove(e.touches[0].clientX);
   };
 
   const onTouchEnd = () => {
@@ -62,11 +64,11 @@ export const SwipeButton = ({
 
   // Mouse events for desktop testing
   const onMouseDown = (e: React.MouseEvent) => {
-    handleStart(e.clientY);
+    handleStart(e.clientX);
   };
 
   const onMouseMove = (e: React.MouseEvent) => {
-    handleMove(e.clientY);
+    handleMove(e.clientX);
   };
 
   const onMouseUp = () => {
@@ -82,16 +84,22 @@ export const SwipeButton = ({
   const progress = Math.min(dragOffset / SWIPE_THRESHOLD, 1);
 
   const variantStyles = {
-    hangup: "bg-destructive text-destructive-foreground",
-    answer: "bg-green-600 text-white",
-    decline: "bg-destructive text-destructive-foreground",
+    hangup: "bg-destructive",
+    answer: "bg-green-600",
+    decline: "bg-destructive",
+  };
+
+  const thumbStyles = {
+    hangup: "bg-destructive-foreground text-destructive",
+    answer: "bg-white text-green-600",
+    decline: "bg-destructive-foreground text-destructive",
   };
 
   return (
     <div
       ref={containerRef}
       className={cn(
-        "relative flex flex-col items-center select-none touch-none",
+        "relative select-none touch-none",
         disabled && "opacity-50 cursor-not-allowed",
         className
       )}
@@ -103,57 +111,42 @@ export const SwipeButton = ({
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseLeave}
     >
-      {/* Swipe indicator arrow */}
-      <div 
-        className={cn(
-          "absolute -top-8 text-muted-foreground transition-all duration-200",
-          isDragging && "text-foreground"
-        )}
-        style={{
-          opacity: 0.3 + progress * 0.7,
-          transform: `translateY(${-progress * 10}px)`,
-        }}
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 19V5M5 12l7-7 7 7" />
-        </svg>
-      </div>
-
-      {/* Button */}
+      {/* Track background */}
       <div
         className={cn(
-          "flex items-center gap-2 px-4 py-3 rounded-full font-medium transition-all duration-150",
-          variantStyles[variant],
-          isDragging && "scale-105"
+          "relative h-12 rounded-full overflow-hidden flex items-center",
+          variantStyles[variant]
         )}
-        style={{
-          transform: `translateY(${-dragOffset}px) scale(${1 + progress * 0.05})`,
-          boxShadow: progress > 0 ? `0 ${4 + progress * 8}px ${8 + progress * 16}px rgba(0,0,0,0.2)` : undefined,
-        }}
+        style={{ width: TRACK_WIDTH }}
       >
-        {children}
-      </div>
+        {/* Progress fill */}
+        <div
+          className="absolute inset-0 bg-white/20 origin-left"
+          style={{ transform: `scaleX(${progress})` }}
+        />
 
-      {/* Swipe hint text */}
-      <span 
-        className="text-xs text-muted-foreground mt-2 transition-opacity duration-200"
-        style={{ opacity: isDragging ? 0 : 0.7 }}
-      >
-        Glisser vers le haut
-      </span>
+        {/* Label */}
+        <span 
+          className="absolute inset-0 flex items-center justify-center text-white text-sm font-medium pl-10 pr-4 pointer-events-none"
+          style={{ opacity: 1 - progress * 0.5 }}
+        >
+          {children}
+        </span>
 
-      {/* Progress indicator */}
-      {isDragging && (
-        <div className="absolute -bottom-2 w-16 h-1 bg-muted rounded-full overflow-hidden">
-          <div 
-            className={cn(
-              "h-full transition-all duration-100",
-              variant === "answer" ? "bg-green-500" : "bg-destructive"
-            )}
-            style={{ width: `${progress * 100}%` }}
-          />
+        {/* Sliding thumb */}
+        <div
+          className={cn(
+            "absolute left-1 w-10 h-10 rounded-full flex items-center justify-center transition-shadow",
+            thumbStyles[variant],
+            isDragging && "shadow-lg"
+          )}
+          style={{
+            transform: `translateX(${dragOffset}px)`,
+          }}
+        >
+          <ChevronRight className="w-5 h-5" />
         </div>
-      )}
+      </div>
     </div>
   );
 };
