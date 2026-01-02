@@ -38,20 +38,31 @@ const MessageBubble = ({
   isOwn,
   onDelete,
   onDeleteForEveryone,
-  onForward,
   onCopy
 }: {
   message: ChatMessage;
   isOwn: boolean;
   onDelete: () => void;
   onDeleteForEveryone: () => void;
-  onForward: () => void;
   onCopy: () => void;
 }) => {
   const [showActions, setShowActions] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Check if message can be deleted for everyone (within 7 minutes)
   const canDeleteForEveryone = isOwn && message.created_at && Date.now() - new Date(message.created_at).getTime() < 7 * 60 * 1000;
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!showActions) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowActions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showActions]);
 
   // Handle deleted messages
   if (message.deleted_for_everyone) {
@@ -108,7 +119,7 @@ const MessageBubble = ({
         </div>
 
         {/* Actions menu */}
-        {showActions && <div className={cn("absolute top-full mt-1 z-10 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]", isOwn ? "right-0" : "left-0")}>
+        {showActions && <div ref={menuRef} className={cn("absolute top-full mt-1 z-10 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]", isOwn ? "right-0" : "left-0")}>
             {message.message_type === "text" && message.content && <button onClick={e => {
           e.stopPropagation();
           onCopy();
@@ -117,14 +128,6 @@ const MessageBubble = ({
                 <Copy className="w-4 h-4" />
                 Copier
               </button>}
-            <button onClick={e => {
-          e.stopPropagation();
-          onForward();
-          setShowActions(false);
-        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-[#050505]">
-              <Forward className="w-4 h-4" />
-              Transférer
-            </button>
             <button onClick={e => {
           e.stopPropagation();
           onDelete();
@@ -478,7 +481,7 @@ const Chat = () => {
             </div>
             
             {/* Messages for this date */}
-            {msgs.map(message => <MessageBubble key={message.id} message={message} isOwn={message.sender_id === user?.id} onCopy={() => handleCopy(message.content)} onDelete={() => handleDelete(message.id)} onDeleteForEveryone={() => handleDeleteForEveryone(message.id)} onForward={() => setForwardingMessage(message)} />)}
+            {msgs.map(message => <MessageBubble key={message.id} message={message} isOwn={message.sender_id === user?.id} onCopy={() => handleCopy(message.content)} onDelete={() => handleDelete(message.id)} onDeleteForEveryone={() => handleDeleteForEveryone(message.id)} />)}
           </div>)}
         <div ref={messagesEndRef} />
       </div>
