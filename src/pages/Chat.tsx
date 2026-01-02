@@ -29,6 +29,7 @@ import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import WhatsAppAudioPlayer from "@/components/messages/WhatsAppAudioPlayer";
 import ForwardMessageDialog from "@/components/messages/ForwardMessageDialog";
+import VideoCameraRecorder from "@/components/chat/VideoCameraRecorder";
 interface RecipientProfile {
   id: string;
   first_name: string | null;
@@ -168,27 +169,23 @@ const InputArea = ({
   setMessageText,
   sending,
   isRecording,
-  isRecordingVideo,
   fileInputRef,
   handleSendMessage,
   handleSendMedia,
   startVoiceRecording,
   stopVoiceRecording,
-  startVideoRecording,
-  stopVideoRecording,
+  openVideoRecorder,
 }: {
   messageText: string;
   setMessageText: (text: string) => void;
   sending: boolean;
   isRecording: boolean;
-  isRecordingVideo: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleSendMessage: () => void;
   handleSendMedia: (e: React.ChangeEvent<HTMLInputElement>) => void;
   startVoiceRecording: () => void;
   stopVoiceRecording: () => void;
-  startVideoRecording: () => void;
-  stopVideoRecording: () => void;
+  openVideoRecorder: () => void;
 }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -234,16 +231,6 @@ const InputArea = ({
             <Square className="w-4 h-4 fill-current" />
           </Button>
         </div>
-      ) : isRecordingVideo ? (
-        <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-full">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-sm text-primary">Enregistrement vidéo...</span>
-          </div>
-          <Button size="icon" variant="default" onClick={stopVideoRecording}>
-            <Square className="w-4 h-4 fill-current" />
-          </Button>
-        </div>
       ) : (
         <div className="flex flex-col gap-2">
           {/* 4 boutons au-dessus */}
@@ -269,7 +256,7 @@ const InputArea = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={startVideoRecording} 
+              onClick={openVideoRecorder} 
               disabled={sending}
               title="Enregistrer une vidéo selfie"
             >
@@ -343,15 +330,14 @@ const Chat = () => {
   const [messageText, setMessageText] = useState("");
   const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [videoRecorder, setVideoRecorder] = useState<MediaRecorder | null>(null);
-  const videoStreamRef = useRef<MediaStream | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Preview states for audio and video before sending
+  // Video camera recorder
+  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
+  
+  // Preview states for audio before sending
   const [audioPreview, setAudioPreview] = useState<{ blob: Blob; url: string } | null>(null);
-  const [videoPreview, setVideoPreview] = useState<{ blob: Blob; url: string } | null>(null);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initChatRef = useRef(false);
@@ -540,66 +526,25 @@ const Chat = () => {
       URL.revokeObjectURL(audioPreview.url);
       setAudioPreview(null);
     }
-    if (videoPreview) {
-      URL.revokeObjectURL(videoPreview.url);
-      setVideoPreview(null);
-    }
     setShowPreviewDialog(false);
   };
 
-  // Start video recording (selfie)
-  const startVideoRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
-        audio: true
-      });
-      videoStreamRef.current = stream;
-      
-      const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-      const chunks: Blob[] = [];
-      
-      recorder.ondataavailable = e => chunks.push(e.data);
-      recorder.onstop = async () => {
-        // Stop all tracks
-        stream.getTracks().forEach(t => t.stop());
-        videoStreamRef.current = null;
-        
-        const blob = new Blob(chunks, { type: "video/webm" });
-        
-        // Create preview URL for validation
-        const previewUrl = URL.createObjectURL(blob);
-        setVideoPreview({ blob, url: previewUrl });
-        setShowPreviewDialog(true);
-        
-        setIsRecordingVideo(false);
-        setVideoRecorder(null);
-      };
-      
-      recorder.start();
-      setVideoRecorder(recorder);
-      setIsRecordingVideo(true);
-    } catch (error) {
-      console.error("Error starting video recording:", error);
-      toast.error("Impossible d'accéder à la caméra");
-    }
+  // Open video recorder
+  const openVideoRecorder = () => {
+    setShowVideoRecorder(true);
   };
 
-  const stopVideoRecording = () => {
-    if (videoRecorder && videoRecorder.state !== "inactive") {
-      videoRecorder.stop();
-    }
-  };
-
-  // Confirm and send video
-  const confirmSendVideo = async () => {
-    if (!videoPreview || !chatId) return;
+  // Handle video recorded from VideoCameraRecorder
+  const handleVideoRecorded = async (blob: Blob) => {
+    setShowVideoRecorder(false);
+    if (!chatId) return;
+    
     setSending(true);
     try {
       const fileName = `video/${user?.id}/${Date.now()}.webm`;
       const { data, error } = await supabase.storage
         .from("visitor-voice-messages")
-        .upload(fileName, videoPreview.blob);
+        .upload(fileName, blob);
       
       if (error) {
         toast.error("Erreur lors de l'upload de la vidéo");
@@ -621,7 +566,6 @@ const Chat = () => {
       toast.error("Erreur lors de l'envoi de la vidéo");
     } finally {
       setSending(false);
-      cancelPreview();
     }
   };
 
@@ -774,23 +718,26 @@ const Chat = () => {
         setMessageText={setMessageText}
         sending={sending}
         isRecording={isRecording}
-        isRecordingVideo={isRecordingVideo}
         fileInputRef={fileInputRef}
         handleSendMessage={handleSendMessage}
         handleSendMedia={handleSendMedia}
         startVoiceRecording={startVoiceRecording}
         stopVoiceRecording={stopVoiceRecording}
-        startVideoRecording={startVideoRecording}
-        stopVideoRecording={stopVideoRecording}
+        openVideoRecorder={openVideoRecorder}
       />
 
-      {/* Preview dialog for audio/video before sending */}
+      {/* Video Camera Recorder */}
+      <VideoCameraRecorder
+        isOpen={showVideoRecorder}
+        onClose={() => setShowVideoRecorder(false)}
+        onVideoRecorded={handleVideoRecorded}
+      />
+
+      {/* Preview dialog for audio before sending */}
       <Dialog open={showPreviewDialog} onOpenChange={(open) => !open && cancelPreview()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {audioPreview ? "Écouter avant d'envoyer" : "Voir avant d'envoyer"}
-            </DialogTitle>
+            <DialogTitle>Écouter avant d'envoyer</DialogTitle>
           </DialogHeader>
           
           <div className="flex flex-col items-center gap-4 py-4">
@@ -799,15 +746,6 @@ const Chat = () => {
                 src={audioPreview.url} 
                 controls 
                 className="w-full"
-                autoPlay={false}
-              />
-            )}
-            
-            {videoPreview && (
-              <video 
-                src={videoPreview.url} 
-                controls 
-                className="w-full rounded-lg max-h-[400px]"
                 autoPlay={false}
               />
             )}
@@ -823,7 +761,7 @@ const Chat = () => {
               Annuler
             </Button>
             <Button 
-              onClick={audioPreview ? confirmSendAudio : confirmSendVideo}
+              onClick={confirmSendAudio}
               disabled={sending}
             >
               {sending ? (
