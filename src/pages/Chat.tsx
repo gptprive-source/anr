@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useChats, ChatMessage } from "@/hooks/useChats";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnlinePresence } from "@/hooks/useOnlinePresence";
+import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday } from "date-fns";
@@ -181,6 +182,11 @@ const Chat = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initChatRef = useRef(false);
   const currentRecipientRef = useRef<string | null>(null);
+
+  // Swipe navigation - swipe right to go back to messages
+  useSwipeNavigation({
+    onSwipeRight: () => navigate("/messages"),
+  });
 
   // Scroll to bottom
   const scrollToBottom = useCallback(() => {
