@@ -741,7 +741,21 @@ const Chat = () => {
     setSelectedMessages(allIds);
   };
 
-  const handleDeleteSelectedMessages = async () => {
+  // Check if selected messages can be deleted for everyone
+  const canDeleteSelectedForEveryone = () => {
+    if (selectedMessages.size === 0) return false;
+    return Array.from(selectedMessages).every(messageId => {
+      const message = messages.find(m => m.id === messageId);
+      if (!message) return false;
+      const isOwn = message.sender_id === user?.id;
+      const withinTimeLimit = message.created_at && Date.now() - new Date(message.created_at).getTime() < 7 * 60 * 1000;
+      return isOwn && withinTimeLimit;
+    });
+  };
+
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const handleDeleteSelectedForMe = async () => {
     if (selectedMessages.size === 0) return;
     
     for (const messageId of selectedMessages) {
@@ -749,6 +763,27 @@ const Chat = () => {
     }
     setMessages(prev => prev.filter(m => !selectedMessages.has(m.id)));
     toast.success(`${selectedMessages.size} message${selectedMessages.size > 1 ? 's' : ''} supprimé${selectedMessages.size > 1 ? 's' : ''}`);
+    setShowDeleteDialog(false);
+    cancelSelection();
+  };
+
+  const handleDeleteSelectedForEveryone = async () => {
+    if (selectedMessages.size === 0) return;
+    
+    let successCount = 0;
+    for (const messageId of selectedMessages) {
+      const success = await deleteForEveryone(messageId);
+      if (success) successCount++;
+    }
+    
+    if (successCount === selectedMessages.size) {
+      toast.success(`${successCount} message${successCount > 1 ? 's' : ''} supprimé${successCount > 1 ? 's' : ''} pour tous`);
+    } else if (successCount > 0) {
+      toast.success(`${successCount}/${selectedMessages.size} messages supprimés pour tous`);
+    } else {
+      toast.error("Impossible de supprimer les messages");
+    }
+    setShowDeleteDialog(false);
     cancelSelection();
   };
 
@@ -866,7 +901,7 @@ const Chat = () => {
           <div className="flex items-center justify-center gap-4">
             <Button
               variant="destructive"
-              onClick={handleDeleteSelectedMessages}
+              onClick={() => setShowDeleteDialog(true)}
               disabled={selectedMessages.size === 0}
               className="flex items-center gap-2"
             >
@@ -882,6 +917,45 @@ const Chat = () => {
           </div>
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Supprimer {selectedMessages.size} message{selectedMessages.size > 1 ? 's' : ''} ?</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-4">
+            <Button
+              variant="outline"
+              onClick={handleDeleteSelectedForMe}
+              className="w-full justify-start"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer pour moi
+            </Button>
+            {canDeleteSelectedForEveryone() && (
+              <Button
+                variant="destructive"
+                onClick={handleDeleteSelectedForEveryone}
+                className="w-full justify-start"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer pour tous
+              </Button>
+            )}
+            {!canDeleteSelectedForEveryone() && selectedMessages.size > 0 && (
+              <p className="text-xs text-muted-foreground text-center">
+                Vous ne pouvez supprimer pour tous que vos propres messages envoyés il y a moins de 7 minutes
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>
+              Annuler
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Input area - hide when in selection mode */}
       {!isSelectionMode && (
