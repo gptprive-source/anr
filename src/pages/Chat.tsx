@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square } from "lucide-react";
+import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square, Smile } from "lucide-react";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -148,6 +150,124 @@ const MessageBubble = ({
       </div>
     </div>;
 };
+
+// Input area component with emoji picker
+const InputArea = ({
+  messageText,
+  setMessageText,
+  sending,
+  isRecording,
+  fileInputRef,
+  handleSendMessage,
+  handleSendMedia,
+  startVoiceRecording,
+  stopVoiceRecording,
+}: {
+  messageText: string;
+  setMessageText: (text: string) => void;
+  sending: boolean;
+  isRecording: boolean;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  handleSendMessage: () => void;
+  handleSendMedia: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  startVoiceRecording: () => void;
+  stopVoiceRecording: () => void;
+}) => {
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showEmojiPicker]);
+
+  const handleEmojiSelect = (emoji: { native: string }) => {
+    setMessageText(messageText + emoji.native);
+  };
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 safe-area-bottom">
+      {/* Emoji Picker */}
+      {showEmojiPicker && (
+        <div ref={emojiPickerRef} className="absolute bottom-full left-0 right-0 mb-2 flex justify-center">
+          <div className="shadow-lg rounded-lg overflow-hidden">
+            <Picker
+              data={data}
+              onEmojiSelect={handleEmojiSelect}
+              theme="light"
+              locale="fr"
+              previewPosition="none"
+              skinTonePosition="none"
+              maxFrequentRows={2}
+            />
+          </div>
+        </div>
+      )}
+      
+      <div className="flex items-center gap-2">
+        <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleSendMedia} />
+        <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending || isRecording}>
+          <Paperclip className="w-5 h-5" />
+        </Button>
+        
+        {isRecording ? (
+          <>
+            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-destructive/10 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+              <span className="text-sm text-destructive">Enregistrement...</span>
+            </div>
+            <Button size="icon" variant="destructive" onClick={stopVoiceRecording}>
+              <Square className="w-4 h-4 fill-current" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              disabled={sending}
+            >
+              <Smile className="w-5 h-5" />
+            </Button>
+            
+            <Input
+              placeholder="Message"
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              className="flex-1"
+              disabled={sending}
+            />
+            
+            {messageText.trim() ? (
+              <Button size="icon" onClick={handleSendMessage} disabled={sending}>
+                {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              </Button>
+            ) : (
+              <Button variant="ghost" size="icon" onClick={startVoiceRecording}>
+                <Mic className="w-5 h-5" />
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Chat = () => {
   const {
     recipientId
@@ -487,37 +607,17 @@ const Chat = () => {
       </div>
 
       {/* Input area */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 safe-area-bottom">
-        <div className="flex items-center gap-2">
-          <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleSendMedia} />
-          <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending || isRecording}>
-            <Paperclip className="w-5 h-5" />
-          </Button>
-          
-          {isRecording ? <>
-              <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-destructive/10 rounded-full">
-                <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                <span className="text-sm text-destructive">Enregistrement...</span>
-              </div>
-              <Button size="icon" variant="destructive" onClick={stopVoiceRecording}>
-                <Square className="w-4 h-4 fill-current" />
-              </Button>
-            </> : <>
-              <Input placeholder="Message" value={messageText} onChange={e => setMessageText(e.target.value)} onKeyDown={e => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSendMessage();
-            }
-          }} className="flex-1" disabled={sending} />
-              
-              {messageText.trim() ? <Button size="icon" onClick={handleSendMessage} disabled={sending}>
-                  {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                </Button> : <Button variant="ghost" size="icon" onClick={startVoiceRecording}>
-                  <Mic className="w-5 h-5" />
-                </Button>}
-            </>}
-        </div>
-      </div>
+      <InputArea
+        messageText={messageText}
+        setMessageText={setMessageText}
+        sending={sending}
+        isRecording={isRecording}
+        fileInputRef={fileInputRef}
+        handleSendMessage={handleSendMessage}
+        handleSendMedia={handleSendMedia}
+        startVoiceRecording={startVoiceRecording}
+        stopVoiceRecording={stopVoiceRecording}
+      />
 
       {/* Forward dialog */}
       {forwardingMessage && <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={open => !open && setForwardingMessage(null)} messageId={forwardingMessage.id} chats={chats} currentChatId={chatId || ""} onForward={handleForward} />}
