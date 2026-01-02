@@ -73,17 +73,17 @@ const MessageBubble = ({
       case "missed_call":
         return <div className="flex items-center gap-2 text-destructive">
             <Phone className="w-4 h-4 text-[#ff1900] bg-white/0" />
-            <span className="text-sm font-semibold text-white">Appel manqué</span>
+            <span className="text-sm font-medium text-black">Appel manqué</span>
           </div>;
       case "call_ended":
         return <div className="flex items-center gap-2 text-primary">
             <Phone className="w-4 h-4" />
-            <span className="text-sm">
+            <span className="text-sm font-medium">
               Appel • {message.call_duration_seconds ? `${Math.floor(message.call_duration_seconds / 60)}:${(message.call_duration_seconds % 60).toString().padStart(2, "0")}` : "0:00"}
             </span>
           </div>;
       default:
-        return <p className="text-sm whitespace-pre-wrap break-words font-semibold">{message.content}</p>;
+        return <p className="text-sm whitespace-pre-wrap break-words font-medium text-black">{message.content}</p>;
     }
   };
   return <div className={cn("flex mb-2 group", isOwn ? "justify-end" : "justify-start")}>
