@@ -262,16 +262,16 @@ const InputArea = ({
         </div> : <div className="flex flex-col gap-2">
           {/* 4 boutons au-dessus */}
           <div className="flex items-center justify-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setShowEmojiPicker(!showEmojiPicker)} disabled={sending} title="Ajouter un emoji">
+            <Button variant="ghost" size="icon" onClick={() => setShowEmojiPicker(!showEmojiPicker)} disabled={sending} title="Ajouter un emoji" className="bg-white">
               <Smile className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending} title="Envoyer une image/vidéo">
+            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending} title="Envoyer une image/vidéo" className="bg-white">
               <Paperclip className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={openVideoRecorder} disabled={sending} title="Enregistrer une vidéo selfie">
+            <Button variant="ghost" size="icon" onClick={openVideoRecorder} disabled={sending} title="Enregistrer une vidéo selfie" className="bg-white">
               <Video className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={startVoiceRecording} disabled={sending} title="Enregistrer un message vocal">
+            <Button variant="ghost" size="icon" onClick={startVoiceRecording} disabled={sending} title="Enregistrer un message vocal" className="bg-white">
               <Mic className="w-5 h-5" />
             </Button>
           </div>
