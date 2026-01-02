@@ -71,8 +71,8 @@ const MessageBubble = ({
           </div>;
       case "missed_call":
         return <div className="flex items-center gap-2 text-destructive">
-            <Phone className="w-4 h-4 text-[#fcfcfc]" />
-            <span className="text-sm text-white font-semibold">Appel manqué</span>
+            <Phone className="w-4 h-4 text-[#ff1900]" />
+            <span className="text-sm font-semibold text-[#ff1900]">Appel manqué</span>
           </div>;
       case "call_ended":
         return <div className="flex items-center gap-2 text-primary">
@@ -195,15 +195,13 @@ const Chat = () => {
     if (currentRecipientRef.current === recipientId && initChatRef.current) {
       return;
     }
-
     const initChat = async () => {
       if (!recipientId || !user) return;
-      
+
       // Mark as initializing for this recipient
       currentRecipientRef.current = recipientId;
       initChatRef.current = true;
       setLoading(true);
-      
       try {
         // Get or create chat
         const chat = await getOrCreateChat(recipientId);
@@ -219,11 +217,9 @@ const Chat = () => {
         }
 
         // Fetch recipient profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name, avatar_url")
-          .eq("id", recipientId)
-          .maybeSingle();
+        const {
+          data: profile
+        } = await supabase.from("profiles").select("id, first_name, last_name, avatar_url").eq("id", recipientId).maybeSingle();
         setRecipient(profile);
       } catch (error) {
         console.error("Error initializing chat:", error);
