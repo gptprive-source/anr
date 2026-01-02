@@ -112,7 +112,7 @@ const MessageBubble = ({
           e.stopPropagation();
           onCopy();
           setShowActions(false);
-        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2">
+        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-black">
                 <Copy className="w-4 h-4" />
                 Copier
               </button>}
@@ -120,7 +120,7 @@ const MessageBubble = ({
           e.stopPropagation();
           onForward();
           setShowActions(false);
-        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2">
+        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-[#050505]">
               <Forward className="w-4 h-4" />
               Transférer
             </button>
