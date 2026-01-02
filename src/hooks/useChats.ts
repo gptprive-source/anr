@@ -349,25 +349,32 @@ export const useChats = () => {
       .eq("chat_id", chatId)
       .neq("sender_id", user.id);
 
-    // Reset unread count for this user
-    const chat = chats.find(c => c.id === chatId);
-    if (!chat) return;
+    // Find chat to determine participant position
+    // We need to fetch it fresh in case local state is stale
+    const { data: chatData } = await supabase
+      .from("chats")
+      .select("participant1_id, participant2_id")
+      .eq("id", chatId)
+      .single();
 
-    const isParticipant1 = chat.participant1_id === user.id;
+    if (!chatData) return;
+
+    const isParticipant1 = chatData.participant1_id === user.id;
     const updateField = isParticipant1 ? "unread_count_p1" : "unread_count_p2";
 
+    // Update in database - this will trigger realtime update for all instances
     await supabase
       .from("chats")
       .update({ [updateField]: 0 })
       .eq("id", chatId);
 
-    // Update local state
+    // Also update local state immediately for responsiveness
     setChats(prev => prev.map(c => 
       c.id === chatId 
         ? { ...c, [updateField]: 0 }
         : c
     ));
-  }, [user, chats]);
+  }, [user]);
 
   // Delete a message for me only
   const deleteForMe = useCallback(async (messageId: string): Promise<void> => {
