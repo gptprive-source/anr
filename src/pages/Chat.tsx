@@ -221,43 +221,72 @@ const InputArea = ({
         </div>
       )}
       
-      <div className="flex items-center gap-2">
-        <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleSendMedia} />
-        <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending || isRecording || isRecordingVideo}>
-          <Paperclip className="w-5 h-5" />
-        </Button>
-        
-        {isRecording ? (
-          <>
-            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-destructive/10 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-              <span className="text-sm text-destructive">Enregistrement audio...</span>
-            </div>
-            <Button size="icon" variant="destructive" onClick={stopVoiceRecording}>
-              <Square className="w-4 h-4 fill-current" />
-            </Button>
-          </>
-        ) : isRecordingVideo ? (
-          <>
-            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-sm text-primary">Enregistrement vidéo...</span>
-            </div>
-            <Button size="icon" variant="default" onClick={stopVideoRecording}>
-              <Square className="w-4 h-4 fill-current" />
-            </Button>
-          </>
-        ) : (
-          <>
+      <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleSendMedia} />
+      
+      {isRecording ? (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-destructive/10 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+            <span className="text-sm text-destructive">Enregistrement audio...</span>
+          </div>
+          <Button size="icon" variant="destructive" onClick={stopVoiceRecording}>
+            <Square className="w-4 h-4 fill-current" />
+          </Button>
+        </div>
+      ) : isRecordingVideo ? (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-sm text-primary">Enregistrement vidéo...</span>
+          </div>
+          <Button size="icon" variant="default" onClick={stopVideoRecording}>
+            <Square className="w-4 h-4 fill-current" />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {/* 4 boutons au-dessus */}
+          <div className="flex items-center justify-center gap-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               disabled={sending}
+              title="Ajouter un emoji"
             >
               <Smile className="w-5 h-5" />
             </Button>
-            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => fileInputRef.current?.click()} 
+              disabled={sending}
+              title="Envoyer une image/vidéo"
+            >
+              <Paperclip className="w-5 h-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={startVideoRecording} 
+              disabled={sending}
+              title="Enregistrer une vidéo selfie"
+            >
+              <Video className="w-5 h-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={startVoiceRecording} 
+              disabled={sending}
+              title="Enregistrer un message vocal"
+            >
+              <Mic className="w-5 h-5" />
+            </Button>
+          </div>
+          
+          {/* Zone de saisie en dessous */}
+          <div className="flex items-center gap-2">
             <Input
               placeholder="Message"
               value={messageText}
@@ -271,24 +300,12 @@ const InputArea = ({
               className="flex-1"
               disabled={sending}
             />
-            
-            {messageText.trim() ? (
-              <Button size="icon" onClick={handleSendMessage} disabled={sending}>
-                {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              </Button>
-            ) : (
-              <>
-                <Button variant="ghost" size="icon" onClick={startVideoRecording} title="Enregistrer une vidéo selfie">
-                  <Video className="w-5 h-5" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={startVoiceRecording} title="Enregistrer un message vocal">
-                  <Mic className="w-5 h-5" />
-                </Button>
-              </>
-            )}
-          </>
-        )}
-      </div>
+            <Button size="icon" onClick={handleSendMessage} disabled={sending || !messageText.trim()}>
+              {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
