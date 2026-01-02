@@ -492,26 +492,35 @@ export const showIncomingCall = (data: IncomingCallData) => {
 
     <div style="display: flex; gap: 24px; position: relative; z-index: 10;">
       <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <button type="button" id="decline-call-btn" style="
-          width: 72px;
-          height: 72px;
-          border-radius: 50%;
-          background: #ef4444;
-          border: none;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          pointer-events: auto;
-          position: relative;
-          z-index: 20;
-        ">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-        <span style="font-size: 13px; color: #94a3b8;">Refuser</span>
+        <div id="decline-swipe-container" style="display: flex; flex-direction: column; align-items: center; touch-action: none; user-select: none;">
+          <div id="decline-arrow" style="color: #94a3b8; margin-bottom: 4px; opacity: 0.3; transition: all 0.2s;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </div>
+          <button type="button" id="decline-call-btn" style="
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: #ef4444;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            pointer-events: auto;
+            position: relative;
+            z-index: 20;
+            transition: transform 0.15s, box-shadow 0.15s;
+          ">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+          <span style="font-size: 13px; color: #94a3b8;">Refuser</span>
+          <span style="font-size: 11px; color: #64748b; margin-top: 2px;">↑ Glisser</span>
+        </div>
       </div>
 
       <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -564,25 +573,34 @@ export const showIncomingCall = (data: IncomingCallData) => {
       </div>
 
       <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <button type="button" id="answer-call-btn" style="
-          width: 72px;
-          height: 72px;
-          border-radius: 50%;
-          background: #22c55e;
-          border: none;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          pointer-events: auto;
-          position: relative;
-          z-index: 20;
-        ">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-          </svg>
-        </button>
-        <span style="font-size: 13px; color: #94a3b8;">Répondre</span>
+        <div id="answer-swipe-container" style="display: flex; flex-direction: column; align-items: center; touch-action: none; user-select: none;">
+          <div id="answer-arrow" style="color: #94a3b8; margin-bottom: 4px; opacity: 0.3; transition: all 0.2s;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </div>
+          <button type="button" id="answer-call-btn" style="
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: #22c55e;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            pointer-events: auto;
+            position: relative;
+            z-index: 20;
+            transition: transform 0.15s, box-shadow 0.15s;
+          ">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </button>
+          <span style="font-size: 13px; color: #94a3b8;">Répondre</span>
+          <span style="font-size: 11px; color: #64748b; margin-top: 2px;">↑ Glisser</span>
+        </div>
       </div>
     </div>
   `;
@@ -700,113 +718,196 @@ export const showIncomingCall = (data: IncomingCallData) => {
     };
   }
   
-  if (answerBtn) {
-    answerBtn.onclick = async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      console.log("[CALL] Answer clicked");
-      
-      // STOP alerts FIRST before any async operation
-      forceStopAllAlerts();
-      
-      // Cleanup preview
-      if ((window as any).__previewCallFrame) {
-        try {
-          await (window as any).__previewCallFrame.leave();
-          await (window as any).__previewCallFrame.destroy();
-        } catch (e) {}
-        (window as any).__previewCallFrame = null;
-      }
-      await cleanupPreCreatedCall();
-      
-      // PARALLÈLE: Update des participants
-      await Promise.all([
-        supabase
-          .from("call_participants")
-          .update({ status: "answered", joined_at: new Date().toISOString() })
-          .eq("id", data.participantId),
-        supabase
-          .from("call_participants")
-          .update({ status: "call_answered_by_other", left_at: new Date().toISOString() })
-          .eq("call_id", data.callId)
-          .eq("status", "ringing")
-          .neq("id", data.participantId),
-      ]);
-      
-      hideIncomingCall();
-      window.location.href = `/call/${data.callId}?resident=true`;
-    };
-  }
+  // Swipe handler setup
+  const SWIPE_THRESHOLD = 60;
   
-  if (declineBtn) {
-    declineBtn.onclick = async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      console.log("[CALL] Decline clicked");
-      
-      // STOP alerts FIRST before any async operation
-      forceStopAllAlerts();
-      
-      // Cleanup
-      if ((window as any).__previewCallFrame) {
-        try {
-          await (window as any).__previewCallFrame.leave();
-          await (window as any).__previewCallFrame.destroy();
-        } catch (e) {}
-        (window as any).__previewCallFrame = null;
-      }
-      await cleanupPreCreatedCall();
-      
-      await supabase
-        .from("call_participants")
-        .update({ status: "declined", left_at: new Date().toISOString() })
-        .eq("id", data.participantId);
-      
-      // Check for other active residents (not the one we just declined)
-      const { data: activeResidents } = await supabase
-        .from("call_participants")
-        .select("id, user_id, created_at")
-        .eq("call_id", data.callId)
-        .eq("role", "resident")
-        .in("status", ["ringing", "answered", "in_group"])
-        .neq("id", data.participantId);
-      
-      console.log("[CALL] Active residents after decline:", activeResidents?.length || 0);
-      
-      // Also mark as stale any ringing participants older than 60 seconds (likely not responsive)
-      const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString();
-      if (activeResidents && activeResidents.length > 0) {
-        const staleParticipants = activeResidents.filter(p => p.created_at && p.created_at < sixtySecondsAgo);
-        if (staleParticipants.length > 0) {
-          console.log("[CALL] Marking stale participants as timed_out:", staleParticipants.length);
-          await supabase
-            .from("call_participants")
-            .update({ status: "timed_out", left_at: new Date().toISOString() })
-            .in("id", staleParticipants.map(p => p.id));
-        }
-      }
-      
-      // Re-check after cleanup
-      const { data: remainingActive } = await supabase
-        .from("call_participants")
-        .select("id")
-        .eq("call_id", data.callId)
-        .eq("role", "resident")
-        .in("status", ["ringing", "answered", "in_group"]);
-      
-      if (!remainingActive || remainingActive.length === 0) {
-        console.log("[CALL] No other residents, marking call as declined");
-        await supabase
-          .from("call_logs")
-          .update({ status: "declined", ended_at: new Date().toISOString() })
-          .eq("id", data.callId);
-      } else {
-        console.log("[CALL] Other residents still active:", remainingActive.length);
-      }
-      
-      hideIncomingCall();
+  const setupSwipeHandler = (
+    containerId: string,
+    buttonId: string,
+    arrowId: string,
+    onSwipeComplete: () => void
+  ) => {
+    const container = document.getElementById(containerId);
+    const button = document.getElementById(buttonId);
+    const arrow = document.getElementById(arrowId);
+    
+    if (!container || !button) return;
+    
+    let isDragging = false;
+    let startY = 0;
+    let currentOffset = 0;
+    
+    const handleStart = (clientY: number) => {
+      isDragging = true;
+      startY = clientY;
     };
-  }
+    
+    const handleMove = (clientY: number) => {
+      if (!isDragging) return;
+      const diff = startY - clientY;
+      currentOffset = Math.max(0, Math.min(diff, SWIPE_THRESHOLD + 20));
+      
+      const progress = Math.min(currentOffset / SWIPE_THRESHOLD, 1);
+      button.style.transform = `translateY(${-currentOffset}px) scale(${1 + progress * 0.05})`;
+      button.style.boxShadow = progress > 0 ? `0 ${4 + progress * 8}px ${8 + progress * 16}px rgba(0,0,0,0.2)` : '';
+      
+      if (arrow) {
+        arrow.style.opacity = String(0.3 + progress * 0.7);
+        arrow.style.transform = `translateY(${-progress * 10}px)`;
+        arrow.style.color = progress > 0.8 ? '#ffffff' : '#94a3b8';
+      }
+    };
+    
+    const handleEnd = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      
+      if (currentOffset >= SWIPE_THRESHOLD) {
+        onSwipeComplete();
+      }
+      
+      // Reset visual
+      button.style.transform = '';
+      button.style.boxShadow = '';
+      if (arrow) {
+        arrow.style.opacity = '0.3';
+        arrow.style.transform = '';
+        arrow.style.color = '#94a3b8';
+      }
+      currentOffset = 0;
+    };
+    
+    // Touch events
+    container.addEventListener('touchstart', (e) => {
+      handleStart(e.touches[0].clientY);
+    }, { passive: true });
+    
+    container.addEventListener('touchmove', (e) => {
+      handleMove(e.touches[0].clientY);
+    }, { passive: true });
+    
+    container.addEventListener('touchend', handleEnd);
+    
+    // Mouse events for desktop testing
+    container.addEventListener('mousedown', (e) => {
+      handleStart(e.clientY);
+    });
+    
+    container.addEventListener('mousemove', (e) => {
+      handleMove(e.clientY);
+    });
+    
+    container.addEventListener('mouseup', handleEnd);
+    container.addEventListener('mouseleave', () => {
+      if (isDragging) handleEnd();
+    });
+  };
+  
+  // Answer swipe handler
+  const handleAnswer = async () => {
+    console.log("[CALL] Answer swiped");
+    
+    // STOP alerts FIRST before any async operation
+    forceStopAllAlerts();
+    
+    // Cleanup preview
+    if ((window as any).__previewCallFrame) {
+      try {
+        await (window as any).__previewCallFrame.leave();
+        await (window as any).__previewCallFrame.destroy();
+      } catch (e) {}
+      (window as any).__previewCallFrame = null;
+    }
+    await cleanupPreCreatedCall();
+    
+    // PARALLÈLE: Update des participants
+    await Promise.all([
+      supabase
+        .from("call_participants")
+        .update({ status: "answered", joined_at: new Date().toISOString() })
+        .eq("id", data.participantId),
+      supabase
+        .from("call_participants")
+        .update({ status: "call_answered_by_other", left_at: new Date().toISOString() })
+        .eq("call_id", data.callId)
+        .eq("status", "ringing")
+        .neq("id", data.participantId),
+    ]);
+    
+    hideIncomingCall();
+    window.location.href = `/call/${data.callId}?resident=true`;
+  };
+  
+  // Decline swipe handler
+  const handleDecline = async () => {
+    console.log("[CALL] Decline swiped");
+    
+    // STOP alerts FIRST before any async operation
+    forceStopAllAlerts();
+    
+    // Cleanup
+    if ((window as any).__previewCallFrame) {
+      try {
+        await (window as any).__previewCallFrame.leave();
+        await (window as any).__previewCallFrame.destroy();
+      } catch (e) {}
+      (window as any).__previewCallFrame = null;
+    }
+    await cleanupPreCreatedCall();
+    
+    await supabase
+      .from("call_participants")
+      .update({ status: "declined", left_at: new Date().toISOString() })
+      .eq("id", data.participantId);
+    
+    // Check for other active residents (not the one we just declined)
+    const { data: activeResidents } = await supabase
+      .from("call_participants")
+      .select("id, user_id, created_at")
+      .eq("call_id", data.callId)
+      .eq("role", "resident")
+      .in("status", ["ringing", "answered", "in_group"])
+      .neq("id", data.participantId);
+    
+    console.log("[CALL] Active residents after decline:", activeResidents?.length || 0);
+    
+    // Also mark as stale any ringing participants older than 60 seconds (likely not responsive)
+    const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString();
+    if (activeResidents && activeResidents.length > 0) {
+      const staleParticipants = activeResidents.filter(p => p.created_at && p.created_at < sixtySecondsAgo);
+      if (staleParticipants.length > 0) {
+        console.log("[CALL] Marking stale participants as timed_out:", staleParticipants.length);
+        await supabase
+          .from("call_participants")
+          .update({ status: "timed_out", left_at: new Date().toISOString() })
+          .in("id", staleParticipants.map(p => p.id));
+      }
+    }
+    
+    // Re-check after cleanup
+    const { data: remainingActive } = await supabase
+      .from("call_participants")
+      .select("id")
+      .eq("call_id", data.callId)
+      .eq("role", "resident")
+      .in("status", ["ringing", "answered", "in_group"]);
+    
+    if (!remainingActive || remainingActive.length === 0) {
+      console.log("[CALL] No other residents, marking call as declined");
+      await supabase
+        .from("call_logs")
+        .update({ status: "declined", ended_at: new Date().toISOString() })
+        .eq("id", data.callId);
+    } else {
+      console.log("[CALL] Other residents still active:", remainingActive.length);
+    }
+    
+    hideIncomingCall();
+  };
+  
+  // Setup swipe handlers
+  setupSwipeHandler('answer-swipe-container', 'answer-call-btn', 'answer-arrow', handleAnswer);
+  setupSwipeHandler('decline-swipe-container', 'decline-call-btn', 'decline-arrow', handleDecline);
   
   console.log("[CALL] === showIncomingCall END ===");
 };
