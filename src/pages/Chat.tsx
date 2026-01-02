@@ -620,10 +620,12 @@ const Chat = () => {
     
     setSending(true);
     try {
-      const fileName = `video/${user?.id}/${Date.now()}.webm`;
+      // Determine file extension based on actual blob type
+      const extension = blob.type.includes('mp4') ? 'mp4' : 'webm';
+      const fileName = `video/${user?.id}/${Date.now()}.${extension}`;
       const { data, error } = await supabase.storage
         .from("visitor-voice-messages")
-        .upload(fileName, blob);
+        .upload(fileName, blob, { contentType: blob.type });
       
       if (error) {
         toast.error("Erreur lors de l'upload de la vidéo");
