@@ -72,7 +72,7 @@ const MessageBubble = ({
       case "missed_call":
         return <div className="flex items-center gap-2 text-destructive">
             <Phone className="w-4 h-4 text-[#ff1900]" />
-            <span className="text-sm font-semibold text-[#ff1900]">Appel manqué</span>
+            <span className="text-sm font-semibold text-black">Appel manqué</span>
           </div>;
       case "call_ended":
         return <div className="flex items-center gap-2 text-primary">
