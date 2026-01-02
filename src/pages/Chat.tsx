@@ -414,8 +414,8 @@ const Chat = () => {
       </div>;
   }
   return <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="bg-primary text-primary-foreground p-3 shadow-md flex items-center gap-3">
+      {/* Header - Fixed */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-primary text-primary-foreground p-3 shadow-md flex items-center gap-3">
         <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={() => navigate("/messages")}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -461,8 +461,8 @@ const Chat = () => {
         </DropdownMenu>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 pb-20">
+      {/* Messages - with top padding for fixed header */}
+      <div className="flex-1 overflow-y-auto p-4 pb-20 pt-20">
         {Object.entries(groupedMessages).map(([date, msgs]) => <div key={date}>
             {/* Date separator */}
             <div className="flex justify-center my-4">

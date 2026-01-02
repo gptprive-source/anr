@@ -129,8 +129,8 @@ const Messages = () => {
   };
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <div className="bg-primary text-primary-foreground p-4 shadow-md">
+      {/* Header - Fixed */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-primary text-primary-foreground p-4 shadow-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-semibold">Messages</h1>
@@ -155,8 +155,8 @@ const Messages = () => {
         </div>
       </div>
 
-      {/* Chat list */}
-      <div className="flex-1">
+      {/* Chat list - with top padding for fixed header */}
+      <div className="flex-1 pt-[104px]">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
