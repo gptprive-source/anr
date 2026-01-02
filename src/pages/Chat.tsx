@@ -199,17 +199,6 @@ const MessageBubble = ({
             <button
               onClick={e => {
                 e.stopPropagation();
-                onForward();
-                setShowActions(false);
-              }}
-              className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-foreground"
-            >
-              <Forward className="w-4 h-4" />
-              Transférer
-            </button>
-            <button
-              onClick={e => {
-                e.stopPropagation();
                 onToggleSelect(); // Start selection mode
                 setShowActions(false);
               }}
@@ -970,6 +959,27 @@ const Chat = () => {
             >
               <Share2 className="w-4 h-4" />
               Partager
+            </Button>
+            {/* Transfer button */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (selectedMessages.size === 1) {
+                  const selectedId = Array.from(selectedMessages)[0];
+                  const selectedMsg = messages.find(m => m.id === selectedId);
+                  if (selectedMsg) {
+                    setForwardingMessage(selectedMsg);
+                    cancelSelection();
+                  }
+                } else {
+                  toast.info("Sélectionnez un seul message pour le transférer");
+                }
+              }}
+              disabled={selectedMessages.size !== 1}
+              className="flex items-center gap-2"
+            >
+              <Forward className="w-4 h-4" />
+              Transférer
             </Button>
             <Button
               variant="destructive"
