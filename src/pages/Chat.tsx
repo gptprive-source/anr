@@ -951,20 +951,39 @@ const Chat = () => {
                   try {
                     const files: File[] = [];
                     
-                    // Download media files for sharing
+                    // Download media files for sharing using Supabase SDK
                     if (mediaUrls.length > 0) {
                       for (const url of mediaUrls) {
                         try {
-                          // Use fetch with no-cors mode workaround - create a link and download
-                          const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
-                          if (response.ok) {
-                            const blob = await response.blob();
-                            const urlParts = url.split('/');
-                            const fileName = urlParts[urlParts.length - 1] || 'media';
-                            // Determine proper extension from content type
-                            const contentType = blob.type || 'application/octet-stream';
-                            const file = new File([blob], fileName, { type: contentType });
-                            files.push(file);
+                          // Extract bucket and path from Supabase URL
+                          const supabaseUrl = "https://mkzpdmyymabgsntwmmir.supabase.co/storage/v1/object/public/";
+                          if (url.startsWith(supabaseUrl)) {
+                            const pathPart = url.replace(supabaseUrl, "");
+                            const [bucket, ...pathParts] = pathPart.split("/");
+                            const filePath = pathParts.join("/");
+                            
+                            // Download directly from Supabase storage SDK (avoids CORS)
+                            const { data, error } = await supabase.storage
+                              .from(bucket)
+                              .download(filePath);
+                            
+                            if (data && !error) {
+                              const fileName = pathParts[pathParts.length - 1] || 'media';
+                              const file = new File([data], fileName, { type: data.type });
+                              files.push(file);
+                            } else {
+                              console.warn("Supabase download error:", error);
+                            }
+                          } else {
+                            // For non-Supabase URLs, try direct fetch
+                            const response = await fetch(url);
+                            if (response.ok) {
+                              const blob = await response.blob();
+                              const urlParts = url.split('/');
+                              const fileName = urlParts[urlParts.length - 1] || 'media';
+                              const file = new File([blob], fileName, { type: blob.type });
+                              files.push(file);
+                            }
                           }
                         } catch (fetchErr) {
                           console.warn("Could not fetch media for sharing:", fetchErr);
@@ -985,34 +1004,29 @@ const Chat = () => {
                     if (files.length > 0 && navigator.canShare && navigator.canShare(shareData)) {
                       await navigator.share(shareData);
                       cancelSelection();
-                    } else if (textContent || files.length === 0) {
-                      // Share text only or URLs as fallback
-                      const urlsText = mediaUrls.join("\n");
-                      await navigator.share({ 
-                        text: textContent ? (mediaUrls.length > 0 ? `${textContent}\n\n${urlsText}` : textContent) : urlsText 
-                      });
-                      cancelSelection();
-                    } else {
-                      // Can't share files and no text - share URLs
-                      await navigator.share({ text: mediaUrls.join("\n") });
+                    } else if (files.length > 0) {
+                      // Browser doesn't support file sharing - inform user
+                      toast.error("Le partage de fichiers n'est pas supporté sur ce navigateur");
+                    } else if (textContent) {
+                      // Share text only
+                      await navigator.share({ text: textContent });
                       cancelSelection();
                     }
                   } catch (err) {
                     if ((err as Error).name !== "AbortError") {
                       console.error("Share error:", err);
-                      // Fallback to clipboard
-                      const clipboardText = textContent + (mediaUrls.length > 0 ? "\n\n" + mediaUrls.join("\n") : "");
-                      await navigator.clipboard.writeText(clipboardText);
-                      toast.success("Contenu copié dans le presse-papier");
-                      cancelSelection();
+                      toast.error("Erreur lors du partage");
                     }
                   }
                 } else {
-                  // Fallback: copy to clipboard
-                  const clipboardText = textContent + (mediaUrls.length > 0 ? "\n\n" + mediaUrls.join("\n") : "");
-                  await navigator.clipboard.writeText(clipboardText);
-                  toast.success("Contenu copié dans le presse-papier");
-                  cancelSelection();
+                  // navigator.share not available - only copy text to clipboard
+                  if (textContent) {
+                    await navigator.clipboard.writeText(textContent);
+                    toast.success("Texte copié dans le presse-papier");
+                    cancelSelection();
+                  } else {
+                    toast.error("Le partage de fichiers n'est pas supporté sur ce navigateur");
+                  }
                 }
               }}
               disabled={selectedMessages.size === 0}
