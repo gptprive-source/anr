@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square, Smile } from "lucide-react";
+import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square, Smile, Video } from "lucide-react";
 
 // Lazy load emoji picker to avoid build issues
 const EmojiPicker = lazy(() => 
@@ -161,27 +161,33 @@ const MessageBubble = ({
     </div>;
 };
 
-// Input area component with emoji picker
+// Input area component with emoji picker and video recording
 const InputArea = ({
   messageText,
   setMessageText,
   sending,
   isRecording,
+  isRecordingVideo,
   fileInputRef,
   handleSendMessage,
   handleSendMedia,
   startVoiceRecording,
   stopVoiceRecording,
+  startVideoRecording,
+  stopVideoRecording,
 }: {
   messageText: string;
   setMessageText: (text: string) => void;
   sending: boolean;
   isRecording: boolean;
+  isRecordingVideo: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleSendMessage: () => void;
   handleSendMedia: (e: React.ChangeEvent<HTMLInputElement>) => void;
   startVoiceRecording: () => void;
   stopVoiceRecording: () => void;
+  startVideoRecording: () => void;
+  stopVideoRecording: () => void;
 }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -217,7 +223,7 @@ const InputArea = ({
       
       <div className="flex items-center gap-2">
         <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleSendMedia} />
-        <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending || isRecording}>
+        <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending || isRecording || isRecordingVideo}>
           <Paperclip className="w-5 h-5" />
         </Button>
         
@@ -225,9 +231,19 @@ const InputArea = ({
           <>
             <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-destructive/10 rounded-full">
               <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-              <span className="text-sm text-destructive">Enregistrement...</span>
+              <span className="text-sm text-destructive">Enregistrement audio...</span>
             </div>
             <Button size="icon" variant="destructive" onClick={stopVoiceRecording}>
+              <Square className="w-4 h-4 fill-current" />
+            </Button>
+          </>
+        ) : isRecordingVideo ? (
+          <>
+            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="text-sm text-primary">Enregistrement vidéo...</span>
+            </div>
+            <Button size="icon" variant="default" onClick={stopVideoRecording}>
               <Square className="w-4 h-4 fill-current" />
             </Button>
           </>
@@ -261,9 +277,14 @@ const InputArea = ({
                 {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               </Button>
             ) : (
-              <Button variant="ghost" size="icon" onClick={startVoiceRecording}>
-                <Mic className="w-5 h-5" />
-              </Button>
+              <>
+                <Button variant="ghost" size="icon" onClick={startVideoRecording} title="Enregistrer une vidéo selfie">
+                  <Video className="w-5 h-5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={startVoiceRecording} title="Enregistrer un message vocal">
+                  <Mic className="w-5 h-5" />
+                </Button>
+              </>
             )}
           </>
         )}
@@ -304,7 +325,11 @@ const Chat = () => {
   const [messageText, setMessageText] = useState("");
   const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [videoRecorder, setVideoRecorder] = useState<MediaRecorder | null>(null);
+  const videoPreviewRef = useRef<HTMLVideoElement>(null);
+  const videoStreamRef = useRef<MediaStream | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initChatRef = useRef(false);
@@ -467,6 +492,75 @@ const Chat = () => {
     }
   };
 
+  // Start video recording (selfie)
+  const startVideoRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: true
+      });
+      videoStreamRef.current = stream;
+      
+      const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+      const chunks: Blob[] = [];
+      
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = async () => {
+        // Stop all tracks
+        stream.getTracks().forEach(t => t.stop());
+        videoStreamRef.current = null;
+        
+        const blob = new Blob(chunks, { type: "video/webm" });
+        
+        // Upload to storage
+        const fileName = `video/${user?.id}/${Date.now()}.webm`;
+        setSending(true);
+        try {
+          const { data, error } = await supabase.storage
+            .from("visitor-voice-messages")
+            .upload(fileName, blob);
+          
+          if (error) {
+            toast.error("Erreur lors de l'upload de la vidéo");
+            return;
+          }
+          
+          const { data: urlData } = supabase.storage
+            .from("visitor-voice-messages")
+            .getPublicUrl(data.path);
+          
+          if (chatId) {
+            await sendMessage(chatId, {
+              mediaUrl: urlData.publicUrl,
+              mediaType: "video"
+            });
+          }
+        } catch (error) {
+          console.error("Error uploading video:", error);
+          toast.error("Erreur lors de l'envoi de la vidéo");
+        } finally {
+          setSending(false);
+        }
+        
+        setIsRecordingVideo(false);
+        setVideoRecorder(null);
+      };
+      
+      recorder.start();
+      setVideoRecorder(recorder);
+      setIsRecordingVideo(true);
+    } catch (error) {
+      console.error("Error starting video recording:", error);
+      toast.error("Impossible d'accéder à la caméra");
+    }
+  };
+
+  const stopVideoRecording = () => {
+    if (videoRecorder && videoRecorder.state !== "inactive") {
+      videoRecorder.stop();
+    }
+  };
+
   // Send media
   const handleSendMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!chatId || !e.target.files?.length) return;
@@ -616,11 +710,14 @@ const Chat = () => {
         setMessageText={setMessageText}
         sending={sending}
         isRecording={isRecording}
+        isRecordingVideo={isRecordingVideo}
         fileInputRef={fileInputRef}
         handleSendMessage={handleSendMessage}
         handleSendMedia={handleSendMedia}
         startVoiceRecording={startVoiceRecording}
         stopVoiceRecording={stopVoiceRecording}
+        startVideoRecording={startVideoRecording}
+        stopVideoRecording={stopVideoRecording}
       />
 
       {/* Forward dialog */}
