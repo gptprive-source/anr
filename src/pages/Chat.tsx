@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useChats, ChatMessage } from "@/hooks/useChats";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnlinePresence } from "@/hooks/useOnlinePresence";
@@ -345,9 +346,13 @@ const Chat = () => {
   const [isRecordingVideo, setIsRecordingVideo] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [videoRecorder, setVideoRecorder] = useState<MediaRecorder | null>(null);
-  const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const videoStreamRef = useRef<MediaStream | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Preview states for audio and video before sending
+  const [audioPreview, setAudioPreview] = useState<{ blob: Blob; url: string } | null>(null);
+  const [videoPreview, setVideoPreview] = useState<{ blob: Blob; url: string } | null>(null);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initChatRef = useRef(false);
   const currentRecipientRef = useRef<string | null>(null);
@@ -475,24 +480,11 @@ const Chat = () => {
           type: "audio/webm"
         });
 
-        // Upload to storage
-        const fileName = `voice/${user?.id}/${Date.now()}.webm`;
-        const {
-          data,
-          error
-        } = await supabase.storage.from("visitor-voice-messages").upload(fileName, blob);
-        if (error) {
-          toast.error("Erreur lors de l'upload du message vocal");
-          return;
-        }
-        const {
-          data: urlData
-        } = supabase.storage.from("visitor-voice-messages").getPublicUrl(data.path);
-        if (chatId) {
-          await sendMessage(chatId, {
-            voiceUrl: urlData.publicUrl
-          });
-        }
+        // Create preview URL for validation
+        const previewUrl = URL.createObjectURL(blob);
+        setAudioPreview({ blob, url: previewUrl });
+        setShowPreviewDialog(true);
+        
         setIsRecording(false);
         setMediaRecorder(null);
       };
@@ -507,6 +499,52 @@ const Chat = () => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
     }
+  };
+
+  // Confirm and send audio
+  const confirmSendAudio = async () => {
+    if (!audioPreview || !chatId) return;
+    setSending(true);
+    try {
+      const fileName = `voice/${user?.id}/${Date.now()}.webm`;
+      const { data, error } = await supabase.storage
+        .from("visitor-voice-messages")
+        .upload(fileName, audioPreview.blob);
+      
+      if (error) {
+        toast.error("Erreur lors de l'upload du message vocal");
+        return;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from("visitor-voice-messages")
+        .getPublicUrl(data.path);
+      
+      await sendMessage(chatId, {
+        voiceUrl: urlData.publicUrl
+      });
+      
+      toast.success("Message vocal envoyé");
+    } catch (error) {
+      console.error("Error sending audio:", error);
+      toast.error("Erreur lors de l'envoi");
+    } finally {
+      setSending(false);
+      cancelPreview();
+    }
+  };
+
+  // Cancel preview
+  const cancelPreview = () => {
+    if (audioPreview) {
+      URL.revokeObjectURL(audioPreview.url);
+      setAudioPreview(null);
+    }
+    if (videoPreview) {
+      URL.revokeObjectURL(videoPreview.url);
+      setVideoPreview(null);
+    }
+    setShowPreviewDialog(false);
   };
 
   // Start video recording (selfie)
@@ -529,35 +567,10 @@ const Chat = () => {
         
         const blob = new Blob(chunks, { type: "video/webm" });
         
-        // Upload to storage
-        const fileName = `video/${user?.id}/${Date.now()}.webm`;
-        setSending(true);
-        try {
-          const { data, error } = await supabase.storage
-            .from("visitor-voice-messages")
-            .upload(fileName, blob);
-          
-          if (error) {
-            toast.error("Erreur lors de l'upload de la vidéo");
-            return;
-          }
-          
-          const { data: urlData } = supabase.storage
-            .from("visitor-voice-messages")
-            .getPublicUrl(data.path);
-          
-          if (chatId) {
-            await sendMessage(chatId, {
-              mediaUrl: urlData.publicUrl,
-              mediaType: "video"
-            });
-          }
-        } catch (error) {
-          console.error("Error uploading video:", error);
-          toast.error("Erreur lors de l'envoi de la vidéo");
-        } finally {
-          setSending(false);
-        }
+        // Create preview URL for validation
+        const previewUrl = URL.createObjectURL(blob);
+        setVideoPreview({ blob, url: previewUrl });
+        setShowPreviewDialog(true);
         
         setIsRecordingVideo(false);
         setVideoRecorder(null);
@@ -575,6 +588,40 @@ const Chat = () => {
   const stopVideoRecording = () => {
     if (videoRecorder && videoRecorder.state !== "inactive") {
       videoRecorder.stop();
+    }
+  };
+
+  // Confirm and send video
+  const confirmSendVideo = async () => {
+    if (!videoPreview || !chatId) return;
+    setSending(true);
+    try {
+      const fileName = `video/${user?.id}/${Date.now()}.webm`;
+      const { data, error } = await supabase.storage
+        .from("visitor-voice-messages")
+        .upload(fileName, videoPreview.blob);
+      
+      if (error) {
+        toast.error("Erreur lors de l'upload de la vidéo");
+        return;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from("visitor-voice-messages")
+        .getPublicUrl(data.path);
+      
+      await sendMessage(chatId, {
+        mediaUrl: urlData.publicUrl,
+        mediaType: "video"
+      });
+      
+      toast.success("Vidéo envoyée");
+    } catch (error) {
+      console.error("Error sending video:", error);
+      toast.error("Erreur lors de l'envoi de la vidéo");
+    } finally {
+      setSending(false);
+      cancelPreview();
     }
   };
 
@@ -736,6 +783,59 @@ const Chat = () => {
         startVideoRecording={startVideoRecording}
         stopVideoRecording={stopVideoRecording}
       />
+
+      {/* Preview dialog for audio/video before sending */}
+      <Dialog open={showPreviewDialog} onOpenChange={(open) => !open && cancelPreview()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {audioPreview ? "Écouter avant d'envoyer" : "Voir avant d'envoyer"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center gap-4 py-4">
+            {audioPreview && (
+              <audio 
+                src={audioPreview.url} 
+                controls 
+                className="w-full"
+                autoPlay={false}
+              />
+            )}
+            
+            {videoPreview && (
+              <video 
+                src={videoPreview.url} 
+                controls 
+                className="w-full rounded-lg max-h-[400px]"
+                autoPlay={false}
+              />
+            )}
+          </div>
+          
+          <DialogFooter className="flex gap-2 sm:gap-2">
+            <Button 
+              variant="outline" 
+              onClick={cancelPreview}
+              disabled={sending}
+            >
+              <X className="w-4 h-4 mr-2" />
+              Annuler
+            </Button>
+            <Button 
+              onClick={audioPreview ? confirmSendAudio : confirmSendVideo}
+              disabled={sending}
+            >
+              {sending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 mr-2" />
+              )}
+              Envoyer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Forward dialog */}
       {forwardingMessage && <ForwardMessageDialog open={!!forwardingMessage} onOpenChange={open => !open && setForwardingMessage(null)} messageId={forwardingMessage.id} chats={chats} currentChatId={chatId || ""} onForward={handleForward} />}
