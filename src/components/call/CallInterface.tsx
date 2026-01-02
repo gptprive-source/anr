@@ -12,6 +12,7 @@ import { BleOpenDoorButton } from "@/components/door/BleOpenDoorButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
+import { forceStopAllAlerts } from "@/lib/incomingCallRenderer";
 type CallState = "ringing" | "connecting" | "connected" | "ended";
 
 interface CallInterfaceProps {
@@ -94,6 +95,17 @@ const CallInterface = memo(({
       setCallState("ended");
     },
   });
+
+  // Stop any lingering ringtones on mount and unmount
+  useEffect(() => {
+    // Stop ringtone immediately when entering call interface
+    forceStopAllAlerts();
+    
+    return () => {
+      // Also stop on unmount just in case
+      forceStopAllAlerts();
+    };
+  }, []);
 
   // Visitor: auto-join on mount
   useEffect(() => {
