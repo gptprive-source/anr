@@ -42,9 +42,28 @@ export const useVoiceRecorder = (maxDurationSeconds = 60): UseVoiceRecorderResul
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
-      });
+      // Prioritize MP4/AAC for better mobile compatibility
+      const getSupportedAudioMimeType = () => {
+        const types = [
+          'audio/mp4',
+          'audio/aac',
+          'audio/mpeg',
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/ogg;codecs=opus',
+        ];
+        for (const type of types) {
+          if (MediaRecorder.isTypeSupported(type)) {
+            console.log('[useVoiceRecorder] Using MIME type:', type);
+            return type;
+          }
+        }
+        console.log('[useVoiceRecorder] No preferred type supported, using default');
+        return undefined;
+      };
+      
+      const mimeType = getSupportedAudioMimeType();
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       
       mediaRecorderRef.current = mediaRecorder;
 
