@@ -949,28 +949,58 @@ const Chat = () => {
                 
                 if (navigator.share) {
                   try {
-                    // Build share text - always include something meaningful
-                    let shareText = textContent;
+                    const files: File[] = [];
+                    
+                    // Download media files for sharing
                     if (mediaUrls.length > 0) {
-                      const urlsText = mediaUrls.join("\n");
-                      shareText = textContent ? `${textContent}\n\n${urlsText}` : urlsText;
+                      for (const url of mediaUrls) {
+                        try {
+                          // Use fetch with no-cors mode workaround - create a link and download
+                          const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
+                          if (response.ok) {
+                            const blob = await response.blob();
+                            const urlParts = url.split('/');
+                            const fileName = urlParts[urlParts.length - 1] || 'media';
+                            // Determine proper extension from content type
+                            const contentType = blob.type || 'application/octet-stream';
+                            const file = new File([blob], fileName, { type: contentType });
+                            files.push(file);
+                          }
+                        } catch (fetchErr) {
+                          console.warn("Could not fetch media for sharing:", fetchErr);
+                        }
+                      }
                     }
                     
-                    // Share with text/url - don't try file sharing as it often fails with CORS
+                    // Build share data
                     const shareData: ShareData = {};
-                    
-                    // If we have only one URL and no text, use the url field
-                    if (!textContent && mediaUrls.length === 1) {
-                      shareData.url = mediaUrls[0];
-                    } else {
-                      shareData.text = shareText;
+                    if (textContent) {
+                      shareData.text = textContent;
+                    }
+                    if (files.length > 0) {
+                      shareData.files = files;
                     }
                     
-                    await navigator.share(shareData);
-                    cancelSelection();
+                    // Check if we can share files
+                    if (files.length > 0 && navigator.canShare && navigator.canShare(shareData)) {
+                      await navigator.share(shareData);
+                      cancelSelection();
+                    } else if (textContent || files.length === 0) {
+                      // Share text only or URLs as fallback
+                      const urlsText = mediaUrls.join("\n");
+                      await navigator.share({ 
+                        text: textContent ? (mediaUrls.length > 0 ? `${textContent}\n\n${urlsText}` : textContent) : urlsText 
+                      });
+                      cancelSelection();
+                    } else {
+                      // Can't share files and no text - share URLs
+                      await navigator.share({ text: mediaUrls.join("\n") });
+                      cancelSelection();
+                    }
                   } catch (err) {
                     if ((err as Error).name !== "AbortError") {
-                      // Fallback to clipboard on share error
+                      console.error("Share error:", err);
+                      // Fallback to clipboard
                       const clipboardText = textContent + (mediaUrls.length > 0 ? "\n\n" + mediaUrls.join("\n") : "");
                       await navigator.clipboard.writeText(clipboardText);
                       toast.success("Contenu copié dans le presse-papier");
