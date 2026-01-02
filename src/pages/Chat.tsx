@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square, Smile, Video, Share2 } from "lucide-react";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 
 // Lazy load emoji picker to avoid build issues
 const EmojiPicker = lazy(() => 
@@ -404,9 +405,19 @@ const Chat = () => {
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Voice recorder hook (replaces manual MediaRecorder logic)
+  const {
+    isRecording,
+    duration: recordingDuration,
+    audioBlob,
+    audioUrl: audioPreviewUrl,
+    startRecording,
+    stopRecording,
+    resetRecording,
+    error: recordingError,
+  } = useVoiceRecorder(60);
   
   // Video camera recorder
   const [showVideoRecorder, setShowVideoRecorder] = useState(false);
@@ -415,8 +426,7 @@ const Chat = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   
-  // Preview states for audio before sending
-  const [audioPreview, setAudioPreview] = useState<{ blob: Blob; url: string } | null>(null);
+  // Preview dialog for audio
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initChatRef = useRef(false);
@@ -530,82 +540,35 @@ const Chat = () => {
     }
   };
 
-  // Start voice recording
-  const startVoiceRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true
-      });
-      
-      // Prioritize MP4/AAC for better mobile compatibility
-      const getSupportedAudioMimeType = () => {
-        const types = [
-          'audio/mp4',
-          'audio/aac',
-          'audio/mpeg',
-          'audio/webm;codecs=opus',
-          'audio/webm',
-          'audio/ogg;codecs=opus',
-        ];
-        for (const type of types) {
-          if (MediaRecorder.isTypeSupported(type)) {
-            console.log('[Chat] Audio recording using MIME type:', type);
-            return type;
-          }
-        }
-        console.log('[Chat] No preferred audio type supported, using default');
-        return undefined;
-      };
-      
-      const mimeType = getSupportedAudioMimeType();
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      const chunks: Blob[] = [];
-      recorder.ondataavailable = e => chunks.push(e.data);
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        // Use the actual MIME type from recorder
-        const actualMimeType = recorder.mimeType || mimeType || 'audio/webm';
-        console.log('[Chat] Audio blob created with type:', actualMimeType);
-        const blob = new Blob(chunks, {
-          type: actualMimeType
-        });
+  // Show recording error
+  useEffect(() => {
+    if (recordingError) {
+      toast.error(recordingError);
+    }
+  }, [recordingError]);
 
-        // Create preview URL for validation
-        const previewUrl = URL.createObjectURL(blob);
-        setAudioPreview({ blob, url: previewUrl });
-        setShowPreviewDialog(true);
-        
-        setIsRecording(false);
-        setMediaRecorder(null);
-      };
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-    } catch (error) {
-      toast.error("Impossible d'accéder au microphone");
+  // Show preview dialog when recording stops and audio is ready
+  useEffect(() => {
+    if (audioBlob && audioPreviewUrl && !isRecording) {
+      setShowPreviewDialog(true);
     }
-  };
-  const stopVoiceRecording = () => {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop();
-    }
-  };
+  }, [audioBlob, audioPreviewUrl, isRecording]);
 
   // Confirm and send audio
   const confirmSendAudio = async () => {
-    if (!audioPreview || !chatId) return;
+    if (!audioBlob || !chatId) return;
     setSending(true);
     try {
       // Determine file extension based on actual blob type
-      const audioExtension = audioPreview.blob.type.includes('mp4') || audioPreview.blob.type.includes('aac') || audioPreview.blob.type.includes('mpeg') 
+      const audioExtension = audioBlob.type.includes('mp4') || audioBlob.type.includes('aac') || audioBlob.type.includes('mpeg') 
         ? 'mp4' 
-        : audioPreview.blob.type.includes('ogg') 
+        : audioBlob.type.includes('ogg') 
           ? 'ogg' 
           : 'webm';
       const fileName = `voice/${user?.id}/${Date.now()}.${audioExtension}`;
       const { data, error } = await supabase.storage
         .from("visitor-voice-messages")
-        .upload(fileName, audioPreview.blob, { contentType: audioPreview.blob.type });
+        .upload(fileName, audioBlob, { contentType: audioBlob.type });
       
       if (error) {
         toast.error("Erreur lors de l'upload du message vocal");
@@ -632,10 +595,7 @@ const Chat = () => {
 
   // Cancel preview
   const cancelPreview = () => {
-    if (audioPreview) {
-      URL.revokeObjectURL(audioPreview.url);
-      setAudioPreview(null);
-    }
+    resetRecording();
     setShowPreviewDialog(false);
   };
 
@@ -1208,8 +1168,8 @@ const Chat = () => {
           fileInputRef={fileInputRef}
           handleSendMessage={handleSendMessage}
           handleSendMedia={handleSendMedia}
-          startVoiceRecording={startVoiceRecording}
-          stopVoiceRecording={stopVoiceRecording}
+          startVoiceRecording={startRecording}
+          stopVoiceRecording={stopRecording}
           openVideoRecorder={openVideoRecorder}
         />
       )}
@@ -1229,9 +1189,9 @@ const Chat = () => {
           </DialogHeader>
           
           <div className="flex flex-col items-center gap-4 py-4">
-            {audioPreview && (
+            {audioPreviewUrl && (
               <audio 
-                src={audioPreview.url} 
+                src={audioPreviewUrl} 
                 controls 
                 className="w-full"
                 autoPlay={false}
