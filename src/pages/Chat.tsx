@@ -72,8 +72,8 @@ const MessageBubble = ({
           </div>;
       case "missed_call":
         return <div className="flex items-center gap-2 text-destructive">
-            <Phone className="w-4 h-4 text-[#ff1900]" />
-            <span className="text-sm font-semibold text-black">Appel manqué</span>
+            <Phone className="w-4 h-4 text-[#ff1900] bg-white/0" />
+            <span className="text-sm font-semibold text-white">Appel manqué</span>
           </div>;
       case "call_ended":
         return <div className="flex items-center gap-2 text-primary">
@@ -185,7 +185,7 @@ const Chat = () => {
 
   // Swipe navigation - swipe right to go back to messages
   useSwipeNavigation({
-    onSwipeRight: () => navigate("/messages"),
+    onSwipeRight: () => navigate("/messages")
   });
 
   // Scroll to bottom
