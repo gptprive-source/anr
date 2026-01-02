@@ -1013,7 +1013,7 @@ const Chat = () => {
       </Dialog>
 
       {/* Input area - hide when in selection mode */}
-      {!isSelectionMode && <InputArea messageText={messageText} setMessageText={setMessageText} sending={sending} isRecording={isRecording} fileInputRef={fileInputRef} handleSendMessage={handleSendMessage} handleSendMedia={handleSendMedia} startVoiceRecording={startRecording} stopVoiceRecording={stopRecording} openVideoRecorder={openVideoRecorder} className="pb-[16px]" />}
+      {!isSelectionMode && <InputArea messageText={messageText} setMessageText={setMessageText} sending={sending} isRecording={isRecording} fileInputRef={fileInputRef} handleSendMessage={handleSendMessage} handleSendMedia={handleSendMedia} startVoiceRecording={startRecording} stopVoiceRecording={stopRecording} openVideoRecorder={openVideoRecorder} className="pb-[19px]" />}
 
       {/* Video Camera Recorder */}
       <VideoCameraRecorder isOpen={showVideoRecorder} onClose={() => setShowVideoRecorder(false)} onVideoRecorded={handleVideoRecorded} />
