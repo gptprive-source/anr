@@ -52,13 +52,19 @@ const MessageBubble = ({
   isOwn,
   onDelete,
   onDeleteForEveryone,
-  onCopy
+  onCopy,
+  isSelectionMode,
+  isSelected,
+  onToggleSelect,
 }: {
   message: ChatMessage;
   isOwn: boolean;
   onDelete: () => void;
   onDeleteForEveryone: () => void;
   onCopy: () => void;
+  isSelectionMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
 }) => {
   const [showActions, setShowActions] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -86,13 +92,14 @@ const MessageBubble = ({
         </div>
       </div>;
   }
+
   const renderContent = () => {
     switch (message.message_type) {
       case "voice":
         return <WhatsAppAudioPlayer audioUrl={message.voice_url || ""} isOwn={isOwn} showAvatar={false} />;
       case "media":
         return <div className="max-w-[250px]">
-            {message.media_type === "video" ? <video src={message.media_url || ""} controls className="rounded-lg w-full" /> : <img src={message.media_url || ""} alt="Media" className="rounded-lg w-full cursor-pointer" onClick={() => window.open(message.media_url || "", "_blank")} />}
+            {message.media_type === "video" ? <video src={message.media_url || ""} controls className="rounded-lg w-full" /> : <img src={message.media_url || ""} alt="Media" className="rounded-lg w-full cursor-pointer" onClick={() => !isSelectionMode && window.open(message.media_url || "", "_blank")} />}
             {message.content && <p className="mt-2 text-sm">{message.content}</p>}
           </div>;
       case "missed_call":
@@ -111,16 +118,55 @@ const MessageBubble = ({
         return <p className="text-sm whitespace-pre-wrap break-words font-medium text-black">{message.content}</p>;
     }
   };
-  return <div className={cn("flex mb-2 group", isOwn ? "justify-end" : "justify-start")}>
-      <div className={cn("relative max-w-[80%] px-3 py-2 rounded-lg", isOwn ? "bg-bubble-sent text-bubble-sent-foreground rounded-br-sm" : "bg-muted rounded-bl-sm")} onContextMenu={e => {
+
+  const handleClick = () => {
+    if (isSelectionMode) {
+      onToggleSelect();
+    } else {
+      setShowActions(!showActions);
+    }
+  };
+
+  const handleLongPress = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!isSelectionMode) {
       e.preventDefault();
-      setShowActions(true);
-    }} onClick={() => setShowActions(!showActions)}>
+      onToggleSelect(); // This will trigger selection mode
+    }
+  };
+
+  return (
+    <div className={cn("flex mb-2 group items-center gap-2", isOwn ? "justify-end" : "justify-start")}>
+      {/* Selection checkbox */}
+      {isSelectionMode && (
+        <button
+          onClick={onToggleSelect}
+          className={cn(
+            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
+            isSelected
+              ? "bg-primary border-primary text-primary-foreground"
+              : "border-muted-foreground/50 bg-background"
+          )}
+        >
+          {isSelected && <Check className="w-4 h-4" />}
+        </button>
+      )}
+
+      <div
+        className={cn(
+          "relative max-w-[80%] px-3 py-2 rounded-lg transition-all",
+          isOwn ? "bg-bubble-sent text-bubble-sent-foreground rounded-br-sm" : "bg-muted rounded-bl-sm",
+          isSelectionMode && isSelected && "ring-2 ring-primary ring-offset-2"
+        )}
+        onContextMenu={handleLongPress}
+        onClick={handleClick}
+      >
         {/* Forwarded indicator */}
-        {message.forwarded_from_id && <div className={cn("flex items-center gap-1 text-xs mb-1", isOwn ? "text-bubble-sent-foreground/70" : "text-muted-foreground")}>
+        {message.forwarded_from_id && (
+          <div className={cn("flex items-center gap-1 text-xs mb-1", isOwn ? "text-bubble-sent-foreground/70" : "text-muted-foreground")}>
             <Forward className="w-3 h-3" />
             <span>Transféré</span>
-          </div>}
+          </div>
+        )}
 
         {renderContent()}
 
@@ -132,35 +178,62 @@ const MessageBubble = ({
           {isOwn && (message.is_read ? <CheckCheck className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />)}
         </div>
 
-        {/* Actions menu */}
-        {showActions && <div ref={menuRef} className={cn("absolute top-full mt-1 z-10 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]", isOwn ? "right-0" : "left-0")}>
-            {message.message_type === "text" && message.content && <button onClick={e => {
-          e.stopPropagation();
-          onCopy();
-          setShowActions(false);
-        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-black">
+        {/* Actions menu - only show when not in selection mode */}
+        {showActions && !isSelectionMode && (
+          <div ref={menuRef} className={cn("absolute top-full mt-1 z-10 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]", isOwn ? "right-0" : "left-0")}>
+            {message.message_type === "text" && message.content && (
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  onCopy();
+                  setShowActions(false);
+                }}
+                className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-black"
+              >
                 <Copy className="w-4 h-4" />
                 Copier
-              </button>}
-            <button onClick={e => {
-          e.stopPropagation();
-          onDelete();
-          setShowActions(false);
-        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive">
+              </button>
+            )}
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                onToggleSelect(); // Start selection mode
+                setShowActions(false);
+              }}
+              className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-foreground"
+            >
+              <Check className="w-4 h-4" />
+              Sélectionner
+            </button>
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                onDelete();
+                setShowActions(false);
+              }}
+              className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
+            >
               <Trash2 className="w-4 h-4" />
               Supprimer pour moi
             </button>
-            {canDeleteForEveryone && <button onClick={e => {
-          e.stopPropagation();
-          onDeleteForEveryone();
-          setShowActions(false);
-        }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive">
+            {canDeleteForEveryone && (
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  onDeleteForEveryone();
+                  setShowActions(false);
+                }}
+                className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
+              >
                 <Clock className="w-4 h-4" />
                 Supprimer pour tous
-              </button>}
-          </div>}
+              </button>
+            )}
+          </div>
+        )}
       </div>
-    </div>;
+    </div>
+  );
 };
 
 // Input area component with emoji picker and video recording
@@ -335,6 +408,10 @@ const Chat = () => {
   
   // Video camera recorder
   const [showVideoRecorder, setShowVideoRecorder] = useState(false);
+  
+  // Multi-select mode
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   
   // Preview states for audio before sending
   const [audioPreview, setAudioPreview] = useState<{ blob: Blob; url: string } | null>(null);
@@ -633,6 +710,48 @@ const Chat = () => {
     toast.success("Message transféré");
   };
 
+  // Multi-select handlers
+  const toggleSelectMessage = (messageId: string) => {
+    setSelectedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      // Enter selection mode if first message selected
+      if (newSet.size > 0 && !isSelectionMode) {
+        setIsSelectionMode(true);
+      }
+      // Exit selection mode if no messages selected
+      if (newSet.size === 0) {
+        setIsSelectionMode(false);
+      }
+      return newSet;
+    });
+  };
+
+  const cancelSelection = () => {
+    setIsSelectionMode(false);
+    setSelectedMessages(new Set());
+  };
+
+  const selectAllMessages = () => {
+    const allIds = new Set(messages.map(m => m.id));
+    setSelectedMessages(allIds);
+  };
+
+  const handleDeleteSelectedMessages = async () => {
+    if (selectedMessages.size === 0) return;
+    
+    for (const messageId of selectedMessages) {
+      await deleteForMe(messageId);
+    }
+    setMessages(prev => prev.filter(m => !selectedMessages.has(m.id)));
+    toast.success(`${selectedMessages.size} message${selectedMessages.size > 1 ? 's' : ''} supprimé${selectedMessages.size > 1 ? 's' : ''}`);
+    cancelSelection();
+  };
+
   // Group messages by date
   const groupedMessages = messages.reduce((groups, message) => {
     if (!message.created_at) return groups;
@@ -696,6 +815,23 @@ const Chat = () => {
         </DropdownMenu>
       </div>
 
+      {/* Selection mode header */}
+      {isSelectionMode && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-secondary text-secondary-foreground p-3 shadow-md flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="text-secondary-foreground hover:bg-secondary-foreground/10" onClick={cancelSelection}>
+            <X className="w-5 h-5" />
+          </Button>
+          
+          <div className="flex-1 min-w-0">
+            <p className="font-medium">{selectedMessages.size} sélectionné{selectedMessages.size > 1 ? 's' : ''}</p>
+          </div>
+
+          <Button variant="ghost" size="sm" className="text-secondary-foreground hover:bg-secondary-foreground/10" onClick={selectAllMessages}>
+            Tout
+          </Button>
+        </div>
+      )}
+
       {/* Messages - with top padding for fixed header */}
       <div className="flex-1 overflow-y-auto p-4 pb-20 pt-20">
         {Object.entries(groupedMessages).map(([date, msgs]) => <div key={date}>
@@ -707,24 +843,61 @@ const Chat = () => {
             </div>
             
             {/* Messages for this date */}
-            {msgs.map(message => <MessageBubble key={message.id} message={message} isOwn={message.sender_id === user?.id} onCopy={() => handleCopy(message.content)} onDelete={() => handleDelete(message.id)} onDeleteForEveryone={() => handleDeleteForEveryone(message.id)} />)}
+            {msgs.map(message => (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isOwn={message.sender_id === user?.id}
+                onCopy={() => handleCopy(message.content)}
+                onDelete={() => handleDelete(message.id)}
+                onDeleteForEveryone={() => handleDeleteForEveryone(message.id)}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedMessages.has(message.id)}
+                onToggleSelect={() => toggleSelectMessage(message.id)}
+              />
+            ))}
           </div>)}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area */}
-      <InputArea
-        messageText={messageText}
-        setMessageText={setMessageText}
-        sending={sending}
-        isRecording={isRecording}
-        fileInputRef={fileInputRef}
-        handleSendMessage={handleSendMessage}
-        handleSendMedia={handleSendMedia}
-        startVoiceRecording={startVoiceRecording}
-        stopVoiceRecording={stopVoiceRecording}
-        openVideoRecorder={openVideoRecorder}
-      />
+      {/* Selection mode action bar */}
+      {isSelectionMode && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border p-3 safe-area-bottom">
+          <div className="flex items-center justify-center gap-4">
+            <Button
+              variant="destructive"
+              onClick={handleDeleteSelectedMessages}
+              disabled={selectedMessages.size === 0}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Supprimer ({selectedMessages.size})
+            </Button>
+            <Button
+              variant="outline"
+              onClick={cancelSelection}
+            >
+              Annuler
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Input area - hide when in selection mode */}
+      {!isSelectionMode && (
+        <InputArea
+          messageText={messageText}
+          setMessageText={setMessageText}
+          sending={sending}
+          isRecording={isRecording}
+          fileInputRef={fileInputRef}
+          handleSendMessage={handleSendMessage}
+          handleSendMedia={handleSendMedia}
+          startVoiceRecording={startVoiceRecording}
+          stopVoiceRecording={stopVoiceRecording}
+          openVideoRecorder={openVideoRecorder}
+        />
+      )}
 
       {/* Video Camera Recorder */}
       <VideoCameraRecorder
