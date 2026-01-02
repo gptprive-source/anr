@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from "react";
-import { X, SwitchCamera, Square, Check, RotateCcw, Play, Pause } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { X, RotateCcw, Send, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface VideoCameraRecorderProps {
   isOpen: boolean;
@@ -9,14 +8,32 @@ interface VideoCameraRecorderProps {
   onVideoRecorded: (blob: Blob) => void;
 }
 
+// Detect the best supported video format
+const getSupportedMimeType = (): string => {
+  const types = [
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+    'video/mp4',
+  ];
+  
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+  return 'video/webm';
+};
+
 const VideoCameraRecorder = ({ isOpen, onClose, onVideoRecorded }: VideoCameraRecorderProps) => {
-  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  
+  const [isLoading, setIsLoading] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -24,99 +41,120 @@ const VideoCameraRecorder = ({ isOpen, onClose, onVideoRecorded }: VideoCameraRe
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Start camera stream
-  const startCamera = async () => {
+  const stopStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    setIsLoading(true);
+    setCameraError(null);
+    stopStream();
+
     try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-      }
-      
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode },
+        video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true
       });
-      
       streamRef.current = stream;
-      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        await videoRef.current.play();
       }
-    } catch (error) {
-      console.error("Error accessing camera:", error);
+    } catch (err) {
+      console.error('Camera error:', err);
+      setCameraError('Impossible d\'accéder à la caméra. Vérifiez les permissions.');
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [facingMode, stopStream]);
 
   useEffect(() => {
     if (isOpen && !recordedBlob) {
       startCamera();
     }
-    
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
+      if (!isOpen) {
+        stopStream();
       }
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+    };
+  }, [isOpen, facingMode, recordedBlob, startCamera, stopStream]);
+
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
       }
     };
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen && !isRecording && !recordedBlob) {
-      startCamera();
-    }
-  }, [facingMode]);
-
-  const flipCamera = () => {
-    setFacingMode(prev => prev === "user" ? "environment" : "user");
-  };
+  }, [previewUrl]);
 
   const startRecording = () => {
     if (!streamRef.current) return;
-    
+
     chunksRef.current = [];
-    const recorder = new MediaRecorder(streamRef.current, { mimeType: "video/webm" });
+    const mimeType = getSupportedMimeType();
     
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) {
-        chunksRef.current.push(e.data);
+    try {
+      const recorder = new MediaRecorder(streamRef.current, { mimeType });
+      recorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        setRecordedBlob(blob);
+        
+        // Create preview URL
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+        }
+        const url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
+        stopStream();
+      };
+
+      recorder.start(100);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      // Start timer
+      timerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+
+      // Haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
       }
-    };
-    
-    recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: "video/webm" });
-      const url = URL.createObjectURL(blob);
-      setRecordedBlob(blob);
-      setPreviewUrl(url);
-      
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-        streamRef.current = null;
-      }
-    };
-    
-    recorder.start();
-    recorderRef.current = recorder;
-    setIsRecording(true);
-    setRecordingDuration(0);
-    
-    timerRef.current = setInterval(() => {
-      setRecordingDuration(prev => prev + 1);
-    }, 1000);
+    } catch (err) {
+      console.error('Recording error:', err);
+      setCameraError('Erreur lors du démarrage de l\'enregistrement.');
+    }
   };
 
   const stopRecording = () => {
-    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
       recorderRef.current.stop();
-    }
-    setIsRecording(false);
-    
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+      setIsRecording(false);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      // Haptic feedback
+      if (navigator.vibrate) {
+        navigator.vibrate([50, 50, 50]);
+      }
     }
   };
 
@@ -127,26 +165,20 @@ const VideoCameraRecorder = ({ isOpen, onClose, onVideoRecorded }: VideoCameraRe
     setRecordedBlob(null);
     setPreviewUrl(null);
     setRecordingDuration(0);
-    setIsPlaying(false);
     startCamera();
   };
 
   const confirm = () => {
     if (recordedBlob) {
       onVideoRecorded(recordedBlob);
+      handleClose();
     }
   };
 
   const handleClose = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-    }
-    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+    stopStream();
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
       recorderRef.current.stop();
-    }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
     }
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -155,167 +187,157 @@ const VideoCameraRecorder = ({ isOpen, onClose, onVideoRecorded }: VideoCameraRe
     setPreviewUrl(null);
     setIsRecording(false);
     setRecordingDuration(0);
-    setIsPlaying(false);
+    setCameraError(null);
     onClose();
   };
 
-  const togglePlayPause = () => {
-    if (previewVideoRef.current) {
-      if (isPlaying) {
-        previewVideoRef.current.pause();
-      } else {
-        previewVideoRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
   };
 
-  const formatDuration = (seconds: number) => {
+  const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (!isOpen) return null;
 
+  const isPreviewMode = !!recordedBlob && !!previewUrl;
+
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      {/* Header - Safe area top */}
-      <div className="flex-shrink-0 pt-safe">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleClose} 
-            className="w-12 h-12 rounded-full text-white hover:bg-white/20"
-          >
-            <X className="w-7 h-7" />
-          </Button>
-          
-          {isRecording && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-destructive">
-              <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
-              <span className="text-white text-base font-semibold">{formatDuration(recordingDuration)}</span>
-            </div>
-          )}
-          
-          {!recordedBlob && !isRecording && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={flipCamera} 
-              className="w-12 h-12 rounded-full text-white hover:bg-white/20"
-            >
-              <SwitchCamera className="w-7 h-7" />
-            </Button>
-          )}
-          
-          {recordedBlob && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10">
-              <span className="text-white text-base font-medium">{formatDuration(recordingDuration)}</span>
-            </div>
-          )}
+    <div className="fixed inset-0 z-50 bg-gradient-to-b from-zinc-900 to-black flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 pt-safe">
+        <button
+          onClick={handleClose}
+          className="w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+        >
+          <X className="w-5 h-5 text-white" />
+        </button>
+        
+        <div className="text-white/80 text-sm font-medium">
+          {isPreviewMode ? `Durée: ${formatDuration(recordingDuration)}` : 'Enregistrer une vidéo'}
         </div>
+
+        {!isPreviewMode && !isRecording ? (
+          <button
+            onClick={toggleCamera}
+            className="w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            disabled={isLoading}
+          >
+            <RefreshCw className="w-5 h-5 text-white" />
+          </button>
+        ) : (
+          <div className="w-11" />
+        )}
       </div>
 
-      {/* Video area - takes remaining space with proper margins */}
+      {/* Video Area */}
       <div className="flex-1 flex items-center justify-center px-4 py-2 min-h-0">
-        <div className="relative w-full h-full max-h-full rounded-3xl overflow-hidden bg-black/50">
-          {!recordedBlob ? (
+        <div className="relative w-full max-w-md h-full max-h-[70vh] rounded-3xl overflow-hidden bg-zinc-800 shadow-2xl">
+          {/* Camera Error */}
+          {cameraError && !isPreviewMode && (
+            <div className="absolute inset-0 flex items-center justify-center p-6 text-center z-10">
+              <p className="text-white/70 text-sm">{cameraError}</p>
+            </div>
+          )}
+
+          {/* Loading Indicator */}
+          {isLoading && !isPreviewMode && (
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+            </div>
+          )}
+
+          {/* Live Camera Feed */}
+          {!isPreviewMode && (
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              className={cn(
-                "w-full h-full object-cover",
-                facingMode === "user" && "scale-x-[-1]"
-              )}
+              className="w-full h-full object-cover"
+              style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
             />
-          ) : (
-          <>
-              <video
-                ref={previewVideoRef}
-                src={previewUrl || undefined}
-                autoPlay
-                playsInline
-                loop
-                controls
-                onClick={togglePlayPause}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                onLoadedData={() => {
-                  // Auto-play when video is loaded
-                  if (previewVideoRef.current) {
-                    previewVideoRef.current.play().catch(() => {
-                      // Autoplay may be blocked, that's okay
-                      setIsPlaying(false);
-                    });
-                  }
-                }}
-                className="w-full h-full object-contain bg-black"
-              />
-              {/* Big play button overlay when paused */}
-              {!isPlaying && (
-                <button
-                  onClick={togglePlayPause}
-                  className="absolute inset-0 flex items-center justify-center bg-black/30"
-                >
-                  <div className="w-20 h-20 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center">
-                    <Play className="w-12 h-12 text-white ml-1" />
-                  </div>
-                </button>
-              )}
-            </>
+          )}
+
+          {/* Preview Video with Native Controls */}
+          {isPreviewMode && (
+            <video
+              ref={previewVideoRef}
+              src={previewUrl}
+              playsInline
+              controls
+              autoPlay
+              className="w-full h-full object-contain bg-black"
+            />
+          )}
+
+          {/* Recording Indicator */}
+          {isRecording && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-sm rounded-full px-4 py-2 z-10">
+              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-white font-mono text-sm font-medium">
+                {formatDuration(recordingDuration)}
+              </span>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Controls - Fixed at bottom with safe area */}
-      <div className="flex-shrink-0 pb-safe">
-        <div className="px-6 py-6">
-          {!recordedBlob ? (
-            /* Recording mode - centered record button */
-            <div className="flex items-center justify-center">
-              <button
-                onClick={isRecording ? stopRecording : startRecording}
-                className={cn(
-                  "w-24 h-24 rounded-full border-[6px] border-white flex items-center justify-center transition-all active:scale-95",
-                  isRecording ? "bg-transparent" : "bg-transparent"
-                )}
-                aria-label={isRecording ? "Arrêter l'enregistrement" : "Démarrer l'enregistrement"}
-              >
-                {isRecording ? (
-                  <Square className="w-10 h-10 text-destructive fill-destructive rounded-sm" />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-destructive" />
-                )}
-              </button>
-            </div>
-          ) : (
-            /* Preview mode - two clear action buttons */
-            <div className="flex items-center justify-center gap-6">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={retake}
-                className="h-14 px-8 bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white text-base font-medium gap-3 rounded-full"
-              >
-                <RotateCcw className="w-6 h-6" />
-                Reprendre
-              </Button>
+      {/* Controls Area */}
+      <div className="px-6 pb-8 pt-6 pb-safe">
+        {!isPreviewMode ? (
+          <div className="flex flex-col items-center gap-4">
+            {/* Record Button */}
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isLoading || !!cameraError}
+              className="relative w-20 h-20 rounded-full flex items-center justify-center disabled:opacity-50"
+            >
+              {/* Outer ring */}
+              <div className={`absolute inset-0 rounded-full border-4 border-white transition-all duration-300 ${
+                isRecording ? 'scale-110' : ''
+              }`} />
               
-              <Button
-                size="lg"
-                onClick={confirm}
-                className="h-14 px-8 bg-primary text-primary-foreground text-base font-medium gap-3 rounded-full"
-              >
-                <Check className="w-6 h-6" />
-                Envoyer
-              </Button>
-            </div>
-          )}
-        </div>
+              {/* Inner button */}
+              <div className={`transition-all duration-300 ${
+                isRecording 
+                  ? 'w-8 h-8 rounded-md bg-red-500' 
+                  : 'w-16 h-16 rounded-full bg-red-500 animate-pulse'
+              }`} />
+            </button>
+
+            {/* Instruction Text */}
+            <p className="text-white/60 text-sm">
+              {isRecording ? 'Appuyez pour arrêter' : 'Appuyez pour enregistrer'}
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-4">
+            {/* Retake Button */}
+            <Button
+              onClick={retake}
+              variant="outline"
+              size="lg"
+              className="flex-1 max-w-36 h-14 rounded-full border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white gap-2 text-base"
+            >
+              <RotateCcw className="w-5 h-5" />
+              Reprendre
+            </Button>
+
+            {/* Send Button */}
+            <Button
+              onClick={confirm}
+              size="lg"
+              className="flex-1 max-w-36 h-14 rounded-full bg-primary hover:bg-primary/90 gap-2 text-base"
+            >
+              <Send className="w-5 h-5" />
+              Envoyer
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
