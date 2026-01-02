@@ -1,8 +1,18 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square, Smile } from "lucide-react";
-import data from "@emoji-mart/data";
-import Picker from "@emoji-mart/react";
+
+// Lazy load emoji picker to avoid build issues
+const EmojiPicker = lazy(() => 
+  Promise.all([
+    import("@emoji-mart/react"),
+    import("@emoji-mart/data")
+  ]).then(([{ default: Picker }, { default: data }]) => ({
+    default: (props: { onEmojiSelect: (emoji: { native: string }) => void }) => (
+      <Picker data={data} onEmojiSelect={props.onEmojiSelect} theme="light" locale="fr" previewPosition="none" skinTonePosition="none" maxFrequentRows={2} />
+    )
+  }))
+);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -196,17 +206,11 @@ const InputArea = ({
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 safe-area-bottom">
       {/* Emoji Picker */}
       {showEmojiPicker && (
-        <div ref={emojiPickerRef} className="absolute bottom-full left-0 right-0 mb-2 flex justify-center">
+        <div ref={emojiPickerRef} className="absolute bottom-full left-0 right-0 mb-2 flex justify-center z-50">
           <div className="shadow-lg rounded-lg overflow-hidden">
-            <Picker
-              data={data}
-              onEmojiSelect={handleEmojiSelect}
-              theme="light"
-              locale="fr"
-              previewPosition="none"
-              skinTonePosition="none"
-              maxFrequentRows={2}
-            />
+            <Suspense fallback={<div className="p-4 bg-background">Chargement...</div>}>
+              <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+            </Suspense>
           </div>
         </div>
       )}
