@@ -233,30 +233,39 @@ const VideoCameraRecorder = ({ isOpen, onClose, onVideoRecorded }: VideoCameraRe
               )}
             />
           ) : (
-            <>
+          <>
               <video
                 ref={previewVideoRef}
                 src={previewUrl || undefined}
+                autoPlay
                 playsInline
                 loop
+                controls
                 onClick={togglePlayPause}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
-                className="w-full h-full object-contain bg-black cursor-pointer"
+                onLoadedData={() => {
+                  // Auto-play when video is loaded
+                  if (previewVideoRef.current) {
+                    previewVideoRef.current.play().catch(() => {
+                      // Autoplay may be blocked, that's okay
+                      setIsPlaying(false);
+                    });
+                  }
+                }}
+                className="w-full h-full object-contain bg-black"
               />
-              {/* Play/Pause overlay */}
-              <button
-                onClick={togglePlayPause}
-                className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity"
-              >
-                <div className="w-20 h-20 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
-                  {isPlaying ? (
-                    <Pause className="w-10 h-10 text-white" />
-                  ) : (
-                    <Play className="w-10 h-10 text-white ml-1" />
-                  )}
-                </div>
-              </button>
+              {/* Big play button overlay when paused */}
+              {!isPlaying && (
+                <button
+                  onClick={togglePlayPause}
+                  className="absolute inset-0 flex items-center justify-center bg-black/30"
+                >
+                  <div className="w-20 h-20 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center">
+                    <Play className="w-12 h-12 text-white ml-1" />
+                  </div>
+                </button>
+              )}
             </>
           )}
         </div>
