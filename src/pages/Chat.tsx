@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square, Smile, Video } from "lucide-react";
+import { ArrowLeft, Send, Mic, Paperclip, MoreVertical, Phone, Loader2, X, Check, CheckCheck, Copy, Forward, Trash2, Clock, Square, Smile, Video, Share2 } from "lucide-react";
 
 // Lazy load emoji picker to avoid build issues
 const EmojiPicker = lazy(() => 
@@ -53,6 +53,7 @@ const MessageBubble = ({
   onDelete,
   onDeleteForEveryone,
   onCopy,
+  onForward,
   isSelectionMode,
   isSelected,
   onToggleSelect,
@@ -62,6 +63,7 @@ const MessageBubble = ({
   onDelete: () => void;
   onDeleteForEveryone: () => void;
   onCopy: () => void;
+  onForward: () => void;
   isSelectionMode: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
@@ -188,12 +190,23 @@ const MessageBubble = ({
                   onCopy();
                   setShowActions(false);
                 }}
-                className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-black"
+                className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-foreground"
               >
                 <Copy className="w-4 h-4" />
                 Copier
               </button>
             )}
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                onForward();
+                setShowActions(false);
+              }}
+              className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 text-foreground"
+            >
+              <Forward className="w-4 h-4" />
+              Transférer
+            </button>
             <button
               onClick={e => {
                 e.stopPropagation();
@@ -884,6 +897,7 @@ const Chat = () => {
                 message={message}
                 isOwn={message.sender_id === user?.id}
                 onCopy={() => handleCopy(message.content)}
+                onForward={() => setForwardingMessage(message)}
                 onDelete={() => handleDelete(message.id)}
                 onDeleteForEveryone={() => handleDeleteForEveryone(message.id)}
                 isSelectionMode={isSelectionMode}
@@ -898,7 +912,65 @@ const Chat = () => {
       {/* Selection mode action bar */}
       {isSelectionMode && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border p-3 safe-area-bottom">
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {/* Copy button - only for text messages */}
+            {selectedMessages.size === 1 && (() => {
+              const selectedId = Array.from(selectedMessages)[0];
+              const selectedMsg = messages.find(m => m.id === selectedId);
+              return selectedMsg?.message_type === "text" && selectedMsg?.content;
+            })() && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const selectedId = Array.from(selectedMessages)[0];
+                  const selectedMsg = messages.find(m => m.id === selectedId);
+                  if (selectedMsg?.content) {
+                    handleCopy(selectedMsg.content);
+                    cancelSelection();
+                  }
+                }}
+                className="flex items-center gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                Copier
+              </Button>
+            )}
+            {/* Share externally button */}
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const selectedMsgs = messages.filter(m => selectedMessages.has(m.id));
+                const textContent = selectedMsgs
+                  .filter(m => m.message_type === "text" && m.content)
+                  .map(m => m.content)
+                  .join("\n\n");
+                
+                if (!textContent) {
+                  toast.error("Aucun message texte à partager");
+                  return;
+                }
+                
+                if (navigator.share) {
+                  try {
+                    await navigator.share({ text: textContent });
+                    cancelSelection();
+                  } catch (err) {
+                    if ((err as Error).name !== "AbortError") {
+                      toast.error("Erreur lors du partage");
+                    }
+                  }
+                } else {
+                  await navigator.clipboard.writeText(textContent);
+                  toast.success("Messages copiés dans le presse-papier");
+                  cancelSelection();
+                }
+              }}
+              disabled={selectedMessages.size === 0}
+              className="flex items-center gap-2"
+            >
+              <Share2 className="w-4 h-4" />
+              Partager
+            </Button>
             <Button
               variant="destructive"
               onClick={() => setShowDeleteDialog(true)}
