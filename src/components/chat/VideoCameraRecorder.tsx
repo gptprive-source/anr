@@ -8,21 +8,25 @@ interface VideoCameraRecorderProps {
   onVideoRecorded: (blob: Blob) => void;
 }
 
-// Detect the best supported video format
+// Detect the best supported video format - prioritize MP4 for better compatibility
 const getSupportedMimeType = (): string => {
   const types = [
+    'video/mp4;codecs=avc1',
+    'video/mp4;codecs=h264',
+    'video/mp4',
     'video/webm;codecs=vp9',
     'video/webm;codecs=vp8',
     'video/webm',
-    'video/mp4',
   ];
   
   for (const type of types) {
     if (MediaRecorder.isTypeSupported(type)) {
+      console.log('[VideoCameraRecorder] Using MIME type:', type);
       return type;
     }
   }
-  return 'video/webm';
+  console.log('[VideoCameraRecorder] Falling back to video/mp4');
+  return 'video/mp4';
 };
 
 const VideoCameraRecorder = ({ isOpen, onClose, onVideoRecorded }: VideoCameraRecorderProps) => {
