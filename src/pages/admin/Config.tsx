@@ -1059,6 +1059,27 @@ const Config = () => {
                 </div>
 
                 <div className="space-y-4">
+                  <Label>Tarif par preuve de livraison chez le destinataire (€)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={getValue('carrier_rate_per_home_delivery') || 0.30}
+                      onChange={(e) => setLocalValue('carrier_rate_per_home_delivery', parseFloat(e.target.value))}
+                      placeholder="0.30"
+                      className="w-32"
+                    />
+                    <span className="text-sm text-muted-foreground">€ / livraison domicile</span>
+                    {hasChanges('carrier_rate_per_home_delivery') && (
+                      <Button size="sm" onClick={() => saveConfig('carrier_rate_per_home_delivery')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
                   <Label>Tarif par preuve de retrait au relais colis (€)</Label>
                   <div className="flex items-center gap-4">
                     <Input
