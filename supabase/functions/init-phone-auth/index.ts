@@ -169,9 +169,8 @@ Deno.serve(async (req) => {
     const ovhTimestamp = await timestampRes.json();
     console.log("[init-phone-auth] OVH timestamp:", ovhTimestamp);
 
-    // Prepare Click2Call request - encode serviceName for URL (+ becomes %2B)
-    const encodedServiceName = encodeURIComponent(ovhPhoneNumber);
-    const click2CallUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/service/${encodedServiceName}/click2Call`;
+    // Prepare Click2Call request - use /line/ endpoint for SIP Line type
+    const click2CallUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/line/${ovhPhoneNumber}/click2Call`;
     const click2CallBody = JSON.stringify({
       calledNumber: normalizedPhone,
       // intercom: true, // Call without waiting for answer
