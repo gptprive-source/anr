@@ -479,6 +479,16 @@ serve(async (req) => {
 
     await client.close();
 
+    // Log sent document
+    await supabase.from('sent_documents').insert({
+      template_key: 'invoice',
+      recipient_email: email,
+      subject: `🧾 Facture ANR N°${invoiceNumber} - ${(total || 0).toFixed(2)}€`,
+      html_snapshot: htmlContent,
+      status: 'sent',
+      metadata: { invoiceNumber, total, orderType }
+    });
+
     logStep("Invoice email sent successfully");
 
     return new Response(JSON.stringify({ success: true }), {

@@ -1,10 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Helper to replace template variables
+function replaceVariables(template: string, variables: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(variables)) {
+    result = result.replace(new RegExp(`{{${key}}}`, 'g'), value || '');
+  }
+  return result;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -18,45 +28,64 @@ serve(async (req) => {
     console.log("[send-invitation] Name:", firstName, lastName);
     console.log("[send-invitation] Habitation:", habitationName);
 
-    // Build invitation URL - encode code to avoid quoted-printable issues
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Build invitation URL
     const baseUrl = "https://anr.lovable.app";
     const encodedCode = encodeURIComponent(code);
     const invitationUrl = `${baseUrl}/invitation?code=${encodedCode}`;
     console.log("[send-invitation] Invitation URL:", invitationUrl);
-    // Create SMTP client
-    const client = new SMTPClient({
-      connection: {
-        hostname: Deno.env.get("SMTP_HOST") || "smtp.hostinger.com",
-        port: parseInt(Deno.env.get("SMTP_PORT") || "465"),
-        tls: true,
-        auth: {
-          username: Deno.env.get("SMTP_USER") || "",
-          password: Deno.env.get("SMTP_PASS") || "",
-        },
-      },
-    });
 
+    // Fetch email template from database
+    const { data: template, error: templateError } = await supabase
+      .from('email_templates')
+      .select('*')
+      .eq('template_key', 'resident_invitation')
+      .eq('is_active', true)
+      .single();
+
+    // Get inviter name
+    let inviterName = "Un résident";
+    if (invitedBy) {
+      const { data: inviterProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', invitedBy)
+        .single();
+      
+      if (inviterProfile) {
+        inviterName = `${inviterProfile.first_name || ''} ${inviterProfile.last_name || ''}`.trim() || "Un résident";
+      }
+    }
+
+    // Prepare variables for template
+    const templateVariables: Record<string, string> = {
+      recipientFirstName: firstName || 'Cher(e) ami(e)',
+      recipientLastName: lastName || '',
+      inviterName: inviterName,
+      habitationName: habitationName || 'Habitation',
+      habitationAddress: anrAddress || '',
+      invitationUrl: invitationUrl,
+      expirationDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR'),
+      supportEmail: 'contact@soqotomobil.com',
+      cguUrl: `${baseUrl}/cgu`,
+    };
+
+    let htmlContent: string;
+    let subject: string;
     const fullName = `${firstName} ${lastName}`.trim();
 
-    // Send email
-    await client.send({
-      from: Deno.env.get("SMTP_USER") || "contact@soqotomobil.com",
-      to: email,
-      subject: `${fullName}, vous êtes invité(e) à rejoindre ${habitationName} sur ANR`,
-      content: `Bonjour ${firstName},
-
-Vous avez été invité(e) à rejoindre l'habitation "${habitationName}" sur ANR (Adresse Numérique Résidentielle).
-
-${anrAddress ? `Adresse : ${anrAddress}` : ""}
-
-Pour accepter cette invitation, cliquez sur le lien ci-dessous :
-${invitationUrl}
-
-Cette invitation expire dans 24 heures.
-
-Cordialement,
-L'équipe ANR`,
-      html: `
+    if (template && !templateError) {
+      console.log("[send-invitation] Using template from database");
+      htmlContent = replaceVariables(template.html_content, templateVariables);
+      subject = replaceVariables(template.subject, templateVariables);
+    } else {
+      console.log("[send-invitation] Template not found, using fallback");
+      subject = `${fullName}, vous êtes invité(e) à rejoindre ${habitationName} sur ANR`;
+      htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -90,10 +119,42 @@ L'équipe ANR`,
   </div>
 </body>
 </html>
-      `,
+      `;
+    }
+
+    // Create SMTP client
+    const client = new SMTPClient({
+      connection: {
+        hostname: Deno.env.get("SMTP_HOST") || "smtp.hostinger.com",
+        port: parseInt(Deno.env.get("SMTP_PORT") || "465"),
+        tls: true,
+        auth: {
+          username: Deno.env.get("SMTP_USER") || "",
+          password: Deno.env.get("SMTP_PASS") || "",
+        },
+      },
+    });
+
+    // Send email
+    await client.send({
+      from: Deno.env.get("SMTP_USER") || "contact@soqotomobil.com",
+      to: email,
+      subject: subject,
+      content: `Bonjour ${firstName},\n\nVous avez été invité(e) à rejoindre l'habitation "${habitationName}" sur ANR.\n\nCliquez ici pour accepter: ${invitationUrl}\n\nCette invitation expire dans 24 heures.\n\nL'équipe ANR`,
+      html: htmlContent,
     });
 
     await client.close();
+
+    // Log sent document
+    await supabase.from('sent_documents').insert({
+      template_key: 'resident_invitation',
+      recipient_email: email,
+      subject: subject,
+      html_snapshot: htmlContent,
+      status: 'sent',
+      metadata: { habitationName, inviterName, code }
+    });
 
     console.log("[send-invitation] ✅ Email sent successfully to:", email);
 

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,6 +18,17 @@ interface ConfirmationEmailRequest {
   domingQuantity: number;
   domingAmount: number;
   totalAmount: number;
+  subscriptionId?: string;
+  planType?: string;
+}
+
+// Helper to replace template variables
+function replaceVariables(template: string, variables: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(variables)) {
+    result = result.replace(new RegExp(`{{${key}}}`, 'g'), value || '');
+  }
+  return result;
 }
 
 serve(async (req) => {
@@ -38,39 +50,79 @@ serve(async (req) => {
       domingQuantity,
       domingAmount,
       totalAmount,
+      subscriptionId,
+      planType = 'particulier',
     }: ConfirmationEmailRequest = await req.json();
 
     console.log("[SEND-CONFIRMATION] Sending to:", email);
 
-    const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
-    const smtpUser = Deno.env.get("SMTP_USER");
-    const smtpPass = Deno.env.get("SMTP_PASS");
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      throw new Error("SMTP configuration missing");
-    }
+    // Fetch email template from database
+    const { data: template, error: templateError } = await supabase
+      .from('email_templates')
+      .select('*')
+      .eq('template_key', 'subscription_confirmation')
+      .eq('is_active', true)
+      .single();
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: true,
-        auth: {
-          username: smtpUser,
-          password: smtpPass,
-        },
-      },
-    });
+    // Prepare variables
+    const now = new Date();
+    const oneYearLater = new Date(now);
+    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
 
-    const domingLine = domingQuantity > 0 
-      ? `<tr>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5;">Doming(s) ANR (${domingQuantity}x)</td>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">${domingAmount.toFixed(2)} €</td>
-        </tr>`
-      : '';
+    const planLabels: Record<string, string> = {
+      particulier: 'Particulier',
+      pro: 'Professionnel',
+      entreprise: 'Entreprise',
+      collectivites: 'Collectivités'
+    };
 
-    const htmlContent = `
+    const templateVariables: Record<string, string> = {
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      anrCode: anrCode,
+      address: address,
+      habitationName: habitationName,
+      subscriptionAmount: subscriptionAmount.toFixed(2),
+      domingQuantity: String(domingQuantity),
+      domingAmount: domingAmount.toFixed(2),
+      totalAmount: totalAmount.toFixed(2),
+      subscriptionId: subscriptionId || `ANR-${anrCode}`,
+      planName: planLabels[planType] || planType,
+      planPrice: subscriptionAmount.toFixed(2),
+      billingCycle: 'Annuel',
+      startDate: now.toLocaleDateString('fr-FR'),
+      endDate: oneYearLater.toLocaleDateString('fr-FR'),
+      cancellationUrl: 'https://anr.lovable.app/account',
+      cguUrl: 'https://anr.lovable.app/cgu',
+      retractationDeadline: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR'),
+      supportEmail: 'contact@soqotomobil.com',
+    };
+
+    let htmlContent: string;
+    let subject: string;
+
+    if (template && !templateError) {
+      console.log("[SEND-CONFIRMATION] Using template from database");
+      htmlContent = replaceVariables(template.html_content, templateVariables);
+      subject = replaceVariables(template.subject, templateVariables);
+    } else {
+      console.log("[SEND-CONFIRMATION] Template not found, using fallback");
+      subject = `✅ Confirmation de votre abonnement ANR - ${anrCode}`;
+
+      const domingLine = domingQuantity > 0 
+        ? `<tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e5e5;">Doming(s) ANR (${domingQuantity}x)</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e5e5; text-align: right;">${domingAmount.toFixed(2)} €</td>
+          </tr>`
+        : '';
+
+      htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -152,17 +204,49 @@ serve(async (req) => {
   </div>
 </body>
 </html>
-    `;
+      `;
+    }
+
+    const smtpHost = Deno.env.get("SMTP_HOST");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
+    const smtpUser = Deno.env.get("SMTP_USER");
+    const smtpPass = Deno.env.get("SMTP_PASS");
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      throw new Error("SMTP configuration missing");
+    }
+
+    const client = new SMTPClient({
+      connection: {
+        hostname: smtpHost,
+        port: smtpPort,
+        tls: true,
+        auth: {
+          username: smtpUser,
+          password: smtpPass,
+        },
+      },
+    });
 
     await client.send({
       from: smtpUser,
       to: email,
-      subject: `✅ Confirmation de votre abonnement ANR - ${anrCode}`,
+      subject: subject,
       content: "auto",
       html: htmlContent,
     });
 
     await client.close();
+
+    // Log sent document
+    await supabase.from('sent_documents').insert({
+      template_key: 'subscription_confirmation',
+      recipient_email: email,
+      subject: subject,
+      html_snapshot: htmlContent,
+      status: 'sent',
+      metadata: { anrCode, totalAmount, planType }
+    });
 
     console.log("[SEND-CONFIRMATION] Email sent successfully");
 
