@@ -191,8 +191,34 @@ serve(async (req) => {
         continue;
       }
 
-      // Create notification for carrier (if they have a user account)
-      // For now, just log success
+      // Send invoice notification email
+      try {
+        if (carrier.contact_email) {
+          await supabase.functions.invoke('notify-relay-carrier', {
+            body: {
+              type: 'carrier_invoice_new',
+              data: {
+                email: carrier.contact_email,
+                contact_name: carrier.contact_name || carrier.company_name,
+                company_name: carrier.company_name,
+                invoice_number: invoiceNumber,
+                period_start: periodStart.toLocaleDateString('fr-FR'),
+                period_end: periodEnd.toLocaleDateString('fr-FR'),
+                parcels_count: totalParcels,
+                amount_ht: amountHT.toFixed(2),
+                vat_rate: vatRate,
+                vat_amount: vatAmount.toFixed(2),
+                amount_ttc: amountTTC.toFixed(2),
+                due_date: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR'),
+                download_url: `https://anr.fr/admin/invoices/${invoice.id}`,
+              }
+            }
+          });
+        }
+      } catch (emailError: any) {
+        logStep("Invoice email failed", { error: emailError.message });
+      }
+
       logStep("Invoice created", { 
         invoice_id: invoice.id, 
         invoice_number: invoiceNumber,

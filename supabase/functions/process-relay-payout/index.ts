@@ -184,6 +184,39 @@ serve(async (req) => {
           metadata: { payout_id: payout.id, amount, parcels: parcelCount }
         });
 
+      // Send email notification
+      try {
+        const profiles = relay.profiles as any;
+        const { data: relayProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', relay.user_id)
+          .single();
+        
+        const { data: authUser } = await supabase.auth.admin.getUserById(relay.user_id);
+        
+        if (authUser?.user?.email) {
+          await supabase.functions.invoke('notify-relay-carrier', {
+            body: {
+              type: payout.status === 'completed' ? 'relay_payout_completed' : 'relay_payout_pending',
+              data: {
+                email: authUser.user.email,
+                relay_name: profiles?.first_name || relay.display_name,
+                payout_amount: amount.toFixed(2),
+                period_start: new Date(periodStart).toLocaleDateString('fr-FR'),
+                period_end: new Date(periodEnd).toLocaleDateString('fr-FR'),
+                parcels_count: parcelCount,
+                iban_masked: relay.iban ? `****${relay.iban.slice(-4)}` : '****',
+                transfer_reference: payout.id,
+                payment_date: new Date().toLocaleDateString('fr-FR'),
+              }
+            }
+          });
+        }
+      } catch (emailError: any) {
+        logStep("Email notification failed", { error: emailError.message });
+      }
+
       results.push({
         relay_id: relay.id,
         relay_name: relay.display_name,
