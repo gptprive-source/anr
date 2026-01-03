@@ -23,14 +23,50 @@ const PhoneVerification = () => {
     setDeviceId(id);
   }, []);
 
-  // TEMPORARY: Phone verification disabled until app launch
-  // Redirect all users directly to dashboard
+  // Check if user is already verified or needs verification
   useEffect(() => {
-    if (!authLoading && user) {
-      navigate("/dashboard", { replace: true });
-    } else if (!authLoading && !user) {
-      navigate("/login", { replace: true });
-    }
+    const checkVerificationStatus = async () => {
+      if (authLoading) return;
+      
+      if (!user) {
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("phone_verified, device_id")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("[PhoneVerification] Error fetching profile:", error);
+          setLoading(false);
+          return;
+        }
+
+        // Check if already verified with matching device
+        const localDeviceId = localStorage.getItem("anr_device_id");
+        if (profile?.phone_verified && profile?.device_id === localDeviceId) {
+          console.log("[PhoneVerification] Already verified, redirecting to dashboard");
+          setAlreadyVerified(true);
+          navigate("/dashboard", { replace: true });
+        } else {
+          console.log("[PhoneVerification] Needs verification:", {
+            phone_verified: profile?.phone_verified,
+            device_id: profile?.device_id,
+            localDeviceId
+          });
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("[PhoneVerification] Exception:", err);
+        setLoading(false);
+      }
+    };
+
+    checkVerificationStatus();
   }, [user, authLoading, navigate]);
 
   const handleVerified = () => {
