@@ -204,6 +204,39 @@ serve(async (req) => {
       // Update carrier total
       await supabase.rpc('increment_carrier_parcels', { carrier_id: carrier.carrierId });
 
+      // Send notification to recipient if email is provided and parcel is at relay
+      if (parcel.recipient_email && relayPointId) {
+        try {
+          const { data: relay } = await supabase
+            .from('relay_points')
+            .select('display_name, phone, anrs:anr_id (address)')
+            .eq('id', relayPointId)
+            .single();
+          
+          if (relay) {
+            const anrData = Array.isArray(relay.anrs) ? relay.anrs[0] : relay.anrs;
+            await supabase.functions.invoke('notify-relay-carrier', {
+              body: {
+                type: 'parcel_deposited_recipient',
+                data: {
+                  email: parcel.recipient_email,
+                  recipient_name: parcel.recipient_name,
+                  tracking_number: parcel.tracking_number,
+                  relay_name: relay.display_name,
+                  relay_address: anrData?.address || '',
+                  relay_phone: relay.phone || '',
+                  carrier_name: carrier.carrierName,
+                  expiry_date: parcel.max_storage_until || ''
+                }
+              }
+            });
+            logStep("Recipient notification sent", { email: parcel.recipient_email });
+          }
+        } catch (notifError: any) {
+          logStep("Notification error (non-blocking)", { error: notifError.message });
+        }
+      }
+
       logStep("Parcel created", { id: parcel.id, tracking: parcel.tracking_number });
 
       return new Response(JSON.stringify(parcel), {

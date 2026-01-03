@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,8 +74,15 @@ serve(async (req) => {
       subject = subject.replace(regex, String(value || ''));
     }
 
-    // Get recipient email
-    const recipientEmail = data.email || data.contact_email;
+    // Get recipient email - either from data.email or lookup by user_id
+    let recipientEmail = data.email || data.contact_email;
+    
+    // If user_id is provided, lookup email from auth.users
+    if (!recipientEmail && data.user_id) {
+      const { data: userData } = await supabase.auth.admin.getUserById(data.user_id);
+      recipientEmail = userData?.user?.email;
+    }
+    
     if (!recipientEmail) {
       return new Response(JSON.stringify({ error: "No recipient email provided" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

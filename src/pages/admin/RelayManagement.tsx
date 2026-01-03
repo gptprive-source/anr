@@ -99,14 +99,44 @@ const RelayManagement = () => {
   // Verify relay point mutation
   const verifyRelay = useMutation({
     mutationFn: async (relayId: string) => {
+      // Get relay info first
+      const { data: relay, error: fetchError } = await supabase
+        .from('relay_points')
+        .select('display_name, user_id, anrs:anr_id (address)')
+        .eq('id', relayId)
+        .single();
+      if (fetchError) throw fetchError;
+
       const { error } = await supabase
         .from('relay_points')
         .update({ is_verified: true, verified_at: new Date().toISOString() })
         .eq('id', relayId);
       if (error) throw error;
+
+      // Get user email from profiles
+      if (relay?.user_id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('id', relay.user_id)
+          .single();
+        
+        // Get email from auth via edge function
+        const anrData = Array.isArray(relay.anrs) ? relay.anrs[0] : relay.anrs;
+        await supabase.functions.invoke('notify-relay-carrier', {
+          body: {
+            type: 'relay_verification_approved',
+            data: {
+              user_id: relay.user_id,
+              relay_name: relay.display_name,
+              relay_address: anrData?.address || ''
+            }
+          }
+        });
+      }
     },
     onSuccess: () => {
-      toast.success("Point relais vérifié");
+      toast.success("Point relais vérifié et notifié");
       queryClient.invalidateQueries({ queryKey: ['admin_relay_points'] });
     },
   });
@@ -129,14 +159,35 @@ const RelayManagement = () => {
   // Verify carrier mutation
   const verifyCarrier = useMutation({
     mutationFn: async (carrierId: string) => {
+      // Get carrier info first
+      const { data: carrier, error: fetchError } = await supabase
+        .from('carriers')
+        .select('company_name, contact_email')
+        .eq('id', carrierId)
+        .single();
+      if (fetchError) throw fetchError;
+
       const { error } = await supabase
         .from('carriers')
         .update({ is_verified: true, verified_at: new Date().toISOString() })
         .eq('id', carrierId);
       if (error) throw error;
+
+      // Send verification email
+      if (carrier?.contact_email) {
+        await supabase.functions.invoke('notify-relay-carrier', {
+          body: {
+            type: 'carrier_verification_approved',
+            data: {
+              email: carrier.contact_email,
+              carrier_name: carrier.company_name
+            }
+          }
+        });
+      }
     },
     onSuccess: () => {
-      toast.success("Transporteur vérifié");
+      toast.success("Transporteur vérifié et notifié");
       queryClient.invalidateQueries({ queryKey: ['admin_carriers'] });
     },
   });
