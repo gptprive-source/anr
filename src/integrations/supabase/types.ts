@@ -1516,6 +1516,10 @@ export type Database = {
           html_content: string
           id: string
           is_active: boolean | null
+          last_test_sent_at: string | null
+          last_test_sent_to: string | null
+          legal_review_at: string | null
+          legal_review_by: string | null
           name: string
           preview_data: Json | null
           subject: string
@@ -1524,6 +1528,7 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           variables: Json | null
+          version: number | null
         }
         Insert: {
           category: string
@@ -1533,6 +1538,10 @@ export type Database = {
           html_content: string
           id?: string
           is_active?: boolean | null
+          last_test_sent_at?: string | null
+          last_test_sent_to?: string | null
+          legal_review_at?: string | null
+          legal_review_by?: string | null
           name: string
           preview_data?: Json | null
           subject: string
@@ -1541,6 +1550,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           variables?: Json | null
+          version?: number | null
         }
         Update: {
           category?: string
@@ -1550,6 +1560,10 @@ export type Database = {
           html_content?: string
           id?: string
           is_active?: boolean | null
+          last_test_sent_at?: string | null
+          last_test_sent_to?: string | null
+          legal_review_at?: string | null
+          legal_review_by?: string | null
           name?: string
           preview_data?: Json | null
           subject?: string
@@ -1558,6 +1572,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           variables?: Json | null
+          version?: number | null
         }
         Relationships: []
       }
