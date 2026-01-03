@@ -8,17 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Smartphone, Monitor, Tablet, Trash2, QrCode, Crown } from "lucide-react";
 import { toast } from "sonner";
 import DeviceAuthScanner from "./DeviceAuthScanner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 interface Device {
   id: string;
   device_id: string;
@@ -27,40 +17,36 @@ interface Device {
   verified_at: string;
   last_used_at: string;
 }
-
 const ConnectedDevices = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
   const [deleting, setDeleting] = useState(false);
-
   const currentDeviceId = localStorage.getItem("anr_device_id");
-
   const fetchDevices = async () => {
     if (!user) return;
-
-    const { data, error } = await supabase
-      .from("user_devices")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("is_primary", { ascending: false })
-      .order("last_used_at", { ascending: false });
-
+    const {
+      data,
+      error
+    } = await supabase.from("user_devices").select("*").eq("user_id", user.id).order("is_primary", {
+      ascending: false
+    }).order("last_used_at", {
+      ascending: false
+    });
     if (error) {
       console.error("[ConnectedDevices] Error fetching:", error);
       return;
     }
-
     setDevices(data || []);
     setLoading(false);
   };
-
   useEffect(() => {
     fetchDevices();
   }, [user]);
-
   const getDeviceIcon = (name: string | null) => {
     if (!name) return Monitor;
     const lowerName = name.toLowerCase();
@@ -72,22 +58,16 @@ const ConnectedDevices = () => {
     }
     return Monitor;
   };
-
   const handleDelete = async () => {
     if (!deviceToDelete) return;
-
     setDeleting(true);
-
     try {
-      const { error } = await supabase
-        .from("user_devices")
-        .delete()
-        .eq("id", deviceToDelete.id);
-
+      const {
+        error
+      } = await supabase.from("user_devices").delete().eq("id", deviceToDelete.id);
       if (error) throw error;
-
       toast.success("Appareil supprimé");
-      setDevices(devices.filter((d) => d.id !== deviceToDelete.id));
+      setDevices(devices.filter(d => d.id !== deviceToDelete.id));
     } catch (error) {
       console.error("[ConnectedDevices] Error deleting:", error);
       toast.error("Erreur lors de la suppression");
@@ -96,20 +76,17 @@ const ConnectedDevices = () => {
       setDeviceToDelete(null);
     }
   };
-
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("fr-FR", {
       day: "numeric",
       month: "short",
       year: "numeric",
       hour: "2-digit",
-      minute: "2-digit",
+      minute: "2-digit"
     });
   };
-
   if (loading) {
-    return (
-      <Card>
+    return <Card>
         <CardHeader>
           <Skeleton className="h-6 w-40" />
           <Skeleton className="h-4 w-60" />
@@ -118,12 +95,9 @@ const ConnectedDevices = () => {
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-
-  return (
-    <>
+  return <>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -135,21 +109,13 @@ const ConnectedDevices = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {devices.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
+          {devices.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">
               Aucun appareil enregistré
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {devices.map((device) => {
-                const Icon = getDeviceIcon(device.device_name);
-                const isCurrentDevice = device.device_id === currentDeviceId;
-
-                return (
-                  <div
-                    key={device.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card"
-                  >
+            </p> : <div className="space-y-3">
+              {devices.map(device => {
+            const Icon = getDeviceIcon(device.device_name);
+            const isCurrentDevice = device.device_id === currentDeviceId;
+            return <div key={device.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-full bg-primary/10">
                         <Icon className="w-5 h-5 text-primary" />
@@ -159,17 +125,13 @@ const ConnectedDevices = () => {
                           <span className="font-medium">
                             {device.device_name || "Appareil inconnu"}
                           </span>
-                          {device.is_primary && (
-                            <Badge variant="secondary" className="text-xs">
+                          {device.is_primary && <Badge variant="secondary" className="text-xs">
                               <Crown className="w-3 h-3 mr-1" />
                               Principal
-                            </Badge>
-                          )}
-                          {isCurrentDevice && (
-                            <Badge variant="outline" className="text-xs">
+                            </Badge>}
+                          {isCurrentDevice && <Badge variant="outline" className="text-xs">
                               Cet appareil
-                            </Badge>
-                          )}
+                            </Badge>}
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Dernière activité : {formatDate(device.last_used_at)}
@@ -177,26 +139,12 @@ const ConnectedDevices = () => {
                       </div>
                     </div>
 
-                    {!isCurrentDevice && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeviceToDelete(device)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                    {!isCurrentDevice}
+                  </div>;
+          })}
+            </div>}
 
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => setScannerOpen(true)}
-          >
+          <Button variant="outline" className="w-full" onClick={() => setScannerOpen(true)}>
             <QrCode className="w-4 h-4 mr-2" />
             Autoriser un nouvel appareil
           </Button>
@@ -216,18 +164,12 @@ const ConnectedDevices = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting ? "Suppression..." : "Supprimer"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
-  );
+    </>;
 };
-
 export default ConnectedDevices;
