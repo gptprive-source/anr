@@ -523,9 +523,9 @@ const Documents = () => {
                   />
                 </div>
 
-                <div className="flex-1 overflow-hidden min-h-[400px]">
+                <div className="flex-1 overflow-hidden" style={{ minHeight: '60vh' }}>
                   <Label className="mb-2 block">Contenu HTML</Label>
-                  <div className="h-[400px]">
+                  <div className="h-full" style={{ minHeight: 'calc(60vh - 30px)' }}>
                     <TemplateEditor
                       content={editedContent}
                       onChange={setEditedContent}
@@ -624,13 +624,20 @@ const Documents = () => {
                   ))}
                 </div>
 
-                <ScrollArea className="flex-1 border rounded-lg">
+                <div className="flex-1 border rounded-lg overflow-auto" style={{ minHeight: '50vh', maxHeight: '60vh' }}>
                   <iframe
                     srcDoc={renderPreview(selectedTemplate.html_content, selectedTemplate.preview_data)}
-                    className="w-full min-h-[500px] bg-white"
+                    className="w-full bg-white"
+                    style={{ minHeight: '100%', height: 'auto' }}
                     title="Email Preview"
+                    onLoad={(e) => {
+                      const iframe = e.target as HTMLIFrameElement;
+                      if (iframe.contentDocument) {
+                        iframe.style.height = Math.max(500, iframe.contentDocument.body.scrollHeight + 50) + 'px';
+                      }
+                    }}
                   />
-                </ScrollArea>
+                </div>
 
                 <div className="flex justify-end gap-2 pt-4 border-t">
                   <Button variant="outline" onClick={() => setPreviewMode(false)}>
@@ -660,13 +667,20 @@ const Documents = () => {
             </DialogHeader>
             
             {viewHistoryDoc && (
-              <ScrollArea className="flex-1">
+              <div className="flex-1 overflow-auto" style={{ minHeight: '50vh', maxHeight: '70vh' }}>
                 <iframe
                   srcDoc={viewHistoryDoc.html_snapshot || ""}
-                  className="w-full min-h-[500px] bg-white border rounded-lg"
+                  className="w-full bg-white border rounded-lg"
+                  style={{ minHeight: '100%', height: 'auto' }}
                   title="Document Preview"
+                  onLoad={(e) => {
+                    const iframe = e.target as HTMLIFrameElement;
+                    if (iframe.contentDocument) {
+                      iframe.style.height = Math.max(500, iframe.contentDocument.body.scrollHeight + 50) + 'px';
+                    }
+                  }}
                 />
-              </ScrollArea>
+              </div>
             )}
           </DialogContent>
         </Dialog>

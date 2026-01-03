@@ -485,16 +485,27 @@ const TemplateEditor = ({ content, onChange, variables, previewData }: TemplateE
         )}
 
         {mode === 'preview' && (
-          <ScrollArea className="h-full bg-slate-100">
+          <div className="h-full overflow-auto bg-slate-100 p-4">
             <div className={`mx-auto ${previewDevice === 'mobile' ? 'max-w-[375px]' : 'max-w-full'} transition-all duration-300`}>
               <iframe
                 srcDoc={renderPreview()}
-                className="w-full min-h-[500px] bg-white shadow-lg"
+                className="w-full bg-white shadow-lg"
                 title="Preview"
-                style={{ border: previewDevice === 'mobile' ? '8px solid #333' : 'none', borderRadius: previewDevice === 'mobile' ? '20px' : '0' }}
+                style={{ 
+                  border: previewDevice === 'mobile' ? '8px solid #333' : 'none', 
+                  borderRadius: previewDevice === 'mobile' ? '20px' : '0',
+                  minHeight: '80vh'
+                }}
+                onLoad={(e) => {
+                  const iframe = e.target as HTMLIFrameElement;
+                  if (iframe.contentDocument) {
+                    const height = iframe.contentDocument.body.scrollHeight + 50;
+                    iframe.style.height = Math.max(500, height) + 'px';
+                  }
+                }}
               />
             </div>
-          </ScrollArea>
+          </div>
         )}
       </div>
     </div>
