@@ -177,7 +177,7 @@ const ConnectedDevices = () => {
                       </div>
                     </div>
 
-                    {!device.is_primary && !isCurrentDevice && (
+                    {!isCurrentDevice && (
                       <Button
                         variant="ghost"
                         size="icon"
