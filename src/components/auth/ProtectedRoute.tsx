@@ -81,10 +81,19 @@ const ProtectedRoute = ({ children, skipPhoneCheck = false }: ProtectedRouteProp
           return;
         }
 
+        // Detect if this is a mobile device
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
         if (primaryDevice) {
-          // User has a primary device (phone verified) - redirect to QR auth
-          console.log("[ProtectedRoute] User has primary device, redirecting to device auth");
-          setRedirectTo("/device-auth");
+          if (isMobile) {
+            // Mobile device without authorization → phone verification (not QR code)
+            console.log("[ProtectedRoute] Mobile device, redirecting to phone verification");
+            setRedirectTo("/phone-verification");
+          } else {
+            // Desktop device → show QR code for scanning
+            console.log("[ProtectedRoute] Desktop device, redirecting to device auth");
+            setRedirectTo("/device-auth");
+          }
         } else {
           // No primary device - need phone verification first
           console.log("[ProtectedRoute] No primary device, redirecting to phone verification");

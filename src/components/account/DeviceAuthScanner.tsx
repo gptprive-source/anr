@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,6 +22,7 @@ interface PendingAuth {
 }
 
 const DeviceAuthScanner = ({ open, onOpenChange }: DeviceAuthScannerProps) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [scanning, setScanning] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -163,6 +165,9 @@ const DeviceAuthScanner = ({ open, onOpenChange }: DeviceAuthScannerProps) => {
 
       toast.success("Appareil autorisé avec succès !");
       onOpenChange(false);
+      
+      // Redirect to dashboard after successful approval
+      navigate("/dashboard");
     } catch (error) {
       console.error("[DeviceAuthScanner] Error approving:", error);
       toast.error("Erreur lors de l'autorisation");
