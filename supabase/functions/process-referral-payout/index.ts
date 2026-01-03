@@ -119,41 +119,87 @@ serve(async (req) => {
 
       payoutsCreated.push(uid);
 
-      // Send notification email to admin
+      // Send notification email to referrer using DB template
       try {
-        const { data: adminConfig } = await supabaseAdmin
-          .from("app_config")
-          .select("value")
-          .eq("key", "support_email")
-          .single();
-
-        const adminEmail = adminConfig?.value || "contact@anr.app";
-
+        const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
+        
         // Get user email
         const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(uid);
-        const userEmail = authUser?.user?.email || "N/A";
+        const userEmail = authUser?.user?.email;
 
-        console.log("[PROCESS-REFERRAL-PAYOUT] Sending admin notification to:", adminEmail);
+        if (userEmail) {
+          // Fetch template from database
+          const { data: template } = await supabaseAdmin
+            .from("email_templates")
+            .select("subject, html_content")
+            .eq("template_key", "referral_payout_pending")
+            .eq("is_active", true)
+            .single();
 
-        // Here you would typically send an email using your email service
-        // For now, we just log it
-        console.log("[PROCESS-REFERRAL-PAYOUT] ADMIN NOTIFICATION:", {
-          to: adminEmail,
-          subject: `💸 Nouveau paiement parrainage à traiter - ${payoutAmount}€`,
-          body: `
-Un nouveau paiement de parrainage est en attente :
+          const { data: configAddress } = await supabaseAdmin
+            .from("app_config")
+            .select("value")
+            .eq("key", "invoice_address")
+            .single();
 
-Parrain: ${profile.first_name} ${profile.last_name}
-Email: ${userEmail}
-Montant: ${payoutAmount}€
-Filleuls: ${referralsCount}
-IBAN: ${profile.iban || "NON RENSEIGNÉ"}
+          const companyAddress = configAddress?.value ? JSON.parse(configAddress.value) : "ANR";
+          const ibanMasked = profile.iban 
+            ? `${profile.iban.substring(0, 4)} **** **** ${profile.iban.slice(-4)}`
+            : "NON RENSEIGNÉ";
 
-Connectez-vous au panel admin pour traiter ce paiement.
-          `,
-        });
+          const templateVars: Record<string, string> = {
+            godfather_name: profile.first_name || "Cher parrain",
+            payout_amount: String(payoutAmount),
+            referrals_count: String(referralsCount),
+            iban_masked: ibanMasked,
+            dashboard_url: `${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || 'https://anr.fr'}/referral`,
+            company_address: companyAddress,
+          };
+
+          let emailSubject = template?.subject || `💸 Votre virement de ${payoutAmount}€ est en préparation !`;
+          let emailHtml = template?.html_content || `<p>Félicitations ! Votre virement de ${payoutAmount}€ est en préparation.</p>`;
+
+          // Replace variables
+          for (const [key, val] of Object.entries(templateVars)) {
+            emailSubject = emailSubject.replace(new RegExp(`{{${key}}}`, 'g'), val);
+            emailHtml = emailHtml.replace(new RegExp(`{{${key}}}`, 'g'), val);
+          }
+
+          const smtpClient = new SMTPClient({
+            connection: {
+              hostname: Deno.env.get("SMTP_HOST") || "",
+              port: parseInt(Deno.env.get("SMTP_PORT") || "465"),
+              tls: true,
+              auth: {
+                username: Deno.env.get("SMTP_USER") || "",
+                password: Deno.env.get("SMTP_PASS") || "",
+              },
+            },
+          });
+
+          await smtpClient.send({
+            from: Deno.env.get("SMTP_USER") || "noreply@anr.fr",
+            to: userEmail,
+            subject: emailSubject,
+            content: `Votre virement de ${payoutAmount}€ est en préparation.`,
+            html: emailHtml,
+          });
+
+          await smtpClient.close();
+          console.log("[PROCESS-REFERRAL-PAYOUT] Email sent to referrer:", userEmail);
+
+          // Log sent document
+          await supabaseAdmin.from("sent_documents").insert({
+            template_key: "referral_payout_pending",
+            recipient_email: userEmail,
+            subject: emailSubject,
+            html_snapshot: emailHtml,
+            status: "sent",
+            metadata: { user_id: uid, amount: payoutAmount },
+          });
+        }
       } catch (emailError) {
-        console.error("[PROCESS-REFERRAL-PAYOUT] Error sending admin email:", emailError);
+        console.error("[PROCESS-REFERRAL-PAYOUT] Error sending referrer email:", emailError);
       }
     }
 

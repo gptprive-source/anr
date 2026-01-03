@@ -702,11 +702,48 @@ serve(async (req) => {
                 console.log("[VERIFY-PAYMENT] In-app notification created for referrer");
               }
 
-              // Send email notification to referrer via SMTP
+              // Send email notification to referrer using DB template
               if (referrerEmail) {
                 try {
                   const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
                   
+                  // Fetch template from database
+                  const { data: template } = await supabaseAdmin
+                    .from("email_templates")
+                    .select("subject, html_content")
+                    .eq("template_key", "referral_new_godchild")
+                    .eq("is_active", true)
+                    .single();
+
+                  const { data: configAddress } = await supabaseAdmin
+                    .from("app_config")
+                    .select("value")
+                    .eq("key", "invoice_address")
+                    .single();
+
+                  const companyAddress = configAddress?.value ? JSON.parse(configAddress.value) : "ANR";
+                  const referrerFirstName = referrerProfile?.first_name || "Cher parrain";
+                  const remaining = Math.max(0, 50 - newBalance);
+
+                  const templateVars: Record<string, string> = {
+                    godfather_name: referrerFirstName,
+                    godchild_name: referredName,
+                    amount_credited: "5",
+                    new_balance: String(newBalance),
+                    remaining_for_payout: String(remaining),
+                    dashboard_url: `${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app') || 'https://anr.fr'}/referral`,
+                    company_address: companyAddress,
+                  };
+
+                  let emailSubject = template?.subject || "🎉 Nouveau filleul inscrit - +5€ crédités !";
+                  let emailHtml = template?.html_content || `<p>Bonjour ${referrerFirstName}, ${referredName} vient de s'inscrire avec votre code. +5€ crédités. Solde: ${newBalance}€</p>`;
+
+                  // Replace variables
+                  for (const [key, val] of Object.entries(templateVars)) {
+                    emailSubject = emailSubject.replace(new RegExp(`{{${key}}}`, 'g'), val);
+                    emailHtml = emailHtml.replace(new RegExp(`{{${key}}}`, 'g'), val);
+                  }
+
                   const smtpClient = new SMTPClient({
                     connection: {
                       hostname: Deno.env.get("SMTP_HOST") || "",
@@ -719,31 +756,26 @@ serve(async (req) => {
                     },
                   });
 
-                  const referrerFirstName = referrerProfile?.first_name || "Cher parrain";
-
                   await smtpClient.send({
                     from: Deno.env.get("SMTP_USER") || "noreply@anr.fr",
                     to: referrerEmail,
-                    subject: "🎉 Nouveau filleul inscrit - +5€ crédités !",
-                    content: `Bonjour ${referrerFirstName},\n\nBonne nouvelle ! ${referredName} vient de s'inscrire sur ANR avec votre code parrainage.\n\n+5€ ont été crédités sur votre compte.\nVotre solde actuel : ${newBalance}€\n\nRappel : À partir de 50€, un virement automatique sera effectué sur votre IBAN.\n\nMerci de faire grandir la communauté ANR !\n\nL'équipe ANR`,
-                    html: `
-                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                        <h1 style="color: #0EA5E9;">🎉 Nouveau filleul inscrit !</h1>
-                        <p>Bonjour <strong>${referrerFirstName}</strong>,</p>
-                        <p>Bonne nouvelle ! <strong>${referredName}</strong> vient de s'inscrire sur ANR avec votre code parrainage.</p>
-                        <div style="background: linear-gradient(135deg, #0EA5E9, #06B6D4); color: white; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
-                          <p style="margin: 0; font-size: 24px; font-weight: bold;">+5€ crédités</p>
-                          <p style="margin: 10px 0 0 0; font-size: 18px;">Solde actuel : ${newBalance}€</p>
-                        </div>
-                        <p style="color: #666;">📌 <strong>Rappel :</strong> À partir de 50€, un virement automatique sera effectué sur votre IBAN.</p>
-                        <p style="margin-top: 30px;">Merci de faire grandir la communauté ANR !</p>
-                        <p style="color: #999;">L'équipe ANR</p>
-                      </div>
-                    `,
+                    subject: emailSubject,
+                    content: `Bonjour ${referrerFirstName}, ${referredName} vient de s'inscrire. +5€ crédités. Solde: ${newBalance}€`,
+                    html: emailHtml,
                   });
 
                   await smtpClient.close();
                   console.log("[VERIFY-PAYMENT] Email notification sent to referrer:", referrerEmail);
+
+                  // Log sent document
+                  await supabaseAdmin.from("sent_documents").insert({
+                    template_key: "referral_new_godchild",
+                    recipient_email: referrerEmail,
+                    subject: emailSubject,
+                    html_snapshot: emailHtml,
+                    status: "sent",
+                    metadata: { referrer_id: referrerId, referred_name: referredName, amount: 5 },
+                  });
                 } catch (emailError) {
                   console.error("[VERIFY-PAYMENT] Error sending email notification:", emailError);
                 }
