@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { 
   FileText, 
@@ -23,9 +22,11 @@ import {
   History,
   Search,
   ChevronDown,
-  ChevronUp,
-  Copy,
-  Check
+  Check,
+  AlertTriangle,
+  Clock,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -43,6 +44,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/hooks/useAuth";
 
 interface EmailTemplate {
   id: string;
@@ -59,6 +61,11 @@ interface EmailTemplate {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  version: number | null;
+  legal_review_at: string | null;
+  legal_review_by: string | null;
+  last_test_sent_at: string | null;
+  last_test_sent_to: string | null;
 }
 
 interface SentDocument {
@@ -74,14 +81,15 @@ interface SentDocument {
   sent_at: string;
 }
 
-const categoryConfig = {
-  invoice: { label: "Factures", icon: FileText, color: "bg-blue-100 text-blue-800" },
-  confirmation: { label: "Confirmations", icon: Check, color: "bg-green-100 text-green-800" },
-  notification: { label: "Notifications", icon: Bell, color: "bg-amber-100 text-amber-800" },
-  legal: { label: "Légal / RGPD", icon: Scale, color: "bg-purple-100 text-purple-800" },
+const categoryConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  invoice: { label: "Factures", icon: FileText, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+  confirmation: { label: "Confirmations", icon: Check, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+  notification: { label: "Notifications", icon: Bell, color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+  legal: { label: "Légal / RGPD", icon: Scale, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
 };
 
 const Documents = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -89,8 +97,9 @@ const Documents = () => {
   const [editedContent, setEditedContent] = useState("");
   const [editedSubject, setEditedSubject] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewHistoryDoc, setViewHistoryDoc] = useState<SentDocument | null>(null);
+  const [testEmailAddress, setTestEmailAddress] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
 
   // Fetch templates
   const { data: templates, isLoading: loadingTemplates } = useQuery({
@@ -134,7 +143,8 @@ const Documents = () => {
         .update({ 
           html_content, 
           subject,
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString(),
+          version: (selectedTemplate?.version || 0) + 1
         })
         .eq("id", id);
       
@@ -177,6 +187,67 @@ const Documents = () => {
     },
   });
 
+  // Mark as legally reviewed
+  const markLegalReviewMutation = useMutation({
+    mutationFn: async (templateId: string) => {
+      const { error } = await supabase
+        .from("email_templates")
+        .update({ 
+          legal_review_at: new Date().toISOString(),
+          legal_review_by: user?.id
+        })
+        .eq("id", templateId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-templates"] });
+      toast.success("Template marqué comme validé légalement");
+    },
+  });
+
+  // Send test email
+  const sendTestEmail = async (template: EmailTemplate, email: string) => {
+    setSendingTest(true);
+    try {
+      // Render the template with preview data
+      let renderedHtml = template.html_content;
+      let renderedSubject = template.subject;
+      Object.entries(template.preview_data).forEach(([key, value]) => {
+        renderedHtml = renderedHtml.replace(new RegExp(`{{${key}}}`, 'g'), value);
+        renderedSubject = renderedSubject.replace(new RegExp(`{{${key}}}`, 'g'), value);
+      });
+
+      const { error } = await supabase.functions.invoke('send-test-email', {
+        body: {
+          to: email,
+          subject: `[TEST] ${renderedSubject}`,
+          html: renderedHtml,
+          templateKey: template.template_key
+        }
+      });
+
+      if (error) throw error;
+
+      // Update last test sent
+      await supabase
+        .from("email_templates")
+        .update({ 
+          last_test_sent_at: new Date().toISOString(),
+          last_test_sent_to: email
+        })
+        .eq("id", template.id);
+
+      queryClient.invalidateQueries({ queryKey: ["email-templates"] });
+      toast.success(`Email de test envoyé à ${email}`);
+      setTestEmailAddress("");
+    } catch (error) {
+      toast.error("Erreur lors de l'envoi: " + (error as Error).message);
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   const handleEditTemplate = (template: EmailTemplate) => {
     setSelectedTemplate(template);
     setEditedContent(template.html_content);
@@ -215,6 +286,10 @@ const Documents = () => {
     return rendered;
   };
 
+  const isModified = (template: EmailTemplate) => {
+    return template.default_html_content && template.html_content !== template.default_html_content;
+  };
+
   const groupedTemplates = templates?.reduce((acc, template) => {
     if (!acc[template.category]) {
       acc[template.category] = [];
@@ -229,7 +304,7 @@ const Documents = () => {
         <div>
           <h1 className="text-2xl font-bold">Documents & Templates</h1>
           <p className="text-muted-foreground">
-            Gérez les templates d'emails et consultez l'historique des envois
+            Gérez les templates d'emails professionnels et consultez l'historique des envois
           </p>
         </div>
 
@@ -241,7 +316,7 @@ const Documents = () => {
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <History className="w-4 h-4" />
-              Historique des envois
+              Historique
             </TabsTrigger>
           </TabsList>
 
@@ -284,23 +359,48 @@ const Documents = () => {
                               {categoryTemplates.map((template) => (
                                 <div
                                   key={template.id}
-                                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                                  className="flex items-start justify-between p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
                                 >
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2">
+                                  <div className="flex-1 space-y-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <h4 className="font-medium">{template.name}</h4>
                                       {!template.is_active && (
                                         <Badge variant="secondary">Inactif</Badge>
+                                      )}
+                                      {isModified(template) && (
+                                        <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                          <AlertTriangle className="w-3 h-3 mr-1" />
+                                          Modifié
+                                        </Badge>
+                                      )}
+                                      {template.legal_review_at && (
+                                        <Badge variant="outline" className="text-green-600 border-green-300">
+                                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                                          Validé légal
+                                        </Badge>
+                                      )}
+                                      {template.version && template.version > 1 && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          v{template.version}
+                                        </Badge>
                                       )}
                                     </div>
                                     <p className="text-sm text-muted-foreground">
                                       {template.description}
                                     </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      Modifié le {format(new Date(template.updated_at), "dd/MM/yyyy à HH:mm", { locale: fr })}
-                                    </p>
+                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                      <span>
+                                        Modifié le {format(new Date(template.updated_at), "dd/MM/yyyy à HH:mm", { locale: fr })}
+                                      </span>
+                                      {template.last_test_sent_at && (
+                                        <span className="flex items-center gap-1">
+                                          <Send className="w-3 h-3" />
+                                          Test: {format(new Date(template.last_test_sent_at), "dd/MM HH:mm", { locale: fr })}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 ml-4">
                                     <Button
                                       variant="outline"
                                       size="sm"
@@ -364,12 +464,11 @@ const Documents = () => {
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <Badge 
-                              variant={doc.status === 'sent' ? 'default' : 'destructive'}
-                              className="capitalize"
-                            >
-                              {doc.status}
-                            </Badge>
+                            {doc.status === 'sent' ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-destructive" />
+                            )}
                             <span className="font-medium truncate">{doc.subject}</span>
                           </div>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
@@ -377,8 +476,13 @@ const Documents = () => {
                             <span>•</span>
                             <span>{format(new Date(doc.sent_at), "dd/MM/yyyy HH:mm", { locale: fr })}</span>
                             <span>•</span>
-                            <span className="capitalize">{doc.template_key.replace(/_/g, ' ')}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {doc.template_key.replace(/_/g, ' ')}
+                            </Badge>
                           </div>
+                          {doc.error_message && (
+                            <p className="text-xs text-destructive mt-1">{doc.error_message}</p>
+                          )}
                         </div>
                         {doc.html_snapshot && (
                           <Button
@@ -400,7 +504,7 @@ const Documents = () => {
 
         {/* Edit Template Dialog */}
         <Dialog open={editMode} onOpenChange={(open) => !open && setEditMode(false)}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>Modifier: {selectedTemplate?.name}</DialogTitle>
               <DialogDescription>
@@ -419,25 +523,39 @@ const Documents = () => {
                   />
                 </div>
 
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 overflow-hidden min-h-[400px]">
                   <Label className="mb-2 block">Contenu HTML</Label>
-                  <TemplateEditor
-                    content={editedContent}
-                    onChange={setEditedContent}
-                    variables={selectedTemplate.variables}
-                    previewData={selectedTemplate.preview_data}
-                  />
+                  <div className="h-[400px]">
+                    <TemplateEditor
+                      content={editedContent}
+                      onChange={setEditedContent}
+                      variables={selectedTemplate.variables}
+                      previewData={selectedTemplate.preview_data}
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    onClick={handleReset}
-                    disabled={resetMutation.isPending}
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Réinitialiser
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleReset}
+                      disabled={resetMutation.isPending || !selectedTemplate.default_html_content}
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Réinitialiser
+                    </Button>
+                    {!selectedTemplate.legal_review_at && (
+                      <Button
+                        variant="outline"
+                        onClick={() => markLegalReviewMutation.mutate(selectedTemplate.id)}
+                        disabled={markLegalReviewMutation.isPending}
+                      >
+                        <Scale className="w-4 h-4 mr-2" />
+                        Valider légalement
+                      </Button>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setEditMode(false)}>
                       Annuler
@@ -469,6 +587,30 @@ const Documents = () => {
                   <p className="text-sm">
                     <strong>Sujet:</strong> {renderPreview(selectedTemplate.subject, selectedTemplate.preview_data)}
                   </p>
+                </div>
+
+                {/* Test Email Section */}
+                <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
+                  <Send className="w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Email de test..."
+                    value={testEmailAddress}
+                    onChange={(e) => setTestEmailAddress(e.target.value)}
+                    className="flex-1"
+                    type="email"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => sendTestEmail(selectedTemplate, testEmailAddress)}
+                    disabled={sendingTest || !testEmailAddress}
+                  >
+                    {sendingTest ? (
+                      <Clock className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-1" />
+                    )}
+                    Envoyer un test
+                  </Button>
                 </div>
 
                 <div className="flex gap-4 flex-wrap">
