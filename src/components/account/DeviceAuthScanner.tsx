@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Html5QrcodeScanner } from "html5-qrcode";
-import { useEffect, useRef } from "react";
-import { Loader2, Monitor, CheckCircle2, XCircle, QrCode } from "lucide-react";
+import { Html5Qrcode } from "html5-qrcode";
+import { Loader2, Monitor, CheckCircle2, XCircle, QrCode, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 interface DeviceAuthScannerProps {
@@ -23,65 +22,99 @@ interface PendingAuth {
 
 const DeviceAuthScanner = ({ open, onOpenChange }: DeviceAuthScannerProps) => {
   const { user } = useAuth();
-  const [scanning, setScanning] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const [pendingAuth, setPendingAuth] = useState<PendingAuth | null>(null);
   const [processing, setProcessing] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  useEffect(() => {
-    if (!open || !scanning) return;
+  const initScanner = async () => {
+    try {
+      const html5QrCode = new Html5Qrcode("device-auth-qr-reader");
+      scannerRef.current = html5QrCode;
 
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      const container = document.getElementById("device-auth-scanner");
-      if (!container) return;
-
-      scannerRef.current = new Html5QrcodeScanner(
-        "device-auth-scanner",
+      await html5QrCode.start(
+        { facingMode: "environment" },
         {
           fps: 10,
           qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
         },
-        false
-      );
-
-      scannerRef.current.render(
         async (decodedText) => {
-          console.log("[DeviceAuthScanner] Scanned:", decodedText);
+          console.log("[DeviceAuthScanner] Decoded:", decodedText);
           
           // Check if it's a device auth QR code
           if (decodedText.startsWith("anr://device-auth/")) {
             const token = decodedText.replace("anr://device-auth/", "");
+            await stopScanning();
             await handleScan(token);
           } else {
             toast.error("QR code invalide");
           }
         },
-        (error) => {
-          // Ignore scan errors
+        () => {
+          // Ignore continuous scan errors
         }
       );
-    }, 100);
-
-    return () => {
-      clearTimeout(timer);
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
-        scannerRef.current = null;
+      setCameraReady(true);
+    } catch (err: any) {
+      console.error("[DeviceAuthScanner] Error:", err);
+      setScanning(false);
+      setCameraReady(false);
+      if (err.name === "NotAllowedError") {
+        setError("Accès à la caméra refusé. Veuillez autoriser l'accès dans les paramètres.");
+      } else {
+        setError("Impossible d'accéder à la caméra: " + (err.message || err));
       }
-    };
+    }
+  };
+
+  const startScanning = () => {
+    setError(null);
+    setScanning(true);
+  };
+
+  // Initialize scanner after DOM is ready
+  useEffect(() => {
+    if (open && scanning && !scannerRef.current) {
+      const timer = setTimeout(() => {
+        initScanner();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
   }, [open, scanning]);
 
-  const handleScan = async (token: string) => {
-    if (!user) return;
-
-    // Stop scanner
+  const stopScanning = async () => {
     if (scannerRef.current) {
-      await scannerRef.current.clear().catch(() => {});
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch (e) {
+        console.log("[DeviceAuthScanner] Stop error:", e);
+      }
       scannerRef.current = null;
     }
     setScanning(false);
+    setCameraReady(false);
+  };
+
+  // Cleanup on unmount or close
+  useEffect(() => {
+    if (!open) {
+      stopScanning();
+      setPendingAuth(null);
+      setError(null);
+    }
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
+      }
+    };
+  }, [open]);
+
+  const handleScan = async (token: string) => {
+    if (!user) return;
 
     // Fetch the auth session
     const { data, error } = await supabase
@@ -94,14 +127,14 @@ const DeviceAuthScanner = ({ open, onOpenChange }: DeviceAuthScannerProps) => {
 
     if (error || !data) {
       toast.error("Session d'autorisation invalide ou expirée");
-      setScanning(true);
+      setScanning(false);
       return;
     }
 
     // Check if expired
     if (new Date(data.expires_at) < new Date()) {
       toast.error("Cette session a expiré");
-      setScanning(true);
+      setScanning(false);
       return;
     }
 
@@ -164,12 +197,9 @@ const DeviceAuthScanner = ({ open, onOpenChange }: DeviceAuthScannerProps) => {
   };
 
   const handleClose = () => {
-    if (scannerRef.current) {
-      scannerRef.current.clear().catch(() => {});
-      scannerRef.current = null;
-    }
-    setScanning(true);
+    stopScanning();
     setPendingAuth(null);
+    setError(null);
     onOpenChange(false);
   };
 
@@ -182,14 +212,52 @@ const DeviceAuthScanner = ({ open, onOpenChange }: DeviceAuthScannerProps) => {
             Autoriser un appareil
           </DialogTitle>
           <DialogDescription>
-            {scanning
+            {!pendingAuth
               ? "Scannez le QR code affiché sur le nouvel appareil"
               : "Confirmez l'autorisation de cet appareil"}
           </DialogDescription>
         </DialogHeader>
 
-        {scanning && !pendingAuth && (
-          <div id="device-auth-scanner" className="w-full" />
+        {!pendingAuth && (
+          <div className="text-center">
+            <div className="relative w-full aspect-square max-w-[300px] mx-auto mb-4 rounded-2xl overflow-hidden bg-secondary/30">
+              {scanning ? (
+                <>
+                  <div id="device-auth-qr-reader" className="w-full h-full" />
+                  {!cameraReady && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-secondary/50">
+                      <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center border-2 border-dashed border-primary/50 rounded-2xl">
+                  <Camera className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    Appuyez pour scanner
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+
+            {!scanning ? (
+              <Button onClick={startScanning} variant="default">
+                <Camera className="w-4 h-4 mr-2" />
+                Activer la caméra
+              </Button>
+            ) : (
+              <Button onClick={stopScanning} variant="outline">
+                <XCircle className="w-4 h-4 mr-2" />
+                Arrêter le scan
+              </Button>
+            )}
+          </div>
         )}
 
         {pendingAuth && (
