@@ -207,7 +207,8 @@ const InputArea = ({
   handleSendMedia,
   startVoiceRecording,
   stopVoiceRecording,
-  openVideoRecorder
+  openVideoRecorder,
+  className
 }: {
   messageText: string;
   setMessageText: (text: string) => void;
@@ -219,6 +220,7 @@ const InputArea = ({
   startVoiceRecording: () => void;
   stopVoiceRecording: () => void;
   openVideoRecorder: () => void;
+  className?: string;
 }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -239,7 +241,7 @@ const InputArea = ({
   }) => {
     setMessageText(messageText + emoji.native);
   };
-  return <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 safe-area-bottom">
+  return <div className={cn("fixed bottom-0 left-0 right-0 bg-background border-t border-border p-3 safe-area-bottom", className)}>
       {/* Emoji Picker */}
       {showEmojiPicker && <div ref={emojiPickerRef} className="absolute bottom-full left-0 right-0 mb-2 flex justify-center z-50">
           <div className="shadow-lg rounded-lg overflow-hidden">
