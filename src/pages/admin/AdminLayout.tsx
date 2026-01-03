@@ -52,6 +52,7 @@ const navItems = [
   { path: '/admin/anrs', label: 'ANRs', icon: MapPin },
   { path: '/admin/door-modules', label: 'Modules porte', icon: DoorOpen },
   { path: '/admin/config', label: 'Configuration', icon: Settings },
+  { path: '/admin/email-variables', label: 'Variables Email', icon: FileText },
   { path: '/admin/documents', label: 'Documents & Emails', icon: Mail },
   { path: '/admin/faq', label: 'FAQ', icon: HelpCircle },
   { path: '/admin/cgu', label: 'CGU', icon: FileText },
