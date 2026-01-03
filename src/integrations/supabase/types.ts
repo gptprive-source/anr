@@ -966,6 +966,45 @@ export type Database = {
           },
         ]
       }
+      device_auth_sessions: {
+        Row: {
+          approved_at: string | null
+          approved_by_device_id: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          new_device_id: string
+          new_device_name: string | null
+          session_token: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by_device_id?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          new_device_id: string
+          new_device_name?: string | null
+          session_token: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by_device_id?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          new_device_id?: string
+          new_device_name?: string | null
+          session_token?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       doming_orders: {
         Row: {
           anr_id: string
@@ -3585,6 +3624,39 @@ export type Database = {
           department?: Database["public"]["Enums"]["contact_department"]
           id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_devices: {
+        Row: {
+          created_at: string
+          device_id: string
+          device_name: string | null
+          id: string
+          is_primary: boolean | null
+          last_used_at: string
+          user_id: string
+          verified_at: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          device_name?: string | null
+          id?: string
+          is_primary?: boolean | null
+          last_used_at?: string
+          user_id: string
+          verified_at?: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          device_name?: string | null
+          id?: string
+          is_primary?: boolean | null
+          last_used_at?: string
+          user_id?: string
+          verified_at?: string
         }
         Relationships: []
       }

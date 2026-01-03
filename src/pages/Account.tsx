@@ -36,6 +36,7 @@ import RGPDRequestDialog from "@/components/account/RGPDRequestDialog";
 // VisitorModeSection removed - replaced by mandatory onboarding flow
 import LeaveHabitationDialog from "@/components/account/LeaveHabitationDialog";
 import GrantedAccessSection from "@/components/resident/GrantedAccessSection";
+import ConnectedDevices from "@/components/account/ConnectedDevices";
 import ChangePlanDialog from "@/components/account/ChangePlanDialog";
 import ChangeEmailDialog from "@/components/account/ChangeEmailDialog";
 import ChangePhoneDialog from "@/components/account/ChangePhoneDialog";
@@ -528,6 +529,8 @@ const Account = () => {
         {/* Granted Access Section */}
         <GrantedAccessSection />
 
+        {/* Connected Devices Section */}
+        <ConnectedDevices />
 
         {/* Ringtone Settings */}
         <RingtoneSettingsCard />
