@@ -213,18 +213,32 @@ Deno.serve(async (req) => {
             .update({ status: "verified", verified_at: new Date().toISOString() })
             .eq("id", verification_id);
 
-          // Update profile with phone and device
+          // Update profile with phone number and phone_verified flag
           await supabase
             .from("profiles")
             .update({
               phone_number: verification.phone_number,
               phone_verified: true,
-              device_id: verification.device_id,
               updated_at: new Date().toISOString(),
             })
             .eq("id", user.id);
 
-          console.log("[check-phone-auth] Profile updated successfully");
+          // Add this device as the primary device in user_devices table
+          const deviceName = "Téléphone vérifié";
+          await supabase
+            .from("user_devices")
+            .upsert({
+              user_id: user.id,
+              device_id: verification.device_id,
+              device_name: deviceName,
+              is_primary: true,
+              verified_at: new Date().toISOString(),
+              last_used_at: new Date().toISOString(),
+            }, {
+              onConflict: "user_id,device_id"
+            });
+
+          console.log("[check-phone-auth] Profile and user_devices updated successfully");
 
           return new Response(JSON.stringify({ verified: true, status: "verified" }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },

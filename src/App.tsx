@@ -54,6 +54,7 @@ import RingtoneSettings from "./pages/RingtoneSettings";
 import OnboardingBusinessCard from "./pages/OnboardingBusinessCard";
 import VisitorLogin from "./pages/VisitorLogin";
 import VisitorCard from "./pages/VisitorCard";
+import DeviceAuth from "./pages/DeviceAuth";
 
 // Relay pages
 import RelayDashboard from "./pages/relay/RelayDashboard";
@@ -136,6 +137,7 @@ const AppContent = () => {
           <Route path="/invitation" element={<Invitation />} />
           <Route path="/registration-success" element={<RegistrationSuccess />} />
           <Route path="/phone-verification" element={<ProtectedRoute skipPhoneCheck><PhoneVerification /></ProtectedRoute>} />
+          <Route path="/device-auth" element={<ProtectedRoute skipPhoneCheck><DeviceAuth /></ProtectedRoute>} />
           <Route path="/onboarding/business-card" element={<ProtectedRoute skipPhoneCheck><OnboardingBusinessCard /></ProtectedRoute>} />
           <Route path="/visitor-login" element={<VisitorLogin />} />
           <Route path="/visitor-card" element={<VisitorCard />} />
