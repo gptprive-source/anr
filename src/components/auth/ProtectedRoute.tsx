@@ -22,6 +22,18 @@ const ProtectedRoute = ({ children, skipPhoneCheck = false }: ProtectedRouteProp
     setRedirectTo(null);
   }, [user?.id, skipPhoneCheck]);
 
+  // Get device name from user agent
+  const getDeviceName = () => {
+    const ua = navigator.userAgent;
+    if (ua.includes("Windows")) return "Windows PC";
+    if (ua.includes("Macintosh")) return "Mac";
+    if (ua.includes("Linux")) return "Linux PC";
+    if (ua.includes("iPhone")) return "iPhone";
+    if (ua.includes("iPad")) return "iPad";
+    if (ua.includes("Android")) return "Android";
+    return "Appareil inconnu";
+  };
+
   // Check device authorization
   useEffect(() => {
     const checkDeviceAuthorization = async () => {
@@ -41,18 +53,45 @@ const ProtectedRoute = ({ children, skipPhoneCheck = false }: ProtectedRouteProp
 
         console.log("[ProtectedRoute] Checking device authorization for user:", user.id, "deviceId:", localDeviceId);
 
-        // Check if this device is already authorized
-        const { data: authorizedDevice, error: deviceError } = await supabase
+        // Check if this device is already authorized by device_id OR check if any device matches this browser
+        let authorizedDevice = null;
+        let deviceError = null;
+
+        // First try with exact device_id match
+        const { data: exactMatch, error: exactError } = await supabase
           .from("user_devices")
-          .select("id, last_used_at")
+          .select("id, device_id, last_used_at")
           .eq("user_id", user.id)
           .eq("device_id", localDeviceId)
           .maybeSingle();
 
-        if (deviceError) {
-          console.error("[ProtectedRoute] Error checking device:", deviceError);
+        if (exactError) {
+          console.error("[ProtectedRoute] Error checking device:", exactError);
           setCheckingDevice(false);
           return;
+        }
+
+        authorizedDevice = exactMatch;
+
+        // If no exact match, check if there's a device with matching device_name for this browser type
+        // This handles the case where the device_id changed but the device was previously approved
+        if (!authorizedDevice) {
+          const deviceName = getDeviceName();
+          const { data: nameMatch } = await supabase
+            .from("user_devices")
+            .select("id, device_id, last_used_at")
+            .eq("user_id", user.id)
+            .eq("device_name", deviceName)
+            .order("last_used_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (nameMatch) {
+            // Update localStorage to use the registered device_id
+            console.log("[ProtectedRoute] Found device by name, syncing device_id:", nameMatch.device_id);
+            localStorage.setItem("anr_device_id", nameMatch.device_id);
+            authorizedDevice = nameMatch;
+          }
         }
 
         if (authorizedDevice) {
