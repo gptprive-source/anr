@@ -103,6 +103,7 @@ import AdminConversation from "./pages/admin/AdminConversation";
 import AdminRelayManagement from "./pages/admin/RelayManagement";
 import AdminParcels from "./pages/admin/Parcels";
 import AdminDocuments from "./pages/admin/Documents";
+import AdminEmailVariables from "./pages/admin/EmailVariables";
 const queryClient = new QueryClient();
 const AppContent = () => {
   useAudioUnlock();
@@ -215,6 +216,7 @@ const AppContent = () => {
           <Route path="/admin/parcels" element={<AdminParcels />} />
           <Route path="/admin/config" element={<AdminConfig />} />
           <Route path="/admin/documents" element={<AdminDocuments />} />
+          <Route path="/admin/email-variables" element={<AdminEmailVariables />} />
           <Route path="/admin/faq" element={<AdminFAQManager />} />
           <Route path="/admin/cgu" element={<AdminCGUEditor />} />
           <Route path="/admin/privacy" element={<AdminPrivacyEditor />} />
