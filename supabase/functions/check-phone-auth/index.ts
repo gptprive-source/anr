@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     const serviceName = ovhPhoneNumber.replace("+", "00");
 
     console.log("[check-phone-auth] Checking call logs for verification:", verification_id);
-    console.log("[check-phone-auth] Looking for calls from:", verification.phone_number);
+    console.log("[check-phone-auth] Looking for OUTGOING calls to:", verification.phone_number);
     console.log("[check-phone-auth] Started at:", verification.started_at);
 
     try {
@@ -130,8 +130,7 @@ Deno.serve(async (req) => {
       const timeRes = await fetch("https://eu.api.ovh.com/1.0/auth/time");
       const timestamp = await timeRes.json();
 
-      // Query OVH incoming call logs
-      // GET /telephony/{billingAccount}/service/{serviceName}/voiceConsumption
+      // Query OVH call logs (voiceConsumption)
       const callLogsUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/service/${serviceName}/voiceConsumption`;
       const signature = await signOvhRequest("GET", callLogsUrl, "", timestamp, appSecret, consumerKey);
 
@@ -156,8 +155,8 @@ Deno.serve(async (req) => {
       const callIds = await callLogsRes.json();
       console.log("[check-phone-auth] Found", callIds.length, "call consumption records");
 
-      // Check recent calls (get details for last 10 calls)
-      const recentCallIds = callIds.slice(-10);
+      // Check recent calls (get details for last 15 calls)
+      const recentCallIds = callIds.slice(-15);
       const startedAt = new Date(verification.started_at);
       const expectedPhone = normalizeForComparison(verification.phone_number);
 
@@ -181,32 +180,32 @@ Deno.serve(async (req) => {
         const callDetail = await detailRes.json();
         console.log("[check-phone-auth] Call detail:", JSON.stringify(callDetail));
 
-        // Check if this is an incoming call within the valid time window
-        // Accept calls up to 5 minutes BEFORE started_at (user might call before initiating verification)
+        // Check if this call is within the valid time window (after verification started)
         const callDate = new Date(callDetail.creationDatetime || callDetail.datetime);
-        const fiveMinutesBefore = new Date(startedAt.getTime() - 5 * 60 * 1000);
         
-        if (callDate < fiveMinutesBefore) {
-          console.log("[check-phone-auth] Call is more than 5 min before started_at, skipping. Call:", callDate.toISOString(), "Window starts:", fiveMinutesBefore.toISOString());
+        // For Click2Call, we only check calls AFTER started_at (the call was initiated by us)
+        if (callDate < startedAt) {
+          console.log("[check-phone-auth] Call is before started_at, skipping. Call:", callDate.toISOString(), "Started at:", startedAt.toISOString());
           continue;
         }
         
         console.log("[check-phone-auth] Call is within valid time window. Call:", callDate.toISOString(), "Started at:", startedAt.toISOString());
 
-        // Check if wayType is incoming or transfer (OVH uses "transfer" for redirected calls)
-        if (callDetail.wayType !== "incoming" && callDetail.wayType !== "transfer") {
-          console.log("[check-phone-auth] Not an incoming/transfer call, skipping. wayType:", callDetail.wayType);
+        // For Click2Call, we're looking for OUTGOING calls (wayType: "outgoing")
+        // OVH might also use "transfer" for Click2Call initiated calls
+        if (callDetail.wayType !== "outgoing" && callDetail.wayType !== "transfer") {
+          console.log("[check-phone-auth] Not an outgoing/transfer call, skipping. wayType:", callDetail.wayType);
           continue;
         }
         
-        console.log("[check-phone-auth] Valid wayType:", callDetail.wayType);
+        console.log("[check-phone-auth] Valid outgoing wayType:", callDetail.wayType);
 
-        // Compare caller number
-        const callerPhone = normalizeForComparison(callDetail.calling || callDetail.callingNumber || "");
-        console.log("[check-phone-auth] Comparing caller:", callerPhone, "with expected:", expectedPhone);
+        // For outgoing calls, compare the CALLED number (destination) with user's phone number
+        const calledPhone = normalizeForComparison(callDetail.called || callDetail.calledNumber || callDetail.dialed || "");
+        console.log("[check-phone-auth] Comparing called number:", calledPhone, "with expected:", expectedPhone);
 
-        if (callerPhone === expectedPhone) {
-          console.log("[check-phone-auth] Phone number matched! Verifying...");
+        if (calledPhone === expectedPhone) {
+          console.log("[check-phone-auth] Phone number matched! Click2Call successful - Verifying...");
 
           // Update verification status
           await supabase

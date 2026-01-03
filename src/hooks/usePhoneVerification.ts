@@ -5,7 +5,6 @@ export type VerificationStatus = "idle" | "initializing" | "waiting" | "verified
 
 export const usePhoneVerification = () => {
   const [status, setStatus] = useState<VerificationStatus>("idle");
-  const [ovhNumber, setOvhNumber] = useState("+33185099116");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(600);
   
@@ -13,8 +12,6 @@ export const usePhoneVerification = () => {
   const timerRef = useRef<number | null>(null);
   const verificationIdRef = useRef<string | null>(null);
   const expiresAtRef = useRef<Date | null>(null);
-  
-  const isCapacitor = typeof (window as any).Capacitor !== "undefined";
 
   // Cleanup on unmount
   useEffect(() => {
@@ -58,7 +55,7 @@ export const usePhoneVerification = () => {
         return false;
       }
 
-      console.log("[Phone] Calling init-phone-auth...");
+      console.log("[Phone] Calling init-phone-auth with Click2Call...");
       const response = await supabase.functions.invoke("init-phone-auth", {
         body: { phone_number: phoneNumber, device_id: deviceId },
       });
@@ -75,13 +72,13 @@ export const usePhoneVerification = () => {
         return false;
       }
 
-      const { verification_id, ovh_number, expires_at } = response.data;
+      const { verification_id, expires_at } = response.data;
       console.log("[Phone] Got verification_id:", verification_id);
+      console.log("[Phone] Click2Call initiated - OVH will call user's phone");
       
       // Store in refs
       verificationIdRef.current = verification_id;
       expiresAtRef.current = new Date(expires_at);
-      setOvhNumber(ovh_number);
       setTimeRemaining(Math.floor((expiresAtRef.current.getTime() - Date.now()) / 1000));
       setStatus("waiting");
 
@@ -142,16 +139,6 @@ export const usePhoneVerification = () => {
         }
       });
 
-      // NOW open the dialer
-      console.log("[Phone] Opening dialer for:", ovh_number);
-      const telUrl = `tel:${ovh_number.replace(/\s/g, "")}`;
-      const link = document.createElement("a");
-      link.href = telUrl;
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
       return true;
     } catch (error) {
       console.error("[Phone] Error:", error);
@@ -161,26 +148,11 @@ export const usePhoneVerification = () => {
     }
   };
 
-  // Manual call trigger for retry
-  const triggerCall = useCallback(() => {
-    const telUrl = `tel:${ovhNumber.replace(/\s/g, "")}`;
-    const link = document.createElement("a");
-    link.href = telUrl;
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    console.log("[Phone] Manual call triggered to:", telUrl);
-  }, [ovhNumber]);
-
   return {
     status,
-    ovhNumber,
     errorMessage,
     timeRemaining,
-    isCapacitor,
     initVerification,
-    triggerCall,
     reset,
   };
 };

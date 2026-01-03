@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,6 +33,24 @@ function normalizePhoneNumber(phone: string): string {
   
   // Otherwise return as-is (might be missing + prefix)
   return cleaned;
+}
+
+// Generate OVH API signature
+async function signOvhRequest(
+  method: string,
+  url: string,
+  body: string,
+  timestamp: number,
+  appSecret: string,
+  consumerKey: string
+): Promise<string> {
+  const toSign = `${appSecret}+${consumerKey}+${method}+${url}+${body}+${timestamp}`;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(toSign);
+  const hashBuffer = await crypto.subtle.digest("SHA-1", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  return "$1$" + hashHex;
 }
 
 Deno.serve(async (req) => {
@@ -107,7 +126,10 @@ Deno.serve(async (req) => {
     }
 
     // OVH API credentials
+    const appKey = Deno.env.get("OVH_APPLICATION_KEY")!;
     const appSecret = Deno.env.get("OVH_APPLICATION_SECRET")!;
+    const consumerKey = Deno.env.get("OVH_CONSUMER_KEY")!;
+    const billingAccount = Deno.env.get("OVH_BILLING_ACCOUNT")!;
     const ovhPhoneNumber = Deno.env.get("OVH_PHONE_NUMBER")!;
 
     // Create verification record with started_at timestamp
@@ -141,9 +163,69 @@ Deno.serve(async (req) => {
 
     console.log("[init-phone-auth] Verification created:", verification.id, "started_at:", startedAt.toISOString());
 
+    // ============ CALL OVH Click2Call API ============
+    // Get OVH API timestamp
+    const timestampRes = await fetch("https://eu.api.ovh.com/1.0/auth/time");
+    const ovhTimestamp = await timestampRes.json();
+    console.log("[init-phone-auth] OVH timestamp:", ovhTimestamp);
+
+    // Prepare Click2Call request
+    const click2CallUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/line/${ovhPhoneNumber}/click2Call`;
+    const click2CallBody = JSON.stringify({
+      calledNumber: normalizedPhone,
+      // intercom: true, // Call without waiting for answer
+    });
+
+    // Sign the request
+    const ovhSignature = await signOvhRequest(
+      "POST",
+      click2CallUrl,
+      click2CallBody,
+      ovhTimestamp,
+      appSecret,
+      consumerKey
+    );
+
+    console.log("[init-phone-auth] Calling OVH Click2Call:", click2CallUrl);
+    console.log("[init-phone-auth] Body:", click2CallBody);
+
+    const click2CallRes = await fetch(click2CallUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Ovh-Application": appKey,
+        "X-Ovh-Consumer": consumerKey,
+        "X-Ovh-Timestamp": ovhTimestamp.toString(),
+        "X-Ovh-Signature": ovhSignature,
+      },
+      body: click2CallBody,
+    });
+
+    const click2CallData = await click2CallRes.text();
+    console.log("[init-phone-auth] OVH Click2Call response status:", click2CallRes.status);
+    console.log("[init-phone-auth] OVH Click2Call response:", click2CallData);
+
+    if (!click2CallRes.ok) {
+      console.error("[init-phone-auth] OVH Click2Call failed:", click2CallData);
+      
+      // Update verification status to failed
+      await supabase
+        .from("phone_verifications")
+        .update({ status: "failed" })
+        .eq("id", verification.id);
+
+      return new Response(JSON.stringify({ 
+        error: "Impossible d'initier l'appel de vérification. Veuillez réessayer." 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("[init-phone-auth] Click2Call initiated successfully");
+
     return new Response(JSON.stringify({
       verification_id: verification.id,
-      ovh_number: ovhPhoneNumber,
       expires_at: expiresAt.toISOString(),
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -16,12 +16,9 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
   const [phoneNumber, setPhoneNumber] = useState("");
   const {
     status,
-    ovhNumber,
     errorMessage,
     timeRemaining,
-    isCapacitor,
     initVerification,
-    triggerCall,
     reset,
   } = usePhoneVerification();
 
@@ -41,19 +38,11 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const formatPhoneDisplay = (phone: string): string => {
-    const cleaned = phone.replace(/\D/g, "");
-    if (cleaned.length === 10 && cleaned.startsWith("0")) {
-      return cleaned.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, "$1 $2 $3 $4 $5");
-    }
-    return phone;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneNumber.trim()) return;
 
-    // Everything is handled inside initVerification now (polling + dialer)
+    // Everything is handled inside initVerification now (Click2Call + polling)
     await initVerification(phoneNumber.trim(), deviceId);
   };
 
@@ -119,42 +108,43 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
         <div>
           <h2 className="text-2xl font-bold">Préparation...</h2>
           <p className="text-muted-foreground mt-2">
-            Configuration de la vérification en cours
+            Nous préparons votre appel de vérification
           </p>
         </div>
       </div>
     );
   }
 
-  // Waiting state
+  // Waiting state - Click2Call flow (OVH calls the user)
   if (status === "waiting") {
     return (
       <div className="space-y-6 text-center">
         <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center relative">
-          <Phone className="w-10 h-10 text-primary" />
+          <Phone className="w-10 h-10 text-primary animate-pulse" />
           <div className="absolute inset-0 rounded-full border-4 border-primary/30 animate-ping" />
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold">En attente de votre appel...</h2>
+          <h2 className="text-2xl font-bold">Nous vérifions votre numéro...</h2>
           <p className="text-muted-foreground">
-            Appelez le numéro ci-dessous depuis votre téléphone
+            Votre téléphone va sonner sous peu.
+          </p>
+          <p className="text-sm text-muted-foreground font-medium">
+            ⚠️ Ne décrochez pas — laissez sonner 2-3 fois.
           </p>
         </div>
 
-        <div className="p-4 bg-muted rounded-lg">
-          <p className="text-sm text-muted-foreground mb-1">Numéro à appeler</p>
-          <p className="text-2xl font-mono font-bold tracking-wider">
-            {formatPhoneDisplay(ovhNumber)}
+        <div className="p-4 bg-muted rounded-lg space-y-2">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-sm text-muted-foreground">
+              Appel en cours vers votre numéro...
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            La vérification est automatique. Vous n'avez rien à faire.
           </p>
         </div>
-
-        {!isCapacitor && (
-          <Button onClick={triggerCall} variant="outline" className="gap-2">
-            <Phone className="w-4 h-4" />
-            Appeler maintenant
-          </Button>
-        )}
 
         <div className="flex items-center justify-center gap-2 text-muted-foreground">
           <Clock className="w-4 h-4" />
@@ -189,7 +179,7 @@ const PhoneVerificationStep = ({ deviceId, onVerified, onBack }: PhoneVerificati
         <div className="space-y-2">
           <h2 className="text-2xl font-bold text-green-600">Numéro vérifié !</h2>
           <p className="text-muted-foreground">
-            Vous pouvez raccrocher maintenant. Redirection en cours...
+            Votre numéro a été vérifié avec succès. Redirection en cours...
           </p>
         </div>
       </div>
