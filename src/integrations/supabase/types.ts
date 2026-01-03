@@ -1507,6 +1507,60 @@ export type Database = {
           },
         ]
       }
+      email_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          default_html_content: string | null
+          description: string | null
+          html_content: string
+          id: string
+          is_active: boolean | null
+          name: string
+          preview_data: Json | null
+          subject: string
+          template_key: string
+          text_content: string | null
+          updated_at: string | null
+          updated_by: string | null
+          variables: Json | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          default_html_content?: string | null
+          description?: string | null
+          html_content: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          preview_data?: Json | null
+          subject: string
+          template_key: string
+          text_content?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          default_html_content?: string | null
+          description?: string | null
+          html_content?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          preview_data?: Json | null
+          subject?: string
+          template_key?: string
+          text_content?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       emergency_services: {
         Row: {
           contact_email: string | null
@@ -3420,6 +3474,45 @@ export type Database = {
           trigger_type?: string
           triggered_by?: string | null
           warning_issues?: number | null
+        }
+        Relationships: []
+      }
+      sent_documents: {
+        Row: {
+          error_message: string | null
+          html_snapshot: string | null
+          id: string
+          metadata: Json | null
+          recipient_email: string
+          recipient_user_id: string | null
+          sent_at: string | null
+          status: string | null
+          subject: string
+          template_key: string
+        }
+        Insert: {
+          error_message?: string | null
+          html_snapshot?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email: string
+          recipient_user_id?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+          template_key: string
+        }
+        Update: {
+          error_message?: string | null
+          html_snapshot?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email?: string
+          recipient_user_id?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+          template_key?: string
         }
         Relationships: []
       }
