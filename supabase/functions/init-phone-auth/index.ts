@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
     console.log("[init-phone-auth] OVH timestamp:", ovhTimestamp);
 
     // Prepare Click2Call request
-    const click2CallUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/line/${ovhPhoneNumber}/click2Call`;
+    const click2CallUrl = `https://eu.api.ovh.com/1.0/telephony/${billingAccount}/service/${ovhPhoneNumber}/click2Call`;
     const click2CallBody = JSON.stringify({
       calledNumber: normalizedPhone,
       // intercom: true, // Call without waiting for answer
