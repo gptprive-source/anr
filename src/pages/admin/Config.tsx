@@ -1038,7 +1038,7 @@ const Config = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <Label>Tarif par livraison directe au destinataire (€)</Label>
+                  <Label>Tarif par preuve de passage chez le destinataire (€)</Label>
                   <div className="flex items-center gap-4">
                     <Input
                       type="number"
@@ -1048,9 +1048,30 @@ const Config = () => {
                       placeholder="0.25"
                       className="w-32"
                     />
-                    <span className="text-sm text-muted-foreground">€ / livraison directe</span>
+                    <span className="text-sm text-muted-foreground">€ / passage destinataire</span>
                     {hasChanges('carrier_rate_per_direct_delivery') && (
                       <Button size="sm" onClick={() => saveConfig('carrier_rate_per_direct_delivery')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Tarif par preuve de retrait au relais colis (€)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={getValue('carrier_rate_per_relay_pickup') || 0.20}
+                      onChange={(e) => setLocalValue('carrier_rate_per_relay_pickup', parseFloat(e.target.value))}
+                      placeholder="0.20"
+                      className="w-32"
+                    />
+                    <span className="text-sm text-muted-foreground">€ / retrait relais</span>
+                    {hasChanges('carrier_rate_per_relay_pickup') && (
+                      <Button size="sm" onClick={() => saveConfig('carrier_rate_per_relay_pickup')} disabled={isUpdating}>
                         <Save className="w-4 h-4 mr-2" />
                         Enregistrer
                       </Button>
@@ -1095,7 +1116,28 @@ const Config = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <Label>Rémunération par colis traité (€)</Label>
+                  <Label>Tarif par colis déposé (€)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={getValue('relay_rate_per_deposit') || 0.50}
+                      onChange={(e) => setLocalValue('relay_rate_per_deposit', parseFloat(e.target.value))}
+                      placeholder="0.50"
+                      className="w-32"
+                    />
+                    <span className="text-sm text-muted-foreground">€ / dépôt</span>
+                    {hasChanges('relay_rate_per_deposit') && (
+                      <Button size="sm" onClick={() => saveConfig('relay_rate_per_deposit')} disabled={isUpdating}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Tarif par colis remis au destinataire (€)</Label>
                   <div className="flex items-center gap-4">
                     <Input
                       type="number"
@@ -1105,7 +1147,7 @@ const Config = () => {
                       placeholder="1.50"
                       className="w-32"
                     />
-                    <span className="text-sm text-muted-foreground">€ / colis</span>
+                    <span className="text-sm text-muted-foreground">€ / remise</span>
                     {hasChanges('relay_rate_per_parcel') && (
                       <Button size="sm" onClick={() => saveConfig('relay_rate_per_parcel')} disabled={isUpdating}>
                         <Save className="w-4 h-4 mr-2" />
