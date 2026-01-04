@@ -145,6 +145,7 @@ const RelayRegistration = () => {
     // Step 2 - Basic info
     display_name: '',
     phone: '',
+    relay_address: '',
     max_capacity: 10,
     // Step 3 - KYC Professional
     company_name: '',
@@ -170,7 +171,7 @@ const RelayRegistration = () => {
   const ratePickup = parseFloat(getConfig('relay_rate_per_parcel')) || 0.50;
   const rateTotal = rateDeposit + ratePickup;
 
-  // Fetch user's ANR
+  // Fetch user's ANR and pre-fill address
   useEffect(() => {
     const fetchUserAnr = async () => {
       if (!user?.id) return;
@@ -185,7 +186,12 @@ const RelayRegistration = () => {
       if (data?.habitations) {
         const hab = data.habitations as any;
         setAnrId(hab.anr_id);
-        setAnrAddress(hab.anrs?.address || null);
+        const address = hab.anrs?.address || null;
+        setAnrAddress(address);
+        // Pre-fill relay_address with ANR address
+        if (address && !formData.relay_address) {
+          setFormData(prev => ({ ...prev, relay_address: address }));
+        }
       }
     };
 
@@ -270,6 +276,10 @@ const RelayRegistration = () => {
         }
         return true;
       case 1: // Info
+        if (!formData.relay_address.trim()) {
+          toast.error('Veuillez confirmer l\'adresse du point relais');
+          return false;
+        }
         if (!formData.display_name.trim()) {
           toast.error('Veuillez entrer un nom d\'affichage');
           return false;
@@ -331,6 +341,7 @@ const RelayRegistration = () => {
         anr_id: anrId,
         display_name: formData.display_name,
         phone: formData.phone || undefined,
+        relay_address: formData.relay_address || undefined,
         max_capacity: formData.max_capacity,
         accepted_parcel_types: formData.accepted_parcel_types,
         availability_schedule: formData.availability_schedule,
@@ -453,12 +464,6 @@ const RelayRegistration = () => {
                   <MapPin className="w-5 h-5" />
                   Informations du relais
                 </CardTitle>
-                {anrAddress && (
-                  <CardDescription className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-500" />
-                    Adresse ANR : {anrAddress}
-                  </CardDescription>
-                )}
                 {!anrAddress && (
                   <CardDescription className="text-destructive">
                     Vous devez d'abord avoir une habitation ANR validée pour devenir relais.
@@ -466,6 +471,27 @@ const RelayRegistration = () => {
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="relay_address">Adresse du point relais *</Label>
+                  <Input
+                    id="relay_address"
+                    placeholder="123 rue de la Livraison, 75001 Paris"
+                    value={formData.relay_address}
+                    onChange={(e) => setFormData(prev => ({ ...prev, relay_address: e.target.value }))}
+                    required
+                  />
+                  {anrAddress && formData.relay_address !== anrAddress && (
+                    <p className="text-xs text-amber-600">
+                      ⚠️ Différente de votre adresse ANR ({anrAddress})
+                    </p>
+                  )}
+                  {anrAddress && formData.relay_address === anrAddress && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Check className="w-3 h-3 text-green-500" /> Identique à votre adresse ANR
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="display_name">Nom d'affichage *</Label>
                   <Input

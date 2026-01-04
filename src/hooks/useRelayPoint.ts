@@ -55,6 +55,7 @@ export interface CreateRelayPointData {
   accepted_parcel_types?: string[];
   availability_schedule?: Record<string, { from: string; to: string }>;
   iban?: string;
+  relay_address?: string;
   // New KYC fields
   relay_type?: RelayType;
   company_name?: string;

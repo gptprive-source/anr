@@ -3045,6 +3045,7 @@ export type Database = {
           pickup_earnings: number | null
           rate_per_deposit: number | null
           rate_per_pickup: number | null
+          relay_address: string | null
           relay_type: Database["public"]["Enums"]["relay_type"] | null
           siret: string | null
           status: Database["public"]["Enums"]["relay_status"] | null
@@ -3085,6 +3086,7 @@ export type Database = {
           pickup_earnings?: number | null
           rate_per_deposit?: number | null
           rate_per_pickup?: number | null
+          relay_address?: string | null
           relay_type?: Database["public"]["Enums"]["relay_type"] | null
           siret?: string | null
           status?: Database["public"]["Enums"]["relay_status"] | null
@@ -3125,6 +3127,7 @@ export type Database = {
           pickup_earnings?: number | null
           rate_per_deposit?: number | null
           rate_per_pickup?: number | null
+          relay_address?: string | null
           relay_type?: Database["public"]["Enums"]["relay_type"] | null
           siret?: string | null
           status?: Database["public"]["Enums"]["relay_status"] | null
