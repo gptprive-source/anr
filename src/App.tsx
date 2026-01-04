@@ -59,6 +59,9 @@ import DeviceAuth from "./pages/DeviceAuth";
 // Relay pages
 import RelayDashboard from "./pages/relay/RelayDashboard";
 import RelayRegistration from "./pages/relay/RelayRegistration";
+import RelayContract from "./pages/relay/Contract";
+import RelayTraining from "./pages/relay/Training";
+import RelayEarnings from "./pages/relay/Earnings";
 import ParcelScan from "./pages/relay/ParcelScan";
 
 // Carrier pages
@@ -192,6 +195,9 @@ const AppContent = () => {
           {/* Relay Routes - protected by feature flag */}
           <Route path="/relay" element={<ProtectedRoute><FeatureFlagRoute flagKey="relayModuleEnabled"><RelayDashboard /></FeatureFlagRoute></ProtectedRoute>} />
           <Route path="/relay/register" element={<ProtectedRoute><FeatureFlagRoute flagKey="relayModuleEnabled"><RelayRegistration /></FeatureFlagRoute></ProtectedRoute>} />
+          <Route path="/relay/contract" element={<ProtectedRoute><FeatureFlagRoute flagKey="relayModuleEnabled"><RelayContract /></FeatureFlagRoute></ProtectedRoute>} />
+          <Route path="/relay/training" element={<ProtectedRoute><FeatureFlagRoute flagKey="relayModuleEnabled"><RelayTraining /></FeatureFlagRoute></ProtectedRoute>} />
+          <Route path="/relay/earnings" element={<ProtectedRoute><FeatureFlagRoute flagKey="relayModuleEnabled"><RelayEarnings /></FeatureFlagRoute></ProtectedRoute>} />
           <Route path="/relay/scan" element={<ProtectedRoute><FeatureFlagRoute flagKey="relayModuleEnabled"><ParcelScan /></FeatureFlagRoute></ProtectedRoute>} />
 
           {/* Carrier Routes - protected by feature flag */}
