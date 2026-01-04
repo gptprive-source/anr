@@ -3056,6 +3056,9 @@ export type Database = {
           total_parcels_handled: number | null
           training_completed_at: string | null
           training_score: number | null
+          unsubscribe_effective_at: string | null
+          unsubscribe_reason: string | null
+          unsubscribe_requested_at: string | null
           updated_at: string | null
           user_id: string
           verified_at: string | null
@@ -3097,6 +3100,9 @@ export type Database = {
           total_parcels_handled?: number | null
           training_completed_at?: string | null
           training_score?: number | null
+          unsubscribe_effective_at?: string | null
+          unsubscribe_reason?: string | null
+          unsubscribe_requested_at?: string | null
           updated_at?: string | null
           user_id: string
           verified_at?: string | null
@@ -3138,6 +3144,9 @@ export type Database = {
           total_parcels_handled?: number | null
           training_completed_at?: string | null
           training_score?: number | null
+          unsubscribe_effective_at?: string | null
+          unsubscribe_reason?: string | null
+          unsubscribe_requested_at?: string | null
           updated_at?: string | null
           user_id?: string
           verified_at?: string | null

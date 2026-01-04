@@ -45,6 +45,11 @@ export interface RelayPoint {
   suspended_at: string | null;
   suspended_reason: string | null;
   suspended_by: string | null;
+  // Unsubscription fields
+  unsubscribe_requested_at: string | null;
+  unsubscribe_effective_at: string | null;
+  unsubscribe_reason: string | null;
+  relay_address: string | null;
 }
 
 export interface CreateRelayPointData {
@@ -87,6 +92,9 @@ export const useRelayPoint = () => {
       return data ? {
         ...data,
         availability_schedule: (data.availability_schedule || {}) as Record<string, { from: string; to: string }>,
+        unsubscribe_requested_at: data.unsubscribe_requested_at || null,
+        unsubscribe_effective_at: data.unsubscribe_effective_at || null,
+        unsubscribe_reason: data.unsubscribe_reason || null,
       } as RelayPoint : null;
     },
     enabled: !!user?.id,
@@ -253,6 +261,51 @@ export const useRelayPoint = () => {
     },
   });
 
+  // Request unsubscription with 30 days notice
+  const requestUnsubscription = useMutation({
+    mutationFn: async (reason: string) => {
+      if (!relayPoint?.id) throw new Error('Point relais non trouvé');
+
+      const now = new Date();
+      const effectiveDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+
+      const { error } = await supabase
+        .from('relay_points')
+        .update({ 
+          unsubscribe_requested_at: now.toISOString(),
+          unsubscribe_effective_at: effectiveDate.toISOString(),
+          unsubscribe_reason: reason,
+        })
+        .eq('id', relayPoint.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['relay_point'] });
+    },
+  });
+
+  // Cancel unsubscription request
+  const cancelUnsubscription = useMutation({
+    mutationFn: async () => {
+      if (!relayPoint?.id) throw new Error('Point relais non trouvé');
+
+      const { error } = await supabase
+        .from('relay_points')
+        .update({ 
+          unsubscribe_requested_at: null,
+          unsubscribe_effective_at: null,
+          unsubscribe_reason: null,
+        })
+        .eq('id', relayPoint.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['relay_point'] });
+    },
+  });
+
   return {
     relayPoint,
     activeRelayPoints,
@@ -261,8 +314,10 @@ export const useRelayPoint = () => {
     createRelayPoint: createRelayPoint.mutateAsync,
     updateRelayPoint: updateRelayPoint.mutateAsync,
     toggleActive: toggleActive.mutateAsync,
+    requestUnsubscription: requestUnsubscription.mutateAsync,
+    cancelUnsubscription: cancelUnsubscription.mutateAsync,
     isCreating: createRelayPoint.isPending,
-    isUpdating: updateRelayPoint.isPending,
+    isUpdating: updateRelayPoint.isPending || requestUnsubscription.isPending || cancelUnsubscription.isPending,
     refetch,
   };
 };
