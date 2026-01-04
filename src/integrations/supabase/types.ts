@@ -2782,6 +2782,190 @@ export type Database = {
           },
         ]
       }
+      relay_contracts: {
+        Row: {
+          accepted_terms: Json | null
+          contract_html: string
+          contract_template_id: string | null
+          contract_version: number
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          relay_point_id: string
+          signature_hash: string | null
+          signed_at: string
+          signer_ip: string | null
+          signer_user_agent: string | null
+          superseded_by: string | null
+        }
+        Insert: {
+          accepted_terms?: Json | null
+          contract_html: string
+          contract_template_id?: string | null
+          contract_version?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          relay_point_id: string
+          signature_hash?: string | null
+          signed_at?: string
+          signer_ip?: string | null
+          signer_user_agent?: string | null
+          superseded_by?: string | null
+        }
+        Update: {
+          accepted_terms?: Json | null
+          contract_html?: string
+          contract_template_id?: string | null
+          contract_version?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          relay_point_id?: string
+          signature_hash?: string | null
+          signed_at?: string
+          signer_ip?: string | null
+          signer_user_agent?: string | null
+          superseded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relay_contracts_relay_point_id_fkey"
+            columns: ["relay_point_id"]
+            isOneToOne: false
+            referencedRelation: "relay_points"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relay_contracts_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "relay_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      relay_disputes: {
+        Row: {
+          created_at: string | null
+          description: string
+          dispute_type: string
+          id: string
+          opened_by: string
+          parcel_id: string | null
+          relay_point_id: string
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          dispute_type: string
+          id?: string
+          opened_by: string
+          parcel_id?: string | null
+          relay_point_id: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          dispute_type?: string
+          id?: string
+          opened_by?: string
+          parcel_id?: string | null
+          relay_point_id?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relay_disputes_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "parcels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relay_disputes_relay_point_id_fkey"
+            columns: ["relay_point_id"]
+            isOneToOne: false
+            referencedRelation: "relay_points"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      relay_earnings: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          parcel_id: string | null
+          payout_id: string | null
+          proof_id: string | null
+          relay_point_id: string
+          status: string
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          parcel_id?: string | null
+          payout_id?: string | null
+          proof_id?: string | null
+          relay_point_id: string
+          status?: string
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          parcel_id?: string | null
+          payout_id?: string | null
+          proof_id?: string | null
+          relay_point_id?: string
+          status?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relay_earnings_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "parcels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relay_earnings_proof_id_fkey"
+            columns: ["proof_id"]
+            isOneToOne: false
+            referencedRelation: "parcel_proofs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relay_earnings_relay_point_id_fkey"
+            columns: ["relay_point_id"]
+            isOneToOne: false
+            referencedRelation: "relay_points"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       relay_payouts: {
         Row: {
           amount: number
@@ -2838,21 +3022,39 @@ export type Database = {
       relay_points: {
         Row: {
           accepted_parcel_types: string[] | null
+          address_proof_url: string | null
           anr_id: string
           availability_schedule: Json | null
           average_rating: number | null
+          company_name: string | null
+          contract_signed_at: string | null
           created_at: string | null
           current_capacity: number
+          deposit_earnings: number | null
           display_name: string
           iban: string | null
           id: string
+          id_document_url: string | null
           is_active: boolean | null
           is_verified: boolean | null
+          legal_form: string | null
+          legal_representative_name: string | null
           max_capacity: number
           pending_earnings: number | null
           phone: string | null
+          pickup_earnings: number | null
+          rate_per_deposit: number | null
+          rate_per_pickup: number | null
+          relay_type: Database["public"]["Enums"]["relay_type"] | null
+          siret: string | null
+          status: Database["public"]["Enums"]["relay_status"] | null
+          suspended_at: string | null
+          suspended_by: string | null
+          suspended_reason: string | null
           total_earnings: number | null
           total_parcels_handled: number | null
+          training_completed_at: string | null
+          training_score: number | null
           updated_at: string | null
           user_id: string
           verified_at: string | null
@@ -2860,21 +3062,39 @@ export type Database = {
         }
         Insert: {
           accepted_parcel_types?: string[] | null
+          address_proof_url?: string | null
           anr_id: string
           availability_schedule?: Json | null
           average_rating?: number | null
+          company_name?: string | null
+          contract_signed_at?: string | null
           created_at?: string | null
           current_capacity?: number
+          deposit_earnings?: number | null
           display_name: string
           iban?: string | null
           id?: string
+          id_document_url?: string | null
           is_active?: boolean | null
           is_verified?: boolean | null
+          legal_form?: string | null
+          legal_representative_name?: string | null
           max_capacity?: number
           pending_earnings?: number | null
           phone?: string | null
+          pickup_earnings?: number | null
+          rate_per_deposit?: number | null
+          rate_per_pickup?: number | null
+          relay_type?: Database["public"]["Enums"]["relay_type"] | null
+          siret?: string | null
+          status?: Database["public"]["Enums"]["relay_status"] | null
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspended_reason?: string | null
           total_earnings?: number | null
           total_parcels_handled?: number | null
+          training_completed_at?: string | null
+          training_score?: number | null
           updated_at?: string | null
           user_id: string
           verified_at?: string | null
@@ -2882,21 +3102,39 @@ export type Database = {
         }
         Update: {
           accepted_parcel_types?: string[] | null
+          address_proof_url?: string | null
           anr_id?: string
           availability_schedule?: Json | null
           average_rating?: number | null
+          company_name?: string | null
+          contract_signed_at?: string | null
           created_at?: string | null
           current_capacity?: number
+          deposit_earnings?: number | null
           display_name?: string
           iban?: string | null
           id?: string
+          id_document_url?: string | null
           is_active?: boolean | null
           is_verified?: boolean | null
+          legal_form?: string | null
+          legal_representative_name?: string | null
           max_capacity?: number
           pending_earnings?: number | null
           phone?: string | null
+          pickup_earnings?: number | null
+          rate_per_deposit?: number | null
+          rate_per_pickup?: number | null
+          relay_type?: Database["public"]["Enums"]["relay_type"] | null
+          siret?: string | null
+          status?: Database["public"]["Enums"]["relay_status"] | null
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspended_reason?: string | null
           total_earnings?: number | null
           total_parcels_handled?: number | null
+          training_completed_at?: string | null
+          training_score?: number | null
           updated_at?: string | null
           user_id?: string
           verified_at?: string | null
@@ -4044,6 +4282,15 @@ export type Database = {
         | "informatique"
         | "collectivites"
       message_status: "new" | "read" | "in_progress" | "resolved"
+      relay_status:
+        | "draft"
+        | "identity_verified"
+        | "contract_signed"
+        | "anr_assigned"
+        | "training_validated"
+        | "active"
+        | "suspended"
+      relay_type: "professional" | "individual"
       resident_status: "pending" | "verified" | "inactive"
       sender_type: "particulier" | "societe" | "collectivites"
     }
@@ -4185,6 +4432,16 @@ export const Constants = {
         "collectivites",
       ],
       message_status: ["new", "read", "in_progress", "resolved"],
+      relay_status: [
+        "draft",
+        "identity_verified",
+        "contract_signed",
+        "anr_assigned",
+        "training_validated",
+        "active",
+        "suspended",
+      ],
+      relay_type: ["professional", "individual"],
       resident_status: ["pending", "verified", "inactive"],
       sender_type: ["particulier", "societe", "collectivites"],
     },

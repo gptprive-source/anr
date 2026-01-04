@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
+export type RelayStatus = 'draft' | 'identity_verified' | 'contract_signed' | 'anr_assigned' | 'training_validated' | 'active' | 'suspended';
+export type RelayType = 'professional' | 'individual';
+
 export interface RelayPoint {
   id: string;
   user_id: string;
@@ -22,6 +25,25 @@ export interface RelayPoint {
   average_rating: number | null;
   created_at: string;
   updated_at: string;
+  // New fields from machine state migration
+  status: RelayStatus;
+  relay_type: RelayType;
+  company_name: string | null;
+  legal_form: string | null;
+  siret: string | null;
+  legal_representative_name: string | null;
+  id_document_url: string | null;
+  address_proof_url: string | null;
+  contract_signed_at: string | null;
+  training_completed_at: string | null;
+  training_score: number | null;
+  deposit_earnings: number;
+  pickup_earnings: number;
+  rate_per_deposit: number;
+  rate_per_pickup: number;
+  suspended_at: string | null;
+  suspended_reason: string | null;
+  suspended_by: string | null;
 }
 
 export interface CreateRelayPointData {
@@ -32,6 +54,14 @@ export interface CreateRelayPointData {
   accepted_parcel_types?: string[];
   availability_schedule?: Record<string, { from: string; to: string }>;
   iban?: string;
+  // New KYC fields
+  relay_type?: RelayType;
+  company_name?: string;
+  legal_form?: string;
+  siret?: string;
+  legal_representative_name?: string;
+  id_document_url?: string;
+  address_proof_url?: string;
 }
 
 export const useRelayPoint = () => {
