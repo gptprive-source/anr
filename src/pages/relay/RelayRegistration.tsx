@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Building2, User, Package, Clock, MapPin, CreditCard, Check, Square, CheckSquare, Upload, FileText, Loader2, X, Eye } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, User, Package, Clock, MapPin, CreditCard, Check, Square, CheckSquare, Upload, FileText, Loader2, X, Eye, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -280,6 +280,10 @@ const RelayRegistration = () => {
           toast.error('Veuillez confirmer l\'adresse du point relais');
           return false;
         }
+        if (anrAddress && formData.relay_address.trim() !== anrAddress) {
+          toast.error('L\'adresse du relais doit correspondre à votre adresse ANR. Pour une autre adresse, vous devez d\'abord avoir un ANR valide avec abonnement à cette adresse.');
+          return false;
+        }
         if (!formData.display_name.trim()) {
           toast.error('Veuillez entrer un nom d\'affichage');
           return false;
@@ -480,10 +484,28 @@ const RelayRegistration = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, relay_address: e.target.value }))}
                     required
                   />
-                  {anrAddress && formData.relay_address !== anrAddress && (
-                    <p className="text-xs text-amber-600">
-                      ⚠️ Différente de votre adresse ANR ({anrAddress})
-                    </p>
+                  {anrAddress && formData.relay_address && formData.relay_address.trim() !== '' && formData.relay_address !== anrAddress && (
+                    <Card className="mt-3 border-amber-500/50 bg-amber-50 dark:bg-amber-900/20">
+                      <CardContent className="pt-4">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <div className="space-y-2">
+                            <p className="font-medium text-amber-800 dark:text-amber-300">
+                              Adresse différente de votre ANR
+                            </p>
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
+                              Votre adresse ANR actuelle : <span className="font-medium">{anrAddress}</span>
+                            </p>
+                            <p className="text-sm text-amber-700 dark:text-amber-400">
+                              Pour devenir relais à une adresse différente, vous devez disposer d'un <span className="font-semibold">ANR valide avec un abonnement actif</span> à cette nouvelle adresse.
+                            </p>
+                            <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                              Si vous souhaitez changer d'adresse relais, veuillez d'abord créer un compte ANR à la nouvelle adresse, puis vous désinscrire de votre relais actuel (préavis de 30 jours requis).
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   )}
                   {anrAddress && formData.relay_address === anrAddress && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
