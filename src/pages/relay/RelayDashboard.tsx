@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Euro, Clock, QrCode, Users, TrendingUp, Power, AlertCircle, CheckCircle, Settings, FileSignature, GraduationCap, ArrowRight, Loader2, UserX, Calendar, X } from "lucide-react";
+import { ArrowLeft, Package, Euro, Clock, QrCode, Users, TrendingUp, Power, AlertCircle, CheckCircle, Settings, FileSignature, GraduationCap, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,21 +10,8 @@ import { toast } from "sonner";
 import { useRelayPoint, RelayStatus } from "@/hooks/useRelayPoint";
 import { useParcels } from "@/hooks/useParcels";
 import BottomNav from "@/components/layout/BottomNav";
-import { format, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 
 const STATUS_STEPS: { status: RelayStatus; label: string; icon: React.ReactNode }[] = [
   { status: 'draft', label: 'Inscription', icon: <Package className="w-4 h-4" /> },
@@ -42,11 +29,8 @@ const getStatusIndex = (status: RelayStatus): number => {
 
 const RelayDashboard = () => {
   const navigate = useNavigate();
-  const { relayPoint, isLoading, toggleActive, requestUnsubscription, cancelUnsubscription, isUpdating } = useRelayPoint();
+  const { relayPoint, isLoading, toggleActive, isUpdating } = useRelayPoint();
   const { relayParcels, pendingCount } = useParcels({ relayPointId: relayPoint?.id });
-  
-  const [unsubscribeReason, setUnsubscribeReason] = useState("");
-  const [showUnsubscribeDialog, setShowUnsubscribeDialog] = useState(false);
 
   if (isLoading) {
     return (
@@ -94,26 +78,6 @@ const RelayDashboard = () => {
       toast.success(relayPoint.is_active ? 'Point relais désactivé' : 'Point relais activé');
     } catch (error) {
       toast.error('Erreur lors de la modification');
-    }
-  };
-
-  const handleRequestUnsubscription = async () => {
-    try {
-      await requestUnsubscription(unsubscribeReason);
-      setShowUnsubscribeDialog(false);
-      setUnsubscribeReason("");
-      toast.success('Demande de désinscription enregistrée. Elle prendra effet dans 30 jours.');
-    } catch (error) {
-      toast.error('Erreur lors de la demande de désinscription');
-    }
-  };
-
-  const handleCancelUnsubscription = async () => {
-    try {
-      await cancelUnsubscription();
-      toast.success('Demande de désinscription annulée');
-    } catch (error) {
-      toast.error('Erreur lors de l\'annulation');
     }
   };
 
@@ -407,108 +371,6 @@ const RelayDashboard = () => {
                 </Button>
               </CardContent>
             </Card>
-
-            {/* Unsubscription Card */}
-            {relayPoint.unsubscribe_requested_at ? (
-              <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-900/20">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center gap-2 text-amber-800 dark:text-amber-300">
-                    <Calendar className="w-5 h-5" />
-                    Désinscription en cours
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-sm text-amber-700 dark:text-amber-400">
-                      Votre demande de désinscription a été enregistrée le{' '}
-                      <span className="font-medium">
-                        {format(new Date(relayPoint.unsubscribe_requested_at), 'dd MMMM yyyy', { locale: fr })}
-                      </span>
-                    </p>
-                    {relayPoint.unsubscribe_effective_at && (
-                      <p className="text-sm text-amber-700 dark:text-amber-400">
-                        Elle prendra effet le{' '}
-                        <span className="font-semibold">
-                          {format(new Date(relayPoint.unsubscribe_effective_at), 'dd MMMM yyyy', { locale: fr })}
-                        </span>
-                        {' '}({differenceInDays(new Date(relayPoint.unsubscribe_effective_at), new Date())} jours restants)
-                      </p>
-                    )}
-                    {relayPoint.unsubscribe_reason && (
-                      <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
-                        Motif : {relayPoint.unsubscribe_reason}
-                      </p>
-                    )}
-                  </div>
-                  <p className="text-xs text-amber-600 dark:text-amber-500">
-                    Vous devez continuer à gérer les colis en attente pendant cette période.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    className="w-full border-amber-600 text-amber-800 hover:bg-amber-100"
-                    onClick={handleCancelUnsubscription}
-                    disabled={isUpdating}
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Annuler ma désinscription
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center gap-2 text-muted-foreground">
-                    <UserX className="w-5 h-5" />
-                    Se désinscrire
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Vous pouvez vous désinscrire en tant que point relais à tout moment. Un préavis de <span className="font-semibold">30 jours</span> est requis pour ne pas perturber les livraisons en cours.
-                  </p>
-                  <AlertDialog open={showUnsubscribeDialog} onOpenChange={setShowUnsubscribeDialog}>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/10">
-                        <UserX className="w-4 h-4 mr-2" />
-                        Demander ma désinscription
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmer la désinscription</AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-3">
-                          <p>
-                            Êtes-vous sûr de vouloir vous désinscrire en tant que point relais ?
-                          </p>
-                          <p className="text-amber-600 font-medium">
-                            Un préavis de 30 jours est requis. Vous devrez continuer à gérer les colis en attente pendant cette période.
-                          </p>
-                          <div className="space-y-2 mt-4">
-                            <Label htmlFor="unsubscribe-reason">Motif (optionnel)</Label>
-                            <Textarea
-                              id="unsubscribe-reason"
-                              placeholder="Pourquoi souhaitez-vous vous désinscrire ?"
-                              value={unsubscribeReason}
-                              onChange={(e) => setUnsubscribeReason(e.target.value)}
-                              rows={3}
-                            />
-                          </div>
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={handleRequestUnsubscription}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Confirmer la désinscription
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </CardContent>
-              </Card>
-            )}
           </>
         )}
       </div>

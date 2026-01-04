@@ -33,7 +33,6 @@ export interface RelayPoint {
   siret: string | null;
   legal_representative_name: string | null;
   id_document_url: string | null;
-  id_document_verso_url?: string | null;
   address_proof_url: string | null;
   contract_signed_at: string | null;
   training_completed_at: string | null;
@@ -45,11 +44,6 @@ export interface RelayPoint {
   suspended_at: string | null;
   suspended_reason: string | null;
   suspended_by: string | null;
-  // Unsubscription fields
-  unsubscribe_requested_at: string | null;
-  unsubscribe_effective_at: string | null;
-  unsubscribe_reason: string | null;
-  relay_address: string | null;
 }
 
 export interface CreateRelayPointData {
@@ -60,7 +54,6 @@ export interface CreateRelayPointData {
   accepted_parcel_types?: string[];
   availability_schedule?: Record<string, { from: string; to: string }>;
   iban?: string;
-  relay_address?: string;
   // New KYC fields
   relay_type?: RelayType;
   company_name?: string;
@@ -68,7 +61,6 @@ export interface CreateRelayPointData {
   siret?: string;
   legal_representative_name?: string;
   id_document_url?: string;
-  id_document_verso_url?: string;
   address_proof_url?: string;
 }
 
@@ -92,9 +84,6 @@ export const useRelayPoint = () => {
       return data ? {
         ...data,
         availability_schedule: (data.availability_schedule || {}) as Record<string, { from: string; to: string }>,
-        unsubscribe_requested_at: data.unsubscribe_requested_at || null,
-        unsubscribe_effective_at: data.unsubscribe_effective_at || null,
-        unsubscribe_reason: data.unsubscribe_reason || null,
       } as RelayPoint : null;
     },
     enabled: !!user?.id,
@@ -161,7 +150,7 @@ export const useRelayPoint = () => {
         // Don't throw - relay point was created successfully
       }
 
-      // Notify admin and applicant of new relay application
+      // Notify admin of new relay application
       try {
         // Get ANR address for the notification
         const { data: anrData } = await supabase
@@ -179,7 +168,6 @@ export const useRelayPoint = () => {
 
         const adminEmail = configData?.value ? String(configData.value).replace(/"/g, '') : null;
 
-        // 1. Notify admin
         if (adminEmail) {
           await supabase.functions.invoke('notify-relay-carrier', {
             body: {
@@ -196,23 +184,8 @@ export const useRelayPoint = () => {
             }
           });
         }
-
-        // 2. Send confirmation to the applicant
-        await supabase.functions.invoke('notify-relay-carrier', {
-          body: {
-            type: 'relay_registration_confirmation',
-            data: {
-              user_id: user.id,
-              relay_name: data.display_name,
-              address: anrData?.address || 'Adresse inconnue',
-              relay_type: data.relay_type === 'professional' ? 'Professionnel' : 'Particulier',
-              max_capacity: data.max_capacity || 50,
-              created_at: new Date().toLocaleDateString('fr-FR'),
-            }
-          }
-        });
       } catch (notifyError) {
-        console.error('Error sending notification emails:', notifyError);
+        console.error('Error notifying admin:', notifyError);
         // Don't throw - relay point was created successfully
       }
 
@@ -261,51 +234,6 @@ export const useRelayPoint = () => {
     },
   });
 
-  // Request unsubscription with 30 days notice
-  const requestUnsubscription = useMutation({
-    mutationFn: async (reason: string) => {
-      if (!relayPoint?.id) throw new Error('Point relais non trouvé');
-
-      const now = new Date();
-      const effectiveDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
-
-      const { error } = await supabase
-        .from('relay_points')
-        .update({ 
-          unsubscribe_requested_at: now.toISOString(),
-          unsubscribe_effective_at: effectiveDate.toISOString(),
-          unsubscribe_reason: reason,
-        })
-        .eq('id', relayPoint.id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['relay_point'] });
-    },
-  });
-
-  // Cancel unsubscription request
-  const cancelUnsubscription = useMutation({
-    mutationFn: async () => {
-      if (!relayPoint?.id) throw new Error('Point relais non trouvé');
-
-      const { error } = await supabase
-        .from('relay_points')
-        .update({ 
-          unsubscribe_requested_at: null,
-          unsubscribe_effective_at: null,
-          unsubscribe_reason: null,
-        })
-        .eq('id', relayPoint.id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['relay_point'] });
-    },
-  });
-
   return {
     relayPoint,
     activeRelayPoints,
@@ -314,10 +242,8 @@ export const useRelayPoint = () => {
     createRelayPoint: createRelayPoint.mutateAsync,
     updateRelayPoint: updateRelayPoint.mutateAsync,
     toggleActive: toggleActive.mutateAsync,
-    requestUnsubscription: requestUnsubscription.mutateAsync,
-    cancelUnsubscription: cancelUnsubscription.mutateAsync,
     isCreating: createRelayPoint.isPending,
-    isUpdating: updateRelayPoint.isPending || requestUnsubscription.isPending || cancelUnsubscription.isPending,
+    isUpdating: updateRelayPoint.isPending,
     refetch,
   };
 };

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,19 +21,11 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
+  const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+
   try {
     const { type, data } = await req.json();
     logStep("Processing notification", { type });
-
-    // Validate SMTP configuration
-    const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
-    const smtpUser = Deno.env.get("SMTP_USER");
-    const smtpPass = Deno.env.get("SMTP_PASS");
-
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      throw new Error("SMTP configuration missing (SMTP_HOST, SMTP_USER, SMTP_PASS)");
-    }
 
     // Get company info from config
     const { data: configs } = await supabase
@@ -98,32 +90,15 @@ serve(async (req) => {
       });
     }
 
-    logStep("Sending email via SMTP", { to: recipientEmail, subject });
-
-    // Create SMTP client and send email
-    const client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: true,
-        auth: {
-          username: smtpUser,
-          password: smtpPass,
-        },
-      },
-    });
-
-    await client.send({
-      from: smtpUser,
-      to: recipientEmail,
+    // Send email
+    const emailResult = await resend.emails.send({
+      from: `${companyName} <noreply@${Deno.env.get("RESEND_DOMAIN") || "resend.dev"}>`,
+      to: [recipientEmail],
       subject: subject,
-      content: "auto",
       html: htmlContent,
     });
 
-    await client.close();
-
-    logStep("Email sent successfully", { to: recipientEmail, type });
+    logStep("Email sent", { to: recipientEmail, type });
 
     // Log sent email
     await supabase.from('sent_documents').insert({
@@ -135,7 +110,7 @@ serve(async (req) => {
       metadata: { notification_type: type, ...data }
     });
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, emailId: emailResult.data?.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
 

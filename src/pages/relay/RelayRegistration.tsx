@@ -1,22 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Building2, User, Package, Clock, MapPin, CreditCard, Check, Square, CheckSquare, Upload, FileText, Loader2, X, Eye, AlertCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, User, Package, Clock, MapPin, CreditCard, Check, Square, CheckSquare, Upload, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useRelayPoint } from "@/hooks/useRelayPoint";
-import { useAppConfig } from "@/hooks/useAppConfig";
 import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "@/components/layout/BottomNav";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 
 const PARCEL_TYPES = [
   { id: 'standard', label: 'Standard', description: 'Colis classiques jusqu\'à 30kg' },
@@ -44,100 +39,13 @@ const STEPS = [
 
 type RelayType = 'professional' | 'individual';
 
-// Document upload component with preview
-const DocumentUploadCard = ({ 
-  label, 
-  description, 
-  value, 
-  onChange, 
-  uploading,
-  disabled 
-}: { 
-  label: string;
-  description?: string;
-  value: string;
-  onChange: (file: File) => void;
-  uploading: boolean;
-  disabled?: boolean;
-}) => {
-  const isImage = value && (value.includes('.jpg') || value.includes('.jpeg') || value.includes('.png') || value.includes('.webp'));
-  
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <Label className="text-center text-sm">{label}</Label>
-      <div className="relative w-28 h-28 border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden bg-muted/30 hover:bg-muted/50 transition-colors">
-        {value ? (
-          <>
-            {isImage ? (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <button className="w-full h-full relative group">
-                    <img src={value} alt={label} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Eye className="w-6 h-6 text-white" />
-                    </div>
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl">
-                  <img src={value} alt={label} className="w-full h-auto" />
-                </DialogContent>
-              </Dialog>
-            ) : (
-              <div className="flex flex-col items-center gap-1 text-primary">
-                <FileText className="w-8 h-8" />
-                <span className="text-xs">PDF</span>
-              </div>
-            )}
-            <label className="absolute -bottom-1 -right-1 p-1.5 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90 transition-colors">
-              <Upload className="w-3 h-3" />
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) onChange(file);
-                }}
-                disabled={uploading || disabled}
-                className="hidden"
-              />
-            </label>
-          </>
-        ) : (
-          <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
-            {uploading ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
-              <>
-                <Upload className="w-6 h-6 mb-1" />
-                <span className="text-xs text-center px-2">Ajouter</span>
-              </>
-            )}
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onChange(file);
-              }}
-              disabled={uploading || disabled}
-              className="hidden"
-            />
-          </label>
-        )}
-      </div>
-      {description && <p className="text-xs text-muted-foreground text-center">{description}</p>}
-    </div>
-  );
-};
-
 const RelayRegistration = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { relayPoint, isRelayPoint, createRelayPoint, isCreating } = useRelayPoint();
-  const { getConfig, isLoading: configLoading } = useAppConfig();
   
   const [currentStep, setCurrentStep] = useState(0);
-  const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   
   const [formData, setFormData] = useState({
     // Step 1 - Type
@@ -145,7 +53,6 @@ const RelayRegistration = () => {
     // Step 2 - Basic info
     display_name: '',
     phone: '',
-    relay_address: '',
     max_capacity: 10,
     // Step 3 - KYC Professional
     company_name: '',
@@ -153,8 +60,7 @@ const RelayRegistration = () => {
     siret: '',
     legal_representative_name: '',
     // Step 3 - KYC Common
-    id_document_recto_url: '',
-    id_document_verso_url: '',
+    id_document_url: '',
     address_proof_url: '',
     // Step 4 - Availability
     accepted_parcel_types: ['standard'] as string[],
@@ -166,12 +72,7 @@ const RelayRegistration = () => {
   const [anrId, setAnrId] = useState<string | null>(null);
   const [anrAddress, setAnrAddress] = useState<string | null>(null);
 
-  // Get pricing from app_config
-  const rateDeposit = parseFloat(getConfig('relay_rate_per_deposit')) || 0.50;
-  const ratePickup = parseFloat(getConfig('relay_rate_per_parcel')) || 0.50;
-  const rateTotal = rateDeposit + ratePickup;
-
-  // Fetch user's ANR and pre-fill address
+  // Fetch user's ANR
   useEffect(() => {
     const fetchUserAnr = async () => {
       if (!user?.id) return;
@@ -186,12 +87,7 @@ const RelayRegistration = () => {
       if (data?.habitations) {
         const hab = data.habitations as any;
         setAnrId(hab.anr_id);
-        const address = hab.anrs?.address || null;
-        setAnrAddress(address);
-        // Pre-fill relay_address with ANR address
-        if (address && !formData.relay_address) {
-          setFormData(prev => ({ ...prev, relay_address: address }));
-        }
+        setAnrAddress(hab.anrs?.address || null);
       }
     };
 
@@ -205,10 +101,10 @@ const RelayRegistration = () => {
     }
   }, [isRelayPoint, navigate]);
 
-  const handleFileUpload = async (file: File, field: string) => {
+  const handleFileUpload = async (file: File, field: 'id_document_url' | 'address_proof_url') => {
     if (!user?.id) return;
     
-    setUploadingField(field);
+    setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${field}-${Date.now()}.${fileExt}`;
@@ -229,7 +125,7 @@ const RelayRegistration = () => {
       console.error('Upload error:', error);
       toast.error('Erreur lors de l\'upload');
     } finally {
-      setUploadingField(null);
+      setUploading(false);
     }
   };
 
@@ -276,14 +172,6 @@ const RelayRegistration = () => {
         }
         return true;
       case 1: // Info
-        if (!formData.relay_address.trim()) {
-          toast.error('Veuillez confirmer l\'adresse du point relais');
-          return false;
-        }
-        if (anrAddress && formData.relay_address.trim() !== anrAddress) {
-          toast.error('L\'adresse du relais doit correspondre à votre adresse ANR. Pour une autre adresse, vous devez d\'abord avoir un ANR valide avec abonnement à cette adresse.');
-          return false;
-        }
         if (!formData.display_name.trim()) {
           toast.error('Veuillez entrer un nom d\'affichage');
           return false;
@@ -296,12 +184,8 @@ const RelayRegistration = () => {
             return false;
           }
         }
-        if (!formData.id_document_recto_url || !formData.id_document_verso_url) {
-          toast.error('Veuillez uploader le recto ET le verso de votre pièce d\'identité');
-          return false;
-        }
-        if (!formData.address_proof_url) {
-          toast.error('Veuillez uploader un justificatif d\'adresse');
+        if (!formData.id_document_url || !formData.address_proof_url) {
+          toast.error('Veuillez uploader tous les documents requis');
           return false;
         }
         return true;
@@ -345,19 +229,17 @@ const RelayRegistration = () => {
         anr_id: anrId,
         display_name: formData.display_name,
         phone: formData.phone || undefined,
-        relay_address: formData.relay_address || undefined,
         max_capacity: formData.max_capacity,
         accepted_parcel_types: formData.accepted_parcel_types,
         availability_schedule: formData.availability_schedule,
         iban: formData.iban || undefined,
-        // KYC fields
+        // New fields from migration
         relay_type: formData.relay_type as RelayType,
         company_name: formData.company_name || undefined,
         legal_form: formData.legal_form || undefined,
         siret: formData.siret || undefined,
         legal_representative_name: formData.legal_representative_name || undefined,
-        id_document_url: formData.id_document_recto_url || undefined,
-        id_document_verso_url: formData.id_document_verso_url || undefined,
+        id_document_url: formData.id_document_url || undefined,
         address_proof_url: formData.address_proof_url || undefined,
       });
 
@@ -468,52 +350,11 @@ const RelayRegistration = () => {
                   <MapPin className="w-5 h-5" />
                   Informations du relais
                 </CardTitle>
-                {!anrAddress && (
-                  <CardDescription className="text-destructive">
-                    Vous devez d'abord avoir une habitation ANR validée pour devenir relais.
-                  </CardDescription>
+                {anrAddress && (
+                  <CardDescription>Adresse ANR : {anrAddress}</CardDescription>
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="relay_address">Adresse du point relais *</Label>
-                  <Input
-                    id="relay_address"
-                    placeholder="123 rue de la Livraison, 75001 Paris"
-                    value={formData.relay_address}
-                    onChange={(e) => setFormData(prev => ({ ...prev, relay_address: e.target.value }))}
-                    required
-                  />
-                  {anrAddress && formData.relay_address && formData.relay_address.trim() !== '' && formData.relay_address !== anrAddress && (
-                    <Card className="mt-3 border-amber-500/50 bg-amber-50 dark:bg-amber-900/20">
-                      <CardContent className="pt-4">
-                        <div className="flex items-start gap-3">
-                          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                          <div className="space-y-2">
-                            <p className="font-medium text-amber-800 dark:text-amber-300">
-                              Adresse différente de votre ANR
-                            </p>
-                            <p className="text-sm text-amber-700 dark:text-amber-400">
-                              Votre adresse ANR actuelle : <span className="font-medium">{anrAddress}</span>
-                            </p>
-                            <p className="text-sm text-amber-700 dark:text-amber-400">
-                              Pour devenir relais à une adresse différente, vous devez disposer d'un <span className="font-semibold">ANR valide avec un abonnement actif</span> à cette nouvelle adresse.
-                            </p>
-                            <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
-                              Si vous souhaitez changer d'adresse relais, veuillez d'abord créer un compte ANR à la nouvelle adresse, puis vous désinscrire de votre relais actuel (préavis de 30 jours requis).
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                  {anrAddress && formData.relay_address === anrAddress && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Check className="w-3 h-3 text-green-500" /> Identique à votre adresse ANR
-                    </p>
-                  )}
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="display_name">Nom d'affichage *</Label>
                   <Input
@@ -615,55 +456,59 @@ const RelayRegistration = () => {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  Pièce d'identité *
+                  Documents justificatifs
                 </CardTitle>
                 <CardDescription>
-                  {formData.relay_type === 'professional' 
-                    ? "Pièce d'identité du responsable légal (recto et verso)"
-                    : "Carte d'identité ou passeport en cours de validité (recto et verso)"
-                  }
+                  Ces documents sont nécessaires pour valider votre inscription
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex justify-center gap-6">
-                  <DocumentUploadCard
-                    label="Recto"
-                    value={formData.id_document_recto_url}
-                    onChange={(file) => handleFileUpload(file, 'id_document_recto_url')}
-                    uploading={uploadingField === 'id_document_recto_url'}
-                  />
-                  <DocumentUploadCard
-                    label="Verso"
-                    value={formData.id_document_verso_url}
-                    onChange={(file) => handleFileUpload(file, 'id_document_verso_url')}
-                    uploading={uploadingField === 'id_document_verso_url'}
-                  />
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Pièce d'identité *</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'id_document_url');
+                      }}
+                      disabled={uploading}
+                      className="flex-1"
+                    />
+                    {formData.id_document_url && <Check className="w-5 h-5 text-green-500" />}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.relay_type === 'professional' ? "Pièce d'identité du responsable légal" : "Carte d'identité ou passeport en cours de validité"}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Justificatif d'adresse *
-                </CardTitle>
-                <CardDescription>
-                  {formData.relay_type === 'professional' 
-                    ? "Justificatif d'adresse du local (facture, bail...)"
-                    : "Facture de moins de 3 mois ou avis d'imposition"
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-center">
-                  <DocumentUploadCard
-                    label="Document"
-                    value={formData.address_proof_url}
-                    onChange={(file) => handleFileUpload(file, 'address_proof_url')}
-                    uploading={uploadingField === 'address_proof_url'}
-                  />
+                <div className="space-y-2">
+                  <Label>Justificatif d'adresse *</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, 'address_proof_url');
+                      }}
+                      disabled={uploading}
+                      className="flex-1"
+                    />
+                    {formData.address_proof_url && <Check className="w-5 h-5 text-green-500" />}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.relay_type === 'professional' ? "Justificatif d'adresse du local (facture, bail...)" : "Facture de moins de 3 mois ou avis d'imposition"}
+                  </p>
                 </div>
+
+                {uploading && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Upload en cours...</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -770,8 +615,8 @@ const RelayRegistration = () => {
                   <div>
                     <h3 className="font-semibold text-green-800 dark:text-green-300">Rémunération</h3>
                     <p className="text-sm text-green-700 dark:text-green-400 mt-1">
-                      Vous gagnez <strong>{rateDeposit.toFixed(2)} €</strong> par dépôt et <strong>{ratePickup.toFixed(2)} €</strong> par retrait.
-                      <br />Soit <strong>{rateTotal.toFixed(2)} € par colis complet</strong>.
+                      Vous gagnez <strong>0,50 €</strong> par dépôt et <strong>0,50 €</strong> par retrait.
+                      <br />Soit <strong>1,00 € par colis complet</strong>.
                     </p>
                     <p className="text-sm text-green-700 dark:text-green-400 mt-2">
                       Paiement mensuel automatique par virement SEPA.
