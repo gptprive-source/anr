@@ -1,0 +1,1 @@
+DELETE FROM relay_points WHERE id = 'feb15c18-b830-48a3-9d62-c621de7861fc';
