@@ -120,6 +120,45 @@ export const useRelayPoint = () => {
         // Don't throw - relay point was created successfully
       }
 
+      // Notify admin of new relay application
+      try {
+        // Get ANR address for the notification
+        const { data: anrData } = await supabase
+          .from('anrs')
+          .select('address')
+          .eq('id', data.anr_id)
+          .single();
+
+        // Get admin email from config
+        const { data: configData } = await supabase
+          .from('app_config')
+          .select('value')
+          .eq('key', 'support_email')
+          .single();
+
+        const adminEmail = configData?.value ? String(configData.value).replace(/"/g, '') : null;
+
+        if (adminEmail) {
+          await supabase.functions.invoke('notify-relay-carrier', {
+            body: {
+              type: 'relay_application_received',
+              data: {
+                email: adminEmail,
+                relay_name: data.display_name,
+                phone: data.phone || 'Non renseigné',
+                address: anrData?.address || 'Adresse inconnue',
+                max_capacity: data.max_capacity || 50,
+                created_at: new Date().toLocaleDateString('fr-FR'),
+                dashboard_url: `${window.location.origin}/admin/relay`,
+              }
+            }
+          });
+        }
+      } catch (notifyError) {
+        console.error('Error notifying admin:', notifyError);
+        // Don't throw - relay point was created successfully
+      }
+
       return result;
     },
     onSuccess: () => {
