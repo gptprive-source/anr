@@ -33,6 +33,7 @@ export interface RelayPoint {
   siret: string | null;
   legal_representative_name: string | null;
   id_document_url: string | null;
+  id_document_verso_url?: string | null;
   address_proof_url: string | null;
   contract_signed_at: string | null;
   training_completed_at: string | null;
@@ -61,6 +62,7 @@ export interface CreateRelayPointData {
   siret?: string;
   legal_representative_name?: string;
   id_document_url?: string;
+  id_document_verso_url?: string;
   address_proof_url?: string;
 }
 
@@ -150,7 +152,7 @@ export const useRelayPoint = () => {
         // Don't throw - relay point was created successfully
       }
 
-      // Notify admin of new relay application
+      // Notify admin and applicant of new relay application
       try {
         // Get ANR address for the notification
         const { data: anrData } = await supabase
@@ -168,6 +170,7 @@ export const useRelayPoint = () => {
 
         const adminEmail = configData?.value ? String(configData.value).replace(/"/g, '') : null;
 
+        // 1. Notify admin
         if (adminEmail) {
           await supabase.functions.invoke('notify-relay-carrier', {
             body: {
@@ -184,8 +187,23 @@ export const useRelayPoint = () => {
             }
           });
         }
+
+        // 2. Send confirmation to the applicant
+        await supabase.functions.invoke('notify-relay-carrier', {
+          body: {
+            type: 'relay_registration_confirmation',
+            data: {
+              user_id: user.id,
+              relay_name: data.display_name,
+              address: anrData?.address || 'Adresse inconnue',
+              relay_type: data.relay_type === 'professional' ? 'Professionnel' : 'Particulier',
+              max_capacity: data.max_capacity || 50,
+              created_at: new Date().toLocaleDateString('fr-FR'),
+            }
+          }
+        });
       } catch (notifyError) {
-        console.error('Error notifying admin:', notifyError);
+        console.error('Error sending notification emails:', notifyError);
         // Don't throw - relay point was created successfully
       }
 
