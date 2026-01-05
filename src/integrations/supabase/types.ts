@@ -3045,6 +3045,7 @@ export type Database = {
           pickup_earnings: number | null
           rate_per_deposit: number | null
           rate_per_pickup: number | null
+          relay_address: string | null
           relay_type: Database["public"]["Enums"]["relay_type"] | null
           siret: string | null
           status: Database["public"]["Enums"]["relay_status"] | null
@@ -3055,6 +3056,9 @@ export type Database = {
           total_parcels_handled: number | null
           training_completed_at: string | null
           training_score: number | null
+          unsubscribe_effective_at: string | null
+          unsubscribe_reason: string | null
+          unsubscribe_requested_at: string | null
           updated_at: string | null
           user_id: string
           verified_at: string | null
@@ -3085,6 +3089,7 @@ export type Database = {
           pickup_earnings?: number | null
           rate_per_deposit?: number | null
           rate_per_pickup?: number | null
+          relay_address?: string | null
           relay_type?: Database["public"]["Enums"]["relay_type"] | null
           siret?: string | null
           status?: Database["public"]["Enums"]["relay_status"] | null
@@ -3095,6 +3100,9 @@ export type Database = {
           total_parcels_handled?: number | null
           training_completed_at?: string | null
           training_score?: number | null
+          unsubscribe_effective_at?: string | null
+          unsubscribe_reason?: string | null
+          unsubscribe_requested_at?: string | null
           updated_at?: string | null
           user_id: string
           verified_at?: string | null
@@ -3125,6 +3133,7 @@ export type Database = {
           pickup_earnings?: number | null
           rate_per_deposit?: number | null
           rate_per_pickup?: number | null
+          relay_address?: string | null
           relay_type?: Database["public"]["Enums"]["relay_type"] | null
           siret?: string | null
           status?: Database["public"]["Enums"]["relay_status"] | null
@@ -3135,6 +3144,9 @@ export type Database = {
           total_parcels_handled?: number | null
           training_completed_at?: string | null
           training_score?: number | null
+          unsubscribe_effective_at?: string | null
+          unsubscribe_reason?: string | null
+          unsubscribe_requested_at?: string | null
           updated_at?: string | null
           user_id?: string
           verified_at?: string | null
